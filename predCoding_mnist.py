@@ -72,7 +72,7 @@ def learn_pc(sin, sout, weights, biases, act_fn, l_rate, beta, it_max, var_layer
 v_learn_pc = jit(vmap(learn_pc, in_axes = (0, 0, None, None, None, None, None, None, None)), static_argnums=[4, 5, 6, 7])
 
 key = random.PRNGKey(80085)
-batch_size = 256
+batch_size = 512
 
 transform=transforms.Compose([
     transforms.ToTensor(),
@@ -83,10 +83,10 @@ train_loader = torch.utils.data.DataLoader(dataset1, batch_size = batch_size)
 test_loader = torch.utils.data.DataLoader(dataset2, batch_size = batch_size)
 
 
-l_rate = .001
+l_rate = .0001
 it_max = 100
 epochs = 500
-beta = .2 # euler integration constant
+beta = .02 # euler integration constant
 
 act_fn = jax.numpy.tanh #jax.nn.relu
 
@@ -105,6 +105,7 @@ for i in range(len(layers)-1):
     biases.append(jnp.zeros(layers[i+1]))
 
 train_acc = []
+test_acc = []
 for e in range(epochs):
     run_acc = jnp.array([]) 
     for data_x, data_l in train_loader:
@@ -117,43 +118,32 @@ for e in range(epochs):
         
         pred_new = v_run_nn(weights, biases, data_x, act_fn)
         run_acc = jnp.concatenate((run_acc, pred_new.argmax(1) == jnp.array(data_l)))
-
     train_acc.append(run_acc.mean())
-    print("{:4d} {:.4f}".format(e, train_acc[-1]))
+
+    run_acc = jnp.array([]) 
+    for data_x, data_l in test_loader:
+        data_x = jnp.array(data_x.flatten(1))
+        data_y = jnp.array(torch.nn.functional.one_hot(data_l))
+
+        pred_new = v_run_nn(weights, biases, data_x, act_fn)
+        run_acc = jnp.concatenate((run_acc, pred_new.argmax(1) == jnp.array(data_l)))
+    test_acc.append(run_acc.mean())
+
+    print("{:4d} {:.4f} {:.4f}".format(e, train_acc[-1], test_acc[-1]))
 
 
 
 import matplotlib.pyplot as plt
 
+plt.plot(train_acc, label = "Training")
+plt.plot(test_acc, label = "Testing")
 
-# for i in range(10):
-#     x_p = []
-#     for t in range(T):
-#         x_p.append(chg_hist[t][i])
-#     plt.plot(x_p)
-
-# plt.tight_layout()
-# plt.savefig('figures/mult_curves.png')
-# plt.close()
-
-
-for i in range(10):
-    x_p = []
-    for t in range(T):
-        x_p.append(x_hist[t][i])
-    plt.plot(x_p)
+plt.title("Predictive Coding - MNIST")
+plt.xlabel("Epoch")
+plt.ylabel("Accuracy")
+plt.legend()
 
 plt.tight_layout()
-plt.savefig('figures/mult_x_curves.png')
+plt.savefig('figures/pc_mnist.png')
 plt.close()
 
-
-# for i in range(1):
-#     x_p = []
-#     for t in range(T):
-#         x_p.append(chg_hist[t][i])
-#     plt.plot(x_p)
-
-# plt.tight_layout()
-# plt.savefig('figures/one_curves.png')
-# plt.close()

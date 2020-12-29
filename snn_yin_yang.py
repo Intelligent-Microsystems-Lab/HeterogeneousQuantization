@@ -7,6 +7,8 @@ from jax.experimental import optimizers, stax
 
 import matplotlib.pyplot as plt
 
+# https://github.com/lkriener/yin_yang_data_set
+# 
 
 # module load python cuda/10.2
 # export XLA_FLAGS="--xla_gpu_cuda_data_dir=/afs/crc.nd.edu/x86_64_linux/c/cuda/10.2"

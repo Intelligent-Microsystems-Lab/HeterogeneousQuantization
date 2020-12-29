@@ -133,7 +133,7 @@ import matplotlib.pyplot as plt
 for i, err in enumerate(rmse_hist):
     plt.plot(x_labels, err, label = "Run {}".format(i+1))
 
-plt.title("Predictive Coding")
+plt.title("Predictive Coding - XOR")
 plt.xlabel("Epoch")
 plt.ylabel("RMSE")
 plt.legend()
