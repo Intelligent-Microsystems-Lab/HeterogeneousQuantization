@@ -4,7 +4,10 @@ from functools import partial
 import jax.numpy as jnp
 from jax import grad, jit, lax, vmap, value_and_grad, custom_vjp, random, device_put
 from jax.experimental import optimizers, stax
+from flax import linen as nn
 
+from jax.config import config
+config.enable_omnistaging()
 
 # quant functions
 def step_d(bits): 
@@ -96,7 +99,6 @@ def snn_c_fwd(params_fixed, params, u, s):
 
     return (q, p, r), s_out
 
-
 def ssn_fc_net(params_fixed, params, ut, st):
 
     # 1st FC SNN layer
@@ -110,17 +112,22 @@ def ssn_fc_net(params_fixed, params, ut, st):
 
     return [u1, u2, u3], x 
 
+def snn_fc_net_run(params_fixed, params, s_in, u0):
+    u = u0
+    f = partial(ssn_fc_net, params_fixed, params)
+    _, s_out = lax.scan(f, u, s_in)
+    return s_out
+
+
 def state_init(params):
     u = []
     for i in params:
         u.append(( jnp.zeros(i['w'].shape[1]),  jnp.zeros(i['w'].shape[1]),  jnp.zeros(i['w'].shape[0])))
     return u
 
-def snn_fc_net_run(params_fixed, params, s_in, u0):
-    u = u0
-    f = partial(ssn_fc_net, params_fixed, params)
-    _, s_out = lax.scan(f, u, s_in)
-    return s_out
+
+
+class snn_fc(nn.Module)
 
 
 def vr_loss(params_fixed, params, s_in, target):
