@@ -3,3 +3,4 @@ __pycache__
 data/yin_yang_data_set/*
 data/MNIST/*
 data/.DS_Store
+.DS_Store
