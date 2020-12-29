@@ -88,7 +88,7 @@ test_loader = torch.utils.data.DataLoader(dataset2, batch_size = batch_size)
 
 l_rate = .0001
 it_max = 100
-epochs = 500
+epochs = 50
 beta = .02 # euler integration constant
 
 act_fn = jax.numpy.tanh #jax.nn.relu
