@@ -9,4 +9,4 @@
 module load python cuda/10.2
 setenv XLA_FLAGS --xla_gpu_cuda_data_dir=/afs/crc.nd.edu/x86_64_linux/c/cuda/10.2
 setenv OMP_NUM_THREADS $NSLOTS
-python bptt_snn.py --architecture "700-400-250" --l_rate 1e-09 --alpha 700-400-250 --alpha_vr 0.1 --thr 0.01 --seed 193012823 --log-file snn_pattern.csv
+python bptt_snn.py --architecture "700-400-250" --l_rate 1e-09 --alpha 0.1 --alpha_vr 0.1 --thr 0.01 --seed 193012823 --log-file snn_pattern.csv

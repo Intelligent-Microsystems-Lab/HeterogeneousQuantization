@@ -5,3 +5,15 @@ usage: bptt_snn.py [-h] [--log-file LOG_FILE] [--seed SEED] [--input INPUT]
                    [--l_rate L_RATE] [--epochs EPOCHS] [--alpha ALPHA]
                    [--alpha_vr ALPHA_VR] [--thr THR]
 bptt_snn.py: error: argument --alpha: invalid float value: '700-400-250'
+Loading python/3.7.3
+  Loading requirement: tcl/8.6.8 gcc/8.3.0
+Traceback (most recent call last):
+  File "bptt_snn.py", line 105, in <module>
+    layers = jnp.array(list(map(int, args.architecture.split(","))))
+ValueError: invalid literal for int() with base 10: '700-400-250'
+Loading python/3.7.3
+  Loading requirement: tcl/8.6.8 gcc/8.3.0
+Traceback (most recent call last):
+  File "bptt_snn.py", line 105, in <module>
+    layers = jnp.array(list(map(int, args.architecture.split(","))))
+ValueError: invalid literal for int() with base 10: '700-400-250'
