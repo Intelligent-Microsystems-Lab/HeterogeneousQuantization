@@ -150,4 +150,4 @@ for e in range(args.epochs):
 jnp.savez("models/"+str(model_uuid)+".npz", weights, biases, loss_hist, args)
 # add log entry
 with open(args.log_file,'a') as f:
-    f.write(str(loss_hist[-1]) + "," + ",".join( [str(vars(args)[t]) for t in vars(args)]) + "\n")
+    f.write(str(loss_hist[-1]) + "," + model_uuid + "," + ",".join( [str(vars(args)[t]) for t in vars(args)]) + "\n")
