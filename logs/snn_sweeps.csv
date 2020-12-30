@@ -6,3 +6,7 @@
 3889.1711,aa38a99c-d1db-4bad-be08-f5db70fedb58,logs/snn_sweeps.csv,235899598,data/smile_data_set/input_700_250_25.pkl,data/smile_data_set/smile95.pkl,700-300-250,1e-06,10000,0.96,0.75,0.1
 3868.1484,91d7c1b5-e841-437d-a172-8a79512516ab,logs/snn_sweeps.csv,235899598,data/smile_data_set/input_700_250_25.pkl,data/smile_data_set/smile95.pkl,700-500-250,1e-06,10000,0.96,0.75,0.1
 3835.268,d1d65225-009b-4b44-8ab7-b9a1ca9a4a14,logs/snn_sweeps.csv,235899598,data/smile_data_set/input_700_250_25.pkl,data/smile_data_set/smile95.pkl,700-600-400-250,1e-06,10000,0.96,0.75,0.1
+3860.1506,d5e47a95-d49c-4fb5-8a2e-9ab80bf27723,logs/snn_sweeps.csv,8627169,data/smile_data_set/input_700_250_25.pkl,data/smile_data_set/smile95.pkl,700-400-250,1e-06,10000,0.96,0.75,0.1
+3907.2878,fcfb0ede-7e13-4605-9b78-445647c72f17,logs/snn_sweeps.csv,8627169,data/smile_data_set/input_700_250_25.pkl,data/smile_data_set/smile95.pkl,700-300-250,1e-06,10000,0.96,0.75,0.1
+3862.3928,08537c40-4f46-43e0-bde1-e2e77998aff6,logs/snn_sweeps.csv,8627169,data/smile_data_set/input_700_250_25.pkl,data/smile_data_set/smile95.pkl,700-500-250,1e-06,10000,0.96,0.75,0.1
+3882.6384,7617841a-545e-4d11-ad81-e48bd89e419f,logs/snn_sweeps.csv,8627169,data/smile_data_set/input_700_250_25.pkl,data/smile_data_set/smile95.pkl,700-600-400-250,1e-06,10000,0.96,0.75,0.1
