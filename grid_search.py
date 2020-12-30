@@ -33,5 +33,4 @@ for i in range(trials):
                         name = ident_word + "_a1_"+a1+ "_lr_"+str(lr) + "_a2_"+str(a2)+ "_a3_"+str(a3)+ "_thr_"+str(ths) +"_" + str(i)
                         with open('jobscripts/'+name+'.script', 'w') as f:
                             f.write(part1 + part11  + name + part2 + name + part3 + name + part4 + " --architecture" + " \"" + a1+ "\" --l_rate " + str(lr)+ " --alpha "+ str(a2) + " --alpha_vr " + str(a3) + " --thr " + str(ths) +" --seed " + str(random_seeds[i]) + " --log-file " + ident_word + ".csv") 
-                        import pdb; pdb.set_trace()
                         os.system("qsub "+ 'jobscripts/'+name+'.script')
