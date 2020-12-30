@@ -58,7 +58,7 @@ def vr_loss(alpha_vr, pred, target):
 
     return jnp.reshape(jnp.sqrt(1/5e-3*jnp.sum((c_pred - c_target)**2)), ())
 
-def pattern_plot(sin, sout, pred):
+def pattern_plot(sin, sout, pred, name):
     fig, axes = plt.subplots(nrows=1, ncols=4)
     axes[0].imshow(sin.astype(float))
     axes[0].set_title("Input")
@@ -70,7 +70,7 @@ def pattern_plot(sin, sout, pred):
     axes[3].set_title("Error")
 
     plt.tight_layout()
-    plt.savefig('figures/pattern_visualization.png')
+    plt.savefig('figures/'+name+'.png')
     plt.close()
 
 
@@ -80,10 +80,10 @@ parser.add_argument("--seed", type=int, default=80085, help='Random seed')
 
 parser.add_argument("--input", type=str, default="data/smile_data_set/input_700_250_25.pkl", help='Input pickle')
 parser.add_argument("--target", type=str, default="data/smile_data_set/smile95.pkl", help='Target pattern pickle')
-parser.add_argument("--architecture", type=str, default="700,400,250", help='Architecture of the networks')
+parser.add_argument("--architecture", type=str, default="700-400-250", help='Architecture of the networks')
 
 parser.add_argument("--l_rate", type=float, default=1e-6, help='Learning Rate')
-parser.add_argument("--epochs", type=int, default=20, help='Epochs')
+parser.add_argument("--epochs", type=int, default=10000, help='Epochs')
 
 parser.add_argument("--alpha", type=float, default=.96, help='Time constant for membrane potential')
 parser.add_argument("--alpha_vr", type=float, default=.75, help='Time constant for Van Rossum distance')
@@ -102,7 +102,7 @@ with open(args.target, 'rb') as f:
     y_train = jnp.array(pickle.load(f))
 
 
-layers = jnp.array(list(map(int, args.architecture.split(","))))
+layers = jnp.array(list(map(int, args.architecture.split("-"))))
 n_layers = len(layers)
 
 weights = []
@@ -142,11 +142,12 @@ for e in range(args.epochs):
     loss_hist.append(loss)
     print("{} {:.4f}".format(e, loss))
 
-pred = run_snn(weights, biases, args.alpha, args.thr, x_train)
-pattern_plot(x_train, y_train, pred)
+# Visualization
+#pred = run_snn(weights, biases, args.alpha, args.thr, x_train)
+#pattern_plot(x_train, y_train, pred, model_uuid + "_pattern_visual")
 
 # save model
 jnp.savez("models/"+str(model_uuid)+".npz", weights, biases, loss_hist, args)
 # add log entry
 with open(args.log_file,'a') as f:
-    f.write(str(loss[-1]) + "," + ",".join( [str(vars(args)[t]) for t in vars(args)]))
+    f.write(str(loss_hist[-1]) + "," + ",".join( [str(vars(args)[t]) for t in vars(args)]) + "\n")
