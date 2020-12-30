@@ -1,9 +1,9 @@
 #!/bin/csh 
 #$ -M cschaef6@nd.edu 
 #$ -m abe
-#$ -q 
+#$ -q gpu@@joshi
 #$ -l gpu_card=1
-#$ -N gpu@@joshisnn_pattern_a1_700-400-250_lr_1e-09_a2_0.1_a3_0.1_thr_0.01_0
+#$ -N snn_pattern_a1_700-400-250_lr_1e-09_a2_0.1_a3_0.1_thr_0.01_0
 #$ -o ./logs/output_snn_pattern_snn_pattern_a1_700-400-250_lr_1e-09_a2_0.1_a3_0.1_thr_0.01_0.txt
 #$ -e ./logs/error_snn_pattern_snn_pattern_a1_700-400-250_lr_1e-09_a2_0.1_a3_0.1_thr_0.01_0.txt
 module load python
