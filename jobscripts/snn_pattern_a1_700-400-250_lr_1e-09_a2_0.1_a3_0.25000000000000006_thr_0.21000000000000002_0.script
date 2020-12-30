@@ -1,0 +1,12 @@
+#!/bin/csh 
+#$ -M cschaef6@nd.edu 
+#$ -m abe
+#$ -q gpu@@joshi
+#$ -l gpu_card=1
+#$ -N snn_pattern_a1_700-400-250_lr_1e-09_a2_0.1_a3_0.25000000000000006_thr_0.21000000000000002_0
+#$ -o ./logs/runs/output_snn_pattern_snn_pattern_a1_700-400-250_lr_1e-09_a2_0.1_a3_0.25000000000000006_thr_0.21000000000000002_0.txt
+#$ -e ./logs/runs/error_snn_pattern_snn_pattern_a1_700-400-250_lr_1e-09_a2_0.1_a3_0.25000000000000006_thr_0.21000000000000002_0.txt
+module load python cuda/10.2
+setenv XLA_FLAGS --xla_gpu_cuda_data_dir=/afs/crc.nd.edu/x86_64_linux/c/cuda/10.2
+setenv OMP_NUM_THREADS $NSLOTS
+python bptt_snn.py --architecture "700-400-250" --l_rate 1e-09 --alpha 0.1 --alpha_vr 0.25000000000000006 --thr 0.21000000000000002 --seed 193012823 --log-file snn_pattern.csv
