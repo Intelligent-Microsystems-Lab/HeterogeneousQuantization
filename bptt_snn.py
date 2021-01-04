@@ -201,6 +201,8 @@ elif args.data_set == 'DVS_Gestures':
 else:
     raise Exception("Unknown data set")
 
+
+
 layers = jnp.array(list(map(int, args.architecture.split("-"))))
 n_layers = len(layers)
 
@@ -250,6 +252,7 @@ for e in range(args.epochs):
 # Visualization
 #pred = run_snn(weights, biases, args.alpha, args.gamma, args.thr, x_train)
 #pattern_plot(x_train, y_train, pred, model_uuid + "_pattern_visual", "")
+
 
 # save model
 jnp.savez("models/"+str(model_uuid)+".npz", weights = weights,  biases = biases, loss_hist = loss_hist, train_hist = train_hist, test_hist = test_hist,  args = args)
