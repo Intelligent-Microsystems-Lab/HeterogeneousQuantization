@@ -1,0 +1,12 @@
+#!/bin/csh 
+#$ -M cschaef6@nd.edu 
+#$ -m abe
+#$ -q gpu@@joshi
+#$ -l gpu_card=1
+#$ -N snn_sweeps_l_rate_1e-06_1
+#$ -o ./logs/runs/output_snn_sweeps_snn_sweeps_l_rate_1e-06_1.txt
+#$ -e ./logs/runs/error_snn_sweeps_snn_sweeps_l_rate_1e-06_1.txt
+module load python cuda/10.2
+setenv XLA_FLAGS --xla_gpu_cuda_data_dir=/afs/crc.nd.edu/x86_64_linux/c/cuda/10.2
+setenv OMP_NUM_THREADS $NSLOTS
+python bptt_snn.py --l_rate 1e-06 --seed 235899598 --log-file logs/snn_sweeps_l_rate.csv
