@@ -1,0 +1,5 @@
+Loading python/3.7.3
+  Loading requirement: tcl/8.6.8 gcc/8.3.0
+9b568dad-af2c-43c6-8fc9-7e977498aba1
+Namespace(alpha=0.6, alpha_vr=0.85, architecture='2048-500-100-10', batch_size=128, data_set='NMNIST', epochs=1, gamma=0.15, l_rate=1e-05, log_file='logs/nmnist_l_rate.csv', seed=193012823, thr=0.1, w_scale=1)
+Epoch 0 36.5933 0.0999 0.1000
