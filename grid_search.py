@@ -1,7 +1,7 @@
 import os
 import numpy as np
 
-ident_word = "nmnist"
+ident_word = "DVS_Gestures"
 
 part1 = "#!/bin/csh \n#$ -M cschaef6@nd.edu \n#$ -m abe\n#$ -q gpu@@joshi" 
 part11 = "\n#$ -l gpu_card=1\n#$ -N "
@@ -39,7 +39,7 @@ for i in range(trials):
             name = ident_word + "_" +variable + "_" + str(value).replace(",","") + "_" + str(i)
             with open('jobscripts/'+name+'.script', 'w') as f:
                 if isinstance(value, str):
-                    f.write(part1 + part11  + name + part2 + name + part3 + name + part4 + " --" + variable + " \"" + value+ "\" --data-set \"NMNIST\" --architecture \"2048-500-100-10\" --epochs 20 --seed " + str(random_seeds[i]) + " --log-file logs/" + ident_word + "_" + variable + ".csv") 
+                    f.write(part1 + part11  + name + part2 + name + part3 + name + part4 + " --" + variable + " \"" + value+ "\" --data-set \"DVS_Gestures\" --architecture \"2048-500-100-11\" --epochs 20 --seed " + str(random_seeds[i]) + " --log-file logs/" + ident_word + "_" + variable + ".csv") 
                 else:
-                    f.write(part1 + part11  + name + part2 + name + part3 + name + part4 + " --" + variable + " " + str(value)+ " --data-set \"NMNIST\" --architecture \"2048-500-100-10\" --epochs 20 --seed " + str(random_seeds[i]) + " --log-file logs/" + ident_word + "_" + variable + ".csv") 
+                    f.write(part1 + part11  + name + part2 + name + part3 + name + part4 + " --" + variable + " " + str(value)+ " --data-set \"DVS_Gestures\" --architecture \"2048-500-100-11\" --epochs 20 --seed " + str(random_seeds[i]) + " --log-file logs/" + ident_word + "_" + variable + ".csv") 
             os.system("qsub "+ 'jobscripts/'+name+'.script')

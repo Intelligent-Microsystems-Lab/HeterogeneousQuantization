@@ -1,4 +1,4 @@
-import argparse, time, pickle, uuid, os
+import argparse, time, pickle, uuid, os, datetime
 
 from functools import partial
 import jax.numpy as jnp
@@ -19,8 +19,8 @@ def spike_nonlinearity_fwd(u, thr):
 
 def spike_nonlinearity_bwd(ctx, g):
     u, thr = ctx
-    return (g * vmap(grad(jax.nn.sigmoid))(u - thr),None,)
-    #return (g/(10*jnp.abs(u)+1.)**2,)
+    #return (g * vmap(grad(jax.nn.sigmoid))(u - thr),None,)
+    return (g/(10*jnp.abs(u)+1.)**2,None,)
 
 spike_nonlinearity.defvjp(spike_nonlinearity_fwd, spike_nonlinearity_bwd)
 
@@ -58,8 +58,11 @@ def vr_loss(alpha_vr, pred, target):
 
     return jnp.reshape(jnp.sqrt(1/5e-3*jnp.sum((c_pred - c_target)**2)), ())
 
-def cla_loss(alpha_vr, pred, target):
-    return jnp.mean(jnp.sum(pred * target, axis=1))
+def nll_loss(alpha_vr, pred, target):
+    one_hot = target.sum(1)/target.shape[1]
+    prob = pred.sum(1)/pred.shape[1]
+    logits = prob - jax.scipy.special.logsumexp(prob, axis=1, keepdims=True)
+    return -jnp.mean(jnp.sum(logits * one_hot, axis=1))
 
 def run_snn(weights, biases, alpha, gamma, thr, x_train):
     T = x_train.shape[0]
@@ -79,7 +82,7 @@ v_run_snn = jit(vmap(run_snn, (None, None, None, None, None, 0)), static_argnums
 
 def loss_pred(weights, biases, alpha, gamma, alpha_vr, thr, x_train, y_train, loss_fn):
     pred_s = v_run_snn(weights, biases, alpha, gamma, thr, x_train)
-    return loss_fn(alpha_vr, pred_s, y_train).sum(0)
+    return loss_fn(alpha_vr, pred_s, y_train)
 
 @jax.partial(jit, static_argnums=[2, 3, 4, 5, 8])
 def update_w(weights, biases, alpha, gamma, alpha_vr, thr, x_train, y_train, loss_fn):
@@ -92,8 +95,6 @@ def update_w(weights, biases, alpha, gamma, alpha_vr, thr, x_train, y_train, los
 @jit
 def acc_compute(pred, target):
     return jnp.mean(pred.sum(1).argmax(1) == target.sum(1).argmax(1))
-
-    #return jnp.mean(pred == target)
 
 def pattern_plot(sin, sout, pred, name, textl):
     fig, axes = plt.subplots(nrows=1, ncols=4)
@@ -131,16 +132,17 @@ parser.add_argument("--seed", type=int, default=80085, help='Random seed')
 parser.add_argument("--data-set", type=str, default="NMNIST", help='Data set to use')
 parser.add_argument("--architecture", type=str, default="2048-500-100-10", help='Architecture of the networks')
 
-parser.add_argument("--l_rate", type=float, default=1e-5, help='Learning Rate')
-parser.add_argument("--epochs", type=int, default=2, help='Epochs')
+parser.add_argument("--l_rate", type=float, default=1e-9, help='Learning Rate')
+parser.add_argument("--epochs", type=int, default=30, help='Epochs')
 
-parser.add_argument("--w-scale", type=float, default=1, help='Weight Scaling')
+parser.add_argument("--w-scale", type=float, default=.5, help='Weight Scaling')
 parser.add_argument("--batch-size", type=float, default=128, help='Batch Size ')
 
-parser.add_argument("--alpha", type=float, default=.6, help='Time constant for membrane potential')
-parser.add_argument("--gamma", type=float, default=.15, help='Reset Magnitude')
+parser.add_argument("--alpha", type=float, default=.875, help='Time constant for membrane potential')
+parser.add_argument("--gamma", type=float, default=1.15, help='Reset Magnitude')
+parser.add_argument("--thr", type=float, default=1., help='Membrane Threshold')
+
 parser.add_argument("--alpha_vr", type=float, default=.85, help='Time constant for Van Rossum distance')
-parser.add_argument("--thr", type=float, default=.1, help='Membrane Threshold')
 
 args = parser.parse_args()
 
@@ -163,7 +165,21 @@ if args.data_set == 'Smile':
     test_dl = [(x_train, y_train)]
     loss_fn = vmap(vr_loss, (None, 0, 0))
 elif args.data_set == 'Yin_Yang':
-    pass
+    from data.yin_yang_data_set.dataset import YinYangDataset
+    from torch.utils.data import DataLoader
+
+    dataset_train = YinYangDataset(size=5000, seed=42)
+    dataset_validation = YinYangDataset(size=1000, seed=41)
+    dataset_test = YinYangDataset(size=1000, seed=40)
+
+    batchsize_train = 20
+    batchsize_eval = len(dataset_test)
+
+    train_dl = DataLoader(dataset_train, batch_size=batchsize_train, shuffle=True)
+    val_dl = DataLoader(dataset_validation, batch_size=batchsize_eval, shuffle=True)
+    test_dl = DataLoader(dataset_test, batch_size=batchsize_eval, shuffle=False)
+
+    loss_fn = nll_loss
 elif args.data_set == 'NMNIST':
     # 2* 32* 32 = 2048 and 10 classes
     from torchneuromorphic.nmnist.nmnist_dataloaders import *
@@ -181,7 +197,7 @@ elif args.data_set == 'NMNIST':
             batch_size=args.batch_size,
             ds=1,
             num_workers=4)
-    loss_fn = vmap(cla_loss, (None, 0, 0))
+    loss_fn = nll_loss
 elif args.data_set == 'DVS_Gestures':
     from torchneuromorphic.dvs_gestures.dvsgestures_dataloaders import *
     import torchneuromorphic.transforms as transforms
@@ -196,8 +212,9 @@ elif args.data_set == 'DVS_Gestures':
     train_dl, test_dl = create_dataloader(
             root='data/dvsgesture/dvs_gestures_build19.hdf5',
             batch_size=args.batch_size,
-            ds=1,
+            ds=4,
             num_workers=4)
+    loss_fn = nll_loss
 else:
     raise Exception("Unknown data set")
 
@@ -231,7 +248,7 @@ for e in range(args.epochs):
         acc_ta = (acc_ta * s_ta + float(acc_compute(pred, y_train))  * int(x_train.shape[0])) / (s_ta + int(x_train.shape[0]))
         loss_r = (loss_r * s_ta + loss * int(x_train.shape[0])) / (s_ta + int(x_train.shape[0]))
         s_ta += int(x_train.shape[0])
-        #print("{} {:.4f} {:.4f}".format(s_ta, loss_r, acc_ta))
+        print("{} {:.4f} {:.4f}".format(s_ta, loss_r, acc_ta))
 
     for x_test, y_test in test_dl:
         x_test = jnp.array(x_test.reshape((x_test.shape[0], x_test.shape[1], -1)))
@@ -241,7 +258,7 @@ for e in range(args.epochs):
         
         acc_te = (acc_te * s_te + float(acc_compute(pred, y_test)) * int(x_test.shape[0])) / (s_te + int(x_test.shape[0]))
         s_te += int(x_test.shape[0])
-        #print("{} {:.4f}".format(s_te, acc_te))
+        print("{} {:.4f}".format(s_te, acc_te))
 
 
     loss_hist.append(loss_r)
@@ -258,7 +275,7 @@ for e in range(args.epochs):
 jnp.savez("models/"+str(model_uuid)+".npz", weights = weights,  biases = biases, loss_hist = loss_hist, train_hist = train_hist, test_hist = test_hist,  args = args)
 # add log entry
 with open(args.log_file,'a') as f:
-    f.write(str(loss_hist[-1]) + "," + str(train_hist[-1]) + "," + str(test_hist[-1]) + "," + model_uuid + "," + ",".join( [str(vars(args)[t]) for t in vars(args)]) + "\n")
+    f.write(str(loss_hist[-1]) + "," + str(train_hist[-1]) + "," + str(test_hist[-1]) + "," + model_uuid + "," + ",".join( [str(vars(args)[t]) for t in vars(args)]) + "," + str(datetime.datetime.now()) + "\n")
 
 # # load model 
 # model_uuid = 'abfcaa0f-1de3-492a-a08e-5fcce8da513c'
