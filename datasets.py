@@ -38,7 +38,7 @@ def dl_create(data_set, batch_size):
         loss_fn = nll_loss
     elif data_set == 'NMNIST':
         # 2* 32* 32 = 2048 and 10 classes
-        from torchneuromorphic.nmnist.nmnist_dataloaders import *
+        from torchneuromorphic.nmnist.nmnist_dataloaders import create_events_hdf5, create_dataloader
         import torchneuromorphic.transforms as transforms
 
         if os.path.exists('data/nmnist/n_mnist.hdf5'):
@@ -56,7 +56,7 @@ def dl_create(data_set, batch_size):
         loss_fn = nll_loss
     elif data_set == 'DVS_Gestures':
         # 2* 32* 32 = 2048 and 11 classes
-        from torchneuromorphic.dvs_gestures.dvsgestures_dataloaders import *
+        from torchneuromorphic.dvs_gestures.dvsgestures_dataloaders import create_events_hdf5, create_dataloader
         import torchneuromorphic.transforms as transforms
 
         if os.path.exists('data/dvsgesture/dvs_gestures_build19.hdf5'):
