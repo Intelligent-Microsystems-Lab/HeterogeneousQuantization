@@ -1,0 +1,12 @@
+#!/bin/csh 
+#$ -M cschaef6@nd.edu 
+#$ -m abe
+#$ -q gpu@@joshi
+#$ -l gpu_card=1
+#$ -N smile_adam_thr_0.9_2
+#$ -o ./logs/runs/output_smile_adam_smile_adam_thr_0.9_2.txt
+#$ -e ./logs/runs/error_smile_adam_smile_adam_thr_0.9_2.txt
+module load python cuda/10.2
+setenv XLA_FLAGS --xla_gpu_cuda_data_dir=/afs/crc.nd.edu/x86_64_linux/c/cuda/10.2
+setenv OMP_NUM_THREADS $NSLOTS
+python bptt_snn.py --thr 0.9 --data-set "DVS_Gestures" --architecture "2048-500-100-11" --epochs 20 --seed 8627169 --log-file logs/smile_adam_thr.csv

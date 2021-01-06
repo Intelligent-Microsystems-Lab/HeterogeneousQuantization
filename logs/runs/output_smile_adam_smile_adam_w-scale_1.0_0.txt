@@ -1,0 +1,18 @@
+Loading python/3.7.3
+  Loading requirement: tcl/8.6.8 gcc/8.3.0
+316b4eda-ba8d-464c-b37f-8ec823dcde71
+Namespace(alpha=0.875, alpha_vr=0.85, architecture='2048-500-100-11', batch_size=128, data_set='DVS_Gestures', epochs=20, gamma=1.15, l_rate=0.001, log_file='logs/smile_adam_w-scale.csv', seed=193012823, thr=1.0, w_scale=1.0)
+2021-01-05 19:12:26.605196: W external/org_tensorflow/tensorflow/core/common_runtime/bfc_allocator.cc:433] Allocator (GPU_0_bfc) ran out of memory trying to allocate 1.76GiB (rounded to 1887436800)requested by op 
+2021-01-05 19:12:26.605593: W external/org_tensorflow/tensorflow/core/common_runtime/bfc_allocator.cc:441] ******______________________***_____________________________________________________________________
+Traceback (most recent call last):
+  File "bptt_snn.py", line 263, in <module>
+    x_test = jnp.array(x_test.reshape((x_test.shape[0], x_test.shape[1], -1)))
+  File "/afs/crc.nd.edu/user/c/cschaef6/.local/lib/python3.7/site-packages/jax/_src/numpy/lax_numpy.py", line 2666, in array
+    out = _device_put_raw(object)
+  File "/afs/crc.nd.edu/user/c/cschaef6/.local/lib/python3.7/site-packages/jax/_src/lax/lax.py", line 1457, in _device_put_raw
+    return xla.array_result_handler(None, aval)(*xla.device_put(x))
+  File "/afs/crc.nd.edu/user/c/cschaef6/.local/lib/python3.7/site-packages/jax/interpreters/xla.py", line 127, in device_put
+    return device_put_handlers[type(x)](x, device)
+  File "/afs/crc.nd.edu/user/c/cschaef6/.local/lib/python3.7/site-packages/jax/interpreters/xla.py", line 135, in _device_put_array
+    return (backend.buffer_from_pyval(x, device),)
+RuntimeError: Resource exhausted: Out of memory while trying to allocate 1887436800 bytes.
