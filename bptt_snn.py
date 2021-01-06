@@ -118,12 +118,34 @@ def pattern_plot(sin, sout, pred, name, textl):
     plt.savefig('figures/'+name+'.png')
     plt.close()
 
-def curve_plot(loss_hist, name, textl):
+
+def yy_plot(sin, pred, name, textl):
     plt.clf()
     fig, axes = plt.subplots(nrows=1, ncols=1)
-    plt.plot(loss_hist)
+    x_points = sin.argmax(1)/sin.shape[1]
+    cla_col = ['orange','blue','green']
+    for i in range(3):
+        plt.scatter(x_points[pred.sum(1).argmax(1) == i][:,0], x_points[pred.sum(1).argmax(1) == i][:,1], color = cla_col[i]  )
+        plt.scatter(1-x_points[pred.sum(1).argmax(1) == i][:,2], 1-x_points[pred.sum(1).argmax(1) == i][:,3], color = cla_col[i]  )
+
+    plt.title(textl)
+    plt.tight_layout()
+    plt.savefig('figures/'+name+'.png')
+    plt.close()
+
+def curve_plot(loss_hist, train_hist, test_hist, name, textl):
+    plt.clf()
+    fig, axes = plt.subplots(nrows=1, ncols=1)
+
+    axes.plot(train_hist, label='Train', color='blue')
+    axes.plot(test_hist, label = 'Test', color = 'red')
     plt.xlabel("Epochs")
-    plt.ylabel("Van Rossum Loss")
+    plt.ylabel("Accuracy")
+
+    ax2 = axes.twinx()  
+
+    ax2.plot(loss_hist, label = 'Loss', color='black')
+    #ax2.ylabel("Loss")
 
     plt.suptitle(textl)
     plt.tight_layout()
@@ -136,17 +158,17 @@ parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.A
 parser.add_argument("--log-file", type=str, default="logs/test.csv", help='Log-file')
 parser.add_argument("--seed", type=int, default=80085, help='Random seed')
 
-parser.add_argument("--data-set", type=str, default="Smile", help='Data set to use')
-parser.add_argument("--architecture", type=str, default="700-500-300-250", help='Architecture of the networks')
+parser.add_argument("--data-set", type=str, default="Yin_Yang", help='Data set to use')
+parser.add_argument("--architecture", type=str, default="4-120-3", help='Architecture of the networks')
 
 parser.add_argument("--l_rate", type=float, default=1e-3, help='Learning Rate')
-parser.add_argument("--epochs", type=int, default=10000, help='Epochs')
+parser.add_argument("--epochs", type=int, default=10, help='Epochs')
 
-parser.add_argument("--w-scale", type=float, default=1.5, help='Weight Scaling')
+parser.add_argument("--w-scale", type=float, default=1., help='Weight Scaling')
 parser.add_argument("--batch-size", type=float, default=128, help='Batch Size ')
 
-parser.add_argument("--alpha", type=float, default=.875, help='Time constant for membrane potential')
-parser.add_argument("--gamma", type=float, default=1.15, help='Reset Magnitude')
+parser.add_argument("--alpha", type=float, default=.6, help='Time constant for membrane potential')
+parser.add_argument("--gamma", type=float, default=1.2, help='Reset Magnitude')
 parser.add_argument("--thr", type=float, default=1., help='Membrane Threshold')
 
 parser.add_argument("--alpha_vr", type=float, default=.85, help='Time constant for Van Rossum distance')
@@ -157,6 +179,7 @@ args = parser.parse_args()
 key = random.PRNGKey(args.seed)
 model_uuid = str(uuid.uuid4())
 
+        
 
 if args.data_set == 'Smile':
     if os.path.exists("data/smile_data_set/input_700_250_25.pkl") and os.path.exists("data/smile_data_set/smile95.pkl"):
@@ -172,19 +195,16 @@ if args.data_set == 'Smile':
     test_dl = [(x_train, y_train)]
     loss_fn = vr_loss
 elif args.data_set == 'Yin_Yang':
-    from data.yin_yang_data_set.dataset import YinYangDataset
+    from data.yin_yang_data_set.dataset import YinYangDataset, to_spike_train
     from torch.utils.data import DataLoader
 
-    dataset_train = YinYangDataset(size=5000, seed=42)
-    dataset_validation = YinYangDataset(size=1000, seed=41)
-    dataset_test = YinYangDataset(size=1000, seed=40)
+    dataset_train = YinYangDataset(size=5000, seed=42, transform=to_spike_train(100))
+    dataset_validation = YinYangDataset(size=1000, seed=41, transform=to_spike_train(100))
+    dataset_test = YinYangDataset(size=1000, seed=40, transform=to_spike_train(100))
 
-    batchsize_train = 20
-    batchsize_eval = len(dataset_test)
-
-    train_dl = DataLoader(dataset_train, batch_size=batchsize_train, shuffle=True)
-    val_dl = DataLoader(dataset_validation, batch_size=batchsize_eval, shuffle=True)
-    test_dl = DataLoader(dataset_test, batch_size=batchsize_eval, shuffle=False)
+    train_dl = DataLoader(dataset_train, batch_size=args.batch_size, shuffle=True)
+    val_dl = DataLoader(dataset_validation, batch_size=args.batch_size, shuffle=True)
+    test_dl = DataLoader(dataset_test, batch_size=1000, shuffle=False)
 
     loss_fn = nll_loss
 elif args.data_set == 'NMNIST':
@@ -277,8 +297,9 @@ for e in range(args.epochs):
 
 # Visualization
 pred = v_run_snn(weights, biases, args.alpha, args.gamma, args.thr, x_train)
-pattern_plot(x_train[0,:,:], y_train[0,:,:], pred[0,:,:], model_uuid + "_pattern_visual", "")
-curve_plot(loss_hist, model_uuid + "_curve", str(loss_hist[-1]) + " " + str(args.alpha_vr))
+yy_plot(x_test, y_test, model_uuid + '_yin_yang', str(loss_hist[-1]))
+# pattern_plot(x_train[0,:,:], y_train[0,:,:], pred[0,:,:], model_uuid + "_pattern_visual", "")
+curve_plot(loss_hist, train_hist, test_hist, model_uuid + "_curve", str(loss_hist[-1]) + " " + str(args.alpha_vr))
 
 # save model
 jnp.savez("models/"+str(model_uuid)+".npz", weights = weights,  biases = biases, loss_hist = loss_hist, train_hist = train_hist, test_hist = test_hist,  args = args)
