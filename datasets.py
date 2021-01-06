@@ -7,9 +7,9 @@ from jax import grad, jit, lax, vmap, value_and_grad, custom_vjp, random, device
 import jax
 
 
-def dl_create(args.data_set, args.batch_size):
+def dl_create(data_set, batch_size):
 
-    if args.data_set == 'Smile':
+    if data_set == 'Smile':
         # 700 input neurons, 250 time steps, 250 output neurons
         if os.path.exists("data/smile_data_set/input_700_250_25.pkl") and os.path.exists("data/smile_data_set/smile95.pkl"):
             with open("data/smile_data_set/input_700_250_25.pkl", 'rb') as f:
@@ -23,7 +23,7 @@ def dl_create(args.data_set, args.batch_size):
         train_dl = [(x_train, y_train)]
         test_dl = [(x_train, y_train)]
         loss_fn = vr_loss
-    elif args.data_set == 'Yin_Yang':
+    elif data_set == 'Yin_Yang':
         # 4 input channels and 3 classes
         from data.yin_yang_data_set.dataset import YinYangDataset, to_spike_train
         from torch.utils.data import DataLoader
@@ -32,12 +32,12 @@ def dl_create(args.data_set, args.batch_size):
         dataset_validation = YinYangDataset(size=1000, seed=41, transform=to_spike_train(100))
         dataset_test = YinYangDataset(size=1000, seed=40, transform=to_spike_train(100))
 
-        train_dl = DataLoader(dataset_train, batch_size=args.batch_size, shuffle=True)
-        val_dl = DataLoader(dataset_validation, batch_size=args.batch_size, shuffle=True)
+        train_dl = DataLoader(dataset_train, batch_size=batch_size, shuffle=True)
+        val_dl = DataLoader(dataset_validation, batch_size=batch_size, shuffle=True)
         test_dl = DataLoader(dataset_test, batch_size=1000, shuffle=False)
 
         loss_fn = nll_loss
-    elif args.data_set == 'NMNIST':
+    elif data_set == 'NMNIST':
         # 2* 32* 32 = 2048 and 10 classes
         from torchneuromorphic.nmnist.nmnist_dataloaders import *
         import torchneuromorphic.transforms as transforms
@@ -51,11 +51,11 @@ def dl_create(args.data_set, args.batch_size):
         
         train_dl, test_dl = create_dataloader(
                 root='data/nmnist/n_mnist.hdf5',
-                batch_size=args.batch_size,
+                batch_size=batch_size,
                 ds=1,
                 num_workers=4)
         loss_fn = nll_loss
-    elif args.data_set == 'DVS_Gestures':
+    elif data_set == 'DVS_Gestures':
         # 2* 32* 32 = 2048 and 11 classes
         from torchneuromorphic.dvs_gestures.dvsgestures_dataloaders import *
         import torchneuromorphic.transforms as transforms
@@ -69,11 +69,11 @@ def dl_create(args.data_set, args.batch_size):
         
         train_dl, test_dl = create_dataloader(
                 root='data/dvsgesture/dvs_gestures_build19.hdf5',
-                batch_size=args.batch_size,
+                batch_size=batch_size,
                 ds=4,
                 num_workers=4)
         loss_fn = nll_loss
     else:
         raise Exception("Unknown data set")
-        
+
     return train_dl, test_dl
