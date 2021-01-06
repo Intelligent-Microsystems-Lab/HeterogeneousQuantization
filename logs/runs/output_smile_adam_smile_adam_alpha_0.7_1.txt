@@ -1,0 +1,24 @@
+Loading python/3.7.3
+  Loading requirement: tcl/8.6.8 gcc/8.3.0
+5fa0fa20-39d0-4eca-8d9e-994444c11b6a
+Namespace(alpha=0.7, alpha_vr=0.85, architecture='2048-500-100-11', batch_size=128, data_set='DVS_Gestures', epochs=20, gamma=1.15, l_rate=0.001, log_file='logs/smile_adam_alpha.csv', seed=235899598, thr=1.0, w_scale=1.5)
+Epoch 0 2.1558 0.4031 0.4653
+Epoch 1 1.9416 0.5315 0.5069
+Epoch 2 1.8952 0.5859 0.5764
+Epoch 3 1.8721 0.6480 0.5903
+Epoch 4 1.8547 0.6641 0.6111
+Epoch 5 1.8322 0.7151 0.6493
+Epoch 6 1.8252 0.7134 0.6632
+Epoch 7 1.8191 0.7347 0.6910
+Epoch 8 1.8124 0.7551 0.7222
+Epoch 9 1.8090 0.7602 0.7396
+Epoch 10 1.8034 0.7628 0.7465
+Epoch 11 1.7937 0.7798 0.7535
+Epoch 12 1.7909 0.7874 0.7743
+Epoch 13 1.7891 0.7891 0.7639
+Epoch 14 1.7843 0.8019 0.7812
+Epoch 15 1.7829 0.8036 0.7882
+Epoch 16 1.7848 0.7900 0.7882
+Epoch 17 1.7791 0.8146 0.7847
+Epoch 18 1.7740 0.8240 0.7917
+Epoch 19 1.7716 0.8138 0.7951
