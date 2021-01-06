@@ -1,7 +1,7 @@
 import os
 import numpy as np
 
-ident_word = "DVS_Gestures"
+ident_word = "smile_adam"
 
 part1 = "#!/bin/csh \n#$ -M cschaef6@nd.edu \n#$ -m abe\n#$ -q gpu@@joshi" 
 part11 = "\n#$ -l gpu_card=1\n#$ -N "
