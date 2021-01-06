@@ -8,7 +8,6 @@ import jax
 
 
 def dl_create(data_set, batch_size):
-
     if data_set == 'Smile':
         # 700 input neurons, 250 time steps, 250 output neurons
         if os.path.exists("data/smile_data_set/input_700_250_25.pkl") and os.path.exists("data/smile_data_set/smile95.pkl"):
