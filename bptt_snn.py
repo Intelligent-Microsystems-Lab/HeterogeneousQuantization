@@ -40,7 +40,7 @@ args = parser.parse_args()
 key = random.PRNGKey(args.seed)
 model_uuid = str(uuid.uuid4())
 
-train_dl, test_dl = dl_create(args.data_set, args.batch_size)
+train_dl, test_dl, loss_fn = dl_create(args.data_set, args.batch_size)
 
 layers = jnp.array(list(map(int, args.architecture.split("-"))))
 n_layers = len(layers)

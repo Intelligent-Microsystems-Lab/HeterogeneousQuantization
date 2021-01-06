@@ -76,4 +76,4 @@ def dl_create(data_set, batch_size):
     else:
         raise Exception("Unknown data set")
 
-    return train_dl, test_dl
+    return train_dl, test_dl, loss_fn
