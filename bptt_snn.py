@@ -2,6 +2,7 @@ import argparse, time, pickle, uuid, os, datetime
 
 from functools import partial
 import jax.numpy as jnp
+from jax.experimental import optimizers
 from jax import grad, jit, lax, vmap, value_and_grad, custom_vjp, random, device_put
 import jax
 
@@ -19,8 +20,8 @@ def spike_nonlinearity_fwd(u, thr):
 
 def spike_nonlinearity_bwd(ctx, g):
     u, thr = ctx
-    #return (g * vmap(grad(jax.nn.sigmoid))(u - thr),None,)
-    return (g/(10*jnp.abs(u)+1.)**2,None,)
+    return (g * vmap(grad(jax.nn.sigmoid))(u - thr),None,)
+    #return (g/(10*jnp.abs(u)+1.)**2,None,)
 
 spike_nonlinearity.defvjp(spike_nonlinearity_fwd, spike_nonlinearity_bwd)
 
@@ -53,29 +54,34 @@ def convt_run(alpha_vr, signal, s0):
 
 def vr_loss(alpha_vr, pred, target):
     so_size = target.shape[1]
-    c_pred = convt_run(alpha_vr, pred, jnp.zeros(so_size))
-    c_target = convt_run(alpha_vr, target, jnp.zeros(so_size))
-
-    return jnp.reshape(jnp.sqrt(1/5e-3*jnp.sum((c_pred - c_target)**2)), ())
+    c_pred = vmap(convt_run, (None, 0, None))(alpha_vr, pred, jnp.zeros(so_size))
+    c_target = vmap(convt_run, (None, 0, None))(alpha_vr, target, jnp.zeros(so_size))
+    
+    return jnp.sqrt(1/5e-3*jnp.sum((c_pred - c_target)**2))
 
 def nll_loss(alpha_vr, pred, target):
-    one_hot = target.sum(1)/target.shape[1]
-    prob = pred.sum(1)/pred.shape[1]
+    one_hot = target.mean(1)
+    prob = pred.mean(1)
+
     logits = prob - jax.scipy.special.logsumexp(prob, axis=1, keepdims=True)
     return -jnp.mean(jnp.sum(logits * one_hot, axis=1))
 
-def run_snn(weights, biases, alpha, gamma, thr, x_train):
-    T = x_train.shape[0]
-    mem = [jnp.zeros(l.shape[0]) for l in weights]
-    out_s = jnp.empty((0, weights[-1].shape[0]))
+def smooth_l1(alpha_vr, pred, target):
+    pass
 
-    for t in range(T):
-        st = x_train[t,:]
-        for i, (w, b) in enumerate(zip(weights, biases)):
-            mem[i] = alpha * mem[i] + jnp.dot(weights[i], st) + biases[i]
-            st = spike_nonlinearity(mem[i], thr)
-            mem[i] -= st * gamma
-        out_s = jnp.vstack((out_s, st))
+def one_step(weights, biases, alpha, thr, gamma, mem, st):
+    for i, (w, b) in enumerate(zip(weights, biases)):
+        mem[i] = alpha * mem[i] + jnp.dot(weights[i], st) + biases[i]
+        st = spike_nonlinearity(mem[i], thr)
+        mem[i] -= st * gamma
+    return mem, st
+
+def run_snn(weights, biases, alpha, gamma, thr, x_train):
+    mem = [jnp.zeros(l.shape[0]) for l in weights]
+
+    f = partial(one_step, weights, biases, alpha, thr, gamma)
+    mem, out_s = lax.scan(f, mem, x_train)
+
     return out_s
 
 v_run_snn = jit(vmap(run_snn, (None, None, None, None, None, 0)), static_argnums=[2, 3, 4])
@@ -84,19 +90,19 @@ def loss_pred(weights, biases, alpha, gamma, alpha_vr, thr, x_train, y_train, lo
     pred_s = v_run_snn(weights, biases, alpha, gamma, thr, x_train)
     return loss_fn(alpha_vr, pred_s, y_train)
 
-@jax.partial(jit, static_argnums=[2, 3, 4, 5, 8])
-def update_w(weights, biases, alpha, gamma, alpha_vr, thr, x_train, y_train, loss_fn):
-    loss, gwb = value_and_grad(loss_pred, argnums= (0,1))(weights, biases, alpha, gamma, alpha_vr, thr, x_train, y_train, loss_fn)
-    weights = [w - args.l_rate * gw for w, gw in zip(weights, gwb[0])]
-    biases = [b - args.l_rate * gb for b, gb in zip(biases, gwb[1])]
-
-    return loss, weights, biases
+@jax.partial(jit, static_argnums=[1, 2, 3, 4, 5, 6, 9])
+def update_w(opt_state, get_params, opt_update, alpha, gamma, alpha_vr, thr, x_train, y_train, loss_fn, e):
+    loss, gwb = value_and_grad(loss_pred, argnums= (0,1))(get_params(opt_state)[0], get_params(opt_state)[1], alpha, gamma, alpha_vr, thr, x_train, y_train, loss_fn)
+    opt_state = opt_update(e, gwb, opt_state)
+    
+    return loss, opt_state, get_params(opt_state)[0], get_params(opt_state)[1]
 
 @jit
 def acc_compute(pred, target):
     return jnp.mean(pred.sum(1).argmax(1) == target.sum(1).argmax(1))
 
 def pattern_plot(sin, sout, pred, name, textl):
+    plt.clf()
     fig, axes = plt.subplots(nrows=1, ncols=4)
     axes[0].imshow(sin.astype(float))
     axes[0].set_title("Input")
@@ -104,7 +110,7 @@ def pattern_plot(sin, sout, pred, name, textl):
     axes[2].set_title("Output")
     axes[1].imshow(sout.astype(float))
     axes[1].set_title("Target")
-    axes[3].imshow(pred.astype(float) - sout.astype(float))
+    axes[3].imshow(jnp.abs(pred.astype(float) - sout.astype(float)))
     axes[3].set_title("Error")
 
     plt.suptitle(textl)
@@ -113,7 +119,8 @@ def pattern_plot(sin, sout, pred, name, textl):
     plt.close()
 
 def curve_plot(loss_hist, name, textl):
-
+    plt.clf()
+    fig, axes = plt.subplots(nrows=1, ncols=1)
     plt.plot(loss_hist)
     plt.xlabel("Epochs")
     plt.ylabel("Van Rossum Loss")
@@ -129,13 +136,13 @@ parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.A
 parser.add_argument("--log-file", type=str, default="logs/test.csv", help='Log-file')
 parser.add_argument("--seed", type=int, default=80085, help='Random seed')
 
-parser.add_argument("--data-set", type=str, default="NMNIST", help='Data set to use')
-parser.add_argument("--architecture", type=str, default="2048-500-100-10", help='Architecture of the networks')
+parser.add_argument("--data-set", type=str, default="Smile", help='Data set to use')
+parser.add_argument("--architecture", type=str, default="700-500-300-250", help='Architecture of the networks')
 
-parser.add_argument("--l_rate", type=float, default=1e-9, help='Learning Rate')
-parser.add_argument("--epochs", type=int, default=30, help='Epochs')
+parser.add_argument("--l_rate", type=float, default=1e-3, help='Learning Rate')
+parser.add_argument("--epochs", type=int, default=10000, help='Epochs')
 
-parser.add_argument("--w-scale", type=float, default=.5, help='Weight Scaling')
+parser.add_argument("--w-scale", type=float, default=1.5, help='Weight Scaling')
 parser.add_argument("--batch-size", type=float, default=128, help='Batch Size ')
 
 parser.add_argument("--alpha", type=float, default=.875, help='Time constant for membrane potential')
@@ -163,7 +170,7 @@ if args.data_set == 'Smile':
         raise Exception("Smile data set files do not exist please place them into data/smile_data_set")
     train_dl = [(x_train, y_train)]
     test_dl = [(x_train, y_train)]
-    loss_fn = vmap(vr_loss, (None, 0, 0))
+    loss_fn = vr_loss
 elif args.data_set == 'Yin_Yang':
     from data.yin_yang_data_set.dataset import YinYangDataset
     from torch.utils.data import DataLoader
@@ -230,6 +237,9 @@ for i in range(len(layers)-1):
     weights.append(random.normal(subkey1, (layers[i+1], layers[i])) * jnp.sqrt(6/(layers[i] + layers[i+1])) * args.w_scale)
     biases.append(jnp.zeros(layers[i+1]))
 
+opt_init, opt_update, get_params = optimizers.adam(args.l_rate)
+opt_state = opt_init((weights, biases))
+
 print(model_uuid)
 print(args)
 loss_hist = []
@@ -241,14 +251,13 @@ for e in range(args.epochs):
         x_train = jnp.array(x_train.reshape((x_train.shape[0], x_train.shape[1], -1)))
         y_train = jnp.array(y_train)
 
-
-        loss, weights, biases = update_w(weights, biases, args.alpha, args.gamma, args.alpha_vr, args.thr, x_train, y_train, loss_fn)
+        loss, opt_state, weights, biases = update_w(opt_state, get_params, opt_update, args.alpha, args.gamma, args.alpha_vr, args.thr, x_train, y_train, loss_fn, e)
         pred = v_run_snn(weights, biases, args.alpha, args.gamma, args.thr, x_train)
         
         acc_ta = (acc_ta * s_ta + float(acc_compute(pred, y_train))  * int(x_train.shape[0])) / (s_ta + int(x_train.shape[0]))
         loss_r = (loss_r * s_ta + loss * int(x_train.shape[0])) / (s_ta + int(x_train.shape[0]))
         s_ta += int(x_train.shape[0])
-        print("{} {:.4f} {:.4f}".format(s_ta, loss_r, acc_ta))
+        #print("{} {:.4f} {:.4f}".format(s_ta, loss_r, acc_ta))
 
     for x_test, y_test in test_dl:
         x_test = jnp.array(x_test.reshape((x_test.shape[0], x_test.shape[1], -1)))
@@ -258,7 +267,7 @@ for e in range(args.epochs):
         
         acc_te = (acc_te * s_te + float(acc_compute(pred, y_test)) * int(x_test.shape[0])) / (s_te + int(x_test.shape[0]))
         s_te += int(x_test.shape[0])
-        print("{} {:.4f}".format(s_te, acc_te))
+        #print("{} {:.4f}".format(s_te, acc_te))
 
 
     loss_hist.append(loss_r)
@@ -267,9 +276,9 @@ for e in range(args.epochs):
     print("Epoch {} {:.4f} {:.4f} {:.4f}".format(e, loss_hist[-1], train_hist[-1], test_hist[-1]))
 
 # Visualization
-#pred = run_snn(weights, biases, args.alpha, args.gamma, args.thr, x_train)
-#pattern_plot(x_train, y_train, pred, model_uuid + "_pattern_visual", "")
-
+pred = v_run_snn(weights, biases, args.alpha, args.gamma, args.thr, x_train)
+pattern_plot(x_train[0,:,:], y_train[0,:,:], pred[0,:,:], model_uuid + "_pattern_visual", "")
+curve_plot(loss_hist, model_uuid + "_curve", str(loss_hist[-1]) + " " + str(args.alpha_vr))
 
 # save model
 jnp.savez("models/"+str(model_uuid)+".npz", weights = weights,  biases = biases, loss_hist = loss_hist, train_hist = train_hist, test_hist = test_hist,  args = args)
