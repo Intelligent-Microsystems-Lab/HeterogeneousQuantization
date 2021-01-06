@@ -6,6 +6,7 @@ from jax.experimental import optimizers
 from jax import grad, jit, lax, vmap, value_and_grad, custom_vjp, random, device_put
 import jax
 
+from snn_util import vr_loss, nll_loss
 
 def dl_create(data_set, batch_size):
     if data_set == 'Smile':
