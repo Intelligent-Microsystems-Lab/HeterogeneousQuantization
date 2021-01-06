@@ -88,9 +88,10 @@ v_run_snn = jit(vmap(run_snn, (None, None, None, None, None, 0)), static_argnums
 
 def loss_pred(weights, biases, alpha, gamma, alpha_vr, thr, x_train, y_train, loss_fn):
     pred_s = v_run_snn(weights, biases, alpha, gamma, thr, x_train)
+    import pdb; pdb.set_trace()
     return loss_fn(alpha_vr, pred_s, y_train)
 
-@jax.partial(jit, static_argnums=[1, 2, 3, 4, 5, 6, 9])
+#@jax.partial(jit, static_argnums=[1, 2, 3, 4, 5, 6, 9])
 def update_w(opt_state, get_params, opt_update, alpha, gamma, alpha_vr, thr, x_train, y_train, loss_fn, e):
     loss, gwb = value_and_grad(loss_pred, argnums= (0,1))(get_params(opt_state)[0], get_params(opt_state)[1], alpha, gamma, alpha_vr, thr, x_train, y_train, loss_fn)
     opt_state = opt_update(e, gwb, opt_state)
@@ -162,9 +163,9 @@ parser.add_argument("--data-set", type=str, default="Yin_Yang", help='Data set t
 parser.add_argument("--architecture", type=str, default="4-120-3", help='Architecture of the networks')
 
 parser.add_argument("--l_rate", type=float, default=1e-3, help='Learning Rate')
-parser.add_argument("--epochs", type=int, default=10, help='Epochs')
+parser.add_argument("--epochs", type=int, default=10000, help='Epochs')
 
-parser.add_argument("--w-scale", type=float, default=1., help='Weight Scaling')
+parser.add_argument("--w-scale", type=float, default=2., help='Weight Scaling')
 parser.add_argument("--batch-size", type=float, default=128, help='Batch Size ')
 
 parser.add_argument("--alpha", type=float, default=.6, help='Time constant for membrane potential')
