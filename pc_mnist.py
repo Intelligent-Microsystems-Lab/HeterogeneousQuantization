@@ -13,7 +13,7 @@ import torch
 def rmse(sout, pred):
     return jnp.sqrt(jnp.mean((sout - pred)**2))
 
-#@jax.partial(jit, static_argnums=3)
+@jax.partial(jit, static_argnums=3)
 def run_nn(weights, biases, sin, act_fn):
     x = sin
     for w,b in zip(weights, biases):
@@ -22,7 +22,7 @@ def run_nn(weights, biases, sin, act_fn):
 
 v_run_nn = jit(vmap(run_nn, in_axes = (None, None, 0, None)), static_argnums=3)
 
-#@jax.partial(jit, static_argnums=[3, 4, 5])
+@jax.partial(jit, static_argnums=[3, 4, 5])
 def infer_pc(x, weights, biases, act_fn, beta, it_max, var_layer):
     n_layers = len(weights) + 1 
 
@@ -48,7 +48,7 @@ def infer_pc(x, weights, biases, act_fn, beta, it_max, var_layer):
             error[i] = (x[i] - jnp.dot(weights[i-1], f_n[i-1]) - biases[i-1])/var_layer[i]
     return x, error
 
-#@jax.partial(jit, static_argnums=[4, 5, 6, 7])
+@jax.partial(jit, static_argnums=[4, 5, 6, 7])
 def learn_pc(sin, sout, weights, biases, act_fn, l_rate, beta, it_max, var_layer):
     n_layers = len(weights)+1
     v_out = var_layer[-1]
