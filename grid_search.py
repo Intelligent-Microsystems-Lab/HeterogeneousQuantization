@@ -10,7 +10,7 @@ part2 = "\n#$ -o ./logs/runs/output_"+ident_word+"_"
 
 part3 = ".txt\n#$ -e ./logs/runs/error_"+ident_word+"_"
 
-part4 = ".txt\nmodule load python cuda/10.2\nsetenv XLA_FLAGS --xla_gpu_cuda_data_dir=/afs/crc.nd.edu/x86_64_linux/c/cuda/10.2\nsetenv OMP_NUM_THREADS $NSLOTS\npython pc_snn.py"
+part4 = ".txt\nmodule load python cuda/10.2\nsetenv XLA_FLAGS --xla_gpu_cuda_data_dir=/afs/crc.nd.edu/x86_64_linux/c/cuda/10.2\nsetenv OMP_NUM_THREADS $NSLOTS\npython pc_snn.py "
 
 
 random_seeds = [193012823 ,235899598, 8627169, 103372330, 14339038, 221706254, 46192121, 188833202, 37306063, 171928928]
