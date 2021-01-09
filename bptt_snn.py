@@ -1,4 +1,4 @@
-import argparse, time, pickle, uuid, os, datetime
+import argparse, time, pickle, uuid, os, datetime, itertools
 
 from functools import partial
 import jax.numpy as jnp
@@ -63,6 +63,7 @@ for i in range(len(layers)-1):
 
 opt_init, opt_update, get_params = optimizers.adam(args.l_rate)
 opt_state = opt_init((weights, biases))
+itercount = itertools.count()
 
 print(model_uuid)
 print(args)
@@ -75,7 +76,7 @@ for e in range(args.epochs):
         x_train = jnp.array(x_train.reshape((x_train.shape[0], x_train.shape[1], -1)))
         y_train = jnp.array(y_train)
 
-        loss, opt_state, weights, biases = update_w(opt_state, get_params, opt_update, args.alpha, args.gamma, args.alpha_vr, args.thr, x_train, y_train, loss_fn, e)
+        loss, opt_state, weights, biases = update_w(opt_state, get_params, opt_update, args.alpha, args.gamma, args.alpha_vr, args.thr, x_train, y_train, loss_fn, next(itercount))
         pred = v_run_snn(weights, biases, args.alpha, args.gamma, args.thr, x_train)
         
         acc_ta = (acc_ta * s_ta + float(acc_compute(pred, y_train))  * int(x_train.shape[0])) / (s_ta + int(x_train.shape[0]))

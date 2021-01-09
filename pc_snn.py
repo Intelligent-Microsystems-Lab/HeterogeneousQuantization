@@ -1,4 +1,4 @@
-import argparse, time, pickle, uuid, os, datetime
+import argparse, time, pickle, uuid, os, datetime, itertools
 
 from functools import partial
 import jax.numpy as jnp
@@ -96,27 +96,6 @@ def infer_pc(sin, sout, weights, biases, beta, alpha, gamma, thr, layers, burn_i
     f = partial(infer_one, alpha, thr, gamma, weights, biases, beta, act_fn, n_layers, burn_in)
     (t, x, f_n, f_p, mem, error, grad_w, grad_b), _ = lax.scan(f, init = (t, x, f_n, f_p, mem, error, grad_w, grad_b), xs = (sin, sout))
 
-    # # infer function
-    # for t in range(sin.shape[0]):
-    #     # set new input and target
-    #     x[0] = sin[t,:] 
-    #     x[-1] = sout[t,:] * thr
-    #     # calculate errors
-    #     for i in range(1,n_layers):
-    #         f_n[i-1] = act_fn(x[i-1])
-    #         f_p[i-1] = vmap(grad(act_fn))(x[i-1])
-    #         mem[i]   = (alpha * mem[i]) + (jnp.dot(weights[i-1], f_n[i-1]) - biases[i-1]) - (gamma * act_fn(x[i]))
-    #         error[i] = (x[i] - mem[i])
-    #     # update variable nodes
-    #     for l in range(1,n_layers-1):
-    #         g = jnp.dot(weights[l].transpose(), error[l+1]) * f_p[l]
-    #         x[l] = x[l] + beta * (-error[l] + g)
-
-    #     # calculate gradients
-    #     for i in range(n_layers-1):
-    #         grad_b[i] += -error[i+1]
-    #         grad_w[i] += -jnp.outer(error[i+1], act_fn(x[i]).transpose())
-
     grad_w = [w/sin.shape[0] for w in grad_w]
     grad_b = [b/sin.shape[0] for b in grad_b]
 
@@ -124,16 +103,9 @@ def infer_pc(sin, sout, weights, biases, beta, alpha, gamma, thr, layers, burn_i
 
 v_infer_pc = vmap(infer_pc, (0, 0, None, None, None, None, None, None, None, None))
 
-# def learn_pc(sin, sout, weights, biases, alpha, thr, gamma, beta, loss_fn):
-#     x, error, grad_w, grad_b = infer_pc(sin, sout, weights, biases, beta, alpha, gamma, thr, loss_fn)
 
-#     return jnp.abs(error[-1].sum()), (grad_w, grad_b)
-
-# vmap learn_pc
-
-@jax.partial(jit, static_argnums=[4, 5, 6, 7, 8, 9, 10, 11])
-def update_w(opt_state, x_train, y_train, e, get_params, opt_update, alpha, gamma, beta, thr, layers, burn_in):
-    #loss, gwb = v_learn_pc(x_train[0,:,:], y_train[0,:,:], weights, biases, alpha, thr, gamma, beta, loss_fn)
+@jax.partial(jit, static_argnums=[4, 5, 6, 7, 8, 9])
+def update_w(opt_state, x_train, y_train, e, alpha, gamma, beta, thr, layers, burn_in):
     x, loss, grad_w, grad_b = v_infer_pc(x_train, y_train, weights, biases, beta, alpha, gamma, thr, layers, burn_in)
     grad_w = [w.sum(0)/x_train.shape[0] for w in grad_w]
     grad_b = [b.sum(0)/x_train.shape[0] for b in grad_b]
@@ -143,7 +115,7 @@ def update_w(opt_state, x_train, y_train, e, get_params, opt_update, alpha, gamm
     return loss, opt_state, get_params(opt_state)[0], get_params(opt_state)[1]
 
 @jit
-def acc_compute(pred, target):
+def acc_compute(pred, target, burn_in):
     return jnp.mean(pred.sum(1).argmax(1) == target.sum(1).argmax(1))
 
 
@@ -172,7 +144,7 @@ parser.add_argument("--architecture", type=str, default="2048-500-10", help='Arc
 # parser.add_argument("--architecture", type=str, default="2048-500-11", help='Architecture of the networks')
 
 parser.add_argument("--l_rate", type=float, default=1e-3, help='Learning Rate')
-parser.add_argument("--epochs", type=int, default=10000, help='Epochs')
+parser.add_argument("--epochs", type=int, default=10, help='Epochs')
 
 parser.add_argument("--w-scale", type=float, default=2., help='Weight Scaling')
 parser.add_argument("--batch-size", type=float, default=128, help='Batch Size ')
@@ -191,7 +163,7 @@ model_uuid = str(uuid.uuid4())
 
 train_dl, test_dl, loss_fn = dl_create(args.data_set, args.batch_size)
 
-layers = jnp.array(list(map(int, args.architecture.split("-"))))
+layers = tuple(map(int, args.architecture.split("-")))
 n_layers = len(layers)
 
 weights = []
@@ -203,6 +175,7 @@ for i in range(len(layers)-1):
 
 opt_init, opt_update, get_params = optimizers.adam(args.l_rate)
 opt_state = opt_init((weights, biases))
+itercount = itertools.count()
 
 print(model_uuid)
 print(args)
@@ -215,14 +188,13 @@ for e in range(args.epochs):
         x_train = jnp.array(x_train.reshape((x_train.shape[0], x_train.shape[1], -1)))
         y_train = jnp.array(y_train)
 
-
-        loss, opt_state, weights, biases = update_w(opt_state, x_train, y_train, e, get_params, opt_update, args.alpha, args.gamma, args.beta, args.thr, layers, args.burn_in)
+        loss, opt_state, weights, biases = update_w(opt_state, x_train, y_train, next(itercount), args.alpha, args.gamma, args.beta, args.thr, layers, args.burn_in)
         pred = v_run_snn(weights, biases, args.alpha, args.gamma, args.thr, x_train)
         
-        acc_ta = (acc_ta * s_ta + float(acc_compute(pred, y_train))  * int(x_train.shape[0])) / (s_ta + int(x_train.shape[0]))
+        acc_ta = (acc_ta * s_ta + float(acc_compute(pred, y_train, args.burn_in))  * int(x_train.shape[0])) / (s_ta + int(x_train.shape[0]))
         loss_r = (loss_r * s_ta + loss * int(x_train.shape[0])) / (s_ta + int(x_train.shape[0]))
         s_ta += int(x_train.shape[0])
-        print("{} {:.4f} {:.4f}".format(s_ta, loss_r, acc_ta))
+        #print("{} {:.4f} {:.4f}".format(s_ta, loss_r, acc_ta))
 
     for x_test, y_test in test_dl:
         x_test = jnp.array(x_test.reshape((x_test.shape[0], x_test.shape[1], -1)))
@@ -230,9 +202,9 @@ for e in range(args.epochs):
 
         pred = v_run_snn(weights, biases, args.alpha, args.gamma, args.thr, x_test)
         
-        acc_te = (acc_te * s_te + float(acc_compute(pred, y_test)) * int(x_test.shape[0])) / (s_te + int(x_test.shape[0]))
+        acc_te = (acc_te * s_te + float(acc_compute(pred, y_test, args.burn_in)) * int(x_test.shape[0])) / (s_te + int(x_test.shape[0]))
         s_te += int(x_test.shape[0])
-        print("{} {:.4f}".format(s_te, acc_te))
+        #print("{} {:.4f}".format(s_te, acc_te))
 
     loss_hist.append(loss_r)
     train_hist.append(acc_ta)
