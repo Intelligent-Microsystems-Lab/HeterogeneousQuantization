@@ -143,7 +143,7 @@ parser.add_argument("--architecture", type=str, default="2048-500-10", help='Arc
 # parser.add_argument("--data-set", type=str, default="DVS_Gestures", help='Data set to use')
 # parser.add_argument("--architecture", type=str, default="2048-500-11", help='Architecture of the networks')
 
-parser.add_argument("--l_rate", type=float, default=1e-3, help='Learning Rate')
+parser.add_argument("--l_rate", type=float, default=1e-6, help='Learning Rate')
 parser.add_argument("--epochs", type=int, default=10, help='Epochs')
 
 parser.add_argument("--w-scale", type=float, default=2., help='Weight Scaling')
@@ -194,7 +194,7 @@ for e in range(args.epochs):
         acc_ta = (acc_ta * s_ta + float(acc_compute(pred, y_train, args.burn_in))  * int(x_train.shape[0])) / (s_ta + int(x_train.shape[0]))
         loss_r = (loss_r * s_ta + loss * int(x_train.shape[0])) / (s_ta + int(x_train.shape[0]))
         s_ta += int(x_train.shape[0])
-        #print("{} {:.4f} {:.4f}".format(s_ta, loss_r, acc_ta))
+        print("{} {:.4f} {:.4f}".format(s_ta, loss_r, acc_ta))
 
     for x_test, y_test in test_dl:
         x_test = jnp.array(x_test.reshape((x_test.shape[0], x_test.shape[1], -1)))
@@ -204,7 +204,7 @@ for e in range(args.epochs):
         
         acc_te = (acc_te * s_te + float(acc_compute(pred, y_test, args.burn_in)) * int(x_test.shape[0])) / (s_te + int(x_test.shape[0]))
         s_te += int(x_test.shape[0])
-        #print("{} {:.4f}".format(s_te, acc_te))
+        print("{} {:.4f}".format(s_te, acc_te))
 
     loss_hist.append(loss_r)
     train_hist.append(acc_ta)
