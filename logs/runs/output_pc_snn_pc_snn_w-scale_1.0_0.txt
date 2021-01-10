@@ -1,0 +1,14 @@
+Loading python/3.7.3
+  Loading requirement: tcl/8.6.8 gcc/8.3.0
+b57e1dba-6fac-472b-a7cb-3ea863000998
+Namespace(alpha=0.95, architecture='2048-500-10', batch_size=128, beta=0.2, burn_in=30, data_set='NMNIST', epochs=10, gamma=1.2, l_rate=0.001, log_file='logs/pc_snn_w-scale.csv', seed=193012823, thr=1.0, w_scale=1.0)
+Epoch 0 164.0035 0.1061 0.1001
+Epoch 1 165.2103 0.1002 0.1000
+Epoch 2 165.2039 0.0999 0.1002
+Epoch 3 164.3284 0.1000 0.1000
+Epoch 4 164.5167 0.1000 0.1000
+Epoch 5 164.6320 0.1000 0.1000
+Epoch 6 163.7641 0.1000 0.1000
+Epoch 7 165.5951 0.1000 0.1000
+Epoch 8 164.0964 0.1000 0.1000
+Epoch 9 164.3565 0.1000 0.1000
