@@ -146,7 +146,7 @@ parser.add_argument("--architecture", type=str, default="2048-500-10", help='Arc
 parser.add_argument("--l_rate", type=float, default=1e-6, help='Learning Rate')
 parser.add_argument("--epochs", type=int, default=10, help='Epochs')
 
-parser.add_argument("--w-scale", type=float, default=2., help='Weight Scaling')
+parser.add_argument("--w-scale", type=float, default=.5, help='Weight Scaling')
 parser.add_argument("--batch-size", type=float, default=128, help='Batch Size ')
 parser.add_argument("--burn-in", type=int, default=30, help='Burn in period')
 
