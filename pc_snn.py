@@ -49,12 +49,8 @@ def run_snn(weights, biases, alpha, gamma, thr, x_train):
 v_run_snn = jit(vmap(run_snn, (None, None, None, None, None, 0)), static_argnums=[2, 3, 4])
 
 
-def infer_one(alpha, thr, gamma, weights, biases, beta, act_fn, n_layers, burn_in, loop_carry, xs):
-    t, x, f_n, f_p, mem, error, grad_w, grad_b = loop_carry
-    sin, sout = xs
-    # set new input and target
-    x[0] = sin 
-    x[-1] = sout * thr
+def infer_step(alpha, thr, gamma, weights, biases, beta, act_fn, n_layers, loop_carry, xs):
+    x, f_n, f_p, mem, error = loop_carry 
     # calculate errors
     for i in range(1,n_layers):
         f_n[i-1] = act_fn(x[i-1])
@@ -66,6 +62,29 @@ def infer_one(alpha, thr, gamma, weights, biases, beta, act_fn, n_layers, burn_i
         g = jnp.dot(weights[l].transpose(), error[l+1]) * f_p[l]
         x[l] = x[l] + beta * (-error[l] + g)
 
+    return (x, f_n, f_p, mem, error), 0
+
+
+def infer_one(alpha, thr, gamma, weights, biases, beta, act_fn, n_layers, burn_in, infer_steps, loop_carry, xs):
+    t, x, f_n, f_p, mem, error, grad_w, grad_b = loop_carry
+    sin, sout = xs
+    # set new input and target
+    x[0] = sin 
+    x[-1] = sout * thr
+    # # calculate errors
+    # for i in range(1,n_layers):
+    #     f_n[i-1] = act_fn(x[i-1])
+    #     f_p[i-1] = vmap(grad(act_fn))(x[i-1])
+    #     mem[i]   = (alpha * mem[i]) + (jnp.dot(weights[i-1], f_n[i-1]) - biases[i-1]) - (gamma * act_fn(x[i]))
+    #     error[i] = (x[i] - mem[i])
+    # # update variable nodes
+    # for l in range(1,n_layers-1):
+    #     g = jnp.dot(weights[l].transpose(), error[l+1]) * f_p[l]
+    #     x[l] = x[l] + beta * (-error[l] + g)
+
+    f = partial(infer_step, alpha, thr, gamma, weights, biases, beta, act_fn, n_layers)
+    (x, f_n, f_p, mem, error), _ = lax.scan(f, init = (x, f_n, f_p, mem, error), xs = jnp.zeros(infer_steps))
+
     # calculate gradients
     for i in range(n_layers-1):
         grad_b[i] += -error[i+1] * (t > burn_in).astype(jnp.float32)
@@ -75,7 +94,7 @@ def infer_one(alpha, thr, gamma, weights, biases, beta, act_fn, n_layers, burn_i
 
     return (t, x, f_n, f_p, mem, error, grad_w, grad_b), None
 
-def infer_pc(sin, sout, weights, biases, beta, alpha, gamma, thr, layers, burn_in): 
+def infer_pc(sin, sout, weights, biases, beta, alpha, gamma, thr, layers, burn_in, infer_steps): 
     n_layers = len(weights) + 1 
     act_fn = partial(spike_nonlinearity, thr = thr)
 
@@ -93,7 +112,7 @@ def infer_pc(sin, sout, weights, biases, beta, alpha, gamma, thr, layers, burn_i
         mem[i+1] = jnp.zeros(weights[i].shape[0])
         x[i+1] = jnp.zeros(weights[i].shape[0])
 
-    f = partial(infer_one, alpha, thr, gamma, weights, biases, beta, act_fn, n_layers, burn_in)
+    f = partial(infer_one, alpha, thr, gamma, weights, biases, beta, act_fn, n_layers, burn_in, infer_steps)
     (t, x, f_n, f_p, mem, error, grad_w, grad_b), _ = lax.scan(f, init = (t, x, f_n, f_p, mem, error, grad_w, grad_b), xs = (sin, sout))
 
     grad_w = [w/sin.shape[0] for w in grad_w]
@@ -101,12 +120,12 @@ def infer_pc(sin, sout, weights, biases, beta, alpha, gamma, thr, layers, burn_i
 
     return x, error, grad_w, grad_b
 
-v_infer_pc = vmap(infer_pc, (0, 0, None, None, None, None, None, None, None, None))
+v_infer_pc = vmap(infer_pc, (0, 0, None, None, None, None, None, None, None, None, None))
 
 
-@jax.partial(jit, static_argnums=[4, 5, 6, 7, 8, 9])
-def update_w(opt_state, x_train, y_train, e, alpha, gamma, beta, thr, layers, burn_in):
-    x, loss, grad_w, grad_b = v_infer_pc(x_train, y_train, weights, biases, beta, alpha, gamma, thr, layers, burn_in)
+@jax.partial(jit, static_argnums=[4, 5, 6, 7, 8, 9, 10])
+def update_w(opt_state, x_train, y_train, e, alpha, gamma, beta, thr, layers, burn_in, infer_steps):
+    x, loss, grad_w, grad_b = v_infer_pc(x_train, y_train, weights, biases, beta, alpha, gamma, thr, layers, burn_in, infer_steps)
     grad_w = [w.sum(0)/x_train.shape[0] for w in grad_w]
     grad_b = [b.sum(0)/x_train.shape[0] for b in grad_b]
     opt_state = opt_update(e, (grad_w, grad_b), opt_state)
@@ -144,16 +163,17 @@ parser.add_argument("--architecture", type=str, default="2048-500-10", help='Arc
 # parser.add_argument("--architecture", type=str, default="2048-500-11", help='Architecture of the networks')
 
 parser.add_argument("--l_rate", type=float, default=1e-6, help='Learning Rate')
-parser.add_argument("--epochs", type=int, default=10, help='Epochs')
+parser.add_argument("--epochs", type=int, default=20, help='Epochs')
 
 parser.add_argument("--w-scale", type=float, default=.5, help='Weight Scaling')
 parser.add_argument("--batch-size", type=float, default=128, help='Batch Size ')
 parser.add_argument("--burn-in", type=int, default=30, help='Burn in period')
 
 parser.add_argument("--alpha", type=float, default=.95, help='Time constant for membrane potential')
-parser.add_argument("--gamma", type=float, default=1.2, help='Reset Magnitude')
+parser.add_argument("--gamma", type=float, default=1.15, help='Reset Magnitude')
 parser.add_argument("--thr", type=float, default=1., help='Membrane Threshold')
 parser.add_argument("--beta", type=float, default=.2, help='Euler integration constant')
+parser.add_argument("--infer-steps", type=float, default=100, help='Euler integration constant')
 
 args = parser.parse_args()
 
@@ -188,13 +208,13 @@ for e in range(args.epochs):
         x_train = jnp.array(x_train.reshape((x_train.shape[0], x_train.shape[1], -1)))
         y_train = jnp.array(y_train)
 
-        loss, opt_state, weights, biases = update_w(opt_state, x_train, y_train, next(itercount), args.alpha, args.gamma, args.beta, args.thr, layers, args.burn_in)
+        loss, opt_state, weights, biases = update_w(opt_state, x_train, y_train, next(itercount), args.alpha, args.gamma, args.beta, args.thr, layers, args.burn_in, args.infer_steps)
         pred = v_run_snn(weights, biases, args.alpha, args.gamma, args.thr, x_train)
         
         acc_ta = (acc_ta * s_ta + float(acc_compute(pred, y_train, args.burn_in))  * int(x_train.shape[0])) / (s_ta + int(x_train.shape[0]))
         loss_r = (loss_r * s_ta + loss * int(x_train.shape[0])) / (s_ta + int(x_train.shape[0]))
         s_ta += int(x_train.shape[0])
-        print("{} {:.4f} {:.4f}".format(s_ta, loss_r, acc_ta))
+        #print("{} {:.4f} {:.4f}".format(s_ta, loss_r, acc_ta))
 
     for x_test, y_test in test_dl:
         x_test = jnp.array(x_test.reshape((x_test.shape[0], x_test.shape[1], -1)))
@@ -204,7 +224,7 @@ for e in range(args.epochs):
         
         acc_te = (acc_te * s_te + float(acc_compute(pred, y_test, args.burn_in)) * int(x_test.shape[0])) / (s_te + int(x_test.shape[0]))
         s_te += int(x_test.shape[0])
-        print("{} {:.4f}".format(s_te, acc_te))
+        #print("{} {:.4f}".format(s_te, acc_te))
 
     loss_hist.append(loss_r)
     train_hist.append(acc_ta)
