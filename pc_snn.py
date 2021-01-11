@@ -173,7 +173,7 @@ parser.add_argument("--alpha", type=float, default=.95, help='Time constant for 
 parser.add_argument("--gamma", type=float, default=1.15, help='Reset Magnitude')
 parser.add_argument("--thr", type=float, default=1., help='Membrane Threshold')
 parser.add_argument("--beta", type=float, default=.2, help='Euler integration constant')
-parser.add_argument("--infer-steps", type=float, default=100, help='Euler integration constant')
+parser.add_argument("--infer-steps", type=int, default=100, help='Euler integration constant')
 
 args = parser.parse_args()
 
