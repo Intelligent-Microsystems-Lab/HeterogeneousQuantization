@@ -96,3 +96,27 @@ Traceback (most recent call last):
   File "/afs/crc.nd.edu/user/c/cschaef6/.local/lib/python3.7/site-packages/jax/core.py", line 1158, in canonicalize_shape
     raise TypeError(msg.format(shape))
 TypeError: Shapes must be 1D sequences of concrete values of integer type, got (100.0,).
+Loading python/3.7.3
+  Loading requirement: tcl/8.6.8 gcc/8.3.0
+cbc6a2b9-6412-4046-99ac-09120ebddb2f
+Namespace(alpha=0.95, architecture='2048-500-10', batch_size=128, beta=0.2, burn_in=30, data_set='NMNIST', epochs=20, gamma=1.15, infer_steps=100, l_rate=1e-06, log_file='logs/pc_snn_int_infer-steps.csv', seed=193012823, thr=1.0, w_scale=0.5)
+Epoch 0 113.1846 0.0937 0.1112
+Epoch 1 113.1846 0.1402 0.1664
+Epoch 2 113.1846 0.1892 0.2086
+Epoch 3 113.1845 0.2233 0.2432
+Epoch 4 113.1842 0.2505 0.2723
+Epoch 5 113.1838 0.2756 0.2989
+Epoch 6 113.1839 0.3028 0.3196
+Epoch 7 113.1844 0.3190 0.3313
+Epoch 8 113.1847 0.3267 0.3291
+Epoch 9 113.1846 0.3234 0.3294
+Epoch 10 113.1840 0.3167 0.3187
+Epoch 11 113.1847 0.3121 0.3098
+Epoch 12 113.1842 0.3000 0.3022
+Epoch 13 113.1845 0.2952 0.2939
+Epoch 14 113.1844 0.2865 0.2891
+Epoch 15 113.1840 0.2836 0.2833
+Epoch 16 113.1847 0.2815 0.2807
+Epoch 17 113.1840 0.2775 0.2757
+Epoch 18 113.1847 0.2741 0.2729
+Epoch 19 113.1845 0.2733 0.2730

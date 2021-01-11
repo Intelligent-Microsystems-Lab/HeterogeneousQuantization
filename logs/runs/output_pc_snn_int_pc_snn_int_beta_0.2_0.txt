@@ -1,0 +1,28 @@
+Loading python/3.7.3
+  Loading requirement: tcl/8.6.8 gcc/8.3.0
+46086ddc-8a09-4b0f-a377-6b1047eb5b5e
+Namespace(alpha=0.95, architecture='2048-500-10', batch_size=128, beta=0.2, burn_in=30, data_set='NMNIST', epochs=20, gamma=1.15, infer_steps=100, l_rate=1e-06, log_file='logs/pc_snn_int_beta.csv', seed=193012823, thr=1.0, w_scale=0.5)
+Loading python/3.7.3
+  Loading requirement: tcl/8.6.8 gcc/8.3.0
+8bc47652-219d-4df7-9376-4bceff76f34c
+Namespace(alpha=0.95, architecture='2048-500-10', batch_size=128, beta=0.2, burn_in=30, data_set='NMNIST', epochs=20, gamma=1.15, infer_steps=100, l_rate=1e-06, log_file='logs/pc_snn_int_beta.csv', seed=193012823, thr=1.0, w_scale=0.5)
+Epoch 0 113.1846 0.0937 0.1123
+Epoch 1 113.1847 0.1393 0.1674
+Epoch 2 113.1843 0.1871 0.2087
+Epoch 3 113.1844 0.2250 0.2435
+Epoch 4 113.1842 0.2503 0.2691
+Epoch 5 113.1846 0.2773 0.2952
+Epoch 6 113.1843 0.3023 0.3212
+Epoch 7 113.1843 0.3197 0.3315
+Epoch 8 113.1847 0.3253 0.3335
+Epoch 9 113.1840 0.3278 0.3305
+Epoch 10 113.1842 0.3204 0.3231
+Epoch 11 113.1841 0.3135 0.3117
+Epoch 12 113.1843 0.3043 0.3064
+Epoch 13 113.1844 0.2991 0.2973
+Epoch 14 113.1844 0.2904 0.2935
+Epoch 15 113.1841 0.2858 0.2863
+Epoch 16 113.1846 0.2819 0.2841
+Epoch 17 113.1843 0.2784 0.2784
+Epoch 18 113.1845 0.2778 0.2756
+Epoch 19 113.1840 0.2745 0.2732
