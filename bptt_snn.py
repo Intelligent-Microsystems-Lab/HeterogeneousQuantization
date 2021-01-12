@@ -26,19 +26,19 @@ parser.add_argument("--seed", type=int, default=80085, help='Random seed')
 # parser.add_argument("--architecture", type=str, default="700-500-250", help='Architecture of the networks')
 
 parser.add_argument("--data-set", type=str, default="NMNIST", help='Data set to use')
-parser.add_argument("--architecture", type=str, default="2048-500-10", help='Architecture of the networks')
+parser.add_argument("--architecture", type=str, default="2048-500-100-10", help='Architecture of the networks')
 
 # parser.add_argument("--data-set", type=str, default="DVS_Gestures", help='Data set to use')
 # parser.add_argument("--architecture", type=str, default="2048-500-11", help='Architecture of the networks')
 
-parser.add_argument("--l_rate", type=float, default=1e-3, help='Learning Rate')
-parser.add_argument("--epochs", type=int, default=10000, help='Epochs')
+parser.add_argument("--l_rate", type=float, default=1e-4, help='Learning Rate')
+parser.add_argument("--epochs", type=int, default=40, help='Epochs')
 
-parser.add_argument("--w-scale", type=float, default=2., help='Weight Scaling')
+parser.add_argument("--w-scale", type=float, default=.5, help='Weight Scaling')
 parser.add_argument("--batch-size", type=float, default=128, help='Batch Size ')
 
 parser.add_argument("--alpha", type=float, default=.95, help='Time constant for membrane potential')
-parser.add_argument("--gamma", type=float, default=1.2, help='Reset Magnitude')
+parser.add_argument("--gamma", type=float, default=1.15, help='Reset Magnitude')
 parser.add_argument("--thr", type=float, default=1., help='Membrane Threshold')
 
 parser.add_argument("--alpha_vr", type=float, default=.85, help='Time constant for Van Rossum distance')

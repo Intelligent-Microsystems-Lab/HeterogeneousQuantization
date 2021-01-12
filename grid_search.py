@@ -10,7 +10,7 @@ part2 = "\n#$ -o ./logs/runs/output_"+ident_word+"_"
 
 part3 = ".txt\n#$ -e ./logs/runs/error_"+ident_word+"_"
 
-part4 = ".txt\nmodule load python cuda/10.2\nsetenv XLA_FLAGS --xla_gpu_cuda_data_dir=/afs/crc.nd.edu/x86_64_linux/c/cuda/10.2\nsetenv OMP_NUM_THREADS $NSLOTS\npython pc_snn.py "
+part4 = ".txt\nmodule load python cuda/10.2\nsetenv XLA_FLAGS --xla_gpu_cuda_data_dir=/afs/crc.nd.edu/x86_64_linux/c/cuda/10.2\nsetenv OMP_NUM_THREADS $NSLOTS\npython bptt_snn.py "
 
 
 random_seeds = [193012823 ,235899598, 8627169, 103372330, 14339038, 221706254, 46192121, 188833202, 37306063, 171928928]
@@ -36,12 +36,12 @@ trials = 3
 
 parameters = {
 #    'l_rate'       : [1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
-    'alpha'        : [.9, .925, .95, .975], 
-    'gamma'        : [1., 1.1, 1.15, 1.2,],
-    'beta'         : [.01, .05, .1, .2, .5, .75, .9, 1],
+    'alpha'        : [.95], 
+#    'gamma'        : [1., 1.1, 1.15, 1.2,],
+#    'beta'         : [.01, .05, .1, .2, .5, .75, .9, 1],
 #    'w-scale'      : [.1, .5, 1., 1.5, 2.],
 #    'thr'          : [.1, .5, .8, .9, 1., 1.5],
-    'infer-steps'  : [1, 10, 20, 50, 75, 100, 200]
+#    'infer-steps'  : [1, 10, 20, 50, 75, 100, 200]
 }
 
 

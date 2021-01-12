@@ -11,11 +11,11 @@ from snn_util import vr_loss, nll_loss
 def dl_create(data_set, batch_size):
     if data_set == 'Smile':
         # 700 input neurons, 250 time steps, 250 output neurons
-        if os.path.exists("data/smile_data_set/input_700_250_25.pkl") and os.path.exists("data/smile_data_set/smile95.pkl"):
-            with open("data/smile_data_set/input_700_250_25.pkl", 'rb') as f:
+        if os.path.exists("/tmp/data/smile_data_set/input_700_250_25.pkl") and os.path.exists("data/smile_data_set/smile95.pkl"):
+            with open("/tmp/data/smile_data_set/input_700_250_25.pkl", 'rb') as f:
                 x_train = jnp.array(pickle.load(f)).transpose()
                 x_train = x_train.reshape((1, x_train.shape[0], x_train.shape[1]))
-            with open("data/smile_data_set/smile95.pkl", 'rb') as f:
+            with open("/tmp/data/smile_data_set/smile95.pkl", 'rb') as f:
                 y_train = jnp.array(pickle.load(f))
                 y_train = y_train.reshape((1, y_train.shape[0], y_train.shape[1]))
         else:
@@ -42,15 +42,15 @@ def dl_create(data_set, batch_size):
         from torchneuromorphic.nmnist.nmnist_dataloaders import create_events_hdf5, create_dataloader
         import torchneuromorphic.transforms as transforms
 
-        if os.path.exists('data/nmnist/n_mnist.hdf5'):
+        if os.path.exists('/tmp/data/nmnist/n_mnist.hdf5'):
             pass
-        elif os.path.exists('data/nmnist/'):
-            out = create_events_hdf5('data/nmnist', 'data/nmnist/n_mnist.hdf5')
+        elif os.path.exists('/tmp/data/nmnist/'):
+            out = create_events_hdf5('/tmp/data/nmnist', '/tmp/data/nmnist/n_mnist.hdf5')
         else:
             raise Exception("NMNIST data set does not exist, download and place raw data into data/nmnist")
         
         train_dl, test_dl = create_dataloader(
-                root='data/nmnist/n_mnist.hdf5',
+                root='/tmp/data/nmnist/n_mnist.hdf5',
                 batch_size=batch_size,
                 ds=1,
                 num_workers=4)
@@ -60,15 +60,15 @@ def dl_create(data_set, batch_size):
         from torchneuromorphic.dvs_gestures.dvsgestures_dataloaders import create_events_hdf5, create_dataloader
         import torchneuromorphic.transforms as transforms
 
-        if os.path.exists('data/dvsgesture/dvs_gestures_build19.hdf5'):
+        if os.path.exists('/tmp/data/dvsgesture/dvs_gestures_build19.hdf5'):
             pass
-        elif os.path.exists('data/dvsgesture/raw/'):
-            out = create_events_hdf5('data/dvsgesture/raw/', 'data/dvsgesture/dvs_gestures_build19.hdf5')
+        elif os.path.exists('/tmp/data/dvsgesture/raw/'):
+            out = create_events_hdf5('/tmp/data/dvsgesture/raw/', '/tmp/data/dvsgesture/dvs_gestures_build19.hdf5')
         else:
             raise Exception("DVS Gestures data set does not exist, download and place raw data into data/dvsgesture/raw/")
         
         train_dl, test_dl = create_dataloader(
-                root='data/dvsgesture/dvs_gestures_build19.hdf5',
+                root='/tmp/data/dvsgesture/dvs_gestures_build19.hdf5',
                 batch_size=batch_size,
                 ds=4,
                 num_workers=4)

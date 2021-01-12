@@ -157,7 +157,7 @@ parser.add_argument("--seed", type=int, default=80085, help='Random seed')
 # parser.add_argument("--architecture", type=str, default="4-120-3", help='Architecture of the networks')
 
 parser.add_argument("--data-set", type=str, default="NMNIST", help='Data set to use')
-parser.add_argument("--architecture", type=str, default="2048-500-10", help='Architecture of the networks')
+parser.add_argument("--architecture", type=str, default="2048-500-100-10", help='Architecture of the networks')
 
 # parser.add_argument("--data-set", type=str, default="DVS_Gestures", help='Data set to use')
 # parser.add_argument("--architecture", type=str, default="2048-500-11", help='Architecture of the networks')
