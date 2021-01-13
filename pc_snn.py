@@ -178,6 +178,8 @@ parser.add_argument("--infer-steps", type=int, default=100, help='Euler integrat
 args = parser.parse_args()
 
 
+args.beta = 1/args.infer_steps
+
 key = random.PRNGKey(args.seed)
 model_uuid = str(uuid.uuid4())
 
