@@ -42,15 +42,15 @@ def dl_create(data_set, batch_size):
         from torchneuromorphic.nmnist.nmnist_dataloaders import create_events_hdf5, create_dataloader
         import torchneuromorphic.transforms as transforms
 
-        if os.path.exists('/tmp/data/nmnist/n_mnist.hdf5'):
+        if os.path.exists('/tmp/nmnist/n_mnist.hdf5'):
             pass
-        elif os.path.exists('/tmp/data/nmnist/'):
-            out = create_events_hdf5('/tmp/data/nmnist', '/tmp/data/nmnist/n_mnist.hdf5')
+        elif os.path.exists('/tmp/nmnist/'):
+            out = create_events_hdf5('/tmp/nmnist', '/tmp/nmnist/n_mnist.hdf5')
         else:
             raise Exception("NMNIST data set does not exist, download and place raw data into data/nmnist")
         
         train_dl, test_dl = create_dataloader(
-                root='/tmp/data/nmnist/n_mnist.hdf5',
+                root='/tmp/nmnist/n_mnist.hdf5',
                 batch_size=batch_size,
                 ds=1,
                 num_workers=4)
