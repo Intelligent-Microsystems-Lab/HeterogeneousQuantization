@@ -6,3 +6,5 @@ data/.DS_Store
 data/nmnist/*
 data/dvsgesture/*
 .DS_Store
+*.pyc
+*.DS_Store
