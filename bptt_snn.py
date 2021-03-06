@@ -1,28 +1,16 @@
-import argparse, time, pickle, uuid, os, datetime, itertools
+import argparse
+import uuid
+import datetime
+import itertools
 
-from functools import partial
 import jax.numpy as jnp
+from jax import random
 from jax.experimental import optimizers
-from jax import (
-    grad,
-    jit,
-    lax,
-    vmap,
-    value_and_grad,
-    custom_vjp,
-    random,
-    device_put,
-)
-import jax
-
-import matplotlib.pyplot as plt
 
 from datasets import dl_create
-from visualization import pattern_plot, yy_plot, curve_plot
-from snn_util import v_run_snn, update_w, acc_compute
+from visualization import curve_plot, yy_plot, pattern_plot
+from snn_util import v_run_snn, update_w, acc_compute, vr_loss
 
-# module load python cuda/10.2
-# export XLA_FLAGS="--xla_gpu_cuda_data_dir=/afs/crc.nd.edu/x86_64_linux/c/cuda/10.2"
 
 parser = argparse.ArgumentParser(
     description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -32,11 +20,25 @@ parser.add_argument(
 )
 parser.add_argument("--seed", type=int, default=80085, help="Random seed")
 
-# parser.add_argument("--data-set", type=str, default="Yin_Yang", help='Data set to use')
-# parser.add_argument("--architecture", type=str, default="4-120-3", help='Architecture of the networks')
+parser.add_argument(
+    "--data-set", type=str, default="Yin_Yang", help="Data set to use"
+)
+parser.add_argument(
+    "--architecture",
+    type=str,
+    default="4-120-3",
+    help="Architecture of the networks",
+)
 
-# parser.add_argument("--data-set", type=str, default="Smile", help='Data set to use')
-# parser.add_argument("--architecture", type=str, default="700-500-250", help='Architecture of the networks')
+parser.add_argument(
+    "--data-set", type=str, default="Smile", help="Data set to use"
+)
+parser.add_argument(
+    "--architecture",
+    type=str,
+    default="700-500-250",
+    help="Architecture of the networks",
+)
 
 parser.add_argument(
     "--data-set", type=str, default="NMNIST", help="Data set to use"
@@ -48,8 +50,15 @@ parser.add_argument(
     help="Architecture of the networks",
 )
 
-# parser.add_argument("--data-set", type=str, default="DVS_Gestures", help='Data set to use')
-# parser.add_argument("--architecture", type=str, default="2048-500-11", help='Architecture of the networks')
+parser.add_argument(
+    "--data-set", type=str, default="DVS_Gestures", help="Data set to use"
+)
+parser.add_argument(
+    "--architecture",
+    type=str,
+    default="2048-500-11",
+    help="Architecture of the networks",
+)
 
 parser.add_argument("--l_rate", type=float, default=1e-4, help="Learning Rate")
 parser.add_argument("--epochs", type=int, default=40, help="Epochs")
@@ -175,8 +184,14 @@ for e in range(args.epochs):
 
 # Visualization
 pred = v_run_snn(weights, biases, args.alpha, args.gamma, args.thr, x_test)
-# yy_plot(x_test, pred, model_uuid + '_yin_yang', str(loss_hist[-1]))
-# pattern_plot(x_train[0,:,:], y_train[0,:,:], pred[0,:,:], model_uuid + "_pattern_visual", "")
+yy_plot(x_test, pred, model_uuid + "_yin_yang", str(loss_hist[-1]))
+pattern_plot(
+    x_train[0, :, :],
+    y_train[0, :, :],
+    pred[0, :, :],
+    model_uuid + "_pattern_visual",
+    "",
+)
 curve_plot(
     loss_hist,
     train_hist,
@@ -212,24 +227,32 @@ with open(args.log_file, "a") as f:
         + "\n"
     )
 
-# # load model
-# model_uuid = 'abfcaa0f-1de3-492a-a08e-5fcce8da513c'
-# npzfile = jnp.load("models/" + model_uuid + ".npz", allow_pickle=True)
-# weights = npzfile['arr_0']
-# biases = npzfile['arr_1']
-# loss_hist = npzfile['arr_2']
-# args = str(npzfile['arr_3'])[10:-1].split(',')
-# dargs = {}
-# for i in args:
-#     var, val = i.split("=")
-#     if "'" in val:
-#         dargs[var.strip(" ")] = val.strip("'")
-#     else:
-#         dargs[var.strip(" ")] = float(val)
-# args = argparse.Namespace(**dargs)
+# load model
+model_uuid = "abfcaa0f-1de3-492a-a08e-5fcce8da513c"
+npzfile = jnp.load("models/" + model_uuid + ".npz", allow_pickle=True)
+weights = npzfile["arr_0"]
+biases = npzfile["arr_1"]
+loss_hist = npzfile["arr_2"]
+args = str(npzfile["arr_3"])[10:-1].split(",")
+dargs = {}
+for i in args:
+    var, val = i.split("=")
+    if "'" in val:
+        dargs[var.strip(" ")] = val.strip("'")
+    else:
+        dargs[var.strip(" ")] = float(val)
+args = argparse.Namespace(**dargs)
 
-# pred = run_snn(weights, biases, args.alpha, args.gamma, args.thr, x_train)
-# loss_v = vr_loss(args.alpha_vr, pred, y_train)
-# print(loss_v)
-# curve_plot(loss_hist, model_uuid + "_curve", str(loss_v) + " " + str(args.alpha_vr))
-# pattern_plot(x_train, y_train, pred, model_uuid + "_pattern_visual", str(loss_v) + " " + str(args.alpha_vr))
+pred = v_run_snn(weights, biases, args.alpha, args.gamma, args.thr, x_train)
+loss_v = vr_loss(args.alpha_vr, pred, y_train)
+print(loss_v)
+curve_plot(
+    loss_hist, model_uuid + "_curve", str(loss_v) + " " + str(args.alpha_vr)
+)
+pattern_plot(
+    x_train,
+    y_train,
+    pred,
+    model_uuid + "_pattern_visual",
+    str(loss_v) + " " + str(args.alpha_vr),
+)

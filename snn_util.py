@@ -1,8 +1,5 @@
-import argparse, time, pickle, uuid, os, datetime
-
 from functools import partial
 import jax.numpy as jnp
-from jax.experimental import optimizers
 from jax import (
     grad,
     jit,
@@ -10,8 +7,6 @@ from jax import (
     vmap,
     value_and_grad,
     custom_vjp,
-    random,
-    device_put,
 )
 import jax
 
@@ -38,24 +33,23 @@ spike_nonlinearity.defvjp(spike_nonlinearity_fwd, spike_nonlinearity_bwd)
 
 
 # Zenke trick, ignore reset in bptt - untested
-@custom_vjp
-def reset_mem(u, s, thr):
-    return u - s * thr
+# @custom_vjp
+# def reset_mem(u, s, thr):
+#     return u - s * thr
 
 
-def reset_mem_fwd(u, thr):
-    return u - s * thr, None
+# def reset_mem_fwd(u, thr):
+#     return u - s * thr, None
 
 
-def reset_mem_bwd(ctx, g):
-    return (
-        g,
-        None,
-        None,
-    )
+# def reset_mem_bwd(ctx, g):
+#     return (
+#         g,
+#         None,
+#         None,
+#     )
 
-
-reset_mem.defvjp(reset_mem_fwd, reset_mem_bwd)
+# reset_mem.defvjp(reset_mem_fwd, reset_mem_bwd)
 
 
 def convt(alpha_vr, state, signal):
@@ -107,7 +101,7 @@ def one_step(weights, biases, alpha, thr, gamma, mem, st):
 
 
 def run_snn(weights, biases, alpha, gamma, thr, x_train):
-    mem = [jnp.zeros(l.shape[0]) for l in weights]
+    mem = [jnp.zeros(k.shape[0]) for k in weights]
 
     f = partial(one_step, weights, biases, alpha, thr, gamma)
     mem, out_s = lax.scan(f, mem, x_train)

@@ -1,4 +1,7 @@
-import argparse, time, pickle, uuid, os, datetime, itertools
+import argparse
+import uuid
+import datetime
+import itertools
 
 from functools import partial
 import jax.numpy as jnp
@@ -8,21 +11,14 @@ from jax import (
     jit,
     lax,
     vmap,
-    value_and_grad,
     custom_vjp,
     random,
-    device_put,
 )
 import jax
 
-import matplotlib.pyplot as plt
-
 from datasets import dl_create
 from visualization import pattern_plot, yy_plot, curve_plot
-from snn_util import v_run_snn, update_w, acc_compute
-
-# module load python cuda/10.2
-# export XLA_FLAGS="--xla_gpu_cuda_data_dir=/afs/crc.nd.edu/x86_64_linux/c/cuda/10.2"
+from snn_util import v_run_snn, acc_compute, vr_loss
 
 
 @custom_vjp
@@ -54,20 +50,6 @@ def one_step(weights, biases, alpha, thr, gamma, mem, st):
     return mem, st
 
 
-def run_snn(weights, biases, alpha, gamma, thr, x_train):
-    mem = [jnp.zeros(l.shape[0]) for l in weights]
-
-    f = partial(one_step, weights, biases, alpha, thr, gamma)
-    mem, out_s = lax.scan(f, mem, x_train)
-
-    return out_s
-
-
-v_run_snn = jit(
-    vmap(run_snn, (None, None, None, None, None, 0)), static_argnums=[2, 3, 4]
-)
-
-
 def infer_step(
     alpha, thr, gamma, weights, biases, beta, act_fn, n_layers, loop_carry, xs
 ):
@@ -83,9 +65,9 @@ def infer_step(
         )
         error[i] = x[i] - mem[i]
     # update variable nodes
-    for l in range(1, n_layers - 1):
-        g = jnp.dot(weights[l].transpose(), error[l + 1]) * f_p[l]
-        x[l] = x[l] + beta * (-error[l] + g)
+    for k in range(1, n_layers - 1):
+        g = jnp.dot(weights[k].transpose(), error[k + 1]) * f_p[k]
+        x[k] = x[k] + beta * (-error[k] + g)
 
     return (x, f_n, f_p, mem, error), 0
 
@@ -109,16 +91,6 @@ def infer_one(
     # set new input and target
     x[0] = sin
     x[-1] = sout * thr
-    # # calculate errors
-    # for i in range(1,n_layers):
-    #     f_n[i-1] = act_fn(x[i-1])
-    #     f_p[i-1] = vmap(grad(act_fn))(x[i-1])
-    #     mem[i]   = (alpha * mem[i]) + (jnp.dot(weights[i-1], f_n[i-1]) - biases[i-1]) - (gamma * act_fn(x[i]))
-    #     error[i] = (x[i] - mem[i])
-    # # update variable nodes
-    # for l in range(1,n_layers-1):
-    #     g = jnp.dot(weights[l].transpose(), error[l+1]) * f_p[l]
-    #     x[l] = x[l] + beta * (-error[l] + g)
 
     f = partial(
         infer_step, alpha, thr, gamma, weights, biases, beta, act_fn, n_layers
@@ -229,14 +201,9 @@ def update_w(
     opt_state = opt_update(e, (grad_w, grad_b), opt_state)
 
     loss = jnp.array(
-        [jnp.abs(l).sum() / jnp.prod(jnp.array(l[0].shape)) for l in loss]
+        [jnp.abs(k).sum() / jnp.prod(jnp.array(k[0].shape)) for k in loss]
     ).sum() / len(loss)
     return loss, opt_state, get_params(opt_state)[0], get_params(opt_state)[1]
-
-
-@jit
-def acc_compute(pred, target, burn_in):
-    return jnp.mean(pred.sum(1).argmax(1) == target.sum(1).argmax(1))
 
 
 def nll_loss(alpha_vr, pred, target):
@@ -255,11 +222,25 @@ parser.add_argument(
 )
 parser.add_argument("--seed", type=int, default=80085, help="Random seed")
 
-# parser.add_argument("--data-set", type=str, default="Smile", help='Data set to use')
-# parser.add_argument("--architecture", type=str, default="700-500-250", help='Architecture of the networks')
+parser.add_argument(
+    "--data-set", type=str, default="Smile", help="Data set to use"
+)
+parser.add_argument(
+    "--architecture",
+    type=str,
+    default="700-500-250",
+    help="Architecture of the networks",
+)
 
-# parser.add_argument("--data-set", type=str, default="Yin_Yang", help='Data set to use')
-# parser.add_argument("--architecture", type=str, default="4-120-3", help='Architecture of the networks')
+parser.add_argument(
+    "--data-set", type=str, default="Yin_Yang", help="Data set to use"
+)
+parser.add_argument(
+    "--architecture",
+    type=str,
+    default="4-120-3",
+    help="Architecture of the networks",
+)
 
 parser.add_argument(
     "--data-set", type=str, default="NMNIST", help="Data set to use"
@@ -271,8 +252,15 @@ parser.add_argument(
     help="Architecture of the networks",
 )
 
-# parser.add_argument("--data-set", type=str, default="DVS_Gestures", help='Data set to use')
-# parser.add_argument("--architecture", type=str, default="2048-500-11", help='Architecture of the networks')
+parser.add_argument(
+    "--data-set", type=str, default="DVS_Gestures", help="Data set to use"
+)
+parser.add_argument(
+    "--architecture",
+    type=str,
+    default="2048-500-11",
+    help="Architecture of the networks",
+)
 
 parser.add_argument("--l_rate", type=float, default=1e-6, help="Learning Rate")
 parser.add_argument("--epochs", type=int, default=20, help="Epochs")
@@ -401,9 +389,15 @@ for e in range(args.epochs):
     )
 
 # Visualization
-# pred = v_run_snn(weights, biases, args.alpha, args.gamma, args.thr, x_test)
-# yy_plot(x_test, pred, model_uuid + '_yin_yang', str(loss_hist[-1]))
-# pattern_plot(x_train[0,:,:], y_train[0,:,:], pred[0,:,:], model_uuid + "_pattern_visual", "")
+pred = v_run_snn(weights, biases, args.alpha, args.gamma, args.thr, x_test)
+yy_plot(x_test, pred, model_uuid + "_yin_yang", str(loss_hist[-1]))
+pattern_plot(
+    x_train[0, :, :],
+    y_train[0, :, :],
+    pred[0, :, :],
+    model_uuid + "_pattern_visual",
+    "",
+)
 curve_plot(
     loss_hist, train_hist, test_hist, model_uuid + "_curve", str(loss_hist[-1])
 )
@@ -435,24 +429,32 @@ with open(args.log_file, "a") as f:
         + "\n"
     )
 
-# # load model
-# model_uuid = 'abfcaa0f-1de3-492a-a08e-5fcce8da513c'
-# npzfile = jnp.load("models/" + model_uuid + ".npz", allow_pickle=True)
-# weights = npzfile['arr_0']
-# biases = npzfile['arr_1']
-# loss_hist = npzfile['arr_2']
-# args = str(npzfile['arr_3'])[10:-1].split(',')
-# dargs = {}
-# for i in args:
-#     var, val = i.split("=")
-#     if "'" in val:
-#         dargs[var.strip(" ")] = val.strip("'")
-#     else:
-#         dargs[var.strip(" ")] = float(val)
-# args = argparse.Namespace(**dargs)
+# load model
+model_uuid = "abfcaa0f-1de3-492a-a08e-5fcce8da513c"
+npzfile = jnp.load("models/" + model_uuid + ".npz", allow_pickle=True)
+weights = npzfile["arr_0"]
+biases = npzfile["arr_1"]
+loss_hist = npzfile["arr_2"]
+args = str(npzfile["arr_3"])[10:-1].split(",")
+dargs = {}
+for i in args:
+    var, val = i.split("=")
+    if "'" in val:
+        dargs[var.strip(" ")] = val.strip("'")
+    else:
+        dargs[var.strip(" ")] = float(val)
+args = argparse.Namespace(**dargs)
 
-# pred = run_snn(weights, biases, args.alpha, args.gamma, args.thr, x_train)
-# loss_v = vr_loss(args.alpha_vr, pred, y_train)
-# print(loss_v)
-# curve_plot(loss_hist, model_uuid + "_curve", str(loss_v) + " " + str(args.alpha_vr))
-# pattern_plot(x_train, y_train, pred, model_uuid + "_pattern_visual", str(loss_v) + " " + str(args.alpha_vr))
+pred = v_run_snn(weights, biases, args.alpha, args.gamma, args.thr, x_train)
+loss_v = vr_loss(args.alpha_vr, pred, y_train)
+print(loss_v)
+curve_plot(
+    loss_hist, model_uuid + "_curve", str(loss_v) + " " + str(args.alpha_vr)
+)
+pattern_plot(
+    x_train,
+    y_train,
+    pred,
+    model_uuid + "_pattern_visual",
+    str(loss_v) + " " + str(args.alpha_vr),
+)

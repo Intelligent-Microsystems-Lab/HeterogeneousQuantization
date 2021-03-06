@@ -1,19 +1,7 @@
-import argparse, time, pickle, uuid, os, datetime
+import pickle
+import os
 
-from functools import partial
 import jax.numpy as jnp
-from jax.experimental import optimizers
-from jax import (
-    grad,
-    jit,
-    lax,
-    vmap,
-    value_and_grad,
-    custom_vjp,
-    random,
-    device_put,
-)
-import jax
 
 from snn_util import vr_loss, nll_loss
 
@@ -38,7 +26,8 @@ def dl_create(data_set, batch_size):
                 )
         else:
             raise Exception(
-                "Smile data set files do not exist please place them into data/smile_data_set"
+                "Smile data set files do not exist please place them into"
+                "data/smile_data_set"
             )
         train_dl = [(x_train, y_train)]
         test_dl = [(x_train, y_train)]
@@ -54,9 +43,9 @@ def dl_create(data_set, batch_size):
         dataset_train = YinYangDataset(
             size=5000, seed=42, transform=to_spike_train(100)
         )
-        dataset_validation = YinYangDataset(
-            size=1000, seed=41, transform=to_spike_train(100)
-        )
+        # dataset_validation = YinYangDataset(
+        #     size=1000, seed=41, transform=to_spike_train(100)
+        # )
         dataset_test = YinYangDataset(
             size=1000, seed=40, transform=to_spike_train(100)
         )
@@ -64,9 +53,9 @@ def dl_create(data_set, batch_size):
         train_dl = DataLoader(
             dataset_train, batch_size=batch_size, shuffle=True
         )
-        val_dl = DataLoader(
-            dataset_validation, batch_size=batch_size, shuffle=True
-        )
+        # val_dl = DataLoader(
+        #     dataset_validation, batch_size=batch_size, shuffle=True
+        # )
         test_dl = DataLoader(dataset_test, batch_size=1000, shuffle=False)
 
         loss_fn = nll_loss
@@ -76,15 +65,15 @@ def dl_create(data_set, batch_size):
             create_events_hdf5,
             create_dataloader,
         )
-        import torchneuromorphic.transforms as transforms
 
         if os.path.exists("/tmp/nmnist/n_mnist.hdf5"):
             pass
         elif os.path.exists("/tmp/nmnist/"):
-            out = create_events_hdf5("/tmp/nmnist", "/tmp/nmnist/n_mnist.hdf5")
+            create_events_hdf5("/tmp/nmnist", "/tmp/nmnist/n_mnist.hdf5")
         else:
             raise Exception(
-                "NMNIST data set does not exist, download and place raw data into data/nmnist"
+                "NMNIST data set does not exist, download and place raw data"
+                "into data/nmnist"
             )
 
         train_dl, test_dl = create_dataloader(
@@ -100,18 +89,18 @@ def dl_create(data_set, batch_size):
             create_events_hdf5,
             create_dataloader,
         )
-        import torchneuromorphic.transforms as transforms
 
         if os.path.exists("/tmp/data/dvsgesture/dvs_gestures_build19.hdf5"):
             pass
         elif os.path.exists("/tmp/data/dvsgesture/raw/"):
-            out = create_events_hdf5(
+            create_events_hdf5(
                 "/tmp/data/dvsgesture/raw/",
                 "/tmp/data/dvsgesture/dvs_gestures_build19.hdf5",
             )
         else:
             raise Exception(
-                "DVS Gestures data set does not exist, download and place raw data into data/dvsgesture/raw/"
+                "DVS Gestures data set does not exist, download and place raw"
+                "data into data/dvsgesture/raw/"
             )
 
         train_dl, test_dl = create_dataloader(

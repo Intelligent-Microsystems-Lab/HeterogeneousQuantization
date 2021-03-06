@@ -1,22 +1,13 @@
-from functools import partial
 import jax.numpy as jnp
 from jax import (
     grad,
     jit,
-    lax,
     vmap,
-    value_and_grad,
-    custom_vjp,
     random,
-    device_put,
 )
 import jax
 
-from torchvision import datasets, transforms
-import torch
-
-# module load python cuda/10.2
-# export XLA_FLAGS="--xla_gpu_cuda_data_dir=/afs/crc.nd.edu/x86_64_linux/c/cuda/10.2"
+import matplotlib.pyplot as plt
 
 
 @jit
@@ -24,7 +15,6 @@ def rmse(sout, pred):
     return jnp.sqrt(jnp.mean((sout - pred) ** 2))
 
 
-# @jax.partial(jit, static_argnums=3)
 def run_nn(weights, biases, sin, act_fn):
     x = sin
     for w, b in zip(weights, biases):
@@ -34,7 +24,7 @@ def run_nn(weights, biases, sin, act_fn):
 
 v_run_nn = jit(vmap(run_nn, in_axes=(None, None, 0, None)), static_argnums=3)
 
-# @jax.partial(jit, static_argnums=[3, 4, 5])
+
 def infer_pc(x, weights, biases, act_fn, beta, it_max, var_layer):
     n_layers = len(weights) + 1
 
@@ -52,9 +42,9 @@ def infer_pc(x, weights, biases, act_fn, beta, it_max, var_layer):
 
     for i in range(it_max):
         # update variable nodes
-        for l in range(1, n_layers - 1):
-            g = jnp.dot(weights[l].transpose(), error[l + 1]) * f_p[l]
-            x[l] = x[l] + beta * (-error[l] + g)
+        for k in range(1, n_layers - 1):
+            g = jnp.dot(weights[k].transpose(), error[k + 1]) * f_p[k]
+            x[k] = x[k] + beta * (-error[k] + g)
         # calculate errors
         for i in range(1, n_layers):
             f_n[i - 1] = act_fn(x[i - 1])
@@ -125,7 +115,6 @@ for t in range(4):
     biases = []
     for i in range(len(layers) - 1):
         key, subkey1 = random.split(key, 2)
-        # weights.append(random.normal(subkey1, (layers[i+1], layers[i])) * jnp.sqrt(6/layers[i]))
         weights.append(
             random.uniform(
                 subkey1, (layers[i + 1], layers[i]), minval=-1.0, maxval=1.0
@@ -158,9 +147,6 @@ for t in range(4):
     rmse_hist[t].append(rmse(sout, pred_new))
     x_labels.append(e)
     print("{:4d} {:.4f}".format(e, rmse(sout, pred_new)))
-
-
-import matplotlib.pyplot as plt
 
 for i, err in enumerate(rmse_hist):
     plt.plot(x_labels, err, label="Run {}".format(i + 1))

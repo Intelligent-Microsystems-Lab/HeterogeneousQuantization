@@ -1,22 +1,15 @@
-from functools import partial
 import jax.numpy as jnp
 from jax import (
     grad,
     jit,
-    lax,
     vmap,
-    value_and_grad,
-    custom_vjp,
     random,
-    device_put,
 )
 import jax
 
 from torchvision import datasets, transforms
+from visualization import curve_plot
 import torch
-
-# module load python cuda/10.2
-# export XLA_FLAGS="--xla_gpu_cuda_data_dir=/afs/crc.nd.edu/x86_64_linux/c/cuda/10.2"
 
 
 @jit
@@ -53,9 +46,9 @@ def infer_pc(x, weights, biases, act_fn, beta, it_max, var_layer):
 
     for i in range(it_max):
         # update variable nodes
-        for l in range(1, n_layers - 1):
-            g = jnp.dot(weights[l].transpose(), error[l + 1]) * f_p[l]
-            x[l] = x[l] + beta * (-error[l] + g)
+        for k in range(1, n_layers - 1):
+            g = jnp.dot(weights[k].transpose(), error[k + 1]) * f_p[k]
+            x[k] = x[k] + beta * (-error[k] + g)
         # calculate errors
         for i in range(1, n_layers):
             f_n[i - 1] = act_fn(x[i - 1])
@@ -134,7 +127,6 @@ for i in range(len(layers) - 1):
         random.normal(subkey1, (layers[i + 1], layers[i]))
         * jnp.sqrt(6 / (layers[i] + layers[i + 1]))
     )
-    # weights.append(random.uniform(subkey1, (layers[i+1], layers[i]), minval=-1.0, maxval=1.0) * jnp.sqrt(6/(layers[i] + layers[i+1])))
     biases.append(jnp.zeros(layers[i + 1]))
 
 train_acc = []
@@ -178,17 +170,4 @@ for e in range(epochs):
 
     print("{:4d} {:.4f} {:.4f}".format(e, train_acc[-1], test_acc[-1]))
 
-
-import matplotlib.pyplot as plt
-
-plt.plot(train_acc, label="Training")
-plt.plot(test_acc, label="Testing")
-
-plt.title("Predictive Coding - MNIST")
-plt.xlabel("Epoch")
-plt.ylabel("Accuracy")
-plt.legend()
-
-plt.tight_layout()
-plt.savefig("figures/pc_mnist.png")
-plt.close()
+curve_plot([], train_acc, test_acc, "pc_mnist", "Predictive Coding - MNIST")
