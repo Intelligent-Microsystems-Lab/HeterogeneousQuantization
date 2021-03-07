@@ -170,4 +170,6 @@ for e in range(epochs):
 
     print("{:4d} {:.4f} {:.4f}".format(e, train_acc[-1], test_acc[-1]))
 
-curve_plot([], train_acc, test_acc, "pc_mnist", "Predictive Coding - MNIST")
+curve_plot(
+    [], train_acc, test_acc, "pc_mnist.png", "Predictive Coding - MNIST"
+)

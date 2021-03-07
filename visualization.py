@@ -59,5 +59,5 @@ def curve_plot(loss_hist, train_hist, test_hist, name, textl):
 
     plt.suptitle(textl)
     plt.tight_layout()
-    plt.savefig("figures/" + name + ".png")
+    plt.savefig(name)
     plt.close()

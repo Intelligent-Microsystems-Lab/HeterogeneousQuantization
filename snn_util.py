@@ -2,7 +2,6 @@ from functools import partial
 import jax.numpy as jnp
 from jax import (
     grad,
-    jit,
     lax,
     vmap,
     value_and_grad,
@@ -33,23 +32,24 @@ spike_nonlinearity.defvjp(spike_nonlinearity_fwd, spike_nonlinearity_bwd)
 
 
 # Zenke trick, ignore reset in bptt - untested
-# @custom_vjp
-# def reset_mem(u, s, thr):
-#     return u - s * thr
+@custom_vjp
+def reset_mem(u, s, thr):
+    return u - s * thr
 
 
-# def reset_mem_fwd(u, thr):
-#     return u - s * thr, None
+def reset_mem_fwd(u, s, thr):
+    return u - s * thr, None
 
 
-# def reset_mem_bwd(ctx, g):
-#     return (
-#         g,
-#         None,
-#         None,
-#     )
+def reset_mem_bwd(ctx, g):
+    return (
+        g,
+        None,
+        None,
+    )
 
-# reset_mem.defvjp(reset_mem_fwd, reset_mem_bwd)
+
+reset_mem.defvjp(reset_mem_fwd, reset_mem_bwd)
 
 
 def convt(alpha_vr, state, signal):
@@ -109,19 +109,13 @@ def run_snn(weights, biases, alpha, gamma, thr, x_train):
     return out_s
 
 
-v_run_snn = jit(
-    vmap(run_snn, (None, None, None, None, None, 0)), static_argnums=[2, 3, 4]
-)
-
-
 def loss_pred(
     weights, biases, alpha, gamma, alpha_vr, thr, x_train, y_train, loss_fn
 ):
-    pred_s = v_run_snn(weights, biases, alpha, gamma, thr, x_train)
+    pred_s = run_snn(weights, biases, alpha, gamma, thr, x_train)
     return loss_fn(alpha_vr, pred_s, y_train)
 
 
-@jax.partial(jit, static_argnums=[1, 2, 3, 4, 5, 6, 9])
 def update_w(
     opt_state,
     get_params,
@@ -151,6 +145,5 @@ def update_w(
     return loss, opt_state, get_params(opt_state)[0], get_params(opt_state)[1]
 
 
-@jit
 def acc_compute(pred, target):
     return jnp.mean(pred.sum(1).argmax(1) == target.sum(1).argmax(1))
