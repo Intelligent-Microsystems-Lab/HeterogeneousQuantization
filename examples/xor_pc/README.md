@@ -7,7 +7,6 @@ installation required:
 
 https://colab.research.google.com/github/Intelligent-Microsystems-Lab/trainingSNNs/blob/main/examples/xor_pc/XOR.ipynb
 
-
 ### Example output
 
 
