@@ -124,7 +124,7 @@ def inverse_logistic(x):
     return torch.log(1 / (1 - x))
 
 
-def get_dataset(data_dir, batch_size):
+def get_datasets(data_dir, batch_size):
     """Create the XOR data"""
     transform = transforms.Compose(
         [transforms.ToTensor(), torch.flatten, inverse_logistic]
@@ -159,7 +159,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict, workdir: str):
     Returns:
       The trained optimizer.
     """
-    train_ds, eval_ds = get_dataset(config.data_dir, config.batch_size)
+    train_ds, eval_ds = get_datasets(config.data_dir, config.batch_size)
     steps_per_epoch = len(train_ds)
     num_steps = int(steps_per_epoch * config.num_epochs)
     act_fn = string_to_act_fn(config.act_fn)
