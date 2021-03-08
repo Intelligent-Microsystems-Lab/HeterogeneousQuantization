@@ -1,24 +1,7 @@
-# copied from
-# https://github.com/google/flax/tree/master/examples/mnist
-#
-# Copyright 2021 The Flax Authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 """Main file for running the MNIST example.
 
 This file is intentionally kept short. The majority for logic is in libraries
-than can be easily tested and imported in Colab.
+than can be easily tested and imported in Notebooks.
 """
 
 from absl import app

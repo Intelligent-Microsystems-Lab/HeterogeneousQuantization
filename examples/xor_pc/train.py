@@ -135,7 +135,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict, workdir: str):
     summary_writer.scalar("RMSE Test", test_metrics["rmse"], 1)
 
     for epoch in range(2, config.num_epochs + 2):
-        rng, input_rng = jax.random.split(rng)
 
         optimizer, train_metrics = j_train_step(optimizer, dataset)
         if (epoch + 1) % config.plotevery == 0:

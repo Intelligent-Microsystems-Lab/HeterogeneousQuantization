@@ -1,34 +1,36 @@
-copied from [here](https://github.com/google/flax/tree/master/examples/mnist)
-## MNIST classification
+## XOR Task
 
-Trains a simple convolutional network on the MNIST dataset.
+Trains a simple network on the XOR task with predictive coding.
 
 You can run this code and even modify it directly in Google Colab, no
 installation required:
 
-https://colab.research.google.com/github/google/flax/blob/master/linen_examples/mnist/mnist.ipynb
-
-### Requirements
-* TensorFlow dataset `mnist` will be downloaded and prepared automatically, if necessary
+https://colab.research.google.com/github/Intelligent-Microsystems-Lab/trainingSNNs/blob/main/examples/xor_pc/XOR.ipynb
 
 ### Example output
 
-| Name    |   Steps | Walltime   | Top-1 accuracy   | Metrics                                                                                                               | Workdir                                                                                                                        |
-|:--------|--------:|:-----------|:-----------------|:----------------------------------------------------------------------------------------------------------------------|:-------------------------------------------------------------------------------------------------------------------------------|
-| default |      10 | 7.7m       | 99.17%           | [tfhub.dev](https://tensorboard.dev/experiment/1G9SvrW5RQyojRtMKNmMuQ/#scalars&_smoothingWeight=0&regexInput=default) | [gs://flax_public/examples/mnist/default](https://console.cloud.google.com/storage/browser/flax_public/examples/mnist/default) |
 
 ```
-I0828 08:51:41.821526 139971964110656 train.py:130] train epoch: 10, loss: 0.0097, accuracy: 99.69
-I0828 08:51:42.248714 139971964110656 train.py:180] eval epoch: 10, loss: 0.0299, accuracy: 99.14
+I0307 01:15:51.832773 4592487936 train.py:130] epoch: 0, train rmse: -.----, test rmse: 0.5773 
+I0307 01:16:05.905062 4592487936 train.py:145] epoch: 50, train rmse: 0.4478, test rmse: 0.3135 
+I0307 01:16:05.947964 4592487936 train.py:145] epoch: 100, train rmse: 0.0028, test rmse: 0.0017 
+I0307 01:16:05.993340 4592487936 train.py:145] epoch: 150, train rmse: 0.0000, test rmse: 0.0000 
+I0307 01:16:06.038058 4592487936 train.py:145] epoch: 200, train rmse: 0.0000, test rmse: 0.0000 
+I0307 01:16:06.081298 4592487936 train.py:145] epoch: 250, train rmse: 0.0000, test rmse: 0.0000 
+I0307 01:16:06.125264 4592487936 train.py:145] epoch: 300, train rmse: 0.0000, test rmse: 0.0000 
+I0307 01:16:06.167360 4592487936 train.py:145] epoch: 350, train rmse: 0.0000, test rmse: 0.0000 
+I0307 01:16:06.209349 4592487936 train.py:145] epoch: 400, train rmse: 0.0000, test rmse: 0.0000 
+I0307 01:16:06.255126 4592487936 train.py:145] epoch: 450, train rmse: 0.0000, test rmse: 0.0000 
+I0307 01:16:06.300794 4592487936 train.py:145] epoch: 500, train rmse: 0.0000, test rmse: 0.0000 
 ```
 
 ### How to run
 
-`python main.py --workdir=/tmp/mnist`
+`python main.py --workdir=/tmp/xor --config=configs/default.py`
 
 #### Overriding Hyperparameter configurations
 
-MNIST example allows specifying a hyperparameter configuration by the means of
+XOR example allows specifying a hyperparameter configuration by the means of
 setting `--config` flag. Configuration flag is defined using
 [config_flags](https://github.com/google/ml_collections/tree/master#config-flags).
 `config_flags` allows overriding configuration fields. This can be done as
@@ -37,5 +39,5 @@ follows:
 ```shell
 python main.py \
 --workdir=/tmp/mnist --config=configs/default.py \
---config.learning_rate=0.05 --config.num_epochs=5
+--config.inference_iterations=10 --config.num_epochs=5
 ```
