@@ -16,7 +16,7 @@ https://colab.research.google.com/github/Intelligent-Microsystems-Lab/trainingSN
 
 ### How to run
 
-`python main.py --workdir=/tmp/xor --config=configs/default.py`
+`python main.py --workdir=/tmp/mnist --config=configs/default.py`
 
 #### Overriding Hyperparameter configurations
 

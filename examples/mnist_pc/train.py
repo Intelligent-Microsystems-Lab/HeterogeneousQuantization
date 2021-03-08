@@ -14,8 +14,7 @@ import jax.numpy as jnp
 import ml_collections
 from flax.linen.initializers import variance_scaling
 
-from torchvision import datasets, transforms
-import torch
+import tensorflow_datasets as tfds
 
 import sys
 
@@ -39,6 +38,7 @@ class Net(nn.Module):
         Returns:
             An array containing the result.
         """
+
         x = act_fn(x)
         x = nn.Dense(features=600, kernel_init=init_method)(x)
 
@@ -106,41 +106,44 @@ def train_step(optimizer, batch, config):
 
     grad, outputs = v_learn_pc(
         batch["image"],
-        onehot(batch["labels"]),
+        onehot(batch["label"]),
     )
     grad = jax.tree_map(lambda x: x.mean(axis=0), grad)
     optimizer = optimizer.apply_gradient(grad)
 
-    metrics = compute_metrics(outputs, batch["labels"])
+    metrics = compute_metrics(outputs, batch["label"])
     return optimizer, metrics
 
 
 def eval_step(params, batch, act_fn):
     outputs = Net().apply({"params": params}, batch["image"], act_fn=act_fn)
-    return compute_metrics(outputs, batch["labels"])
+    return compute_metrics(outputs, batch["label"])
 
 
-def inverse_logistic(x):
-    return torch.log(1 / (1 - x))
+def get_datasets(data_dir):
+    """Load MNIST train and test datasets into memory."""
+    ds_builder = tfds.builder('mnist', data_dir = data_dir)
+    ds_builder.download_and_prepare()
+    train_ds = tfds.as_numpy(ds_builder.as_dataset(split='train', batch_size=-1))
+    test_ds = tfds.as_numpy(ds_builder.as_dataset(split='test', batch_size=-1))
+    train_ds['image'] = jnp.float32(train_ds['image']) / 255.
+    test_ds['image'] = jnp.float32(test_ds['image']) / 255.
 
+    # preprocessing - inverse logistic function
+    train_ds['image'] = jnp.log(1 / (1 - train_ds['image']))
+    test_ds['image'] = jnp.log(1 / (1 - test_ds['image']))
 
-def get_datasets(data_dir, batch_size):
-    """Create the XOR data"""
-    transform = transforms.Compose(
-        [transforms.ToTensor(), torch.flatten, inverse_logistic]
-    )
-    dataset_train = datasets.MNIST(
-        data_dir, train=True, download=True, transform=transform
-    )
-    dataset_eval = datasets.MNIST(data_dir, train=False, transform=transform)
-    train_loader = torch.utils.data.DataLoader(
-        dataset_train, batch_size=batch_size, shuffle=True
-    )
-    eval_loader = torch.utils.data.DataLoader(
-        dataset_eval, batch_size=batch_size
-    )
-    return train_loader, eval_loader
+    # preprocessing - flatten
+    train_ds['image'] = train_ds['image'].reshape((-1, 784))
+    test_ds['image'] = test_ds['image'].reshape((-1, 784))
 
+    return train_ds, test_ds
+
+def one_batch(ds, batch_size, step, steps_per_epoch, rng):
+    perms = jax.random.permutation(rng, len(ds['image']))
+    perms = perms[:steps_per_epoch * batch_size]  # skip incomplete batch
+    perms = perms.reshape((steps_per_epoch, batch_size))
+    return {k: v[perms[0], ...] for k, v in ds.items()} 
 
 def string_to_act_fn(conf_str):
     if conf_str == "sigmoid":
@@ -159,11 +162,21 @@ def train_and_evaluate(config: ml_collections.ConfigDict, workdir: str):
     Returns:
       The trained optimizer.
     """
-    train_ds, eval_ds = get_datasets(config.data_dir, config.batch_size)
-    steps_per_epoch = len(train_ds)
-    num_steps = int(steps_per_epoch * config.num_epochs)
-    act_fn = string_to_act_fn(config.act_fn)
+
     rng = jax.random.PRNGKey(config.random_seed)
+
+    train_ds, eval_ds = get_datasets(config.data_dir)
+    train_ds_size = len(train_ds['image'])
+    steps_per_epoch = train_ds_size // config.batch_size
+    num_steps = int(steps_per_epoch * config.num_epochs)
+
+    rng, input_rng = jax.random.split(rng)
+    perms = jax.random.permutation(input_rng, len(train_ds['image']))
+    perms = perms[:steps_per_epoch * config.batch_size]  # skip incomplete batch
+    perms = perms.reshape((steps_per_epoch, config.batch_size))
+
+    act_fn = string_to_act_fn(config.act_fn)
+    
 
     summary_writer = tensorboard.SummaryWriter(workdir)
     summary_writer.hparams(dict(config))
@@ -178,12 +191,22 @@ def train_and_evaluate(config: ml_collections.ConfigDict, workdir: str):
     epoch_metrics = []
     t_loop_start = time.time()
     for step in range(num_steps):
-        batch = next(iter(train_ds))
-        batch = {"image": jnp.array(batch[0]), "labels": jnp.array(batch[1])}
+        batch = {k: v[perms[step%steps_per_epoch], ...] for k, v in train_ds.items()}
+
+
+        #rng, input_rng = jax.random.split(rng)
+        #batch = one_batch(train_ds, config.batch_size, steps_per_epoch, input_rng)
+
         optimizer, train_metrics = j_train_step(optimizer, batch)
         epoch_metrics.append(train_metrics)
 
         if (step + 1) % steps_per_epoch == 0:
+            rng, input_rng = jax.random.split(rng)
+            perms = jax.random.permutation(input_rng, len(train_ds['image']))
+            perms = perms[:steps_per_epoch * batch_size]  # skip incomplete batch
+            perms = perms.reshape((steps_per_epoch, batch_size))
+
+
             epoch_metrics = common_utils.stack_forest(epoch_metrics)
             summary_train = jax.tree_map(lambda x: x.mean(), epoch_metrics)
 
@@ -196,17 +219,9 @@ def train_and_evaluate(config: ml_collections.ConfigDict, workdir: str):
             summary_writer.scalar("steps per second", steps_per_sec, step)
 
             epoch_metrics = []
-            eval_metrics = []
 
-            for batch in eval_ds:
-                batch = {
-                    "image": jnp.array(batch[0]),
-                    "labels": jnp.array(batch[1]),
-                }
-                eval_metrics.append(j_eval_step(optimizer.target, batch))
-            eval_metrics = common_utils.stack_forest(eval_metrics)
+            eval_metrics = j_eval_step(optimizer.target, eval_ds)
             summary_eval = jax.tree_map(lambda x: x.mean(), eval_metrics)
-
             for key, val in eval_metrics.items():  # type: ignore
                 tag = "eval_%s" % key
                 summary_writer.scalar(tag, val.mean(), step)
