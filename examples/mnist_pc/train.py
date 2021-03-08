@@ -193,10 +193,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict, workdir: str):
     for step in range(num_steps):
         batch = {k: v[perms[step%steps_per_epoch], ...] for k, v in train_ds.items()}
 
-
-        #rng, input_rng = jax.random.split(rng)
-        #batch = one_batch(train_ds, config.batch_size, steps_per_epoch, input_rng)
-
         optimizer, train_metrics = j_train_step(optimizer, batch)
         epoch_metrics.append(train_metrics)
 
