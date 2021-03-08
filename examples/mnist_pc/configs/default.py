@@ -28,4 +28,3 @@ def get_config():
     config.sigma_0 = 100
 
     return config
-    
