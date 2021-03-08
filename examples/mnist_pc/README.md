@@ -5,7 +5,7 @@ Trains a simple network on the MNIST task with predictive coding.
 You can run this code and even modify it directly in Google Colab, no
 installation required:
 
-https://colab.research.google.com/github/Intelligent-Microsystems-Lab/trainingSNNs/blob/main/examples/mnist_pc/mnist.ipynb
+https://colab.research.google.com/github/Intelligent-Microsystems-Lab/trainingSNNs/blob/main/examples/mnist_pc/mnist_pc.ipynb
 
 ### Example output
 

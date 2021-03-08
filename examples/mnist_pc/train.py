@@ -203,8 +203,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict, workdir: str):
         if (step + 1) % steps_per_epoch == 0:
             rng, input_rng = jax.random.split(rng)
             perms = jax.random.permutation(input_rng, len(train_ds['image']))
-            perms = perms[:steps_per_epoch * batch_size]  # skip incomplete batch
-            perms = perms.reshape((steps_per_epoch, batch_size))
+            perms = perms[:steps_per_epoch * config.batch_size]  # skip incomplete batch
+            perms = perms.reshape((steps_per_epoch, config.batch_size))
 
 
             epoch_metrics = common_utils.stack_forest(epoch_metrics)
