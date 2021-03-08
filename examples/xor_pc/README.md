@@ -1,6 +1,6 @@
 ## XOR Task
 
-Trains a simple network on the XOR task with predictive coding.
+Trains a simple network on the XOR task with predictive coding based on [An Approximation of the Error Backpropagation Algorithm in a Predictive Coding Network with Local Hebbian Synaptic Plasticity](https://www.mitpressjournals.org/doi/pdf/10.1162/NECO_a_00949).
 
 You can run this code and even modify it directly in Google Colab, no
 installation required:
