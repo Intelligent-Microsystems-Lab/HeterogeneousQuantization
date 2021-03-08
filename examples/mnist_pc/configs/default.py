@@ -24,5 +24,7 @@ def get_config():
     config.batch_size = 20
     # activation function
     config.act_fn = "sigmoid"
+    # last layer fwd variance
+    config.sigma_0 = 100
 
     return config

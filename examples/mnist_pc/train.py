@@ -1,4 +1,4 @@
-"""XOR example.
+"""MNIST example.
 Library file which executes the training and evaluation loop for XOR.
 """
 import functools
@@ -60,7 +60,6 @@ def onehot(labels, num_classes=10):
 def get_initial_params(key, act_fn):
     init_shape = jnp.ones((784), jnp.float32)
     initial_params = Net().init(key, init_shape, act_fn)["params"]
-    initial_params = jax.tree_map(lambda x: x * 4, initial_params)
     return initial_params
 
 
@@ -90,7 +89,7 @@ def compute_metrics(outputs, labels):
 
 def train_step(optimizer, batch, config):
     """Train for a single step."""
-    var_layer = jnp.array([1] * (4 - 1) + [10])  # remove that from learn_pc?
+    var_layer = jnp.array([1] * (4 - 1) + [config.sigma_0])
     act_fn = string_to_act_fn(config.act_fn)
     v_learn_pc = jax.vmap(
         functools.partial(
