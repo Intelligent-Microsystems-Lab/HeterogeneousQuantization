@@ -219,7 +219,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict, workdir: str):
             )
             logging.info(
                 "%d: Avg training loss %f.\n%s",
-                step,
+                step + 1,
                 total_loss / config.report_interval,
                 dataset_string,
             )

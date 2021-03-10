@@ -1,5 +1,7 @@
 ## Smile Spatio-Temporal Pattern Retention with BPTT
 
+based on https://github.com/bamsumit/slayerPytorch and https://proceedings.neurips.cc/paper/2018/file/82f2b308c3b01637c607ce05f52a2fed-Paper.pdf
+
 Trains a SNN to retain a spatio-temporal pattern with backpropagation through time (BPTT).
 
 You can run this code and even modify it directly in Google Colab, no

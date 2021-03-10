@@ -1,6 +1,8 @@
-## DVS Gesture with BPTT
+## Smile Spatio-Temporal Pattern Retention with BPTT
 
-Trains a SNN on the DVS Gesture task with backpropagation through time (BPTT).
+based on https://arxiv.org/pdf/1811.10766.pdf and https://github.com/nmi-lab/dcll/tree/master/samples
+
+Trains a SNN to retain a spatio-temporal pattern with backpropagation through time (BPTT).
 
 You can run this code and even modify it directly in Google Colab, no
 installation required:
@@ -19,7 +21,7 @@ https://colab.research.google.com/github/Intelligent-Microsystems-Lab/trainingSN
 
 #### Overriding Hyperparameter configurations
 
-DVS Gesture example allows specifying a hyperparameter configuration by the means of
+Smile example allows specifying a hyperparameter configuration by the means of
 setting `--config` flag. Configuration flag is defined using
 [config_flags](https://github.com/google/ml_collections/tree/master#config-flags).
 `config_flags` allows overriding configuration fields. This can be done as
