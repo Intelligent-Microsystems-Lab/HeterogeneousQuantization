@@ -1,6 +1,9 @@
 """Copy task example.
 Library file which executes the training and evaluation loop for copy task
 example with bptt.
+
+Vanilla RNN from https://github.com/google-research/computation-thru-dynamics/
+blob/master/integrator_rnn_tutorial/rnn.py
 """
 import functools
 import time
@@ -25,7 +28,7 @@ init_method = variance_scaling(1.0, "fan_avg", "uniform")
 
 def sigmoid_cross_entropy_with_logits(x, z):
     # from https://www.tensorflow.org/api_docs/python/tf/nn/sigmoid_cross_entropy_with_logits
-    return x - x * z + jnp.log(1 + jnp.exp(-jnp.abs(x)))
+    return jnp.where(x > 0, x, 0) - x * z + jnp.log(1 + jnp.exp(-jnp.abs(x)))
 
 
 def masked_sigmoid_cross_entropy(
@@ -47,6 +50,7 @@ def masked_sigmoid_cross_entropy(
     Returns:
       A `Tensor` representing the log-probability of the target.
     """
+
     xent = sigmoid_cross_entropy_with_logits(logits, target)
     loss_time_batch = jnp.sum(xent, axis=2)
     loss_batch = jnp.sum(loss_time_batch * mask, axis=0)
@@ -70,20 +74,23 @@ def create_optimizer(params, learning_rate):
     return optimizer
 
 
-def train_step(optimizer, batch, config, rng):
+def train_step(
+    optimizer,
+    batch,
+    config,
+):
     """Train for a single step."""
 
     def loss_fn(params):
-        _, ts_output = apply_model(
-            batch["seq"],
-            params,
-            rng,
-            config.hidden_units,
-            batch["target"].shape[-1],
+        hidden_state, ts_output = batched_rnn_run(
+            optimizer.target, batch["seq"]
         )
+
         loss = masked_sigmoid_cross_entropy(
             ts_output, batch["target"], batch["mask"]
         )
+        # for visualization
+        ts_output = jnp.expand_dims(batch["mask"], -1) * nn.sigmoid(ts_output)
         return loss, ts_output
 
     grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
@@ -93,68 +100,67 @@ def train_step(optimizer, batch, config, rng):
     return optimizer, loss_val, ts_output
 
 
-class EncoderLSTM(nn.Module):
-    @functools.partial(
-        nn.transforms.scan,
-        variable_broadcast="params",
-        split_rngs={"params": False},
-    )
-    @nn.compact
-    def __call__(self, carry, x):
-        return nn.LSTMCell()(carry, x)
+def random_vrnn_params(key, u, n, o, g=1.0):
+    """Generate random RNN parameters"""
 
-    @staticmethod
-    def initialize_carry(hidden_size):
-        # use dummy key since default state init fn is just zeros.
-        return nn.LSTMCell.initialize_carry(
-            jax.random.PRNGKey(0), (), hidden_size
-        )
-
-
-class LSTM_model(nn.Module):
-    """Model.
-    Attributes:
-      hidden_size: int, the number of hidden dimensions
-    """
-
-    hidden_size: int
-    out_size: int
-
-    @nn.compact
-    def __call__(self, inputs):
-        """Run the model.
-        Args:
-          encoder_inputs: masked input sequences to encode, shaped
-            `[len(input_sequence), vocab_size]`.
-          decoder_inputs: masked expected decoded sequences for teacher
-            forcing, shaped `[len(output_sequence), vocab_size]`.
-            When sampling (i.e., `teacher_force = False`), the initial time
-            step is forced into the model and samples are used for the
-            following inputs. The first dimension of this tensor determines
-            how many steps will be decoded, regardless of the value of
-            `teacher_force`.
-        Returns:
-          Array of decoded logits.
-        """
-        encoder = EncoderLSTM()
-        init_carry = encoder.initialize_carry(self.hidden_size)
-        logits, predictions = encoder(init_carry, inputs)
-
-        x = nn.Dense(features=self.out_size)(predictions)
-        x = nn.sigmoid(x)
-        return logits, x
+    key, k1, k2, k3, k4 = jax.random.split(key, 5)
+    hscale = 0.001
+    ifactor = g / jnp.sqrt(u)
+    hfactor = g / jnp.sqrt(n)
+    pfactor = g / jnp.sqrt(n)
+    return {
+        "h0": jax.random.normal(k1, (n,)) * hscale,
+        "wI": jax.random.normal(k2, (n, u)) * ifactor,
+        "wR": jax.random.normal(k3, (n, n)) * hfactor,
+        "wO": jax.random.normal(k4, (o, n)) * pfactor,
+        "bR": jnp.zeros([n]),
+        "bO": jnp.zeros([o]),
+    }
 
 
-def apply_model(batch, params, key, hidden_size, out_size):
-    def model_fn(example):
-        logits, predictions = LSTM_model(hidden_size, out_size).apply(
-            {"params": params},
-            example,
-            rngs={"lstm": key},
-        )
-        return logits, predictions
+def affine(params, x):
+    """Implement y = w x + b"""
+    return jnp.dot(params["wO"], x) + params["bO"]
 
-    return jax.vmap(model_fn)(batch)
+
+# Affine expects n_W_m m_x_1, but passing in t_x_m (has txm dims) So
+# map over first dimension to hand t_x_m.  I.e. if affine yields
+# n_y_1 = dot(n_W_m, m_x_1), then batch_affine yields t_y_n.
+batch_affine = jax.vmap(affine, in_axes=(None, 0))
+
+
+def vrnn(params, h, x):
+    """Run the Vanilla RNN one step"""
+    a = jnp.dot(params["wI"], x) + params["bR"] + jnp.dot(params["wR"], h)
+    return jnp.tanh(a)
+
+
+def vrnn_scan(params, h, x):
+    """Run the Vanilla RNN one step, returning (h ,h)."""
+    h = vrnn(params, h, x)
+    return h, h
+
+
+def vrnn_run_with_h0(params, x_t, h0):
+    """Run the Vanilla RNN T steps, where T is shape[0] of input."""
+    h = h0
+    f = functools.partial(vrnn_scan, params)
+    _, h_t = jax.lax.scan(f, h, x_t)
+    o_t = batch_affine(params, h_t)
+    return h_t, o_t
+
+
+def vrnn_run(params, x_t):
+    """Run the Vanilla RNN T steps, where T is shape[0] of input."""
+    return vrnn_run_with_h0(
+        params, x_t, params["h0"]
+    )  # jnp.zeros(params['bR'].shape[0],)
+
+
+# Let's upgrade it to handle batches using `vmap`
+# Make a batched version of the `predict` function
+batched_rnn_run = jax.vmap(vrnn_run, in_axes=(None, 0))
+batched_rnn_run_w_h0 = jax.vmap(vrnn_run_with_h0, in_axes=(None, 0, 0))
 
 
 def train_and_evaluate(config: ml_collections.ConfigDict, workdir: str):
@@ -178,24 +184,21 @@ def train_and_evaluate(config: ml_collections.ConfigDict, workdir: str):
         config.max_repeats,
     )
 
-    dataset_tensors = dataset._build()
-
-    initial_params = LSTM_model(
-        hidden_size=config.hidden_units,
-        out_size=dataset_tensors.target.shape[-1],
-    ).init(
-        {"params": init_rng1, "lstm": init_rng2},
-        dataset_tensors.observations[:, 0, :],
-    )[
-        "params"
-    ]
+    initial_params = random_vrnn_params(
+        init_rng1,
+        u=config.num_bits + 2,
+        n=config.hidden_units,
+        o=config.num_bits + 1,
+    )
 
     summary_writer = tensorboard.SummaryWriter(workdir)
     summary_writer.hparams(dict(config))
 
     optimizer = create_optimizer(initial_params, config.learning_rate)
 
-    j_train_step = jax.jit(functools.partial(train_step, config=config))
+    j_train_step = jax.jit(
+        functools.partial(train_step, config=config)
+    )  # functools.partial(train_step, config=config)#
 
     total_loss = 0
     t_loop_start = time.time()
@@ -210,12 +213,11 @@ def train_and_evaluate(config: ml_collections.ConfigDict, workdir: str):
                 "target": sample.target,
                 "mask": sample.mask,
             },
-            rng=step_rng,
         )
         total_loss += loss
         if (step + 1) % config.report_interval == 0:
             dataset_string = dataset.to_human_readable(
-                dataset_tensors, jnp.round(output)
+                sample, jnp.round(output)
             )
             logging.info(
                 "%d: Avg training loss %f.\n%s",

@@ -15,7 +15,7 @@ def get_config():
     # Dimensionality of each vector to copy
     config.num_bits = 4
     # Batch size for training
-    config.batch_size = 16
+    config.batch_size = 128
     # Lower limit on number of vectors in the observation pattern to copy
     config.min_length = 1
     # Upper limit on number of vectors in the observation pattern to copy
@@ -25,9 +25,9 @@ def get_config():
     # Upper limit on number of copy repeats.
     config.max_repeats = 2
 
-    config.hidden_units = 128
+    config.hidden_units = 256
 
-    config.num_steps = 1000
+    config.num_steps = 5000
 
     config.report_interval = 100
 
