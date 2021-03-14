@@ -74,6 +74,12 @@ def create_optimizer(params, learning_rate):
     return optimizer
 
 
+def error_bit_char(logits, target):
+    total_bits = jnp.prod(jnp.array(logits.shape))
+    error = jnp.sum(~(jnp.round(logits) == target)) / total_bits
+    return error * 8 # bits/char
+
+
 def train_step(
     optimizer,
     batch,
@@ -97,7 +103,8 @@ def train_step(
     (loss_val, ts_output), grad = grad_fn(optimizer.target)
     optimizer = optimizer.apply_gradient(grad)
 
-    return optimizer, loss_val, ts_output
+    error = error_bit_char(ts_output, batch["target"])
+    return optimizer, loss_val, ts_output, error
 
 
 def random_vrnn_params(key, u, n, o, g=1.0):
@@ -145,7 +152,7 @@ def vrnn_run_with_h0(params, x_t, h0):
     """Run the Vanilla RNN T steps, where T is shape[0] of input."""
     h = h0
     f = functools.partial(vrnn_scan, params)
-    _, h_t = jax.lax.scan(f, h, x_t)
+    _, h_t = jax.lax.scan(f, h, x_t, unroll=20)
     o_t = batch_affine(params, h_t)
     return h_t, o_t
 
@@ -201,12 +208,13 @@ def train_and_evaluate(config: ml_collections.ConfigDict, workdir: str):
     )  # functools.partial(train_step, config=config)#
 
     total_loss = 0
+    #T = 1
     t_loop_start = time.time()
     for step in range(config.num_steps):
         sample = dataset._build()
 
         rng, step_rng = jax.random.split(rng)
-        optimizer, loss, output = j_train_step(
+        optimizer, loss, output, error = j_train_step(
             optimizer,
             batch={
                 "seq": sample.observations,
@@ -214,15 +222,31 @@ def train_and_evaluate(config: ml_collections.ConfigDict, workdir: str):
                 "mask": sample.mask,
             },
         )
+
+        # if error < .15 :
+        #     print("Increase T")
+        #     T += 1
+        #     rng, cur_rng = jax.random.split(rng, 2)
+        #     dataset = repeat_copy.RepeatCopy(
+        #         cur_rng,
+        #         config.num_bits,
+        #         config.batch_size,
+        #         config.min_length,
+        #         T,
+        #         config.min_repeats,
+        #         config.max_repeats,
+        #     )
+
         total_loss += loss
         if (step + 1) % config.report_interval == 0:
             dataset_string = dataset.to_human_readable(
                 sample, jnp.round(output)
             )
             logging.info(
-                "%d: Avg training loss %f.\n%s",
+                "%d: Avg training loss %f. last error: %f \n%s",
                 step + 1,
                 total_loss / config.report_interval,
+                error,
                 dataset_string,
             )
             total_loss = 0

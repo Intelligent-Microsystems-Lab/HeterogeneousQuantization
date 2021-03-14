@@ -10,16 +10,16 @@ def get_config():
     # random seed
     config.random_seed = 193012823
     # learning rate
-    config.learning_rate = 0.001
+    config.learning_rate = 1e-4
 
     # Dimensionality of each vector to copy
     config.num_bits = 4
     # Batch size for training
-    config.batch_size = 128
+    config.batch_size = 16
     # Lower limit on number of vectors in the observation pattern to copy
     config.min_length = 1
     # Upper limit on number of vectors in the observation pattern to copy
-    config.max_length = 2
+    config.max_length = 32
     # Lower limit on number of copy repeats.
     config.min_repeats = 1
     # Upper limit on number of copy repeats.
@@ -27,7 +27,7 @@ def get_config():
 
     config.hidden_units = 256
 
-    config.num_steps = 5000
+    config.num_steps = 100000
 
     config.report_interval = 100
 
