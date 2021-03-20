@@ -19,7 +19,7 @@ def get_config():
     # Lower limit on number of vectors in the observation pattern to copy
     config.min_length = 1
     # Upper limit on number of vectors in the observation pattern to copy
-    config.max_length = 32
+    config.max_length = 2
     # Lower limit on number of copy repeats.
     config.min_repeats = 1
     # Upper limit on number of copy repeats.
@@ -29,6 +29,6 @@ def get_config():
 
     config.num_steps = 100000
 
-    config.report_interval = 100
+    config.report_interval = 1
 
     return config
