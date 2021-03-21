@@ -233,10 +233,6 @@ def main(_):
             )
             total_loss = 0
 
-            summary_writer.flush()
-
-    summary_writer.flush()
-
 
 if __name__ == "__main__":
     app.run(main)
