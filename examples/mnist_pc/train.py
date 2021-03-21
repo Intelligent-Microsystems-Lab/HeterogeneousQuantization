@@ -25,6 +25,11 @@ Array = Any
 
 init_method = variance_scaling(1.0, "fan_avg", "uniform")
 
+# @clee make code more similiar too
+# https://github.com/djcrw/Supervised-Predictive-Coding
+# for LSTM pc look at
+# https://github.com/BerenMillidge/PredictiveCodingBackprop/blob/master/lstm.py
+
 
 class Net(nn.Module):
     """A simple model."""

@@ -23,31 +23,46 @@ from absl import flags
 from absl import logging
 
 import haiku as hk
-from examples.rnn import dataset
 import jax
-from jax import lax
-from jax import ops
 import jax.numpy as jnp
-import numpy as np
 import optax
-import tensorflow_datasets as tfds
 
-TRAIN_BATCH_SIZE = flags.DEFINE_integer("train_batch_size", 32, "")
-EVAL_BATCH_SIZE = flags.DEFINE_integer("eval_batch_size", 1000, "")
-SEQUENCE_LENGTH = flags.DEFINE_integer("sequence_length", 128, "")
+from flax.metrics import tensorboard
+
+import repeat_copy
+import uuid
+
+# parameters
+WORK_DIR = flags.DEFINE_string("work_dir", "/tmp/" + str(uuid.uuid4()), "")
+
+TRAIN_BATCH_SIZE = flags.DEFINE_integer("train_batch_size", 256, "")
 HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 256, "")
-SAMPLE_LENGTH = flags.DEFINE_integer("sample_length", 128, "")
 LEARNING_RATE = flags.DEFINE_float("learning_rate", 1e-3, "")
-TRAINING_STEPS = flags.DEFINE_integer("training_steps", 100_000, "")
+TRAINING_STEPS = flags.DEFINE_integer("training_steps", 2_000_000, "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 100, "")
-SAMPLING_INTERVAL = flags.DEFINE_integer("sampling_interval", 100, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
+UNROLL_TIME_STEPS = flags.DEFINE_integer("unroll_time_steps", 25, "")
 
-
-class LoopValues(NamedTuple):
-    tokens: jnp.ndarray
-    state: Any
-    rng_key: jnp.ndarray
+# copy task parameters
+NUM_BITS = flags.DEFINE_integer(
+    "num_bits", 4, "Dimensionality of each vector to copy"
+)
+MIN_LENGTH = flags.DEFINE_integer(
+    "min_length",
+    1,
+    "Lower limit on number of vectors in the observation pattern to copy",
+)
+MAX_LENGTH = flags.DEFINE_integer(
+    "max_length",
+    40,
+    "Upper limit on number of vectors in the observation pattern to copy",
+)
+MIN_REPEATS = flags.DEFINE_integer(
+    "min_repeats", 1, "Lower limit on number of copy repeats."
+)
+MAX_REPEATS = flags.DEFINE_integer(
+    "max_repeats", 2, "Upper limit on number of copy repeats."
+)
 
 
 class TrainingState(NamedTuple):
@@ -59,11 +74,8 @@ def make_network() -> hk.RNNCore:
     """Defines the network architecture."""
     model = hk.DeepRNN(
         [
-            lambda x: jax.nn.one_hot(x, num_classes=dataset.NUM_CHARS),
-            hk.LSTM(HIDDEN_SIZE.value),
-            jax.nn.relu,
-            hk.LSTM(HIDDEN_SIZE.value),
-            hk.nets.MLP([HIDDEN_SIZE.value, dataset.NUM_CHARS]),
+            hk.VanillaRNN(HIDDEN_SIZE.value),
+            hk.Linear(NUM_BITS.value + 1),
         ]
     )
     return model
@@ -74,133 +86,152 @@ def make_optimizer() -> optax.GradientTransformation:
     return optax.adam(LEARNING_RATE.value)
 
 
-def sequence_loss(batch: dataset.Batch) -> jnp.ndarray:
-    """Unrolls the network over a sequence of inputs & targets, gets loss."""
-    # Note: this function is impure; we hk.transform() it below.
+def sigmoid_cross_entropy_with_logits(x, z):
+    # from https://www.tensorflow.org/api_docs/python/tf/nn/sigmoid_cross_entropy_with_logits
+    return jnp.where(x > 0, x, 0) - x * z + jnp.log(1 + jnp.exp(-jnp.abs(x)))
+
+
+def inference(batch):
     core = make_network()
-    sequence_length, batch_size = batch["input"].shape
+    batch_size, sequence_length, spatial_dim = batch.observations.shape
     initial_state = core.initial_state(batch_size)
-    logits, _ = hk.dynamic_unroll(core, batch["input"], initial_state)
-    log_probs = jax.nn.log_softmax(logits)
-    one_hot_labels = jax.nn.one_hot(
-        batch["target"], num_classes=logits.shape[-1]
+    logits, _ = hk.dynamic_unroll(
+        core, batch.observations, initial_state, time_major=False
     )
-    return -jnp.sum(one_hot_labels * log_probs) / (
-        sequence_length * batch_size
-    )
+
+    return logits
+
+
+def masked_sigmoid_cross_entropy(
+    batch, time_average=True, log_prob_in_bits=True
+):
+    """Adds ops to graph which compute the (scalar) NLL of the target sequence.
+    The logits parametrize independent bernoulli distributions per time-step
+    and per batch element, and irrelevant time/batch elements are masked out by
+    the mask tensor.
+    Args:
+      logits: `Tensor` of activations for which sigmoid(`logits`) gives the
+          bernoulli parameter.
+      target: time-major `Tensor` of target.
+      mask: time-major `Tensor` to be multiplied elementwise with cost T x B
+          cost masking out irrelevant time-steps.
+      time_average: optionally average over the time dimension (sum by default)
+      log_prob_in_bits: iff True express log-probabilities in bits (default
+          nats).
+    Returns:
+      A `Tensor` representing the log-probability of the target.
+    """
+    batch_size, sequence_length, spatial_dim = batch.observations.shape
+
+    logits = inference(batch)
+
+    # https://stats.stackexchange.com/questions/211858/how-to-compute-bits-per-character-bpc
+    xent = sigmoid_cross_entropy_with_logits(logits, batch.target)
+    loss_time_batch = jnp.sum(xent, axis=2)
+    loss_batch = jnp.sum(loss_time_batch * batch.mask, axis=0)
+
+    if time_average:
+        mask_count = jnp.sum(batch.mask, axis=0)
+        loss_batch /= mask_count + jnp.finfo(jnp.float32).eps
+
+    loss = jnp.sum(loss_batch) / batch_size
+    if log_prob_in_bits:
+        loss /= jnp.log(2.0)
+
+    return loss
 
 
 @jax.jit
-def update(state: TrainingState, batch: dataset.Batch) -> TrainingState:
+def update(state: TrainingState, batch: Any) -> TrainingState:
     """Does a step of SGD given inputs & targets."""
     _, optimizer = make_optimizer()
-    _, loss_fn = hk.without_apply_rng(hk.transform(sequence_loss))
-    gradients = jax.grad(loss_fn)(state.params, batch)
+    _, loss_fn = hk.without_apply_rng(
+        hk.transform(masked_sigmoid_cross_entropy)
+    )
+    loss_val, gradients = jax.value_and_grad(loss_fn)(state.params, batch)
     updates, new_opt_state = optimizer(gradients, state.opt_state)
     new_params = optax.apply_updates(state.params, updates)
-    return TrainingState(params=new_params, opt_state=new_opt_state)
-
-
-def sample(
-    rng_key: jnp.ndarray,
-    context: jnp.ndarray,
-    sample_length: int,
-) -> jnp.ndarray:
-    """Draws samples from the model, given an initial context."""
-    # Note: this function is impure; we hk.transform() it below.
-    assert context.ndim == 1  # No batching for now.
-    core = make_network()
-
-    def body_fn(t: int, v: LoopValues) -> LoopValues:
-        token = v.tokens[t]
-        next_logits, next_state = core(token, v.state)
-        key, subkey = jax.random.split(v.rng_key)
-        next_token = jax.random.categorical(subkey, next_logits, axis=-1)
-        new_tokens = ops.index_update(v.tokens, ops.index[t + 1], next_token)
-        return LoopValues(tokens=new_tokens, state=next_state, rng_key=key)
-
-    logits, state = hk.dynamic_unroll(core, context, core.initial_state(None))
-    key, subkey = jax.random.split(rng_key)
-    first_token = jax.random.categorical(subkey, logits[-1])
-    tokens = np.zeros(sample_length, dtype=np.int32)
-    tokens = ops.index_update(tokens, ops.index[0], first_token)
-    initial_values = LoopValues(tokens=tokens, state=state, rng_key=key)
-    values: LoopValues = lax.fori_loop(
-        0, sample_length, body_fn, initial_values
-    )
-
-    return values.tokens
+    return loss_val, TrainingState(params=new_params, opt_state=new_opt_state)
 
 
 def main(_):
-    flags.FLAGS.alsologtostderr = True
-
-    # Make training dataset.
-    train_data = dataset.load(
-        tfds.Split.TRAIN,
-        batch_size=TRAIN_BATCH_SIZE.value,
-        sequence_length=SEQUENCE_LENGTH.value,
+    summary_writer = tensorboard.SummaryWriter(WORK_DIR.value)
+    summary_writer.hparams(
+        jax.tree_util.tree_map(lambda x: x.value, flags.FLAGS.__flags)
     )
 
-    # Make evaluation dataset(s).
-    eval_data = {  # pylint: disable=g-complex-comprehension
-        split: dataset.load(
-            split,
-            batch_size=EVAL_BATCH_SIZE.value,
-            sequence_length=SEQUENCE_LENGTH.value,
-        )
-        for split in [tfds.Split.TRAIN, tfds.Split.TEST]
-    }
+    flags.FLAGS.alsologtostderr = True
+    rng = hk.PRNGSequence(SEED.value)
+
+    dataset = repeat_copy.RepeatCopy(
+        next(rng),
+        NUM_BITS.value,
+        TRAIN_BATCH_SIZE.value,
+        MIN_LENGTH.value,
+        1,
+        MIN_REPEATS.value,
+        MAX_REPEATS.value,
+    )
 
     # Make loss, sampler, and optimizer.
-    params_init, loss_fn = hk.without_apply_rng(hk.transform(sequence_loss))
-    _, sample_fn = hk.without_apply_rng(hk.transform(sample))
+    _, inference_fn = hk.without_apply_rng(hk.transform(inference))
+    params_init, loss_fn = hk.without_apply_rng(
+        hk.transform(masked_sigmoid_cross_entropy)
+    )
     opt_init, _ = make_optimizer()
 
     loss_fn = jax.jit(loss_fn)
-    sample_fn = jax.jit(sample_fn, static_argnums=[3])
+    inference_fn = jax.jit(inference_fn)
 
     # Initialize training state.
     rng = hk.PRNGSequence(SEED.value)
-    initial_params = params_init(next(rng), next(train_data))
+    initial_params = params_init(next(rng), dataset._build())
     initial_opt_state = opt_init(initial_params)
     state = TrainingState(params=initial_params, opt_state=initial_opt_state)
 
     # Training loop.
+    total_loss = 0
+    T = 1
     for step in range(TRAINING_STEPS.value + 1):
         # Do a batch of SGD.
-        train_batch = next(train_data)
-        state = update(state, train_batch)
+        train_batch = dataset._build()
+        loss_val, state = update(state, train_batch)
+        total_loss += loss_val
 
-        # Periodically generate samples.
-        if step % SAMPLING_INTERVAL.value == 0:
-            context = train_batch["input"][
-                :, 0
-            ]  # First element of training batch.
-            assert context.ndim == 1
-            rng_key = next(rng)
-            samples = sample_fn(
-                state.params, rng_key, context, SAMPLE_LENGTH.value
+        summary_writer.scalar("T", T, step + 1)
+        summary_writer.scalar("BPC", loss_val, step + 1)
+
+        if loss_val < 0.15 and T < MAX_LENGTH.value:
+            T += 1
+            dataset = repeat_copy.RepeatCopy(
+                next(rng),
+                NUM_BITS.value,
+                TRAIN_BATCH_SIZE.value,
+                MIN_LENGTH.value,
+                T,
+                MIN_REPEATS.value,
+                MAX_REPEATS.value,
             )
 
-            prompt = dataset.decode(context)
-            continuation = dataset.decode(samples)
-
-            logging.info("Prompt: %s", prompt)
-            logging.info("Continuation: %s", continuation)
-
-        # Periodically evaluate training and test loss.
-        if step % EVALUATION_INTERVAL.value == 0:
-            for split, ds in eval_data.items():
-                eval_batch = next(ds)
-                loss = loss_fn(state.params, eval_batch)
-                logging.info(
-                    {
-                        "step": step,
-                        "loss": float(loss),
-                        "split": split,
-                    }
+        # Periodically report loss and show an example
+        if (step + 1) % EVALUATION_INTERVAL.value == 0:
+            logits = inference_fn(state.params, train_batch)
+            ts_output = jnp.expand_dims(train_batch.mask, -1) * jax.nn.sigmoid(
+                logits
+            )
+            logging.info(
+                {
+                    "T": T,
+                    "step": step + 1,
+                    "loss": float(total_loss / EVALUATION_INTERVAL.value),
+                }
+            )
+            print(
+                dataset.to_human_readable(
+                    train_batch, model_output=jnp.round(ts_output)
                 )
+            )
+            total_loss = 0
 
 
 if __name__ == "__main__":

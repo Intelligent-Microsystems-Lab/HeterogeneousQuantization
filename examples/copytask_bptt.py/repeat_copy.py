@@ -23,8 +23,6 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 
-# import sonnet as snt
-# import tensorflow as tf
 
 DatasetTensors = collections.namedtuple(
     "DatasetTensors", ("observations", "target", "mask")
