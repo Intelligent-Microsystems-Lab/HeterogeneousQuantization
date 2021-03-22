@@ -182,6 +182,7 @@ def main(_):
 
     loss_fn = jax.jit(loss_fn)
     inference_fn = jax.jit(inference_fn)
+    build_batch = jax.jit(dataset._build)
 
     # Initialize training state.
     rng = hk.PRNGSequence(SEED.value)
@@ -194,7 +195,8 @@ def main(_):
     T = 1
     for step in range(TRAINING_STEPS.value + 1):
         # Do a batch of SGD.
-        train_batch = dataset._build()
+        train_batch = build_batch()
+        
         loss_val, state = update(state, train_batch)
         total_loss += loss_val
 
@@ -212,6 +214,7 @@ def main(_):
                 MIN_REPEATS.value,
                 MAX_REPEATS.value,
             )
+            build_batch = jax.jit(dataset._build)
 
         # Periodically report loss and show an example
         if (step + 1) % EVALUATION_INTERVAL.value == 0:
@@ -232,8 +235,6 @@ def main(_):
                 )
             )
             total_loss = 0
-
-            summary_writer.flush()
 
     summary_writer.flush()
 
