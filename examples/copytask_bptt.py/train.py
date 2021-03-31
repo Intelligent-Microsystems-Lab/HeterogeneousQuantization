@@ -39,7 +39,7 @@ TRAIN_BATCH_SIZE = flags.DEFINE_integer("train_batch_size", 256, "")
 HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 256, "")
 LEARNING_RATE = flags.DEFINE_float("learning_rate", 1e-3, "")
 TRAINING_STEPS = flags.DEFINE_integer("training_steps", 2_000_000, "")
-EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 100, "")
+EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 1, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
 UNROLL_TIME_STEPS = flags.DEFINE_integer("unroll_time_steps", 25, "")
 
@@ -182,23 +182,19 @@ def main(_):
 
     loss_fn = jax.jit(loss_fn)
     inference_fn = jax.jit(inference_fn)
-    build_batch = jax.jit(dataset._build)
 
     # Initialize training state.
     rng = hk.PRNGSequence(SEED.value)
-    initial_params = params_init(next(rng), dataset._build())
+    initial_params = params_init(next(rng), dataset._build(T=1))
     initial_opt_state = opt_init(initial_params)
     state = TrainingState(params=initial_params, opt_state=initial_opt_state)
 
     # Training loop.
-    total_loss = 0
     T = 1
     for step in range(TRAINING_STEPS.value + 1):
         # Do a batch of SGD.
-        train_batch = build_batch()
-        
+        train_batch = dataset._build(T=T)
         loss_val, state = update(state, train_batch)
-        total_loss += loss_val
 
         summary_writer.scalar("T", T, step + 1)
         summary_writer.scalar("BPC", loss_val, step + 1)
@@ -214,7 +210,6 @@ def main(_):
                 MIN_REPEATS.value,
                 MAX_REPEATS.value,
             )
-            build_batch = jax.jit(dataset._build)
 
         # Periodically report loss and show an example
         if (step + 1) % EVALUATION_INTERVAL.value == 0:
@@ -226,7 +221,7 @@ def main(_):
                 {
                     "T": T,
                     "step": step + 1,
-                    "loss": float(total_loss / EVALUATION_INTERVAL.value),
+                    "loss": float(loss_val),
                 }
             )
             print(
@@ -235,8 +230,6 @@ def main(_):
                 )
             )
             total_loss = 0
-
-    summary_writer.flush()
 
 
 if __name__ == "__main__":
