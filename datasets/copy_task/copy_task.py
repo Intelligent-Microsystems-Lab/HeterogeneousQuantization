@@ -70,13 +70,13 @@ class CopyTask(tfds.core.GeneratorBasedBuilder):
     RELEASE_NOTES = {
         "1.0.0": "Initial release.",
     }
-    T: int = 10
+    MAX_LENGTH: int = 30
     NUM_BITS: int = 4
     MIN_LENGTH: int = 1
     MIN_REPEATS: int = 1
     MAX_REPEATS: int = 2
     SEED: int = 42
-    VERSION = tfds.core.Version("1." + str(NUM_BITS) + "." + str(T))
+    VERSION = tfds.core.Version("1." + str(NUM_BITS) + "." + str(MAX_LENGTH))
 
     _norm_max: int = 10
 
@@ -84,7 +84,7 @@ class CopyTask(tfds.core.GeneratorBasedBuilder):
         """Returns the dataset metadata."""
         # TODO(copy_task): Specifies the tfds.core.DatasetInfo object
 
-        max_length = (self.T + 1) * (self.MAX_REPEATS + 2) + 3
+        max_length = (self.MAX_LENGTH + 1) * (self.MAX_REPEATS + 2) + 3
         # self.VERSION = tfds.core.Version('1.0.'+str(self.T))
 
         return tfds.core.DatasetInfo(
@@ -121,13 +121,20 @@ class CopyTask(tfds.core.GeneratorBasedBuilder):
         # path = dl_manager.download_and_extract('https://todo-data-url')
 
         # TODO(copy_task): Returns the Dict[split names, Iterator[Key, Example]]
+
         return {
-            "train": self._generate_examples(),
+            "train_T" + str(i): self._generate_examples(i)
+            for i in range(1, self.MAX_LENGTH)
         }
 
-    def _generate_examples(self):
+        # {
+        #     "train": self._generate_examples(),
+        #     "train": self._generate_examples(),
+        # }
+
+    def _generate_examples(self, T):
         # short-hand for private fields.
-        min_length, max_length = self.MIN_LENGTH, self.T
+        min_length, max_length = self.MIN_LENGTH, T
         min_reps, max_reps = self.MIN_REPEATS, self.MAX_REPEATS
         num_bits = self.NUM_BITS
         batch_size = 1
@@ -170,7 +177,9 @@ class CopyTask(tfds.core.GeneratorBasedBuilder):
             )
 
             # fixed_length = (max_length + 1) * (num_repeats_batch + 1) + 3
-            max_length_batch = int((max_length + 1) * ((max_reps + 1) + 1) + 3)
+            max_length_batch = int(
+                (self.MAX_LENGTH + 1) * ((max_reps + 1) + 1) + 3
+            )
             residual_length_batch = max_length_batch - total_length_batch
 
             obs_batch_shape = [max_length_batch, batch_size, full_obs_size]
@@ -308,7 +317,7 @@ class CopyTask(tfds.core.GeneratorBasedBuilder):
             )
             mask = jnp.squeeze(jnp.moveaxis(mask, [0, 1], [1, 0]), axis=0)
 
-            yield str(batch_index), {
+            yield str(T) + "_" + str(ds_size), {
                 "observations": obs,
                 "target": targ,
                 "mask": mask,
