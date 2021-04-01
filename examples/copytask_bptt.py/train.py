@@ -26,11 +26,16 @@ import haiku as hk
 import jax
 import jax.numpy as jnp
 import optax
+import sys
 
+import tensorflow as tf
+import tensorflow_datasets as tfds
 from flax.metrics import tensorboard
 
-import repeat_copy
 import uuid
+
+sys.path.append("../..")
+from datasets import copy_task
 
 # parameters
 WORK_DIR = flags.DEFINE_string("work_dir", "/tmp/" + str(uuid.uuid4()), "")
@@ -41,27 +46,13 @@ LEARNING_RATE = flags.DEFINE_float("learning_rate", 1e-3, "")
 TRAINING_STEPS = flags.DEFINE_integer("training_steps", 2_000_000, "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 1, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
-UNROLL_TIME_STEPS = flags.DEFINE_integer("unroll_time_steps", 25, "")
-
-# copy task parameters
 NUM_BITS = flags.DEFINE_integer(
-    "num_bits", 4, "Dimensionality of each vector to copy"
-)
-MIN_LENGTH = flags.DEFINE_integer(
-    "min_length",
-    1,
-    "Lower limit on number of vectors in the observation pattern to copy",
+    "num_bits", 1, "Dimensionality of each vector to copy"
 )
 MAX_LENGTH = flags.DEFINE_integer(
     "max_length",
-    40,
+    30,
     "Upper limit on number of vectors in the observation pattern to copy",
-)
-MIN_REPEATS = flags.DEFINE_integer(
-    "min_repeats", 1, "Lower limit on number of copy repeats."
-)
-MAX_REPEATS = flags.DEFINE_integer(
-    "max_repeats", 2, "Upper limit on number of copy repeats."
 )
 
 
@@ -93,10 +84,10 @@ def sigmoid_cross_entropy_with_logits(x, z):
 
 def inference(batch):
     core = make_network()
-    batch_size, sequence_length, spatial_dim = batch.observations.shape
+    batch_size, sequence_length, spatial_dim = batch["observations"].shape
     initial_state = core.initial_state(batch_size)
     logits, _ = hk.dynamic_unroll(
-        core, batch.observations, initial_state, time_major=False
+        core, batch["observations"], initial_state, time_major=False
     )
 
     return logits
@@ -121,17 +112,17 @@ def masked_sigmoid_cross_entropy(
     Returns:
       A `Tensor` representing the log-probability of the target.
     """
-    batch_size, sequence_length, spatial_dim = batch.observations.shape
+    batch_size, sequence_length, spatial_dim = batch["observations"].shape
 
     logits = inference(batch)
 
     # https://stats.stackexchange.com/questions/211858/how-to-compute-bits-per-character-bpc
-    xent = sigmoid_cross_entropy_with_logits(logits, batch.target)
+    xent = sigmoid_cross_entropy_with_logits(logits, batch["target"])
     loss_time_batch = jnp.sum(xent, axis=2)
-    loss_batch = jnp.sum(loss_time_batch * batch.mask, axis=0)
+    loss_batch = jnp.sum(loss_time_batch * batch["mask"], axis=0)
 
     if time_average:
-        mask_count = jnp.sum(batch.mask, axis=0)
+        mask_count = jnp.sum(batch["mask"], axis=0)
         loss_batch /= mask_count + jnp.finfo(jnp.float32).eps
 
     loss = jnp.sum(loss_batch) / batch_size
@@ -154,6 +145,25 @@ def update(state: TrainingState, batch: Any) -> TrainingState:
     return loss_val, TrainingState(params=new_params, opt_state=new_opt_state)
 
 
+def tf_to_numpy(example):
+    example["observations"] = (
+        example["observations"]._numpy().astype("float32")
+    )
+    example["target"] = example["target"]._numpy().astype("float32")
+    example["mask"] = example["mask"]._numpy().astype("float32")
+    return example
+
+
+def prep_ds(ds):
+    ds = ds.cache()
+    ds = ds.repeat()
+    ds = ds.shuffle(16 * TRAIN_BATCH_SIZE.value, seed=0)
+    ds = ds.batch(TRAIN_BATCH_SIZE.value, drop_remainder=True)
+    ds = ds.prefetch(64)
+
+    return ds
+
+
 def main(_):
     summary_writer = tensorboard.SummaryWriter(WORK_DIR.value)
     summary_writer.hparams(
@@ -163,15 +173,9 @@ def main(_):
     flags.FLAGS.alsologtostderr = True
     rng = hk.PRNGSequence(SEED.value)
 
-    dataset = repeat_copy.RepeatCopy(
-        next(rng),
-        NUM_BITS.value,
-        TRAIN_BATCH_SIZE.value,
-        MIN_LENGTH.value,
-        1,
-        MIN_REPEATS.value,
-        MAX_REPEATS.value,
-    )
+    ds = tfds.load("copy_task")
+    ds_it = map(tf_to_numpy, (prep_ds(ds["train_T1"])))
+    dummy_input = next(ds_it)
 
     # Make loss, sampler, and optimizer.
     _, inference_fn = hk.without_apply_rng(hk.transform(inference))
@@ -185,15 +189,15 @@ def main(_):
 
     # Initialize training state.
     rng = hk.PRNGSequence(SEED.value)
-    initial_params = params_init(next(rng), dataset._build(T=1))
+    initial_params = params_init(next(rng), dummy_input)
     initial_opt_state = opt_init(initial_params)
     state = TrainingState(params=initial_params, opt_state=initial_opt_state)
 
     # Training loop.
     T = 1
-    for step in range(TRAINING_STEPS.value + 1):
+    for step in range(int(TRAINING_STEPS.value / TRAIN_BATCH_SIZE.value) + 1):
         # Do a batch of SGD.
-        train_batch = dataset._build(T=T)
+        train_batch = next(ds_it)
         loss_val, state = update(state, train_batch)
 
         summary_writer.scalar("T", T, step + 1)
@@ -201,22 +205,14 @@ def main(_):
 
         if loss_val < 0.15 and T < MAX_LENGTH.value:
             T += 1
-            dataset = repeat_copy.RepeatCopy(
-                next(rng),
-                NUM_BITS.value,
-                TRAIN_BATCH_SIZE.value,
-                MIN_LENGTH.value,
-                T,
-                MIN_REPEATS.value,
-                MAX_REPEATS.value,
-            )
+            ds_it = map(tf_to_numpy, (prep_ds(ds["train_T" + str(T)])))
 
         # Periodically report loss and show an example
         if (step + 1) % EVALUATION_INTERVAL.value == 0:
             logits = inference_fn(state.params, train_batch)
-            ts_output = jnp.expand_dims(train_batch.mask, -1) * jax.nn.sigmoid(
-                logits
-            )
+            ts_output = jnp.expand_dims(
+                train_batch["mask"], -1
+            ) * jax.nn.sigmoid(logits)
             logging.info(
                 {
                     "T": T,
@@ -225,8 +221,8 @@ def main(_):
                 }
             )
             print(
-                dataset.to_human_readable(
-                    train_batch, model_output=jnp.round(ts_output)
+                copy_task.to_human_readable(
+                    data=train_batch, model_output=jnp.round(ts_output)
                 )
             )
             total_loss = 0

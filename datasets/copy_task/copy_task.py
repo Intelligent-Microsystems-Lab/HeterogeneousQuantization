@@ -4,6 +4,7 @@ import tensorflow_datasets as tfds
 import tensorflow as tf
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 # TODO(copy_task): Markdown description  that will appear on the catalog page.
 _DESCRIPTION = """
@@ -15,6 +16,16 @@ It should also contain any processing which has been applied (if any),
 
 # TODO(copy_task): BibTeX citation
 _CITATION = """
+@article{graves2016hybrid,
+  title={Hybrid computing using a neural network with dynamic external memory},
+  author={Graves, Alex and Wayne, Greg and Reynolds, Malcolm and Harley, Tim and Danihelka, Ivo and Grabska-Barwi{\'n}ska, Agnieszka and Colmenarejo, Sergio G{\'o}mez and Grefenstette, Edward and Ramalho, Tiago and Agapiou, John and others},
+  journal={Nature},
+  volume={538},
+  number={7626},
+  pages={471--476},
+  year={2016},
+  publisher={Nature Publishing Group}
+}
 """
 
 
@@ -35,8 +46,8 @@ def bitstring_readable(data, batch_size, model_output=None, whole_batch=False):
             "+" + " ".join(["-" if x == 0 else "%d" % x for x in datum]) + "+"
         )
 
-    obs_batch = data.observations
-    targ_batch = data.target
+    obs_batch = data["observations"]
+    targ_batch = data["target"]
 
     iterate_over = range(batch_size) if whole_batch else range(1)
 
@@ -64,6 +75,14 @@ def bitstring_readable(data, batch_size, model_output=None, whole_batch=False):
     return "\n" + "\n\n\n\n".join(batch_strings)
 
 
+def to_human_readable(data, model_output=None, whole_batch=False):
+    obs = data["observations"]
+    batch_size, _, _ = data["observations"].shape
+    obs = np.concatenate([obs[:, :, :-1], obs[:, :, -1:]], axis=2)
+    data["observations"] = obs
+    return bitstring_readable(data, batch_size, model_output, whole_batch)
+
+
 class CopyTask(tfds.core.GeneratorBasedBuilder):
     """DatasetBuilder for copy_task dataset."""
 
@@ -71,21 +90,17 @@ class CopyTask(tfds.core.GeneratorBasedBuilder):
         "1.0.0": "Initial release.",
     }
     MAX_LENGTH: int = 30
-    NUM_BITS: int = 4
+    NUM_BITS: int = 1
     MIN_LENGTH: int = 1
     MIN_REPEATS: int = 1
-    MAX_REPEATS: int = 2
-    SEED: int = 42
+    MAX_REPEATS: int = 1
+    # SEED: int = 42
+    rng = jax.random.PRNGKey(42)
     VERSION = tfds.core.Version("1." + str(NUM_BITS) + "." + str(MAX_LENGTH))
-
-    _norm_max: int = 10
 
     def _info(self) -> tfds.core.DatasetInfo:
         """Returns the dataset metadata."""
-        # TODO(copy_task): Specifies the tfds.core.DatasetInfo object
-
         max_length = (self.MAX_LENGTH + 1) * (self.MAX_REPEATS + 2) + 3
-        # self.VERSION = tfds.core.Version('1.0.'+str(self.T))
 
         return tfds.core.DatasetInfo(
             builder=self,
@@ -107,30 +122,20 @@ class CopyTask(tfds.core.GeneratorBasedBuilder):
             # If there's a common (input, target) tuple from the
             # features, specify them here. They'll be used if
             # `as_supervised=True` in `builder.as_dataset`.
-            supervised_keys=("image", "label"),  # Set to `None` to disable
+            supervised_keys=(
+                "observations",
+                "target",
+            ),  # Set to `None` to disable
             homepage="https://github.com/deepmind/dnc/blob/master/dnc/repeat_copy.py",
             citation=_CITATION,
         )
 
-    def _normalise(self, val):
-        return val / self._norm_max
-
     def _split_generators(self, dl_manager: tfds.download.DownloadManager):
         """Returns SplitGenerators."""
-        # TODO(copy_task): Downloads the data and defines the splits
-        # path = dl_manager.download_and_extract('https://todo-data-url')
-
-        # TODO(copy_task): Returns the Dict[split names, Iterator[Key, Example]]
-
         return {
             "train_T" + str(i): self._generate_examples(i)
-            for i in range(1, self.MAX_LENGTH)
+            for i in range(1, self.MAX_LENGTH + 1)
         }
-
-        # {
-        #     "train": self._generate_examples(),
-        #     "train": self._generate_examples(),
-        # }
 
     def _generate_examples(self, T):
         # short-hand for private fields.
@@ -147,10 +152,8 @@ class CopyTask(tfds.core.GeneratorBasedBuilder):
         start_end_flag_idx = full_obs_size - 2
         num_repeats_channel_idx = full_obs_size - 1
 
-        for ds_size in range(2_000_000):
-
+        for ds_size in range(10_000):
             # Samples each batch index's sequence length and the number of repeats.
-            self.rng = jax.random.PRNGKey(self.SEED)
             self.rng, input_rng = jax.random.split(self.rng)
             sub_seq_length_batch = jnp.array(
                 jax.random.uniform(
@@ -225,12 +228,9 @@ class CopyTask(tfds.core.GeneratorBasedBuilder):
                 obs_start_flag = jax.nn.one_hot(
                     [start_end_flag_idx], full_obs_size
                 )
-                num_reps_flag = (
-                    jax.nn.one_hot(
-                        [num_repeats_channel_idx],
-                        full_obs_size,
-                    )
-                    * self._normalise(num_reps)
+                num_reps_flag = jax.nn.one_hot(
+                    [num_repeats_channel_idx],
+                    full_obs_size,
                 )
 
                 # note the concatenation dimensions.
