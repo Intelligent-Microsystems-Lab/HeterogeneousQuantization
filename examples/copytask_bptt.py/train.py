@@ -47,7 +47,7 @@ TRAINING_STEPS = flags.DEFINE_integer("training_steps", 2_000_000, "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 1, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
 NUM_BITS = flags.DEFINE_integer(
-    "num_bits", 1, "Dimensionality of each vector to copy"
+    "num_bits", 6, "Dimensionality of each vector to copy"
 )
 MAX_LENGTH = flags.DEFINE_integer(
     "max_length",
@@ -200,8 +200,10 @@ def main(_):
         train_batch = next(ds_it)
         loss_val, state = update(state, train_batch)
 
-        summary_writer.scalar("T", T, step + 1)
-        summary_writer.scalar("BPC", loss_val, step + 1)
+        summary_writer.scalar("T", T, (step + 1) * TRAIN_BATCH_SIZE.value)
+        summary_writer.scalar(
+            "BPC", loss_val, (step + 1) * TRAIN_BATCH_SIZE.value
+        )
 
         if loss_val < 0.15 and T < MAX_LENGTH.value:
             T += 1
@@ -216,7 +218,7 @@ def main(_):
             logging.info(
                 {
                     "T": T,
-                    "step": step + 1,
+                    "step": (step + 1) * TRAIN_BATCH_SIZE.value,
                     "loss": float(loss_val),
                 }
             )

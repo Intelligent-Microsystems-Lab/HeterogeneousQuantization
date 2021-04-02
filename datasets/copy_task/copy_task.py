@@ -90,7 +90,7 @@ class CopyTask(tfds.core.GeneratorBasedBuilder):
         "1.0.0": "Initial release.",
     }
     MAX_LENGTH: int = 30
-    NUM_BITS: int = 1
+    NUM_BITS: int = 6
     MIN_LENGTH: int = 1
     MIN_REPEATS: int = 1
     MAX_REPEATS: int = 1
@@ -152,14 +152,14 @@ class CopyTask(tfds.core.GeneratorBasedBuilder):
         start_end_flag_idx = full_obs_size - 2
         num_repeats_channel_idx = full_obs_size - 1
 
-        for ds_size in range(10_000):
+        for ds_size in range(1024):
             # Samples each batch index's sequence length and the number of repeats.
             self.rng, input_rng = jax.random.split(self.rng)
             sub_seq_length_batch = jnp.array(
                 jax.random.uniform(
                     input_rng,
                     [batch_size],
-                    minval=min_length,
+                    minval=max_length + 1,
                     maxval=max_length + 1,
                 ),
                 dtype=jnp.int32,

@@ -17,6 +17,7 @@
 """Character-level language modelling with a recurrent network in JAX."""
 
 from typing import Any, NamedTuple
+import functools
 
 from absl import app
 from absl import flags
@@ -26,11 +27,18 @@ import haiku as hk
 import jax
 import jax.numpy as jnp
 import optax
+import sys
 
+import tensorflow as tf
+import tensorflow_datasets as tfds
 from flax.metrics import tensorboard
 
-import repeat_copy
 import uuid
+
+from repeat_copy import RepeatCopy
+
+sys.path.append("../..")
+from sparse_rtrl import get_rtrl_grad_func
 
 # parameters
 WORK_DIR = flags.DEFINE_string("work_dir", "/tmp/" + str(uuid.uuid4()), "")
@@ -39,51 +47,16 @@ TRAIN_BATCH_SIZE = flags.DEFINE_integer("train_batch_size", 256, "")
 HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 256, "")
 LEARNING_RATE = flags.DEFINE_float("learning_rate", 1e-3, "")
 TRAINING_STEPS = flags.DEFINE_integer("training_steps", 2_000_000, "")
-EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 100, "")
+EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 1, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
-UNROLL_TIME_STEPS = flags.DEFINE_integer("unroll_time_steps", 25, "")
-
-# copy task parameters
 NUM_BITS = flags.DEFINE_integer(
-    "num_bits", 4, "Dimensionality of each vector to copy"
-)
-MIN_LENGTH = flags.DEFINE_integer(
-    "min_length",
-    1,
-    "Lower limit on number of vectors in the observation pattern to copy",
+    "num_bits", 6, "Dimensionality of each vector to copy"
 )
 MAX_LENGTH = flags.DEFINE_integer(
     "max_length",
-    40,
+    30,
     "Upper limit on number of vectors in the observation pattern to copy",
 )
-MIN_REPEATS = flags.DEFINE_integer(
-    "min_repeats", 1, "Lower limit on number of copy repeats."
-)
-MAX_REPEATS = flags.DEFINE_integer(
-    "max_repeats", 2, "Upper limit on number of copy repeats."
-)
-
-
-class TrainingState(NamedTuple):
-    params: hk.Params
-    opt_state: optax.OptState
-
-
-def make_network() -> hk.RNNCore:
-    """Defines the network architecture."""
-    model = hk.DeepRNN(
-        [
-            hk.VanillaRNN(HIDDEN_SIZE.value),
-            hk.Linear(NUM_BITS.value + 1),
-        ]
-    )
-    return model
-
-
-def make_optimizer() -> optax.GradientTransformation:
-    """Defines the optimizer."""
-    return optax.adam(LEARNING_RATE.value)
 
 
 def sigmoid_cross_entropy_with_logits(x, z):
@@ -91,48 +64,13 @@ def sigmoid_cross_entropy_with_logits(x, z):
     return jnp.where(x > 0, x, 0) - x * z + jnp.log(1 + jnp.exp(-jnp.abs(x)))
 
 
-def inference(batch):
-    core = make_network()
-    batch_size, sequence_length, spatial_dim = batch.observations.shape
-    initial_state = core.initial_state(batch_size)
-    logits, _ = hk.dynamic_unroll(
-        core, batch.observations, initial_state, time_major=False
-    )
-
-    return logits
-
-
-def masked_sigmoid_cross_entropy(
-    batch, time_average=True, log_prob_in_bits=True
-):
-    """Adds ops to graph which compute the (scalar) NLL of the target sequence.
-    The logits parametrize independent bernoulli distributions per time-step
-    and per batch element, and irrelevant time/batch elements are masked out by
-    the mask tensor.
-    Args:
-      logits: `Tensor` of activations for which sigmoid(`logits`) gives the
-          bernoulli parameter.
-      target: time-major `Tensor` of target.
-      mask: time-major `Tensor` to be multiplied elementwise with cost T x B
-          cost masking out irrelevant time-steps.
-      time_average: optionally average over the time dimension (sum by default)
-      log_prob_in_bits: iff True express log-probabilities in bits (default
-          nats).
-    Returns:
-      A `Tensor` representing the log-probability of the target.
-    """
-    batch_size, sequence_length, spatial_dim = batch.observations.shape
-
-    logits = inference(batch)
+def masked_sigmoid_cross_entropy(batch, logits, mask, log_prob_in_bits=True):
+    batch_size, spatial_dim = batch.shape
 
     # https://stats.stackexchange.com/questions/211858/how-to-compute-bits-per-character-bpc
-    xent = sigmoid_cross_entropy_with_logits(logits, batch.target)
-    loss_time_batch = jnp.sum(xent, axis=2)
-    loss_batch = jnp.sum(loss_time_batch * batch.mask, axis=0)
-
-    if time_average:
-        mask_count = jnp.sum(batch.mask, axis=0)
-        loss_batch /= mask_count + jnp.finfo(jnp.float32).eps
+    xent = sigmoid_cross_entropy_with_logits(logits, batch)
+    loss_time_batch = jnp.sum(xent, axis=1)
+    loss_batch = jnp.sum(loss_time_batch * mask, axis=0)
 
     loss = jnp.sum(loss_batch) / batch_size
     if log_prob_in_bits:
@@ -141,17 +79,74 @@ def masked_sigmoid_cross_entropy(
     return loss
 
 
-@jax.jit
-def update(state: TrainingState, batch: Any) -> TrainingState:
-    """Does a step of SGD given inputs & targets."""
-    _, optimizer = make_optimizer()
-    _, loss_fn = hk.without_apply_rng(
-        hk.transform(masked_sigmoid_cross_entropy)
+def tf_to_numpy(batch):
+    example = {}
+    example["input_seq"] = jnp.moveaxis(
+        batch.observations.astype("float32"), [0, 1, 2], [1, 0, 2]
     )
-    loss_val, gradients = jax.value_and_grad(loss_fn)(state.params, batch)
-    updates, new_opt_state = optimizer(gradients, state.opt_state)
-    new_params = optax.apply_updates(state.params, updates)
-    return loss_val, TrainingState(params=new_params, opt_state=new_opt_state)
+    example["target_seq"] = jnp.moveaxis(
+        batch.target.astype("float32"), [0, 1, 2], [1, 0, 2]
+    )
+    example["mask_seq"] = jnp.moveaxis(
+        batch.mask.astype("float32"), [0, 1], [1, 0]
+    )
+    return example
+
+
+def prep_ds(ds):
+    ds = ds.cache()
+    ds = ds.repeat()
+    ds = ds.shuffle(16 * TRAIN_BATCH_SIZE.value, seed=0)
+    ds = ds.batch(TRAIN_BATCH_SIZE.value, drop_remainder=True)
+    ds = ds.prefetch(64)
+
+    return ds
+
+
+def output_fn(params, inpt):
+    out = jnp.dot(inpt, params["w"])
+    return jax.nn.relu(out)
+
+
+def core_fn(params, state, inpt):
+    input_to_hidden = jnp.dot(inpt, params["inp_hidden"])
+    hidden_to_hidden = jnp.dot(state, params["hidden_hidden"])
+    out = jax.nn.relu(input_to_hidden + hidden_to_hidden)
+    return out, out
+
+
+class TrainingState(NamedTuple):
+    core_params: dict
+    c_opt_state: optax.OptState
+    output_params: dict
+    o_opt_state: optax.OptState
+
+
+def update(apply_fn, optim, state, batch):
+    inital_state = jnp.zeros((TRAIN_BATCH_SIZE.value, HIDDEN_SIZE.value))
+
+    (loss_val, (final_state, output_seq)), (
+        core_grads,
+        output_grads,
+    ) = apply_fn(state.core_params, state.output_params, inital_state, batch)
+
+    updates, c_opt_state = optim(core_grads, state.c_opt_state)
+    core_params = optax.apply_updates(state.core_params, updates)
+
+    updates, o_opt_state = optim(output_grads, state.o_opt_state)
+    output_params = optax.apply_updates(state.output_params, updates)
+
+    mask_count = jnp.sum(batch["mask_seq"], axis=0)
+    loss_val /= mask_count + jnp.finfo(jnp.float32).eps
+
+    state = TrainingState(
+        core_params=core_params,
+        c_opt_state=c_opt_state,
+        output_params=output_params,
+        o_opt_state=o_opt_state,
+    )
+
+    return loss_val, output_seq, state
 
 
 def main(_):
@@ -163,74 +158,85 @@ def main(_):
     flags.FLAGS.alsologtostderr = True
     rng = hk.PRNGSequence(SEED.value)
 
-    dataset = repeat_copy.RepeatCopy(
-        next(rng),
-        NUM_BITS.value,
-        TRAIN_BATCH_SIZE.value,
-        MIN_LENGTH.value,
-        1,
-        MIN_REPEATS.value,
-        MAX_REPEATS.value,
-    )
-
-    # Make loss, sampler, and optimizer.
-    _, inference_fn = hk.without_apply_rng(hk.transform(inference))
-    params_init, loss_fn = hk.without_apply_rng(
-        hk.transform(masked_sigmoid_cross_entropy)
-    )
-    opt_init, _ = make_optimizer()
-
-    loss_fn = jax.jit(loss_fn)
-    inference_fn = jax.jit(inference_fn)
-    build_batch = jax.jit(dataset._build)
+    ds = tfds.load("copy_task")
+    ds = RepeatCopy(next(rng), batch_size=TRAIN_BATCH_SIZE.value)
+    # ds_it = map(tf_to_numpy, (prep_ds(ds)))
 
     # Initialize training state.
     rng = hk.PRNGSequence(SEED.value)
-    initial_params = params_init(next(rng), dataset._build())
-    initial_opt_state = opt_init(initial_params)
-    state = TrainingState(params=initial_params, opt_state=initial_opt_state)
+
+    opt_init, optim = optax.adam(LEARNING_RATE.value)
+
+    core_params = {
+        "inp_hidden": jax.random.normal(
+            next(rng), (NUM_BITS.value + 2, HIDDEN_SIZE.value)
+        ),
+        "hidden_hidden": jax.random.normal(
+            next(rng), (HIDDEN_SIZE.value, HIDDEN_SIZE.value)
+        ),
+    }
+    output_params = {
+        "w": jax.random.normal(
+            next(rng), (HIDDEN_SIZE.value, NUM_BITS.value + 1)
+        )
+    }
+
+    rtrl_grad_fn = get_rtrl_grad_func(
+        core_fn, output_fn, masked_sigmoid_cross_entropy, False
+    )
+
+    c_opt_state = opt_init(core_params)
+    o_opt_state = opt_init(output_params)
+
+    update_step = jax.jit(
+        functools.partial(
+            update,
+            rtrl_grad_fn,
+            optim,
+        ),
+    )
+
+    state = TrainingState(
+        core_params=core_params,
+        c_opt_state=c_opt_state,
+        output_params=output_params,
+        o_opt_state=o_opt_state,
+    )
 
     # Training loop.
-    total_loss = 0
     T = 1
-    for step in range(TRAINING_STEPS.value + 1):
-        # Do a batch of SGD.
-        train_batch = build_batch()
-        loss_val, state = update(state, train_batch)
-        total_loss += loss_val
+    for step in range(int(TRAINING_STEPS.value / TRAIN_BATCH_SIZE.value) + 1):
+        # Do a batch of SGD
+        train_batch = tf_to_numpy(ds._build(T))
+        import pdb
 
-        summary_writer.scalar("T", T, step + 1)
-        summary_writer.scalar("BPC", loss_val, step + 1)
+        pdb.set_trace()
+        loss_val, logits, state = update_step(state, train_batch)
+
+        summary_writer.scalar("T", T, (step + 1) * TRAIN_BATCH_SIZE.value)
+        summary_writer.scalar(
+            "BPC", loss_val, (step + 1) * TRAIN_BATCH_SIZE.value
+        )
 
         if loss_val < 0.15 and T < MAX_LENGTH.value:
             T += 1
-            dataset = repeat_copy.RepeatCopy(
-                next(rng),
-                NUM_BITS.value,
-                TRAIN_BATCH_SIZE.value,
-                MIN_LENGTH.value,
-                T,
-                MIN_REPEATS.value,
-                MAX_REPEATS.value,
-            )
-            build_batch = jax.jit(dataset._build)
+            ds_it = tf_to_numpy(ds._build(T))
 
         # Periodically report loss and show an example
         if (step + 1) % EVALUATION_INTERVAL.value == 0:
-            logits = inference_fn(state.params, train_batch)
-            ts_output = jnp.expand_dims(train_batch.mask, -1) * jax.nn.sigmoid(
-                logits
-            )
+            ts_output = jnp.expand_dims(
+                train_batch["mask"], -1
+            ) * jax.nn.sigmoid(logits)
             logging.info(
                 {
                     "T": T,
-                    "step": step + 1,
-                    "loss": float(total_loss / EVALUATION_INTERVAL.value),
+                    "step": (step + 1) * TRAIN_BATCH_SIZE.value,
+                    "loss": float(loss_val),
                 }
             )
             print(
-                dataset.to_human_readable(
-                    train_batch, model_output=jnp.round(ts_output)
+                copy_task.to_human_readable(
+                    data=train_batch, model_output=jnp.round(ts_output)
                 )
             )
             total_loss = 0
