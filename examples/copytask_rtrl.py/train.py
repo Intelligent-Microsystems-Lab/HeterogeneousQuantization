@@ -29,8 +29,8 @@ import jax.numpy as jnp
 import optax
 import sys
 
-import tensorflow as tf
-import tensorflow_datasets as tfds
+#import tensorflow as tf
+#import tensorflow_datasets as tfds
 from flax.metrics import tensorboard
 
 import uuid
