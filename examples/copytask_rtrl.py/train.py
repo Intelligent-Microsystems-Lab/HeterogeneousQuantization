@@ -29,6 +29,8 @@ import jax.numpy as jnp
 import optax
 import sys
 
+from jax.lib import xla_bridge
+
 #import tensorflow as tf
 #import tensorflow_datasets as tfds
 from flax.metrics import tensorboard
@@ -136,6 +138,9 @@ def update(apply_fn, optim, state, batch):
 
 
 def main(_):
+    logging.info(xla_bridge.get_backend().platform)
+    logging.info(jax.host_count())
+
     summary_writer = tensorboard.SummaryWriter(WORK_DIR.value)
     summary_writer.hparams(
         jax.tree_util.tree_map(lambda x: x.value, flags.FLAGS.__flags)
@@ -191,14 +196,22 @@ def main(_):
 
     # Training loop.
     T = 1
+    logging.info("Start Training")
+    t_loop_start = time.time()
     for step in range(int(TRAINING_STEPS.value / TRAIN_BATCH_SIZE.value) + 1):
         # Do a batch of SGD
         train_batch = ds._build(T)
         loss_val, logits, state = update_step(state, train_batch)
 
+        step_sec = (time.time() - t_loop_start)
+        t_loop_start = time.time()
+
         summary_writer.scalar("T", T, (step + 1) * TRAIN_BATCH_SIZE.value)
         summary_writer.scalar(
             "BPC", loss_val, (step + 1) * TRAIN_BATCH_SIZE.value
+        )
+        summary_writer.scalar(
+            "Time", step_sec, (step + 1) * TRAIN_BATCH_SIZE.value
         )
 
         if loss_val < 0.15 and T < MAX_LENGTH.value:
@@ -215,6 +228,7 @@ def main(_):
                     "T": T,
                     "step": (step + 1) * TRAIN_BATCH_SIZE.value,
                     "loss": float(loss_val),
+                    "time": step_sec,
                 }
             )
             print(
