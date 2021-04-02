@@ -209,6 +209,7 @@ def main(_):
         # Do a batch of SGD
         train_batch = tf_to_numpy(ds._build(T))
         loss_val, logits, state = update_step(state, train_batch)
+        import pdb; pdb.set_trace()
 
         summary_writer.scalar("T", T, (step + 1) * TRAIN_BATCH_SIZE.value)
         summary_writer.scalar(
