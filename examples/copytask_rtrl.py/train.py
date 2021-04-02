@@ -43,8 +43,8 @@ from sparse_rtrl import get_rtrl_grad_func
 # parameters
 WORK_DIR = flags.DEFINE_string("work_dir", "/tmp/" + str(uuid.uuid4()), "")
 
-TRAIN_BATCH_SIZE = flags.DEFINE_integer("train_batch_size", 256, "")
-HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 256, "")
+TRAIN_BATCH_SIZE = flags.DEFINE_integer("train_batch_size", 64, "")
+HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 32, "")
 LEARNING_RATE = flags.DEFINE_float("learning_rate", 1e-3, "")
 TRAINING_STEPS = flags.DEFINE_integer("training_steps", 2_000_000, "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 1, "")
