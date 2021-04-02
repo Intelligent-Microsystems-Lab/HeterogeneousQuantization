@@ -158,7 +158,7 @@ def main(_):
     flags.FLAGS.alsologtostderr = True
     rng = hk.PRNGSequence(SEED.value)
 
-    ds = tfds.load("copy_task")
+    #ds = tfds.load("copy_task")
     ds = RepeatCopy(next(rng), batch_size=TRAIN_BATCH_SIZE.value)
     # ds_it = map(tf_to_numpy, (prep_ds(ds)))
 
