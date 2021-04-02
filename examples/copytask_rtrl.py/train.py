@@ -18,6 +18,7 @@
 
 from typing import Any, NamedTuple
 import functools
+import time
 
 from absl import app
 from absl import flags
