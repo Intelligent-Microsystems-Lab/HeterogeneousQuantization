@@ -40,14 +40,18 @@ from repeat_copy import RepeatCopy
 sys.path.append("../..")
 from sparse_rtrl import get_rtrl_grad_func
 
+
+from jax.config import config
+config.update('jax_disable_jit', True)
+
 # parameters
 WORK_DIR = flags.DEFINE_string("work_dir", "/tmp/" + str(uuid.uuid4()), "")
 
 TRAIN_BATCH_SIZE = flags.DEFINE_integer("train_batch_size", 64, "")
-HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 32, "")
+HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 128, "")
 LEARNING_RATE = flags.DEFINE_float("learning_rate", 1e-3, "")
 TRAINING_STEPS = flags.DEFINE_integer("training_steps", 2_000_000, "")
-EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 1, "")
+EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 10, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
 NUM_BITS = flags.DEFINE_integer(
     "num_bits", 6, "Dimensionality of each vector to copy"
@@ -58,54 +62,42 @@ MAX_LENGTH = flags.DEFINE_integer(
     "Upper limit on number of vectors in the observation pattern to copy",
 )
 
+# def tf_to_numpy(batch):
+#     example = {}
+#     example["input_seq"] = jnp.moveaxis(
+#         batch.observations.astype("float32"), [0, 1, 2], [1, 0, 2]
+#     )
+#     example["target_seq"] = jnp.moveaxis(
+#         batch.target.astype("float32"), [0, 1, 2], [1, 0, 2]
+#     )
+#     example["mask_seq"] = jnp.moveaxis(
+#         batch.mask.astype("float32"), [0, 1], [1, 0]
+#     )
+#     return example
+
 
 def sigmoid_cross_entropy_with_logits(x, z):
     # from https://www.tensorflow.org/api_docs/python/tf/nn/sigmoid_cross_entropy_with_logits
     return jnp.where(x > 0, x, 0) - x * z + jnp.log(1 + jnp.exp(-jnp.abs(x)))
 
 
-def masked_sigmoid_cross_entropy(batch, logits, mask, log_prob_in_bits=True):
+def masked_sigmoid_cross_entropy(batch, logits, mask):
     batch_size, spatial_dim = batch.shape
 
     # https://stats.stackexchange.com/questions/211858/how-to-compute-bits-per-character-bpc
     xent = sigmoid_cross_entropy_with_logits(logits, batch)
     loss_time_batch = jnp.sum(xent, axis=1)
-    loss_batch = jnp.sum(loss_time_batch * mask, axis=0)
+    loss_batch = loss_time_batch * mask
 
     loss = jnp.sum(loss_batch) / batch_size
-    if log_prob_in_bits:
-        loss /= jnp.log(2.0)
+    loss /= jnp.log(2.0)
 
     return loss
 
 
-def tf_to_numpy(batch):
-    example = {}
-    example["input_seq"] = jnp.moveaxis(
-        batch.observations.astype("float32"), [0, 1, 2], [1, 0, 2]
-    )
-    example["target_seq"] = jnp.moveaxis(
-        batch.target.astype("float32"), [0, 1, 2], [1, 0, 2]
-    )
-    example["mask_seq"] = jnp.moveaxis(
-        batch.mask.astype("float32"), [0, 1], [1, 0]
-    )
-    return example
-
-
-def prep_ds(ds):
-    ds = ds.cache()
-    ds = ds.repeat()
-    ds = ds.shuffle(16 * TRAIN_BATCH_SIZE.value, seed=0)
-    ds = ds.batch(TRAIN_BATCH_SIZE.value, drop_remainder=True)
-    ds = ds.prefetch(64)
-
-    return ds
-
-
 def output_fn(params, inpt):
     out = jnp.dot(inpt, params["w"])
-    return jax.nn.relu(out)
+    return jax.nn.sigmoid(out)
 
 
 def core_fn(params, state, inpt):
@@ -136,9 +128,6 @@ def update(apply_fn, optim, state, batch):
     updates, o_opt_state = optim(output_grads, state.o_opt_state)
     output_params = optax.apply_updates(state.output_params, updates)
 
-    mask_count = jnp.sum(batch["mask_seq"], axis=0)
-    loss_val /= mask_count + jnp.finfo(jnp.float32).eps
-
     state = TrainingState(
         core_params=core_params,
         c_opt_state=c_opt_state,
@@ -146,7 +135,7 @@ def update(apply_fn, optim, state, batch):
         o_opt_state=o_opt_state,
     )
 
-    return loss_val, output_seq, state
+    return loss_val/batch['input_seq'].shape[1], output_seq, state
 
 
 def main(_):
@@ -207,9 +196,8 @@ def main(_):
     T = 1
     for step in range(int(TRAINING_STEPS.value / TRAIN_BATCH_SIZE.value) + 1):
         # Do a batch of SGD
-        train_batch = tf_to_numpy(ds._build(T))
+        train_batch = ds._build(T)
         loss_val, logits, state = update_step(state, train_batch)
-        import pdb; pdb.set_trace()
 
         summary_writer.scalar("T", T, (step + 1) * TRAIN_BATCH_SIZE.value)
         summary_writer.scalar(
@@ -223,8 +211,8 @@ def main(_):
         # Periodically report loss and show an example
         if (step + 1) % EVALUATION_INTERVAL.value == 0:
             ts_output = jnp.expand_dims(
-                train_batch["mask"], -1
-            ) * jax.nn.sigmoid(logits)
+                train_batch["mask_seq"], -1
+            ) * logits
             logging.info(
                 {
                     "T": T,
@@ -233,7 +221,7 @@ def main(_):
                 }
             )
             print(
-                copy_task.to_human_readable(
+                ds.to_human_readable(
                     data=train_batch, model_output=jnp.round(ts_output)
                 )
             )
