@@ -41,9 +41,6 @@ sys.path.append("../..")
 from sparse_rtrl import get_rtrl_grad_func
 
 
-from jax.config import config
-config.update('jax_disable_jit', True)
-
 # parameters
 WORK_DIR = flags.DEFINE_string("work_dir", "/tmp/" + str(uuid.uuid4()), "")
 
