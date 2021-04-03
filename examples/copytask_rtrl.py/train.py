@@ -123,7 +123,10 @@ def update(apply_fn, optim, state, batch):
         output_grads,
     ) = apply_fn(state.core_params, state.output_params, inital_state, batch)
 
-    updates, c_opt_state = optim(core_grads / T, state.c_opt_state)
+    core_grads = jax.tree_map(lambda x: x/T, core_grads)
+    output_grads = jax.tree_map(lambda x: x/T, output_grads)
+
+    updates, c_opt_state = optim(core_grads, state.c_opt_state)
     core_params = optax.apply_updates(state.core_params, updates)
 
     updates, o_opt_state = optim(output_grads / T, state.o_opt_state)
