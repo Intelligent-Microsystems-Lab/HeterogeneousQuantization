@@ -32,8 +32,8 @@ import sys
 
 from jax.lib import xla_bridge
 
-#import tensorflow as tf
-#import tensorflow_datasets as tfds
+# import tensorflow as tf
+# import tensorflow_datasets as tfds
 from flax.metrics import tensorboard
 
 import uuid
@@ -115,6 +115,7 @@ class TrainingState(NamedTuple):
 
 
 def update(apply_fn, optim, state, batch):
+    T = batch["input_seq"].shape[1]
     inital_state = jnp.zeros((TRAIN_BATCH_SIZE.value, HIDDEN_SIZE.value))
 
     (loss_val, (final_state, output_seq)), (
@@ -122,10 +123,10 @@ def update(apply_fn, optim, state, batch):
         output_grads,
     ) = apply_fn(state.core_params, state.output_params, inital_state, batch)
 
-    updates, c_opt_state = optim(core_grads, state.c_opt_state)
+    updates, c_opt_state = optim(core_grads / T, state.c_opt_state)
     core_params = optax.apply_updates(state.core_params, updates)
 
-    updates, o_opt_state = optim(output_grads, state.o_opt_state)
+    updates, o_opt_state = optim(output_grads / T, state.o_opt_state)
     output_params = optax.apply_updates(state.output_params, updates)
 
     state = TrainingState(
@@ -135,7 +136,7 @@ def update(apply_fn, optim, state, batch):
         o_opt_state=o_opt_state,
     )
 
-    return loss_val/batch['input_seq'].shape[1], output_seq, state
+    return loss_val / T, output_seq, state
 
 
 def main(_):
@@ -150,7 +151,7 @@ def main(_):
     flags.FLAGS.alsologtostderr = True
     rng = hk.PRNGSequence(SEED.value)
 
-    #ds = tfds.load("copy_task")
+    # ds = tfds.load("copy_task")
     ds = RepeatCopy(next(rng), batch_size=TRAIN_BATCH_SIZE.value)
     # ds_it = map(tf_to_numpy, (prep_ds(ds)))
 
@@ -180,6 +181,7 @@ def main(_):
     c_opt_state = opt_init(core_params)
     o_opt_state = opt_init(output_params)
 
+    # pmap
     update_step = jax.jit(
         functools.partial(
             update,
@@ -204,7 +206,7 @@ def main(_):
         train_batch = ds._build(T)
         loss_val, logits, state = update_step(state, train_batch)
 
-        step_sec = (time.time() - t_loop_start)
+        step_sec = time.time() - t_loop_start
         t_loop_start = time.time()
 
         summary_writer.scalar("T", T, (step + 1) * TRAIN_BATCH_SIZE.value)
@@ -221,9 +223,7 @@ def main(_):
 
         # Periodically report loss and show an example
         if (step + 1) % EVALUATION_INTERVAL.value == 0:
-            ts_output = jnp.expand_dims(
-                train_batch["mask_seq"], -1
-            ) * logits
+            ts_output = jnp.expand_dims(train_batch["mask_seq"], -1) * logits
             logging.info(
                 {
                     "T": T,

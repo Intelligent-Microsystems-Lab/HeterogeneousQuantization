@@ -48,8 +48,8 @@ def bitstring_readable(data, batch_size, model_output=None, whole_batch=False):
             "+" + " ".join(["-" if x == 0 else "%d" % x for x in datum]) + "+"
         )
 
-    obs_batch = data['input_seq']
-    targ_batch = data['target_seq']
+    obs_batch = data["input_seq"]
+    targ_batch = data["target_seq"]
 
     iterate_over = range(batch_size) if whole_batch else range(1)
 
@@ -371,22 +371,30 @@ class RepeatCopy:  # snt.AbstractModule
         )
 
         # modification axis -> [batch, time, spatial]
-        #obs = jnp.moveaxis(obs, [0, 1, 2], [1, 0, 2])
-        #targ = jnp.moveaxis(targ, [0, 1, 2], [1, 0, 2])
-        #mask = jnp.moveaxis(mask, [0, 1], [1, 0])
-        return {"input_seq":obs, "target_seq":targ, "mask_seq": mask}#DatasetTensors(obs, targ, mask)
+        # obs = jnp.moveaxis(obs, [0, 1, 2], [1, 0, 2])
+        # targ = jnp.moveaxis(targ, [0, 1, 2], [1, 0, 2])
+        # mask = jnp.moveaxis(mask, [0, 1], [1, 0])
+        return {
+            "input_seq": obs,
+            "target_seq": targ,
+            "mask_seq": mask,
+        }  # DatasetTensors(obs, targ, mask)
 
     def to_human_readable(self, data, model_output=None, whole_batch=False):
-        data['input_seq'] = jnp.moveaxis(data['input_seq'], [0, 1, 2], [1, 0, 2])
-        data['target_seq'] = jnp.moveaxis(data['target_seq'], [0, 1, 2], [1, 0, 2])
+        data["input_seq"] = jnp.moveaxis(
+            data["input_seq"], [0, 1, 2], [1, 0, 2]
+        )
+        data["target_seq"] = jnp.moveaxis(
+            data["target_seq"], [0, 1, 2], [1, 0, 2]
+        )
         model_output = jnp.moveaxis(model_output, [0, 1], [1, 0])
 
-        obs = data['input_seq']
+        obs = data["input_seq"]
         unnormalised_num_reps_flag = self._unnormalise(obs[:, :, -1:]).round()
         obs = np.concatenate(
             [obs[:, :, :-1], unnormalised_num_reps_flag], axis=2
         )
-        data['input_seq'] = obs
+        data["input_seq"] = obs
         return bitstring_readable(
             data, self.batch_size, model_output, whole_batch
         )
