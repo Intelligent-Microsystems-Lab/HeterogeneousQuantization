@@ -31,14 +31,14 @@ import optax
 import sys
 
 from jax.lib import xla_bridge
-
-# import tensorflow as tf
-# import tensorflow_datasets as tfds
 from flax.metrics import tensorboard
-
 import uuid
 
 from repeat_copy import RepeatCopy
+
+from jax.config import config
+
+config.update("jax_disable_jit", True)
 
 sys.path.append("../..")
 from sparse_rtrl import get_rtrl_grad_func
@@ -51,7 +51,7 @@ TRAIN_BATCH_SIZE = flags.DEFINE_integer("train_batch_size", 64, "")
 HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 128, "")
 LEARNING_RATE = flags.DEFINE_float("learning_rate", 1e-3, "")
 TRAINING_STEPS = flags.DEFINE_integer("training_steps", 2_000_000, "")
-EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 10, "")
+EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 1, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
 NUM_BITS = flags.DEFINE_integer(
     "num_bits", 6, "Dimensionality of each vector to copy"
@@ -61,19 +61,6 @@ MAX_LENGTH = flags.DEFINE_integer(
     30,
     "Upper limit on number of vectors in the observation pattern to copy",
 )
-
-# def tf_to_numpy(batch):
-#     example = {}
-#     example["input_seq"] = jnp.moveaxis(
-#         batch.observations.astype("float32"), [0, 1, 2], [1, 0, 2]
-#     )
-#     example["target_seq"] = jnp.moveaxis(
-#         batch.target.astype("float32"), [0, 1, 2], [1, 0, 2]
-#     )
-#     example["mask_seq"] = jnp.moveaxis(
-#         batch.mask.astype("float32"), [0, 1], [1, 0]
-#     )
-#     return example
 
 
 def sigmoid_cross_entropy_with_logits(x, z):
@@ -85,7 +72,7 @@ def masked_sigmoid_cross_entropy(batch, logits, mask):
     batch_size, spatial_dim = batch.shape
 
     # https://stats.stackexchange.com/questions/211858/how-to-compute-bits-per-character-bpc
-    xent = sigmoid_cross_entropy_with_logits(logits, batch)
+    xent = sigmoid_cross_entropy_with_logits(batch, logits)
     loss_time_batch = jnp.sum(xent, axis=1)
     loss_batch = loss_time_batch * mask
 
@@ -96,13 +83,17 @@ def masked_sigmoid_cross_entropy(batch, logits, mask):
 
 
 def output_fn(params, inpt):
-    out = jnp.dot(inpt, params["w"])
-    return jax.nn.sigmoid(out)
+    out = jnp.dot(inpt, params["w"]) + params["b"]
+    return out
 
 
 def core_fn(params, state, inpt):
-    input_to_hidden = jnp.dot(inpt, params["inp_hidden"])
-    hidden_to_hidden = jnp.dot(state, params["hidden_hidden"])
+    input_to_hidden = (
+        jnp.dot(inpt, params["inp_hidden"]) + params["b_inp_hidden"]
+    )
+    hidden_to_hidden = (
+        jnp.dot(state, params["hidden_hidden"]) + params["b_hidden_hidden"]
+    )
     out = jax.nn.relu(input_to_hidden + hidden_to_hidden)
     return out, out
 
@@ -123,8 +114,8 @@ def update(apply_fn, optim, state, batch):
         output_grads,
     ) = apply_fn(state.core_params, state.output_params, inital_state, batch)
 
-    core_grads = jax.tree_map(lambda x: x/T, core_grads)
-    output_grads = jax.tree_map(lambda x: x/T, output_grads)
+    core_grads = jax.tree_map(lambda x: x / T, core_grads)
+    output_grads = jax.tree_map(lambda x: x / T, output_grads)
 
     updates, c_opt_state = optim(core_grads, state.c_opt_state)
     core_params = optax.apply_updates(state.core_params, updates)
@@ -165,16 +156,26 @@ def main(_):
 
     core_params = {
         "inp_hidden": jax.random.normal(
-            next(rng), (NUM_BITS.value + 2, HIDDEN_SIZE.value)
-        ),
+            next(rng),
+            (NUM_BITS.value + 2, HIDDEN_SIZE.value),
+        )
+        * 1.0
+        / jnp.sqrt(NUM_BITS.value + 2),
         "hidden_hidden": jax.random.normal(
             next(rng), (HIDDEN_SIZE.value, HIDDEN_SIZE.value)
-        ),
+        )
+        * 1.0
+        / jnp.sqrt(HIDDEN_SIZE.value),
+        "b_inp_hidden": jnp.zeros(HIDDEN_SIZE.value),
+        "b_hidden_hidden": jnp.zeros(HIDDEN_SIZE.value),
     }
     output_params = {
         "w": jax.random.normal(
             next(rng), (HIDDEN_SIZE.value, NUM_BITS.value + 1)
         )
+        * 1.0
+        / jnp.sqrt(HIDDEN_SIZE.value),
+        "b": jnp.zeros(NUM_BITS.value + 1),
     }
 
     rtrl_grad_fn = get_rtrl_grad_func(
@@ -222,11 +223,13 @@ def main(_):
 
         if loss_val < 0.15 and T < MAX_LENGTH.value:
             T += 1
-            ds_it = tf_to_numpy(ds._build(T))
+            ds_it = ds._build(T)
 
         # Periodically report loss and show an example
         if (step + 1) % EVALUATION_INTERVAL.value == 0:
-            ts_output = jnp.expand_dims(train_batch["mask_seq"], -1) * logits
+            ts_output = jnp.expand_dims(
+                train_batch["mask_seq"], -1
+            ) * jax.nn.sigmoid(logits)
             logging.info(
                 {
                     "T": T,

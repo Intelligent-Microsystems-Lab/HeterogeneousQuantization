@@ -208,7 +208,7 @@ class RepeatCopy:  # snt.AbstractModule
 
     def _build(self, T):
         """Implements build method which adds ops to graph."""
-        self.max_length = T
+        self._max_length = T
 
         # short-hand for private fields.
         min_length, max_length = self._min_length, self._max_length
