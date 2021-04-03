@@ -129,7 +129,7 @@ def update(apply_fn, optim, state, batch):
     updates, c_opt_state = optim(core_grads, state.c_opt_state)
     core_params = optax.apply_updates(state.core_params, updates)
 
-    updates, o_opt_state = optim(output_grads / T, state.o_opt_state)
+    updates, o_opt_state = optim(output_grads, state.o_opt_state)
     output_params = optax.apply_updates(state.output_params, updates)
 
     state = TrainingState(
