@@ -36,9 +36,8 @@ import uuid
 
 from repeat_copy import RepeatCopy
 
-from jax.config import config
-
-config.update("jax_disable_jit", True)
+# from jax.config import config
+# config.update("jax_disable_jit", True)
 
 sys.path.append("../..")
 from sparse_rtrl import get_rtrl_grad_func
@@ -51,7 +50,7 @@ TRAIN_BATCH_SIZE = flags.DEFINE_integer("train_batch_size", 64, "")
 HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 128, "")
 LEARNING_RATE = flags.DEFINE_float("learning_rate", 1e-3, "")
 TRAINING_STEPS = flags.DEFINE_integer("training_steps", 2_000_000, "")
-EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 1, "")
+EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 10, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
 NUM_BITS = flags.DEFINE_integer(
     "num_bits", 6, "Dimensionality of each vector to copy"
@@ -204,6 +203,7 @@ def main(_):
     # Training loop.
     T = 1
     logging.info("Start Training")
+    logging.info(WORK_DIR.value)
     t_loop_start = time.time()
     for step in range(int(TRAINING_STEPS.value / TRAIN_BATCH_SIZE.value) + 1):
         # Do a batch of SGD
@@ -238,12 +238,13 @@ def main(_):
                     "time": step_sec,
                 }
             )
-            print(
-                ds.to_human_readable(
-                    data=train_batch, model_output=jnp.round(ts_output)
-                )
-            )
+            # print(
+            #     ds.to_human_readable(
+            #         data=train_batch, model_output=jnp.round(ts_output)
+            #     )
+            # )
             total_loss = 0
+    logging.info(WORK_DIR.value)
 
 
 if __name__ == "__main__":
