@@ -70,17 +70,17 @@ def compute_metrics(logits, labels, mask):
 
 def nn_model(params, state, x):
     # two layer feedforward statefull NN
-    x = jnp.dot(x, params["w1"]) + state["u1"] * params["u1"] + state["s1"] * params["s1"]
+    x = jnp.dot(x, params["w1"]) + state["u1"] * params["u1"] + state["s1"] * params["s1"] + params["b1"]
     state["u1"] = x # membrane potential
     x = jax.nn.sigmoid(x * 6)
     state["s1"] = x # output spikes
 
-    x = jnp.dot(x, params["w2"]) + state["u2"] * params["u2"] + state["s2"] * params["s2"]
+    x = jnp.dot(x, params["w2"]) + state["u2"] * params["u2"] + state["s2"] * params["s2"] + params["b2"]
     state["u2"] = x
     x = jax.nn.sigmoid(x * 6)
     state["s2"] = x
 
-    x = jnp.dot(x, params["w3"]) + state["u3"] * params["u3"] + state["s3"] * params["s3"]
+    x = jnp.dot(x, params["w3"]) + state["u3"] * params["u3"] + state["s3"] * params["s3"] + params["b3"]
     state["u3"] = x
     x = jax.nn.sigmoid(x * 6)
     state["s3"] = x
@@ -273,12 +273,15 @@ def main(_):
             (HIDDEN2_SIZE.value, NUM_BITS.value + 1),
         )
         / jnp.sqrt(HIDDEN2_SIZE.value),
-        "s1": jax.random.normal(s1_rng, (HIDDEN1_SIZE.value,)) + 0.8,
-        "s2": jax.random.normal(s1_rng, (HIDDEN2_SIZE.value,)) + 0.8,
-        "s3": jax.random.normal(s1_rng, (NUM_BITS.value + 1,)) + 0.8,
-        "u1": jax.random.normal(s1_rng, (HIDDEN1_SIZE.value,)) - 0.2,
-        "u2": jax.random.normal(s1_rng, (HIDDEN2_SIZE.value,)) - 0.2,
-        "u3": jax.random.normal(s1_rng, (NUM_BITS.value + 1,)) - 0.2,
+        "s1": jax.random.normal(s1_rng, (HIDDEN1_SIZE.value,)) * .1 + 0.8,
+        "s2": jax.random.normal(s1_rng, (HIDDEN2_SIZE.value,)) * .1 + 0.8,
+        "s3": jax.random.normal(s1_rng, (NUM_BITS.value + 1,)) * .1 + 0.8,
+        "u1": jax.random.normal(s1_rng, (HIDDEN1_SIZE.value,)) * .1 - 0.2,
+        "u2": jax.random.normal(s1_rng, (HIDDEN2_SIZE.value,)) * .1 - 0.2,
+        "u3": jax.random.normal(s1_rng, (NUM_BITS.value + 1,)) * .1 - 0.2,
+        "b1": jnp.zeros((HIDDEN1_SIZE.value,)),
+        "b2": jnp.zeros((HIDDEN2_SIZE.value,)),
+        "b3": jnp.zeros((NUM_BITS.value + 1,)),
     }
 
     # Training loop.
