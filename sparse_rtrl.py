@@ -109,7 +109,6 @@ def get_rtrl_grad_func(core_f, output_f, loss_f, use_snap1_approx):
             new_output_grad_acc = jax.tree_multimap(
                 jnp.add, output_grad_acc, output_grad_t
             )
-
             # Repack carried state and return output.
             new_carry = (
                 new_state,
