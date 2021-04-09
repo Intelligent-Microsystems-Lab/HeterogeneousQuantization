@@ -181,7 +181,8 @@ def main(_):
     }
 
     # Training loop.
-    print("Files in: " + WORK_DIR.value)
+    logging.info("Files in: " + WORK_DIR.value)
+    logging.info(jax.devices())
     for step in range(TRAINING_STEPS.value):
         params, loss_val, logits = train_step(params, data)
 

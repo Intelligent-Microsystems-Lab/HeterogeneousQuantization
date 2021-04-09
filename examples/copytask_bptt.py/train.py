@@ -246,6 +246,8 @@ def main(_):
     }
 
     # Training loop.
+    logging.info("Files in: " + WORK_DIR.value)
+    logging.info(jax.devices())
     for step in range(int(TRAINING_STEPS.value / BATCH_SIZE.value) + 1):
         # Do a batch of SGD.
         rng, inpt_rng = jax.random.split(rng)
