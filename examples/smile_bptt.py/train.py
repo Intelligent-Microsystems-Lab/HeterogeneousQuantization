@@ -53,7 +53,7 @@ HIDDEN1_SIZE = flags.DEFINE_integer("hidden1_size", 512, "")
 HIDDEN2_SIZE = flags.DEFINE_integer("hidden2_size", 256, "")
 NUM_BITS = flags.DEFINE_integer("num_bits", 6, "")
 LEARNING_RATE = flags.DEFINE_float("learning_rate", 1e-3, "")
-TRAINING_STEPS = flags.DEFINE_integer("training_steps", 10_000_000, "")
+TRAINING_STEPS = flags.DEFINE_integer("training_steps", 100_000, "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 200, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
 
