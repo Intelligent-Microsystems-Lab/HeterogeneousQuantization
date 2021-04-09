@@ -77,6 +77,11 @@ def nn_model(params, state, x):
 
     return state, x
 
+def mse_loss(logits, labels):
+    # simple MSE loss
+    loss = jnp.mean((logits[:, 0, :] - labels[0, :, :]) ** 2)
+
+    return loss
 
 @jax.jit
 def train_step(params, batch):
