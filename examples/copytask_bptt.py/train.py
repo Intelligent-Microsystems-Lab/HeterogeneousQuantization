@@ -70,17 +70,20 @@ def compute_metrics(logits, labels, mask):
 
 def nn_model(params, state, x):
     # two layer feedforward statefull NN
-    x = jnp.dot(x, params["w1"]) + state["s1"] * params["s1"]
-    state["s1"] = x
-    x = jax.nn.sigmoid(x)
+    x = jnp.dot(x, params["w1"]) + state["u1"] * params["u1"] + state["s1"] * params["s1"]
+    state["u1"] = x # membrane potential
+    x = jax.nn.sigmoid(x * 6)
+    state["s1"] = x # output spikes
 
-    x = jnp.dot(x, params["w2"]) + state["s2"] * params["s2"]
+    x = jnp.dot(x, params["w2"]) + state["u2"] * params["u2"] + state["s2"] * params["s2"]
+    state["u2"] = x
+    x = jax.nn.sigmoid(x * 6)
     state["s2"] = x
-    x = jax.nn.sigmoid(x)
 
-    x = jnp.dot(x, params["w3"]) + state["s3"] * params["s3"]
+    x = jnp.dot(x, params["w3"]) + state["u3"] * params["u3"] + state["s3"] * params["s3"]
+    state["u3"] = x
+    x = jax.nn.sigmoid(x * 6)
     state["s3"] = x
-    x = jax.nn.sigmoid(x)
 
     return state, x
 
@@ -114,6 +117,24 @@ def train_step(params, batch):
             )
         ),
         "s3": jnp.zeros(
+            (
+                local_batch_size,
+                NUM_BITS.value + 1,
+            )
+        ),
+        "u1": jnp.zeros(
+            (
+                local_batch_size,
+                HIDDEN1_SIZE.value,
+            )
+        ),
+        "u2": jnp.zeros(
+            (
+                local_batch_size,
+                HIDDEN2_SIZE.value,
+            )
+        ),
+        "u3": jnp.zeros(
             (
                 local_batch_size,
                 NUM_BITS.value + 1,
@@ -178,6 +199,24 @@ def eval_model(params, batch):
                 NUM_BITS.value + 1,
             )
         ),
+        "u1": jnp.zeros(
+            (
+                local_batch_size,
+                HIDDEN1_SIZE.value,
+            )
+        ),
+        "u2": jnp.zeros(
+            (
+                local_batch_size,
+                HIDDEN2_SIZE.value,
+            )
+        ),
+        "u3": jnp.zeros(
+            (
+                local_batch_size,
+                NUM_BITS.value + 1,
+            )
+        ),
     }
 
     final_carry, output_seq = jax.lax.scan(
@@ -234,15 +273,12 @@ def main(_):
             (HIDDEN2_SIZE.value, NUM_BITS.value + 1),
         )
         / jnp.sqrt(HIDDEN2_SIZE.value),
-        "s1": jnp.clip(
-            jax.random.normal(s1_rng, (HIDDEN1_SIZE.value,)) + 0.8, -1, 1
-        ),
-        "s2": jnp.clip(
-            jax.random.normal(s1_rng, (HIDDEN2_SIZE.value,)) + 0.8, -1, 1
-        ),
-        "s3": jnp.clip(
-            jax.random.normal(s1_rng, (NUM_BITS.value + 1,)) + 0.8, -1, 1
-        ),
+        "s1": jax.random.normal(s1_rng, (HIDDEN1_SIZE.value,)) + 0.8,
+        "s2": jax.random.normal(s1_rng, (HIDDEN2_SIZE.value,)) + 0.8,
+        "s3": jax.random.normal(s1_rng, (NUM_BITS.value + 1,)) + 0.8,
+        "u1": jax.random.normal(s1_rng, (HIDDEN1_SIZE.value,)) - 0.2,
+        "u2": jax.random.normal(s1_rng, (HIDDEN2_SIZE.value,)) - 0.2,
+        "u3": jax.random.normal(s1_rng, (NUM_BITS.value + 1,)) - 0.2,
     }
 
     # Training loop.
