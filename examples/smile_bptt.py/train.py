@@ -85,37 +85,37 @@ def train_step(params, batch):
     init_state = {
         "s1": jnp.zeros(
             (
-                local_batch_size,
+                1,
                 HIDDEN1_SIZE.value,
             )
         ),
         "s2": jnp.zeros(
             (
-                local_batch_size,
+                1,
                 HIDDEN2_SIZE.value,
             )
         ),
         "s3": jnp.zeros(
             (
-                local_batch_size,
+                1,
                 NUM_BITS.value + 1,
             )
         ),
         "u1": jnp.zeros(
             (
-                local_batch_size,
+                1,
                 HIDDEN1_SIZE.value,
             )
         ),
         "u2": jnp.zeros(
             (
-                local_batch_size,
+                1,
                 HIDDEN2_SIZE.value,
             )
         ),
         "u3": jnp.zeros(
             (
-                local_batch_size,
+                1,
                 NUM_BITS.value + 1,
             )
         ),
