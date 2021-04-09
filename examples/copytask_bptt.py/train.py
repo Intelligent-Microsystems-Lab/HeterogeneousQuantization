@@ -305,6 +305,10 @@ def main(_):
 
         params, train_metrics = train_step(params, batch)
 
+        for key, val in train_metrics.items():  # type: ignore
+            tag = "train_%s" % key
+            summary_writer.scalar(tag, val, (step + 1) * BATCH_SIZE.value)
+
         # Periodically report loss and show an example
         if (step + 1) % EVALUATION_INTERVAL.value == 0:
             rng, inpt_rng = jax.random.split(rng)

@@ -206,6 +206,7 @@ def main(_):
     logging.info(jax.devices())
     for step in range(TRAINING_STEPS.value):
         params, loss_val, logits = train_step(params, data)
+        summary_writer.scalar('train_loss', loss_val, (step + 1))
 
         # Periodically report loss and show an example
         if (step + 1) % EVALUATION_INTERVAL.value == 0:
