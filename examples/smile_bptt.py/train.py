@@ -42,7 +42,7 @@ import uuid
 # config.update('jax_disable_jit', True)
 
 # parameters
-WORK_DIR = flags.DEFINE_string("work_dir", "/tmp/" + str(uuid.uuid4()), "")
+WORK_DIR = flags.DEFINE_string("work_dir", "../../../training_dir/" + str(uuid.uuid4()), "")
 INPUT_FILE = flags.DEFINE_string(
     "input_file", "../../datasets/smile/input_700_250_25.pkl", ""
 )

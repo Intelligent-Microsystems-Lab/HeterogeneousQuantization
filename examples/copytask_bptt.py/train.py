@@ -42,7 +42,7 @@ sys.path.append("../..")
 from datasets import copy_task
 
 # parameters
-WORK_DIR = flags.DEFINE_string("work_dir", "/tmp/" + str(uuid.uuid4()), "")
+WORK_DIR = flags.DEFINE_string("work_dir", "../../../training_dir/" + str(uuid.uuid4()), "")
 BATCH_SIZE = flags.DEFINE_integer("batch_size", 1024, "")
 HIDDEN1_SIZE = flags.DEFINE_integer("hidden1_size", 512, "")
 HIDDEN2_SIZE = flags.DEFINE_integer("hidden2_size", 256, "")
