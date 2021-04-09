@@ -98,7 +98,7 @@ def train_step(params, batch):
         "s3": jnp.zeros(
             (
                 1,
-                NUM_BITS.value + 1,
+                out_dim,
             )
         ),
         "u1": jnp.zeros(
@@ -116,7 +116,7 @@ def train_step(params, batch):
         "u3": jnp.zeros(
             (
                 1,
-                NUM_BITS.value + 1,
+                out_dim,
             )
         ),
     }
@@ -172,9 +172,9 @@ def main(_):
     params = {
         "w1": jax.random.normal(
             w1_rng,
-            (NUM_BITS.value + 2, HIDDEN1_SIZE.value),
+            (inp_dim, HIDDEN1_SIZE.value),
         )
-        / jnp.sqrt(NUM_BITS.value + 2),
+        / jnp.sqrt(inp_dim),
         "w2": jax.random.normal(
             w2_rng,
             (HIDDEN1_SIZE.value, HIDDEN2_SIZE.value),
@@ -182,15 +182,15 @@ def main(_):
         / jnp.sqrt(HIDDEN1_SIZE.value),
         "w3": jax.random.normal(
             w2_rng,
-            (HIDDEN2_SIZE.value, NUM_BITS.value + 1),
+            (HIDDEN2_SIZE.value, out_dim),
         )
         / jnp.sqrt(HIDDEN2_SIZE.value),
         "s1": jax.random.normal(s1_rng, (HIDDEN1_SIZE.value,)) + 0.8,
         "s2": jax.random.normal(s1_rng, (HIDDEN2_SIZE.value,)) + 0.8,
-        "s3": jax.random.normal(s1_rng, (NUM_BITS.value + 1,)) + 0.8,
+        "s3": jax.random.normal(s1_rng, (out_dim,)) + 0.8,
         "u1": jax.random.normal(s1_rng, (HIDDEN1_SIZE.value,)) - 0.2,
         "u2": jax.random.normal(s1_rng, (HIDDEN2_SIZE.value,)) - 0.2,
-        "u3": jax.random.normal(s1_rng, (NUM_BITS.value + 1,)) - 0.2,
+        "u3": jax.random.normal(s1_rng, (out_dim,)) - 0.2,
     }
 
     # Training loop.
