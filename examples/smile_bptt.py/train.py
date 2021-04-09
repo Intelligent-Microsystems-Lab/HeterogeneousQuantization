@@ -172,12 +172,12 @@ def main(_):
         )
         / jnp.sqrt(HIDDEN2_SIZE.value),
         "s1": jnp.clip(
-            jax.random.normal(s1_rng, (HIDDEN1_SIZE.value,)) * 0.8, -1, 1
+            jax.random.normal(s1_rng, (HIDDEN1_SIZE.value,)) + 0.8, -1, 1
         ),
         "s2": jnp.clip(
-            jax.random.normal(s1_rng, (HIDDEN2_SIZE.value,)) * 0.8, -1, 1
+            jax.random.normal(s1_rng, (HIDDEN2_SIZE.value,)) + 0.8, -1, 1
         ),
-        "s3": jnp.clip(jax.random.normal(s1_rng, (out_dim,)) * 0.8, -1, 1),
+        "s3": jnp.clip(jax.random.normal(s1_rng, (out_dim,)) + 0.8, -1, 1),
     }
 
     # Training loop.
