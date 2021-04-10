@@ -89,8 +89,8 @@ class CopyTask(tfds.core.GeneratorBasedBuilder):
         "1.20.6": "Initial release.",
     }
     NUM_BITS: int = 6
-    MIN_LENGTH: int = 1
-    MAX_LENGTH: int = 5
+    MIN_LENGTH: int = 4
+    MAX_LENGTH: int = 4
     MIN_REPEATS: int = 1
     MAX_REPEATS: int = 1
     DS_SIZE: int = 1024
