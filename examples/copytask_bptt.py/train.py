@@ -48,7 +48,7 @@ WORK_DIR = flags.DEFINE_string(
     "work_dir", "../../../training_dir/" + str(uuid.uuid4()), ""
 )
 BATCH_SIZE = flags.DEFINE_integer("batch_size", 1024, "")
-INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.05, "")
+INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.5, "")
 LEARNING_RATE = flags.DEFINE_float("learning_rate", 1e-4, "")
 TRAINING_STEPS = flags.DEFINE_integer("training_steps", 500_000_000, "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 100, "")
@@ -61,7 +61,6 @@ def compute_metrics(logits, labels, mask):
     # mask irrelevant outputs
     mask = jnp.repeat(jnp.expand_dims(mask, 2), NUM_BITS + 1, 2)
     logits = logits * mask
-    logits = jax.nn.sigmoid(logits)
     # simple MSE loss
     loss = ((logits - labels) ** 2).sum() / mask.sum()
 
@@ -74,7 +73,6 @@ def mse_loss(logits, labels, mask):
     # mask irrelevant outputs
     mask = jnp.repeat(jnp.expand_dims(mask, 2), NUM_BITS + 1, 2)
     logits = logits * mask
-    logits = jax.nn.sigmoid(logits)
     # simple MSE loss
     loss = ((logits - labels) ** 2).sum() / mask.sum()
 
