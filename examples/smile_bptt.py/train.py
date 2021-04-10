@@ -38,44 +38,28 @@ import matplotlib.pyplot as plt
 
 import uuid
 
+sys.path.append("../..")
+from model import *
+
 # from jax.config import config
 # config.update('jax_disable_jit', True)
 
 # parameters
-WORK_DIR = flags.DEFINE_string("work_dir", "../../../training_dir/" + str(uuid.uuid4()), "")
+WORK_DIR = flags.DEFINE_string(
+    "work_dir", "../../../training_dir/" + str(uuid.uuid4()), ""
+)
 INPUT_FILE = flags.DEFINE_string(
     "input_file", "../../datasets/smile/input_700_250_25.pkl", ""
 )
 TARGET_FILE = flags.DEFINE_string(
     "target_file", "../../datasets/smile/smile95.pkl", ""
 )
-HIDDEN1_SIZE = flags.DEFINE_integer("hidden1_size", 512, "")
-HIDDEN2_SIZE = flags.DEFINE_integer("hidden2_size", 256, "")
-NUM_BITS = flags.DEFINE_integer("num_bits", 6, "")
-LEARNING_RATE = flags.DEFINE_float("learning_rate", 1e-3, "")
+LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.5, "")
+INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.1, "")
 TRAINING_STEPS = flags.DEFINE_integer("training_steps", 100_000, "")
-EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 200, "")
+EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 10, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
 
-
-def nn_model(params, state, x):
-    # two layer feedforward statefull NN
-    x = jnp.dot(x, params["w1"]) + state["u1"] * params["u1"] + state["s1"] * params["s1"] + params['b1']
-    state["u1"] = x # membrane potential
-    x = jax.nn.sigmoid(x * 6)
-    state["s1"] = x # output spikes
-
-    x = jnp.dot(x, params["w2"]) + state["u2"] * params["u2"] + state["s2"] * params["s2"] + params['b2']
-    state["u2"] = x
-    x = jax.nn.sigmoid(x * 6)
-    state["s2"] = x
-
-    x = jnp.dot(x, params["w3"]) + state["u3"] * params["u3"] + state["s3"] * params["s3"] + params['b3']
-    state["u3"] = x
-    x = jax.nn.sigmoid(x * 6)
-    state["s3"] = x
-
-    return state, x
 
 def mse_loss(logits, labels):
     # simple MSE loss
@@ -83,54 +67,18 @@ def mse_loss(logits, labels):
 
     return loss
 
+
 @jax.jit
 def train_step(params, batch):
     out_dim = batch["target"].shape[1]
 
-    init_state = {
-        "s1": jnp.zeros(
-            (
-                1,
-                HIDDEN1_SIZE.value,
-            )
-        ),
-        "s2": jnp.zeros(
-            (
-                1,
-                HIDDEN2_SIZE.value,
-            )
-        ),
-        "s3": jnp.zeros(
-            (
-                1,
-                out_dim,
-            )
-        ),
-        "u1": jnp.zeros(
-            (
-                1,
-                HIDDEN1_SIZE.value,
-            )
-        ),
-        "u2": jnp.zeros(
-            (
-                1,
-                HIDDEN2_SIZE.value,
-            )
-        ),
-        "u3": jnp.zeros(
-            (
-                1,
-                out_dim,
-            )
-        ),
-    }
+    init_s = init_state(out_dim, 1)
 
     def loss_fn(params):
         nn_model_fn = functools.partial(nn_model, params)
         final_carry, output_seq = jax.lax.scan(
             nn_model_fn,
-            init=init_state,
+            init=init_s,
             xs=jnp.moveaxis(batch["observations"], (0, 1, 2), (1, 0, 2)),
         )
         loss = mse_loss(output_seq, batch["target"])
@@ -173,40 +121,15 @@ def main(_):
     t_dim = data["observations"].shape[1]
 
     # initialize parameters
-    rng, w1_rng, w2_rng, s1_rng, s2_rng = jax.random.split(rng, 5)
-    params = {
-        "w1": jax.random.normal(
-            w1_rng,
-            (inp_dim, HIDDEN1_SIZE.value),
-        )
-        / jnp.sqrt(inp_dim),
-        "w2": jax.random.normal(
-            w2_rng,
-            (HIDDEN1_SIZE.value, HIDDEN2_SIZE.value),
-        )
-        / jnp.sqrt(HIDDEN1_SIZE.value),
-        "w3": jax.random.normal(
-            w2_rng,
-            (HIDDEN2_SIZE.value, out_dim),
-        )
-        / jnp.sqrt(HIDDEN2_SIZE.value),
-        "s1": jax.random.normal(s1_rng, (HIDDEN1_SIZE.value,)) * .1 + 0.8,
-        "s2": jax.random.normal(s1_rng, (HIDDEN2_SIZE.value,)) * .1 + 0.8,
-        "s3": jax.random.normal(s1_rng, (out_dim,)) * .1 + 0.8,
-        "u1": jax.random.normal(s1_rng, (HIDDEN1_SIZE.value,)) * .1 - 0.2,
-        "u2": jax.random.normal(s1_rng, (HIDDEN2_SIZE.value,)) * .1 - 0.2,
-        "u3": jax.random.normal(s1_rng, (out_dim,)) * .1  - 0.2,
-        "b1": jnp.zeros((HIDDEN1_SIZE.value,)),
-        "b2": jnp.zeros((HIDDEN2_SIZE.value,)),
-        "b3": jnp.zeros((out_dim,))
-    }
+    rng, p_rng = jax.random.split(rng, 2)
+    params = init_params(p_rng, inp_dim, out_dim, INIT_SCALE_S.value)
 
     # Training loop.
     logging.info("Files in: " + WORK_DIR.value)
     logging.info(jax.devices())
     for step in range(TRAINING_STEPS.value):
         params, loss_val, logits = train_step(params, data)
-        summary_writer.scalar('train_loss', loss_val, (step + 1))
+        summary_writer.scalar("train_loss", loss_val, (step + 1))
 
         # Periodically report loss and show an example
         if (step + 1) % EVALUATION_INTERVAL.value == 0:

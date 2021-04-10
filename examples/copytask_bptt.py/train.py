@@ -23,7 +23,6 @@ from absl import flags
 from absl import logging
 import functools
 
-# import haiku as hk
 import jax
 import jax.numpy as jnp
 import optax
@@ -33,6 +32,8 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 from flax.metrics import tensorboard
 
+import matplotlib.pyplot as plt
+
 import uuid
 
 # from jax.config import config
@@ -40,61 +41,42 @@ import uuid
 
 sys.path.append("../..")
 from datasets import copy_task
+from model import *
 
 # parameters
-WORK_DIR = flags.DEFINE_string("work_dir", "../../../training_dir/" + str(uuid.uuid4()), "")
+WORK_DIR = flags.DEFINE_string(
+    "work_dir", "../../../training_dir/" + str(uuid.uuid4()), ""
+)
 BATCH_SIZE = flags.DEFINE_integer("batch_size", 1024, "")
-HIDDEN1_SIZE = flags.DEFINE_integer("hidden1_size", 512, "")
-HIDDEN2_SIZE = flags.DEFINE_integer("hidden2_size", 256, "")
-NUM_BITS = flags.DEFINE_integer("num_bits", 6, "")
+INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.05, "")
 LEARNING_RATE = flags.DEFINE_float("learning_rate", 1e-4, "")
 TRAINING_STEPS = flags.DEFINE_integer("training_steps", 500_000_000, "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 100, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
 
+NUM_BITS = 6  # dataset specific value
+
 
 def compute_metrics(logits, labels, mask):
     # mask irrelevant outputs
-    logits = logits * jnp.expand_dims(mask, 2)
+    mask = jnp.repeat(jnp.expand_dims(mask, 2), NUM_BITS + 1, 2)
+    logits = logits * mask
+    logits = jax.nn.sigmoid(logits)
     # simple MSE loss
-    loss = ((logits - labels) ** 2).sum() / (
-        mask.sum() * 7 + jnp.finfo(jnp.float32).eps
-    )
-    # mask
-    accuracy = 1 - (~(jnp.clip(jnp.round(logits), 0, 1) == labels)).sum() / (
-        mask.sum() * 7 + jnp.finfo(jnp.float32).eps
-    )
+    loss = ((logits - labels) ** 2).sum() / mask.sum()
+
+    accuracy = 1 - (~(jnp.round(logits) == labels)).sum() / mask.sum()
 
     return {"loss": loss, "accuracy": accuracy}
 
 
-def nn_model(params, state, x):
-    # two layer feedforward statefull NN
-    x = jnp.dot(x, params["w1"]) + state["u1"] * params["u1"] + state["s1"] * params["s1"] + params["b1"]
-    state["u1"] = x # membrane potential
-    x = jax.nn.sigmoid(x * 6)
-    state["s1"] = x # output spikes
-
-    x = jnp.dot(x, params["w2"]) + state["u2"] * params["u2"] + state["s2"] * params["s2"] + params["b2"]
-    state["u2"] = x
-    x = jax.nn.sigmoid(x * 6)
-    state["s2"] = x
-
-    x = jnp.dot(x, params["w3"]) + state["u3"] * params["u3"] + state["s3"] * params["s3"] + params["b3"]
-    state["u3"] = x
-    x = jax.nn.sigmoid(x * 6)
-    state["s3"] = x
-
-    return state, x
-
-
 def mse_loss(logits, labels, mask):
     # mask irrelevant outputs
-    logits = logits * jnp.expand_dims(mask, 2)
+    mask = jnp.repeat(jnp.expand_dims(mask, 2), NUM_BITS + 1, 2)
+    logits = logits * mask
+    logits = jax.nn.sigmoid(logits)
     # simple MSE loss
-    loss = ((logits - labels) ** 2).sum() / (
-        mask.sum() * 7 + jnp.finfo(jnp.float32).eps
-    )
+    loss = ((logits - labels) ** 2).sum() / mask.sum()
 
     return loss
 
@@ -103,50 +85,13 @@ def mse_loss(logits, labels, mask):
 def train_step(params, batch):
     local_batch_size = batch["observations"].shape[0]
 
-    init_state = {
-        "s1": jnp.zeros(
-            (
-                local_batch_size,
-                HIDDEN1_SIZE.value,
-            )
-        ),
-        "s2": jnp.zeros(
-            (
-                local_batch_size,
-                HIDDEN2_SIZE.value,
-            )
-        ),
-        "s3": jnp.zeros(
-            (
-                local_batch_size,
-                NUM_BITS.value + 1,
-            )
-        ),
-        "u1": jnp.zeros(
-            (
-                local_batch_size,
-                HIDDEN1_SIZE.value,
-            )
-        ),
-        "u2": jnp.zeros(
-            (
-                local_batch_size,
-                HIDDEN2_SIZE.value,
-            )
-        ),
-        "u3": jnp.zeros(
-            (
-                local_batch_size,
-                NUM_BITS.value + 1,
-            )
-        ),
-    }
+    init_s = init_state(NUM_BITS + 1, local_batch_size)
 
     def loss_fn(params):
         nn_model_fn = functools.partial(nn_model, params)
         final_carry, output_seq = jax.lax.scan(
             nn_model_fn,
-            init=init_state,
+            init=init_s,
             xs=jnp.moveaxis(batch["observations"], (0, 1, 2), (1, 0, 2)),
         )
         loss = mse_loss(
@@ -158,7 +103,6 @@ def train_step(params, batch):
 
     grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
     (_, logits), grad = grad_fn(params)
-
     # simple SGD step
     params = jax.tree_multimap(
         lambda x, y: x - LEARNING_RATE.value * y, params, grad
@@ -180,48 +124,11 @@ def eval_model(params, batch):
 
     nn_model_fn = functools.partial(nn_model, params)
 
-    init_state = {
-        "s1": jnp.zeros(
-            (
-                local_batch_size,
-                HIDDEN1_SIZE.value,
-            )
-        ),
-        "s2": jnp.zeros(
-            (
-                local_batch_size,
-                HIDDEN2_SIZE.value,
-            )
-        ),
-        "s3": jnp.zeros(
-            (
-                local_batch_size,
-                NUM_BITS.value + 1,
-            )
-        ),
-        "u1": jnp.zeros(
-            (
-                local_batch_size,
-                HIDDEN1_SIZE.value,
-            )
-        ),
-        "u2": jnp.zeros(
-            (
-                local_batch_size,
-                HIDDEN2_SIZE.value,
-            )
-        ),
-        "u3": jnp.zeros(
-            (
-                local_batch_size,
-                NUM_BITS.value + 1,
-            )
-        ),
-    }
+    init_s = init_state(NUM_BITS + 1, local_batch_size)
 
     final_carry, output_seq = jax.lax.scan(
         nn_model_fn,
-        init=init_state,
+        init=init_s,
         xs=jnp.moveaxis(batch["observations"], (0, 1, 2), (1, 0, 2)),
     )
 
@@ -256,53 +163,26 @@ def main(_):
     train_ds, test_ds = get_datasets()
 
     # initialize parameters
-    rng, w1_rng, w2_rng, s1_rng, s2_rng = jax.random.split(rng, 5)
-    params = {
-        "w1": jax.random.normal(
-            w1_rng,
-            (NUM_BITS.value + 2, HIDDEN1_SIZE.value),
-        )
-        / jnp.sqrt(NUM_BITS.value + 2),
-        "w2": jax.random.normal(
-            w2_rng,
-            (HIDDEN1_SIZE.value, HIDDEN2_SIZE.value),
-        )
-        / jnp.sqrt(HIDDEN1_SIZE.value),
-        "w3": jax.random.normal(
-            w2_rng,
-            (HIDDEN2_SIZE.value, NUM_BITS.value + 1),
-        )
-        / jnp.sqrt(HIDDEN2_SIZE.value),
-        "s1": jax.random.normal(s1_rng, (HIDDEN1_SIZE.value,)) * .1 + 0.8,
-        "s2": jax.random.normal(s1_rng, (HIDDEN2_SIZE.value,)) * .1 + 0.8,
-        "s3": jax.random.normal(s1_rng, (NUM_BITS.value + 1,)) * .1 + 0.8,
-        "u1": jax.random.normal(s1_rng, (HIDDEN1_SIZE.value,)) * .1 - 0.2,
-        "u2": jax.random.normal(s1_rng, (HIDDEN2_SIZE.value,)) * .1 - 0.2,
-        "u3": jax.random.normal(s1_rng, (NUM_BITS.value + 1,)) * .1 - 0.2,
-        "b1": jnp.zeros((HIDDEN1_SIZE.value,)),
-        "b2": jnp.zeros((HIDDEN2_SIZE.value,)),
-        "b3": jnp.zeros((NUM_BITS.value + 1,)),
-    }
+    rng, p_rng = jax.random.split(rng, 2)
+    params = init_params(p_rng, NUM_BITS + 2, NUM_BITS + 1, INIT_SCALE_S.value)
 
     # Training loop.
     logging.info("Files in: " + WORK_DIR.value)
     logging.info(jax.devices())
     for step in range(int(TRAINING_STEPS.value / BATCH_SIZE.value) + 1):
         # Do a batch of SGD.
-        rng, inpt_rng = jax.random.split(rng)
+        rng, inpt_rng = jax.random.split(rng, 2)
         batch_idx = jax.random.choice(
             inpt_rng,
             a=train_ds["mask"].shape[0],
             shape=(BATCH_SIZE.value,),
             replace=False,
         )
-
         batch = {
-            "observations": train_ds["observations"][batch_idx],
-            "target": train_ds["target"][batch_idx],
-            "mask": train_ds["mask"][batch_idx],
+            "observations": train_ds["observations"][batch_idx, :, :],
+            "target": train_ds["target"][batch_idx, :, :],
+            "mask": train_ds["mask"][batch_idx, :],
         }
-
         params, train_metrics = train_step(params, batch)
 
         for key, val in train_metrics.items():  # type: ignore
@@ -311,7 +191,7 @@ def main(_):
 
         # Periodically report loss and show an example
         if (step + 1) % EVALUATION_INTERVAL.value == 0:
-            rng, inpt_rng = jax.random.split(rng)
+            rng, inpt_rng = jax.random.split(rng, 2)
             batch_idx = jax.random.choice(
                 inpt_rng,
                 a=test_ds["mask"].shape[0],
@@ -319,16 +199,18 @@ def main(_):
                 replace=False,
             )
             shuffle_test_ds = {
-                "observations": test_ds["observations"][batch_idx],
-                "target": test_ds["target"][batch_idx],
-                "mask": test_ds["mask"][batch_idx],
+                "observations": test_ds["observations"][batch_idx, :, :],
+                "target": test_ds["target"][batch_idx, :, :],
+                "mask": test_ds["mask"][batch_idx, :],
             }
 
             eval_metrics, ts_output = eval_model(params, shuffle_test_ds)
 
             logging.info(
-                "step: %d, loss: %.4f, accuracy: %.4f",
-                step + 1,
+                "step: %d, train_loss: %.4f, train_accuracy: %.4f, eval_loss: %.4f, eval_accuracy: %.4f",
+                (step + 1) * BATCH_SIZE.value,
+                train_metrics["loss"],
+                train_metrics["accuracy"],
                 eval_metrics["loss"],
                 eval_metrics["accuracy"],
             )
@@ -337,15 +219,25 @@ def main(_):
                 tag = "eval_%s" % key
                 summary_writer.scalar(tag, val, (step + 1) * BATCH_SIZE.value)
 
-            print(
-                copy_task.to_human_readable(
-                    data=shuffle_test_ds,
-                    model_output=jnp.moveaxis(
-                        jnp.round(ts_output), (0, 1, 2), (1, 0, 2)
-                    )
-                    * jnp.expand_dims(shuffle_test_ds["mask"], 2),
+            # save picture
+            plt.clf()
+            fig, axes = plt.subplots(nrows=3, ncols=3)
+            for i in range(3):
+                mask = jnp.repeat(
+                    jnp.expand_dims(shuffle_test_ds["mask"][i, :], 1),
+                    NUM_BITS + 1,
+                    1,
                 )
-            )
+                axes[i, 0].matshow(
+                    shuffle_test_ds["observations"][i, :, :].transpose()
+                )
+                axes[i, 1].matshow(
+                    shuffle_test_ds["target"][i, :, :].transpose()
+                )
+                axes[i, 2].matshow((ts_output[:, i, :] * mask).transpose())
+            plt.tight_layout()
+            plt.savefig(WORK_DIR.value + "/copy_task.png")
+            plt.close()
 
 
 if __name__ == "__main__":
