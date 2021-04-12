@@ -23,6 +23,7 @@ from absl import app
 from absl import flags
 from absl import logging
 import functools
+import time
 
 # import haiku as hk
 import jax
@@ -46,7 +47,7 @@ from model import *
 
 # parameters
 WORK_DIR = flags.DEFINE_string(
-    "work_dir", "../../../training_dir/" + str(uuid.uuid4()), ""
+    "work_dir", "../../../training_dir/params_bptt/", ""
 )
 INPUT_FILE = flags.DEFINE_string(
     "input_file", "../../datasets/smile/input_700_250_25.pkl", ""
@@ -130,9 +131,20 @@ def main(_):
     # Training loop.
     logging.info("Files in: " + WORK_DIR.value)
     logging.info(jax.devices())
+
+    params_hist = {0: params}
+    t_loop_start = time.time()
     for step in range(TRAINING_STEPS.value):
         params, loss_val, logits = train_step(params, data)
         summary_writer.scalar("train_loss", loss_val, (step + 1))
+        summary_writer.scalar(
+            "step_time", (time.time() - t_loop_start), (step + 1)
+        )
+        t_loop_start = time.time()
+        params_hist[step + 1] = params
+
+        with open(WORK_DIR.value + "/params_hist.pickle", "wb") as handle:
+            pickle.dump(params_hist, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
         # Periodically report loss and show an example
         if (step + 1) % EVALUATION_INTERVAL.value == 0:

@@ -18,6 +18,7 @@
 
 from typing import Any, NamedTuple
 import pickle
+import time
 
 from absl import app
 from absl import flags
@@ -95,7 +96,7 @@ def train_step(params, batch):
         output_grads,
     )
 
-    return params, loss_val, output_seq
+    return params, loss_val / 250, output_seq
 
 
 def get_data():
@@ -118,6 +119,11 @@ def main(_):
         jax.tree_util.tree_map(lambda x: x.value, flags.FLAGS.__flags)
     )
 
+    with open(
+        "../../../training_dir/params_bptt/params_hist.pickle", "rb"
+    ) as f:
+        bptt_params = pickle.load(f)
+
     # get data set
     rng = jax.random.PRNGKey(SEED.value)
     data = get_data()
@@ -133,9 +139,33 @@ def main(_):
     # Training loop.
     logging.info("Files in: " + WORK_DIR.value)
     logging.info(jax.devices())
+
+    params_hist = {0: params}
+    t_loop_start = time.time()
     for step in range(TRAINING_STEPS.value):
+        max_dev = jnp.max(
+            jnp.array(
+                jax.tree_util.tree_leaves(
+                    jax.tree_util.tree_multimap(
+                        lambda x, y: jnp.max(x - y),
+                        params_hist[step],
+                        bptt_params[step],
+                    )
+                )
+            )
+        )
+
         params, loss_val, logits = train_step(params, data)
         summary_writer.scalar("train_loss", loss_val, (step + 1))
+        summary_writer.scalar("param_dev", max_dev, (step + 1))
+        summary_writer.scalar(
+            "step_time", (time.time() - t_loop_start), (step + 1)
+        )
+        t_loop_start = time.time()
+        params_hist[step + 1] = params
+
+        with open(WORK_DIR.value + "/params_hist.pickle", "wb") as handle:
+            pickle.dump(params_hist, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
         # Periodically report loss and show an example
         if (step + 1) % EVALUATION_INTERVAL.value == 0:
