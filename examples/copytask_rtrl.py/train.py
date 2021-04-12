@@ -34,7 +34,7 @@ from jax.lib import xla_bridge
 from flax.metrics import tensorboard
 import uuid
 
-from repeat_copy import RepeatCopy
+# from repeat_copy import RepeatCopy
 
 # from jax.config import config
 # config.update("jax_disable_jit", True)
@@ -145,7 +145,7 @@ def main(_):
     rng = hk.PRNGSequence(SEED.value)
 
     # ds = tfds.load("copy_task")
-    ds = RepeatCopy(next(rng), batch_size=TRAIN_BATCH_SIZE.value)
+    # ds = RepeatCopy(next(rng), batch_size=TRAIN_BATCH_SIZE.value)
     # ds_it = map(tf_to_numpy, (prep_ds(ds)))
 
     # Initialize training state.
@@ -184,6 +184,9 @@ def main(_):
     c_opt_state = opt_init(core_params)
     o_opt_state = opt_init(output_params)
 
+    import pdb
+
+    pdb.set_trace()
     # pmap
     update_step = jax.jit(
         functools.partial(

@@ -47,11 +47,11 @@ from model import *
 WORK_DIR = flags.DEFINE_string(
     "work_dir", "../../../training_dir/" + str(uuid.uuid4()), ""
 )
-BATCH_SIZE = flags.DEFINE_integer("batch_size", 1024, "")
-INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.5, "")
-LEARNING_RATE = flags.DEFINE_float("learning_rate", 1e-5, "")
+BATCH_SIZE = flags.DEFINE_integer("batch_size", 2048, "")
+INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.2, "")
+LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.01, "")
 TRAINING_STEPS = flags.DEFINE_integer("training_steps", 500_000_000, "")
-EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 100, "")
+EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 10, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
 
 NUM_BITS = 6  # dataset specific value
