@@ -17,237 +17,266 @@
 """Character-level language modelling with a recurrent network in JAX."""
 
 from typing import Any, NamedTuple
-import functools
-import time
+import pickle
 
 from absl import app
 from absl import flags
 from absl import logging
+import functools
+import time
 
-import haiku as hk
 import jax
 import jax.numpy as jnp
 import optax
 import sys
 
-from jax.lib import xla_bridge
+import tensorflow as tf
+import tensorflow_datasets as tfds
 from flax.metrics import tensorboard
+
+import matplotlib.pyplot as plt
+
 import uuid
 
-# from repeat_copy import RepeatCopy
-
 # from jax.config import config
-# config.update("jax_disable_jit", True)
+# config.update('jax_disable_jit', True)
 
 sys.path.append("../..")
+from datasets import copy_task
+from model import *
 from sparse_rtrl import get_rtrl_grad_func
 
-
 # parameters
-WORK_DIR = flags.DEFINE_string("work_dir", "/tmp/" + str(uuid.uuid4()), "")
-
-TRAIN_BATCH_SIZE = flags.DEFINE_integer("train_batch_size", 64, "")
-HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 128, "")
-LEARNING_RATE = flags.DEFINE_float("learning_rate", 1e-3, "")
-TRAINING_STEPS = flags.DEFINE_integer("training_steps", 2_000_000, "")
+WORK_DIR = flags.DEFINE_string(
+    "work_dir", "../../../training_dir/params_rtrl_copy_task/", ""
+)
+BATCH_SIZE = flags.DEFINE_integer("batch_size", 1024, "")
+INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.2, "")
+LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.01, "")
+TRAINING_STEPS = flags.DEFINE_integer("training_steps", 100_000, "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 10, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
-NUM_BITS = flags.DEFINE_integer(
-    "num_bits", 6, "Dimensionality of each vector to copy"
-)
-MAX_LENGTH = flags.DEFINE_integer(
-    "max_length",
-    30,
-    "Upper limit on number of vectors in the observation pattern to copy",
-)
+
+NUM_BITS = 6  # dataset specific value
 
 
-def sigmoid_cross_entropy_with_logits(x, z):
-    # from https://www.tensorflow.org/api_docs/python/tf/nn/sigmoid_cross_entropy_with_logits
-    return jnp.where(x > 0, x, 0) - x * z + jnp.log(1 + jnp.exp(-jnp.abs(x)))
+def compute_metrics(logits, labels, mask):
+    # mask irrelevant outputs
+    mask = jnp.repeat(jnp.expand_dims(mask, 2), NUM_BITS + 1, 2)
+    logits = logits * mask
+    # simple MSE loss
+    loss = ((logits - labels) ** 2).sum() / mask.sum()
+
+    accuracy = 1 - (~(jnp.round(logits) == labels)).sum() / mask.sum()
+
+    return {"loss": loss, "accuracy": accuracy}
 
 
-def masked_sigmoid_cross_entropy(batch, logits, mask):
-    batch_size, spatial_dim = batch.shape
-
-    # https://stats.stackexchange.com/questions/211858/how-to-compute-bits-per-character-bpc
-    xent = sigmoid_cross_entropy_with_logits(batch, logits)
-    loss_time_batch = jnp.sum(xent, axis=1)
-    loss_batch = loss_time_batch * mask
-
-    loss = jnp.sum(loss_batch) / batch_size
-    loss /= jnp.log(2.0)
+def mse_loss(logits, labels, mask):
+    # mask irrelevant outputs
+    mask = jnp.repeat(jnp.expand_dims(mask, 1), NUM_BITS + 1, 1)
+    logits = logits * mask
+    # simple MSE loss
+    loss = ((logits - labels) ** 2).sum() / mask.sum()
 
     return loss
 
 
-def output_fn(params, inpt):
-    out = jnp.dot(inpt, params["w"]) + params["b"]
-    return out
+rtrl_grad_fn = get_rtrl_grad_func(core_fn, output_fn, mse_loss, False)
 
 
-def core_fn(params, state, inpt):
-    input_to_hidden = (
-        jnp.dot(inpt, params["inp_hidden"]) + params["b_inp_hidden"]
-    )
-    hidden_to_hidden = (
-        jnp.dot(state, params["hidden_hidden"]) + params["b_hidden_hidden"]
-    )
-    out = jax.nn.relu(input_to_hidden + hidden_to_hidden)
-    return out, out
+@jax.jit
+def train_step(params, batch):
+    local_batch_size = batch["input_seq"].shape[1]
+    seq_len = batch["input_seq"].shape[0]
 
-
-class TrainingState(NamedTuple):
-    core_params: dict
-    c_opt_state: optax.OptState
-    output_params: dict
-    o_opt_state: optax.OptState
-
-
-def update(apply_fn, optim, state, batch):
-    T = batch["input_seq"].shape[1]
-    inital_state = jnp.zeros((TRAIN_BATCH_SIZE.value, HIDDEN_SIZE.value))
+    init_s = init_state(NUM_BITS + 1, local_batch_size)
 
     (loss_val, (final_state, output_seq)), (
         core_grads,
         output_grads,
-    ) = apply_fn(state.core_params, state.output_params, inital_state, batch)
+    ) = rtrl_grad_fn(params["cf"], params["of"], init_s, batch)
 
-    core_grads = jax.tree_map(lambda x: x / T, core_grads)
-    output_grads = jax.tree_map(lambda x: x / T, output_grads)
-
-    updates, c_opt_state = optim(core_grads, state.c_opt_state)
-    core_params = optax.apply_updates(state.core_params, updates)
-
-    updates, o_opt_state = optim(output_grads, state.o_opt_state)
-    output_params = optax.apply_updates(state.output_params, updates)
-
-    state = TrainingState(
-        core_params=core_params,
-        c_opt_state=c_opt_state,
-        output_params=output_params,
-        o_opt_state=o_opt_state,
+    # simple SGD step
+    params["cf"] = jax.tree_multimap(
+        lambda x, y: x - LEARNING_RATE.value * y / 5,
+        params["cf"],
+        core_grads,
+    )
+    params["of"] = jax.tree_multimap(
+        lambda x, y: x - LEARNING_RATE.value * y / 5,
+        params["of"],
+        output_grads,
     )
 
-    return loss_val / T, output_seq, state
+    # compute metrics
+    metrics = compute_metrics(
+        output_seq,
+        batch["target_seq"],
+        batch["mask_seq"],
+    )
+
+    return params, metrics, {"cf": core_grads, "of": output_grads}
+
+
+@jax.jit
+def eval_model(params, batch):
+    local_batch_size = batch["input_seq"].shape[0]
+
+    nn_model_fn = functools.partial(nn_model, params)
+
+    init_s = init_state(NUM_BITS + 1, local_batch_size)
+
+    final_carry, output_seq = jax.lax.scan(
+        nn_model_fn,
+        init=init_s,
+        xs=jnp.moveaxis(batch["input_seq"], (0, 1, 2), (1, 0, 2)),
+    )
+
+    metrics = compute_metrics(
+        output_seq,
+        jnp.moveaxis(batch["target_seq"], (0, 1, 2), (1, 0, 2)),
+        jnp.moveaxis(batch["mask_seq"], (0, 1), (1, 0)),
+    )
+
+    return metrics, output_seq
+
+
+def get_datasets():
+    """Load copy_task dataset train and test datasets into memory."""
+    ds_builder = tfds.builder("copy_task")
+    ds_builder.download_and_prepare()
+    train_ds = tfds.as_numpy(
+        ds_builder.as_dataset(split="train", batch_size=-1)
+    )
+    test_ds = tfds.as_numpy(ds_builder.as_dataset(split="test", batch_size=-1))
+    return train_ds, test_ds
 
 
 def main(_):
-    logging.info(xla_bridge.get_backend().platform)
-    logging.info(jax.host_count())
-
     summary_writer = tensorboard.SummaryWriter(WORK_DIR.value)
     summary_writer.hparams(
         jax.tree_util.tree_map(lambda x: x.value, flags.FLAGS.__flags)
     )
 
-    flags.FLAGS.alsologtostderr = True
-    rng = hk.PRNGSequence(SEED.value)
+    with open(
+        "../../../training_dir/params_bptt_copy_task/params_hist.pickle", "rb"
+    ) as f:
+        bptt_params = pickle.load(f)
 
-    # ds = tfds.load("copy_task")
-    # ds = RepeatCopy(next(rng), batch_size=TRAIN_BATCH_SIZE.value)
-    # ds_it = map(tf_to_numpy, (prep_ds(ds)))
+    # get data set
+    rng = jax.random.PRNGKey(SEED.value)
+    train_ds, test_ds = get_datasets()
 
-    # Initialize training state.
-    rng = hk.PRNGSequence(SEED.value)
-
-    opt_init, optim = optax.adam(LEARNING_RATE.value)
-
-    core_params = {
-        "inp_hidden": jax.random.normal(
-            next(rng),
-            (NUM_BITS.value + 2, HIDDEN_SIZE.value),
-        )
-        * 1.0
-        / jnp.sqrt(NUM_BITS.value + 2),
-        "hidden_hidden": jax.random.normal(
-            next(rng), (HIDDEN_SIZE.value, HIDDEN_SIZE.value)
-        )
-        * 1.0
-        / jnp.sqrt(HIDDEN_SIZE.value),
-        "b_inp_hidden": jnp.zeros(HIDDEN_SIZE.value),
-        "b_hidden_hidden": jnp.zeros(HIDDEN_SIZE.value),
-    }
-    output_params = {
-        "w": jax.random.normal(
-            next(rng), (HIDDEN_SIZE.value, NUM_BITS.value + 1)
-        )
-        * 1.0
-        / jnp.sqrt(HIDDEN_SIZE.value),
-        "b": jnp.zeros(NUM_BITS.value + 1),
-    }
-
-    rtrl_grad_fn = get_rtrl_grad_func(
-        core_fn, output_fn, masked_sigmoid_cross_entropy, False
-    )
-
-    c_opt_state = opt_init(core_params)
-    o_opt_state = opt_init(output_params)
-
-    import pdb
-
-    pdb.set_trace()
-    # pmap
-    update_step = jax.jit(
-        functools.partial(
-            update,
-            rtrl_grad_fn,
-            optim,
-        ),
-    )
-
-    state = TrainingState(
-        core_params=core_params,
-        c_opt_state=c_opt_state,
-        output_params=output_params,
-        o_opt_state=o_opt_state,
-    )
+    # initialize parameters
+    rng, p_rng = jax.random.split(rng, 2)
+    params = init_params(p_rng, NUM_BITS + 2, NUM_BITS + 1, INIT_SCALE_S.value)
 
     # Training loop.
-    T = 1
-    logging.info("Start Training")
-    logging.info(WORK_DIR.value)
+    logging.info("Files in: " + WORK_DIR.value)
+    logging.info(jax.devices())
+    params_hist = {0: params}
     t_loop_start = time.time()
-    for step in range(int(TRAINING_STEPS.value / TRAIN_BATCH_SIZE.value) + 1):
-        # Do a batch of SGD
-        train_batch = ds._build(T)
-        loss_val, logits, state = update_step(state, train_batch)
+    for step in range(int(TRAINING_STEPS.value / BATCH_SIZE.value) + 1):
+        # Do a batch of SGD.
+        rng, inpt_rng = jax.random.split(rng, 2)
+        batch_idx = jax.random.choice(
+            inpt_rng,
+            a=train_ds["mask"].shape[0],
+            shape=(BATCH_SIZE.value,),
+            replace=False,
+        )
+        batch = {
+            "input_seq": jnp.moveaxis(
+                train_ds["observations"][batch_idx, :, :], (0, 1, 2), (1, 0, 2)
+            ),
+            "target_seq": jnp.moveaxis(
+                train_ds["target"][batch_idx, :, :], (0, 1, 2), (1, 0, 2)
+            ),
+            "mask_seq": jnp.moveaxis(
+                train_ds["mask"][batch_idx, :], (0, 1), (1, 0)
+            ),
+        }
+        params, train_metrics, grads = train_step(params, batch)
 
-        step_sec = time.time() - t_loop_start
+        params_hist[step + 1] = grads
+
+        max_dev = jnp.max(
+            jnp.array(
+                jax.tree_util.tree_leaves(
+                    jax.tree_util.tree_multimap(
+                        lambda x, y: jnp.max(
+                            jnp.abs(x / 5 - y)
+                        ),  # /jnp.max(jnp.abs(y)),
+                        params_hist[step + 1],
+                        bptt_params[step + 1],
+                    )
+                )
+            )
+        )
+        # import pdb; pdb.set_trace()
+        with open(WORK_DIR.value + "/params_hist.pickle", "wb") as handle:
+            pickle.dump(params_hist, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+        summary_writer.scalar(
+            "step_time", (time.time() - t_loop_start), (step + 1)
+        )
+        summary_writer.scalar("param_dev", max_dev, (step + 1))
         t_loop_start = time.time()
-
-        summary_writer.scalar("T", T, (step + 1) * TRAIN_BATCH_SIZE.value)
-        summary_writer.scalar(
-            "BPC", loss_val, (step + 1) * TRAIN_BATCH_SIZE.value
-        )
-        summary_writer.scalar(
-            "Time", step_sec, (step + 1) * TRAIN_BATCH_SIZE.value
-        )
-
-        if loss_val < 0.15 and T < MAX_LENGTH.value:
-            T += 1
-            ds_it = ds._build(T)
+        for key, val in train_metrics.items():  # type: ignore
+            tag = "train_%s" % key
+            summary_writer.scalar(tag, val, (step + 1) * BATCH_SIZE.value)
 
         # Periodically report loss and show an example
         if (step + 1) % EVALUATION_INTERVAL.value == 0:
-            ts_output = jnp.expand_dims(
-                train_batch["mask_seq"], -1
-            ) * jax.nn.sigmoid(logits)
-            logging.info(
-                {
-                    "T": T,
-                    "step": (step + 1) * TRAIN_BATCH_SIZE.value,
-                    "loss": float(loss_val),
-                    "time": step_sec,
-                }
+            rng, inpt_rng = jax.random.split(rng, 2)
+            batch_idx = jax.random.choice(
+                inpt_rng,
+                a=test_ds["mask"].shape[0],
+                shape=(test_ds["mask"].shape[0],),
+                replace=False,
             )
-            # print(
-            #     ds.to_human_readable(
-            #         data=train_batch, model_output=jnp.round(ts_output)
-            #     )
-            # )
-            total_loss = 0
-    logging.info(WORK_DIR.value)
+            shuffle_test_ds = {
+                "input_seq": test_ds["observations"][batch_idx, :, :],
+                "target_seq": test_ds["target"][batch_idx, :, :],
+                "mask_seq": test_ds["mask"][batch_idx, :],
+            }
+
+            eval_metrics, ts_output = eval_model(params, shuffle_test_ds)
+
+            logging.info(
+                "step: %d, train_loss: %.4f, train_accuracy: %.4f, eval_loss: %.4f, eval_accuracy: %.4f, diff: %e",
+                (step + 1) * BATCH_SIZE.value,
+                train_metrics["loss"],
+                train_metrics["accuracy"],
+                eval_metrics["loss"],
+                eval_metrics["accuracy"],
+                max_dev,
+            )
+
+            for key, val in eval_metrics.items():  # type: ignore
+                tag = "eval_%s" % key
+                summary_writer.scalar(tag, val, (step + 1) * BATCH_SIZE.value)
+
+            # save picture
+            plt.clf()
+            fig, axes = plt.subplots(nrows=3, ncols=3)
+            for i in range(3):
+                mask = jnp.repeat(
+                    jnp.expand_dims(shuffle_test_ds["mask_seq"][i, :], 1),
+                    NUM_BITS + 1,
+                    1,
+                )
+                axes[i, 0].matshow(
+                    shuffle_test_ds["input_seq"][i, :, :].transpose()
+                )
+                axes[i, 1].matshow(
+                    shuffle_test_ds["target_seq"][i, :, :].transpose()
+                )
+                axes[i, 2].matshow((ts_output[:, i, :] * mask).transpose())
+            plt.tight_layout()
+            plt.savefig(WORK_DIR.value + "/copy_task.png")
+            plt.close()
 
 
 if __name__ == "__main__":

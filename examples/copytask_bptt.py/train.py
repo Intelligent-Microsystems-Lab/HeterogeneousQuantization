@@ -17,11 +17,13 @@
 """Character-level language modelling with a recurrent network in JAX."""
 
 from typing import Any, NamedTuple
+import pickle
 
 from absl import app
 from absl import flags
 from absl import logging
 import functools
+import time
 
 import jax
 import jax.numpy as jnp
@@ -45,12 +47,12 @@ from model import *
 
 # parameters
 WORK_DIR = flags.DEFINE_string(
-    "work_dir", "../../../training_dir/" + str(uuid.uuid4()), ""
+    "work_dir", "../../../training_dir/params_bptt_copy_task/", ""
 )
-BATCH_SIZE = flags.DEFINE_integer("batch_size", 2048, "")
+BATCH_SIZE = flags.DEFINE_integer("batch_size", 1024, "")
 INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.2, "")
 LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.01, "")
-TRAINING_STEPS = flags.DEFINE_integer("training_steps", 500_000_000, "")
+TRAINING_STEPS = flags.DEFINE_integer("training_steps", 100_000, "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 10, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
 
@@ -113,7 +115,7 @@ def train_step(params, batch):
         jnp.moveaxis(batch["mask"], (0, 1), (1, 0)),
     )
 
-    return params, metrics
+    return params, metrics, grad
 
 
 @jax.jit
@@ -167,6 +169,8 @@ def main(_):
     # Training loop.
     logging.info("Files in: " + WORK_DIR.value)
     logging.info(jax.devices())
+    params_hist = {0: params}
+    t_loop_start = time.time()
     for step in range(int(TRAINING_STEPS.value / BATCH_SIZE.value) + 1):
         # Do a batch of SGD.
         rng, inpt_rng = jax.random.split(rng, 2)
@@ -181,8 +185,17 @@ def main(_):
             "target": train_ds["target"][batch_idx, :, :],
             "mask": train_ds["mask"][batch_idx, :],
         }
-        params, train_metrics = train_step(params, batch)
+        params, train_metrics, grads = train_step(params, batch)
 
+        params_hist[step + 1] = grads
+
+        with open(WORK_DIR.value + "/params_hist.pickle", "wb") as handle:
+            pickle.dump(params_hist, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+        summary_writer.scalar(
+            "step_time", (time.time() - t_loop_start), (step + 1)
+        )
+        t_loop_start = time.time()
         for key, val in train_metrics.items():  # type: ignore
             tag = "train_%s" % key
             summary_writer.scalar(tag, val, (step + 1) * BATCH_SIZE.value)

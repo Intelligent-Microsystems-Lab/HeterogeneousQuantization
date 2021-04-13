@@ -25,7 +25,6 @@ from absl import flags
 from absl import logging
 import functools
 
-# import haiku as hk
 import jax
 import jax.numpy as jnp
 import optax
@@ -48,7 +47,9 @@ from sparse_rtrl import get_rtrl_grad_func
 
 # parameters
 WORK_DIR = flags.DEFINE_string(
-    "work_dir", "../../../training_dir/" + str(uuid.uuid4()), ""
+    "work_dir",
+    "../../../training_dir/params_rtrl_smile" + str(uuid.uuid4()) + "/",
+    "",
 )
 INPUT_FILE = flags.DEFINE_string(
     "input_file", "../../datasets/smile/input_700_250_25.pkl", ""
@@ -58,8 +59,8 @@ TARGET_FILE = flags.DEFINE_string(
 )
 LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.5, "")
 INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.1, "")
-TRAINING_STEPS = flags.DEFINE_integer("training_steps", 100_000, "")
-EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 1, "")
+TRAINING_STEPS = flags.DEFINE_integer("training_steps", 1000, "")
+EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 10, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
 
 
@@ -147,7 +148,7 @@ def main(_):
             jnp.array(
                 jax.tree_util.tree_leaves(
                     jax.tree_util.tree_multimap(
-                        lambda x, y: jnp.max(x - y),
+                        lambda x, y: jnp.max(jnp.abs(x - y)),
                         params_hist[step],
                         bptt_params[step],
                     )
@@ -169,7 +170,9 @@ def main(_):
 
         # Periodically report loss and show an example
         if (step + 1) % EVALUATION_INTERVAL.value == 0:
-            logging.info("step: %d, loss: %.4f", step + 1, loss_val)
+            logging.info(
+                "step: %d, loss: %.4f, diff: %e", step + 1, loss_val, max_dev
+            )
 
             # save picture
             plt.clf()

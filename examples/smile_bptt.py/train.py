@@ -18,14 +18,13 @@
 
 from typing import Any, NamedTuple
 import pickle
+import time
 
 from absl import app
 from absl import flags
 from absl import logging
 import functools
-import time
 
-# import haiku as hk
 import jax
 import jax.numpy as jnp
 import optax
@@ -47,7 +46,7 @@ from model import *
 
 # parameters
 WORK_DIR = flags.DEFINE_string(
-    "work_dir", "../../../training_dir/params_bptt/", ""
+    "work_dir", "../../../training_dir/params_bptt_smile/", ""
 )
 INPUT_FILE = flags.DEFINE_string(
     "input_file", "../../datasets/smile/input_700_250_25.pkl", ""
@@ -57,8 +56,8 @@ TARGET_FILE = flags.DEFINE_string(
 )
 LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.5, "")
 INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.1, "")
-TRAINING_STEPS = flags.DEFINE_integer("training_steps", 100_000, "")
-EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 1, "")
+TRAINING_STEPS = flags.DEFINE_integer("training_steps", 1000, "")
+EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 10, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
 
 
