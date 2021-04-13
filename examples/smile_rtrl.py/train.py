@@ -121,7 +121,7 @@ def main(_):
     )
 
     with open(
-        "../../../training_dir/params_bptt/params_hist.pickle", "rb"
+        "../../../training_dir/params_bptt_smile/params_hist.pickle", "rb"
     ) as f:
         bptt_params = pickle.load(f)
 
@@ -166,7 +166,7 @@ def main(_):
         params_hist[step + 1] = params
 
         with open(
-            WORK_DIR.value + "/params_bptt_smile.pickle", "wb"
+            WORK_DIR.value + "/params_hist.pickle", "wb"
         ) as handle:
             pickle.dump(params_hist, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
