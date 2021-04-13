@@ -214,8 +214,10 @@ def main(_):
                 )
             )
         )
-        # import pdb; pdb.set_trace()
-        with open(WORK_DIR.value + "/params_hist.pickle", "wb") as handle:
+
+        with open(
+            WORK_DIR.value + "/params_bptt_copy_task.pickle", "wb"
+        ) as handle:
             pickle.dump(params_hist, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
         summary_writer.scalar(

@@ -165,7 +165,9 @@ def main(_):
         t_loop_start = time.time()
         params_hist[step + 1] = params
 
-        with open(WORK_DIR.value + "/params_hist.pickle", "wb") as handle:
+        with open(
+            WORK_DIR.value + "/params_bptt_smile.pickle", "wb"
+        ) as handle:
             pickle.dump(params_hist, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
         # Periodically report loss and show an example
