@@ -205,9 +205,7 @@ def main(_):
             jnp.array(
                 jax.tree_util.tree_leaves(
                     jax.tree_util.tree_multimap(
-                        lambda x, y: jnp.max(
-                            jnp.abs(x / 5 - y)
-                        ),  # /jnp.max(jnp.abs(y)),
+                        lambda x, y: jnp.max(jnp.abs((x / 5 - y) / x)),
                         params_hist[step + 1],
                         bptt_params[step + 1],
                     )
