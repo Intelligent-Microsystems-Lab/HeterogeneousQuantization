@@ -78,7 +78,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
-          pip install jax==0.2.9 jaxlib==0.1.59 scipy numpy flax tensorflow-datasets==3.1.0 ml_collections clu
+          pip install jax==0.2.9 jaxlib==0.1.59 scipy numpy flax tensorflow-datasets==3.1.0 ml_collections clu torch
       - name: Run unit tests
         run: |
           python predictive_coding_test.py
