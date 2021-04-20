@@ -1,40 +1,32 @@
+# IMSL Lab - University of Notre Dame
+# Author: Clemens JS Schaefer
+
+
 import jax
 import jax.numpy as jnp
 
 
-HIDDEN_SIZE = 64
-
-
-# def core_fn(params, state, x):
-#     x = jnp.dot(x, params["w1"]) + jnp.dot(state["u1"], params['h1']) + params['b1']
-#     x = jax.nn.relu(x)
-#     state["u1"] = x
-
-#     return state, x
-
-
 def core_fn(params, state, x):
-    x = jnp.dot(x, params["w1"]) + jnp.dot(state, params["h1"]) + params["b1"]
+    x = jnp.dot(x, params["w1"]) + jnp.dot(state, params["h1"])
     x = jax.nn.relu(x)
-    state = x
 
-    return state, x
+    return x, x
 
 
-def output_fn(params, x):
-    x = jax.nn.relu(jnp.dot(x, params["wo"]) + params["bo"])
+def output_fn(params, state, x):
+    x = jnp.dot(x, params["wo"])
 
-    return x
+    return x, x
 
 
 def nn_model(params, state, x):
     state, x = core_fn(params["cf"], state, x)
-    x = output_fn(params["of"], x)
+    x, _ = output_fn(params["of"], None, x)
 
     return state, x
 
 
-def init_state(out_dim, bs):
+def init_state(out_dim, bs, HIDDEN_SIZE):
     return jnp.zeros(
         (
             bs,
@@ -43,7 +35,7 @@ def init_state(out_dim, bs):
     )
 
 
-def init_params(rng, inp_dim, out_dim, scale_s):
+def init_params(rng, inp_dim, out_dim, scale_s, HIDDEN_SIZE):
     rng, w1_rng, h1_rng, wo_rng = jax.random.split(rng, 4)
     return {
         "cf": {
@@ -60,7 +52,6 @@ def init_params(rng, inp_dim, out_dim, scale_s):
                 ),
             )
             * jnp.sqrt(1.0 / HIDDEN_SIZE),
-            "b1": jnp.zeros((HIDDEN_SIZE,)),
         },
         "of": {
             "wo": jax.random.normal(
@@ -68,6 +59,5 @@ def init_params(rng, inp_dim, out_dim, scale_s):
                 (HIDDEN_SIZE, out_dim),
             )
             * jnp.sqrt(1.0 / HIDDEN_SIZE),
-            "bo": jnp.zeros((out_dim,)),
         },
     }

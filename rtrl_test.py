@@ -1,11 +1,16 @@
+# IMSL Lab - University of Notre Dame
+# Author: Clemens JS Schaefer
+
 from absl.testing import absltest
 from absl.testing import parameterized
 
 import functools
+import jax
+import jax.numpy as jnp
 import numpy as np
 
-from sparse_rtrl import get_rtrl_grad_func
-from model import *
+from rtrl import get_rtrl_grad_func
+from model import init_params, init_state, core_fn, output_fn, nn_model
 
 
 def rtrl_test_data():
@@ -43,14 +48,17 @@ class PredCodingTest(parameterized.TestCase):
     ):
         rng = jax.random.PRNGKey(42)
         rng, p_rng, i_rng, t_rng = jax.random.split(rng, 4)
-        params = init_params(p_rng, prob_size, prob_size, 1)
 
-        params = jax.tree_util.tree_map(
-            lambda x: 1
-            / (
-                2 ** jax.random.randint(p_rng, x.shape, minval=0, maxval=7)
-                * 1.0
-            ),
+        params = init_params(p_rng, prob_size, prob_size, 1, 64)
+        params = jax.tree_map(
+            lambda x: (
+                jnp.reshape(jnp.arange(jnp.prod(jnp.array(x.shape))), x.shape)
+                / jnp.prod(jnp.array(x.shape))
+                - 0.5
+            )
+            / 10
+            if x.sum() != 0
+            else x,
             params,
         )
 
@@ -61,7 +69,6 @@ class PredCodingTest(parameterized.TestCase):
             )
             * 1.0
         )
-        # inpt = jnp.reshape(jnp.ones(prob_size**3), (prob_size,prob_size,prob_size)) * 1.
 
         targt = (
             2
@@ -71,9 +78,7 @@ class PredCodingTest(parameterized.TestCase):
             * 1.0
         )
 
-        # targt = jnp.reshape(jnp.arange(prob_size**3), (prob_size,prob_size,prob_size)) + jnp.reshape(jnp.arange(prob_size**3), (prob_size,prob_size,prob_size)).transpose()
-
-        init_s = init_state(prob_size, prob_size) * 1.0
+        init_s = init_state(prob_size, prob_size, 64) * 1.0
 
         rtrl_grad_fn = get_rtrl_grad_func(
             core_fn, output_fn, mse_loss_rtrl, False
@@ -105,19 +110,16 @@ class PredCodingTest(parameterized.TestCase):
         )
         grad_rtrl = {"cf": core_grads, "of": output_grads}
 
-        self.assertLessEqual(
-            jnp.max(
-                jnp.array(
-                    jax.tree_util.tree_leaves(
-                        jax.tree_util.tree_multimap(
-                            lambda x, y: jnp.max(((x / prob_size) - y) / x),
-                            grad_rtrl,
-                            grad_bptt,
-                        )
+        self.assertTrue(
+            jnp.array(
+                jax.tree_util.tree_leaves(
+                    jax.tree_util.tree_multimap(
+                        lambda x, y: np.allclose(x / prob_size, y),
+                        grad_rtrl,
+                        grad_bptt,
                     )
                 )
-            ),
-            1e-6,
+            ).all()
         )
 
 

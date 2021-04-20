@@ -89,7 +89,7 @@ def get_rtrl_grad_func(core_f, output_f, loss_f, use_snap1_approx):
             # Compute output, loss, and backprop gradients for RNN state.
             def step_loss(ps, h, t, m):
                 """Compute the loss for one RNN step."""
-                y = output_f(ps, h)
+                y, _ = output_f(ps, None, h)
                 return loss_f(y, t, m), y
 
             step_out_and_grad_func = jax.value_and_grad(
