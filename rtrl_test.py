@@ -19,10 +19,6 @@ def rtrl_test_data():
             testcase_name="5_steps",
             prob_size=5,
         ),
-        dict(
-            testcase_name="10_steps",
-            prob_size=10,
-        ),
     )
 
 
@@ -40,9 +36,9 @@ def mse_loss_bptt(logits, labels, mask):
     return loss
 
 
-class PredCodingTest(parameterized.TestCase):
+class UnitTests(parameterized.TestCase):
     @parameterized.named_parameters(*rtrl_test_data())
-    def test_learn_pc(
+    def test_learn_rtrl(
         self,
         prob_size,
     ):
