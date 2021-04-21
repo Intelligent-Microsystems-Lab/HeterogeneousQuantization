@@ -46,7 +46,14 @@ def forward_sweep(input_seq, params, init_s):
 
 
 def infer(
-    params, input_seq, target_seq, y_pred, h_pred, init_s, n_inference_steps
+    params,
+    input_seq,
+    target_seq,
+    y_pred,
+    h_pred,
+    init_s,
+    n_inference_steps,
+    inference_lr,
 ):
 
     e_ys = [[] for i in range(len(target_seq))]  # ouptut prediction errors
@@ -75,7 +82,7 @@ def infer(
                 hdelta -= jnp.dot(
                     (e_hs[i + 1] * fn_deriv), params["cf"]["h1"].transpose()
                 )
-            hs[i + 1] -= 0.1 * hdelta
+            hs[i + 1] -= inference_lr * hdelta
 
     return e_ys, e_hs
 

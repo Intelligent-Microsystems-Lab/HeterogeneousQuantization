@@ -26,7 +26,9 @@ def get_lstm_dataset(seq_length, batch_size, buffer_size=10000):
     sequences = char_dataset.batch(seq_length + 1, drop_remainder=True)
     dataset = sequences.map(split_input_target)
 
-    dataset = dataset.shuffle(buffer_size).batch(batch_size, drop_remainder=True)
+    dataset = dataset.shuffle(buffer_size).batch(
+        batch_size, drop_remainder=True
+    )
     dataset = list(iter(dataset))
     # get dataset in right format
     vocab_size = len(vocab)

@@ -20,6 +20,7 @@ INIT_SCALE_S = 0.1
 BATCH_SIZE = 64
 HIDDEN_SIZE = 256
 INFERENCE_STEPS = 10
+INFERENCE_LR = 0.1
 
 
 @jax.jit
@@ -34,7 +35,14 @@ def train_step(params, batch, init_s):
 
     out_pred, h_pred = forward_sweep(inpt_seq, params, init_s)
     e_ys, e_hs = infer(
-        params, inpt_seq, targt_seq, out_pred, h_pred, init_s, INFERENCE_STEPS
+        params,
+        inpt_seq,
+        targt_seq,
+        out_pred,
+        h_pred,
+        init_s,
+        INFERENCE_STEPS,
+        INFERENCE_LR,
     )
     grad = compute_grads(params, inpt_seq, e_ys, e_hs, h_pred)
 
