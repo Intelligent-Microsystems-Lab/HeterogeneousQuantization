@@ -3,6 +3,7 @@
 
 import pickle
 import time
+import datetime
 import sys
 
 from absl import app
@@ -25,7 +26,11 @@ from model import init_state, nn_model, init_params  # noqa: E402
 
 # parameters
 WORK_DIR = flags.DEFINE_string(
-    "work_dir", "../../../training_dir/params_bptt_smile/", ""
+    "work_dir",
+    "../../../training_dir/smile_bptt-{date:%Y-%m-%d_%H-%M-%S}/".format(
+        date=datetime.datetime.now()
+    ),
+    "",
 )
 INPUT_FILE = flags.DEFINE_string(
     "input_file", "../../datasets/smile/input_700_250_25.pkl", ""

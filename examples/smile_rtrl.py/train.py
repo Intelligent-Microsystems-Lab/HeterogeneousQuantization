@@ -3,6 +3,7 @@
 
 import pickle
 import time
+import datetime
 import sys
 
 from absl import app
@@ -26,7 +27,9 @@ from rtrl import get_rtrl_grad_func  # noqa: E402
 # parameters
 WORK_DIR = flags.DEFINE_string(
     "work_dir",
-    "../../../training_dir/params_rtrl_smile/",
+    "../../../training_dir/smile_rtrl-{date:%Y-%m-%d_%H-%M-%S}/".format(
+        date=datetime.datetime.now()
+    ),
     "",
 )
 INPUT_FILE = flags.DEFINE_string(
