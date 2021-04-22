@@ -38,14 +38,14 @@ INPUT_FILE = flags.DEFINE_string(
 TARGET_FILE = flags.DEFINE_string(
     "target_file", "../../datasets/smile/smile95.pkl", ""
 )
-LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.5, "")
+LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.05, "")
 INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.1, "")
 TRAINING_STEPS = flags.DEFINE_integer("training_steps", 100_000, "")
 HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 64, "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 10, "")
 INFERENCE_STEPS = flags.DEFINE_integer("inference_steps", 100, "")
 INFERENCE_LR = flags.DEFINE_float("inference_lr", 0.1, "")
-SEQ_LEN = flags.DEFINE_integer("seq_len", 50, "")
+SEQ_LEN = flags.DEFINE_integer("seq_len", 10, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
 
 
@@ -80,11 +80,10 @@ def train_step(params, batch):
 
     # simple SGD step
     params = jax.tree_multimap(
-        lambda x, y: x + LEARNING_RATE.value * y, params, grad
+        lambda x, y: x + LEARNING_RATE.value * y / SEQ_LEN.value, params, grad
     )
 
     loss_val = mse_loss(out_pred, batch["target_seq"])
-
     return params, loss_val, out_pred
 
 

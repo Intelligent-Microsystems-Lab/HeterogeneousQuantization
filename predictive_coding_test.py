@@ -3,13 +3,14 @@
 
 
 from absl.testing import absltest
+import functools
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 
 from unit_test.datasets import get_lstm_dataset
-from model import init_params, init_state
+from model import init_params, init_state, nn_model
 from predictive_coding import forward_sweep, infer, compute_grads
 
 
@@ -21,6 +22,13 @@ BATCH_SIZE = 64
 HIDDEN_SIZE = 256
 INFERENCE_STEPS = 10
 INFERENCE_LR = 0.1
+
+
+def mse_loss_bptt(logits, labels, mask):
+    # simple MSE loss
+    loss = jnp.mean((logits - labels) ** 2)
+
+    return loss
 
 
 @jax.jit
@@ -89,18 +97,108 @@ class UnitTests(absltest.TestCase):
 
         self.assertTrue(
             np.allclose(
-                dWx.transpose(), grad["cf"]["w1"], rtol=1e-04, atol=1e-07
+                dWx.transpose(),
+                jnp.clip(grad["cf"]["w1"], -50, 50),
+                rtol=1e-04,
+                atol=1e-07,
             )
         )
         self.assertTrue(
             np.allclose(
-                dWh.transpose(), grad["cf"]["h1"], rtol=1e-04, atol=1e-07
+                dWh.transpose(),
+                jnp.clip(grad["cf"]["h1"], -50, 50),
+                rtol=1e-04,
+                atol=1e-07,
             )
         )
         self.assertTrue(
             np.allclose(
-                dWy.transpose(), grad["of"]["wo"], rtol=1e-03, atol=1e-06
+                dWy.transpose(),
+                jnp.clip(grad["of"]["wo"], -50, 50),
+                rtol=1e-03,
+                atol=1e-06,
             )
+        )
+
+    def test_pc_vs_bptt(self):
+        prob_size = 15
+        rng = jax.random.PRNGKey(42)
+        rng, p_rng, i_rng, t_rng = jax.random.split(rng, 4)
+
+        params = init_params(p_rng, prob_size, prob_size, 1, 64)
+        params = jax.tree_map(
+            lambda x: (
+                jnp.reshape(jnp.arange(jnp.prod(jnp.array(x.shape))), x.shape)
+                / jnp.prod(jnp.array(x.shape))
+                - 0.5
+            )
+            / 10
+            if x.sum() != 0
+            else x,
+            params,
+        )
+
+        inpt = (
+            2
+            ** jax.random.randint(
+                i_rng, (prob_size, prob_size, prob_size), minval=0, maxval=7
+            )
+            * 1.0
+        )
+
+        targt = (
+            2
+            ** jax.random.randint(
+                t_rng, (prob_size, prob_size, prob_size), minval=0, maxval=7
+            )
+            * 1.0
+        )
+
+        init_s = init_state(prob_size, prob_size, 64) * 1.0
+
+        # bptt
+        def loss_fn(params):
+            nn_model_fn = functools.partial(nn_model, params)
+            final_carry, output_seq = jax.lax.scan(
+                nn_model_fn,
+                init=init_s,
+                xs=inpt,
+            )
+            loss = mse_loss_bptt(output_seq, targt, None)
+            return loss, output_seq
+
+        grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
+        (loss_val, logits), grad_bptt = grad_fn(params)
+
+        # pc gradients
+        out_pred, h_pred = forward_sweep(inpt, params, init_s)
+        e_ys, e_hs = infer(
+            params,
+            inpt,
+            targt,
+            out_pred,
+            h_pred,
+            init_s,
+            100,
+            INFERENCE_LR,
+        )
+        grad_pc = compute_grads(params, inpt, e_ys, e_hs, h_pred)
+
+        self.assertTrue(
+            jnp.array(
+                jax.tree_util.tree_leaves(
+                    jax.tree_util.tree_multimap(
+                        lambda x, y: np.allclose(
+                            x / (prob_size * 100),
+                            -1.0 * y,
+                            rtol=1e-0,
+                            atol=1e-0,
+                        ),
+                        grad_pc,
+                        grad_bptt,
+                    )
+                )
+            ).all()
         )
 
 

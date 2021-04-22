@@ -112,10 +112,13 @@ def compute_grads(params, input_seq, e_ys, e_hs, h_pred, mask=None):
             jnp.dot(input_seq[i].transpose(), (e_hs[i] * fn_deriv)) * mask[i]
         )
         dWh += jnp.dot(h_pred[i].transpose(), (e_hs[i] * fn_deriv)) * mask[i]
+        import pdb
+
+        pdb.set_trace()
 
     return {
-        "cf": {"w1": jnp.clip(dWx, -50, 50), "h1": jnp.clip(dWh, -50, 50)},
+        "cf": {"w1": dWx, "h1": dWh},
         "of": {
-            "wo": jnp.clip(dWy, -50, 50),
+            "wo": dWy,
         },
     }

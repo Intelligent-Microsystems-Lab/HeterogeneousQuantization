@@ -5,6 +5,7 @@
 from absl import app
 from absl import flags
 from absl import logging
+import datetime
 import time
 
 import jax
@@ -23,7 +24,11 @@ from predictive_coding import forward_sweep, infer, compute_grads  # noqa: E402
 
 # parameters
 WORK_DIR = flags.DEFINE_string(
-    "work_dir", "../../../training_dir/shakespeare_pc/", ""
+    "work_dir",
+    "../../../training_dir/shakespeare_pc-{date:%Y-%m-%d_%H-%M-%S}/".format(
+        date=datetime.datetime.now()
+    ),
+    "",
 )
 BATCH_SIZE = flags.DEFINE_integer("batch_size", 32, "")
 HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 64, "")
@@ -83,7 +88,9 @@ def train_step(params, batch, VOCAB_SIZE):
 
     # simple SGD step
     params = jax.tree_multimap(
-        lambda x, y: x + LEARNING_RATE.value * y, params, grad
+        lambda x, y: x + LEARNING_RATE.value * y,
+        jnp.clip(params, -50, 50),
+        grad,
     )
 
     # compute metrics

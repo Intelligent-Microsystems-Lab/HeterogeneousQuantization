@@ -5,6 +5,7 @@
 from absl import app
 from absl import flags
 from absl import logging
+import datetime
 import time
 
 import jax
@@ -23,7 +24,11 @@ from rtrl import get_rtrl_grad_func  # noqa: E402
 
 # parameters
 WORK_DIR = flags.DEFINE_string(
-    "work_dir", "../../../training_dir/shakespeare_rtrl/", ""
+    "work_dir",
+    "../../../training_dir/shakespeare_rtrl-{date:%Y-%m-%d_%H-%M-%S}/".format(
+        date=datetime.datetime.now()
+    ),
+    "",
 )
 BATCH_SIZE = flags.DEFINE_integer("batch_size", 32, "")
 HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 64, "")

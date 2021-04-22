@@ -6,6 +6,7 @@ from absl import app
 from absl import flags
 from absl import logging
 import functools
+import datetime
 import time
 
 import jax
@@ -23,7 +24,11 @@ from model import init_state, nn_model, init_params  # noqa: E402
 
 # parameters
 WORK_DIR = flags.DEFINE_string(
-    "work_dir", "../../../training_dir/shakespeare_bptt/", ""
+    "work_dir",
+    "../../../training_dir/shakespeare_bptt-{date:%Y-%m-%d_%H-%M-%S}/".format(
+        date=datetime.datetime.now()
+    ),
+    "",
 )
 BATCH_SIZE = flags.DEFINE_integer("batch_size", 32, "")
 HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 64, "")
