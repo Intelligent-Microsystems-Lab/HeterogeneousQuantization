@@ -19,10 +19,8 @@ from flax.metrics import tensorboard
 
 import matplotlib.pyplot as plt
 
-
-from jax.config import config
-
-config.update("jax_disable_jit", True)
+# from jax.config import config
+# config.update("jax_disable_jit", True)
 
 sys.path.append("../..")
 from datasets import copy_task  # noqa: E402 F401
@@ -96,18 +94,22 @@ def train_step(params, batch):
         INFERENCE_STEPS.value,
         INFERENCE_LR.value,
     )
-    # compute gradients based on error nodes
+    # compute gradients based on error nodes - we are not using a mask here...
     grad = compute_grads(
-        params, batch["observations"], e_ys, e_hs, h_pred, batch["mask"][:, 0]
+        params,
+        batch["observations"],
+        e_ys,
+        e_hs,
+        h_pred,
     )
 
     # simple SGD step
     params = jax.tree_multimap(
-        lambda x, y: x + LEARNING_RATE.value * y, params, grad
+        lambda x, y: x + LEARNING_RATE.value * jnp.clip(y, -11, 11) * 0.01,
+        params,
+        grad,
     )
-    import pdb
 
-    pdb.set_trace()
     # compute metrics
     metrics = compute_metrics(
         out_pred,
