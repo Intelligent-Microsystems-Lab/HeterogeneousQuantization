@@ -35,7 +35,7 @@ INPUT_FILE = flags.DEFINE_string(
 TARGET_FILE = flags.DEFINE_string(
     "target_file", "../../datasets/smile/smile95.pkl", ""
 )
-LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.05, "")
+LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.005, "")
 INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.1, "")
 TRAINING_STEPS = flags.DEFINE_integer("training_steps", 10000, "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 10, "")
