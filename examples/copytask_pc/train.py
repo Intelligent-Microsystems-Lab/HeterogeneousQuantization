@@ -7,6 +7,7 @@ from absl import flags
 from absl import logging
 import functools
 import time
+import datetime
 
 import jax
 import jax.numpy as jnp
