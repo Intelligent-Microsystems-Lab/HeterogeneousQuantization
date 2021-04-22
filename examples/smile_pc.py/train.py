@@ -45,7 +45,7 @@ HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 64, "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 10, "")
 INFERENCE_STEPS = flags.DEFINE_integer("inference_steps", 100, "")
 INFERENCE_LR = flags.DEFINE_float("inference_lr", 0.1, "")
-SEQ_LEN = flags.DEFINE_integer("seq_len", 10, "")
+SEQ_LEN = flags.DEFINE_integer("seq_len", 50, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
 
 
