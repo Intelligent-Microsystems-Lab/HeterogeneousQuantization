@@ -43,6 +43,7 @@ INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.1, "")
 TRAINING_STEPS = flags.DEFINE_integer("training_steps", 100_000, "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 10, "")
 HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 64, "")
+SEQ_LEN = flags.DEFINE_integer("seq_len", 50, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
 
 
@@ -89,6 +90,17 @@ def get_data():
 
     with open(TARGET_FILE.value, "rb") as f:
         y_train = jnp.expand_dims(jnp.array(pickle.load(f)).transpose(), 0)
+
+    x_train = jax.image.resize(
+        x_train,
+        (x_train.shape[0], SEQ_LEN.value, x_train.shape[2]),
+        method="linear",
+    )
+    y_train = jax.image.resize(
+        y_train,
+        (y_train.shape[0], SEQ_LEN.value, SEQ_LEN.value),
+        method="linear",
+    )
 
     x_train = jnp.moveaxis(x_train, (0, 1, 2), (1, 0, 2))
     y_train = jnp.moveaxis(y_train, (0, 1, 2), (1, 0, 2))

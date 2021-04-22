@@ -30,9 +30,11 @@ from predictive_coding import forward_sweep, infer, compute_grads  # noqa: E402
 
 # parameters
 WORK_DIR = flags.DEFINE_string(
-    "work_dir", "../../../training_dir/copy_task_pc-{date:%Y-%m-%d_%H-%M-%S}/".format(
+    "work_dir",
+    "../../../training_dir/copy_task_pc-{date:%Y-%m-%d_%H-%M-%S}/".format(
         date=datetime.datetime.now()
-    ), ""
+    ),
+    "",
 )
 BATCH_SIZE = flags.DEFINE_integer("batch_size", 512, "")
 INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.2, "")
