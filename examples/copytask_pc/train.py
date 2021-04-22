@@ -25,6 +25,7 @@ import matplotlib.pyplot as plt
 sys.path.append("../..")
 from datasets import copy_task  # noqa: E402 F401
 from model import init_state, init_params, nn_model  # noqa: E402
+from predictive_coding import forward_sweep, infer, compute_grads  # noqa: E402
 
 # parameters
 WORK_DIR = flags.DEFINE_string(
@@ -36,6 +37,8 @@ LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.001, "")
 TRAINING_STEPS = flags.DEFINE_integer("training_steps", 1_000_000, "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 10, "")
 HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 64, "")
+INFERENCE_STEPS = flags.DEFINE_integer("inference_steps", 100, "")
+INFERENCE_LR = flags.DEFINE_float("inference_lr", 0.1, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
 
 NUM_BITS = 6  # dataset specific value
@@ -67,34 +70,41 @@ def mse_loss(logits, labels, mask):
 def train_step(params, batch):
     local_batch_size = batch["observations"].shape[0]
 
+    batch["observations"] = jnp.moveaxis(
+        batch["observations"], (0, 1, 2), (1, 0, 2)
+    )
+    batch["target"] = jnp.moveaxis(batch["target"], (0, 1, 2), (1, 0, 2))
+    batch["mask"] = jnp.moveaxis(batch["mask"], (0, 1), (1, 0))
     init_s = init_state(NUM_BITS + 1, local_batch_size, HIDDEN_SIZE.value)
 
-    def loss_fn(params):
-        nn_model_fn = functools.partial(nn_model, params)
-        final_carry, output_seq = jax.lax.scan(
-            nn_model_fn,
-            init=init_s,
-            xs=jnp.moveaxis(batch["observations"], (0, 1, 2), (1, 0, 2)),
-        )
-        loss = mse_loss(
-            output_seq,
-            jnp.moveaxis(batch["target"], (0, 1, 2), (1, 0, 2)),
-            jnp.moveaxis(batch["mask"], (0, 1), (1, 0)),
-        )
-        return loss, output_seq
+    # forward sweep to intialize value nodes
+    out_pred, h_pred = forward_sweep(batch["observations"], params, init_s)
+    # inference to compute error nodes
+    e_ys, e_hs = infer(
+        params,
+        batch["observations"],
+        batch["target"],
+        out_pred,
+        h_pred,
+        init_s,
+        INFERENCE_STEPS.value,
+        INFERENCE_LR.value,
+    )
+    # compute gradients based on error nodes
+    grad = compute_grads(
+        params, batch["observations"], e_ys, e_hs, h_pred, batch["mask"][:, 0]
+    )
 
-    grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
-    (_, logits), grad = grad_fn(params)
     # simple SGD step
     params = jax.tree_multimap(
-        lambda x, y: x - LEARNING_RATE.value * y, params, grad
+        lambda x, y: x + LEARNING_RATE.value * y, params, grad
     )
 
     # compute metrics
     metrics = compute_metrics(
-        logits,
-        jnp.moveaxis(batch["target"], (0, 1, 2), (1, 0, 2)),
-        jnp.moveaxis(batch["mask"], (0, 1), (1, 0)),
+        out_pred,
+        batch["target"],
+        batch["mask"],
     )
 
     return params, metrics, grad

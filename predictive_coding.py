@@ -87,7 +87,9 @@ def infer(
     return e_ys, e_hs
 
 
-def compute_grads(params, input_seq, e_ys, e_hs, h_pred):
+def compute_grads(params, input_seq, e_ys, e_hs, h_pred, mask=None):
+    if mask is None:
+        mask = jnp.ones(len(input_seq))
     dWy = jnp.zeros_like(params["of"]["wo"])
     dWx = jnp.zeros_like(params["cf"]["w1"])
     dWh = jnp.zeros_like(params["cf"]["h1"])
@@ -96,15 +98,20 @@ def compute_grads(params, input_seq, e_ys, e_hs, h_pred):
             jnp.dot(input_seq[i], params["cf"]["w1"])
             + jnp.dot(h_pred[i], params["cf"]["h1"])
         )
-        dWy += jnp.dot(
-            h_pred[i + 1].transpose(),
-            (
-                e_ys[i]
-                * linear_deriv(jnp.dot(h_pred[i + 1], params["of"]["wo"]))
-            ),
+        dWy += (
+            jnp.dot(
+                h_pred[i + 1].transpose(),
+                (
+                    e_ys[i]
+                    * linear_deriv(jnp.dot(h_pred[i + 1], params["of"]["wo"]))
+                ),
+            )
+            * mask[i]
         )
-        dWx += jnp.dot(input_seq[i].transpose(), (e_hs[i] * fn_deriv))
-        dWh += jnp.dot(h_pred[i].transpose(), (e_hs[i] * fn_deriv))
+        dWx += (
+            jnp.dot(input_seq[i].transpose(), (e_hs[i] * fn_deriv)) * mask[i]
+        )
+        dWh += jnp.dot(h_pred[i].transpose(), (e_hs[i] * fn_deriv)) * mask[i]
 
     return {
         "cf": {"w1": jnp.clip(dWx, -50, 50), "h1": jnp.clip(dWh, -50, 50)},

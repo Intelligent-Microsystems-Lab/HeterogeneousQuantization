@@ -8,7 +8,6 @@ import sys
 from absl import app
 from absl import flags
 from absl import logging
-import functools
 
 import jax
 import jax.numpy as jnp
@@ -18,7 +17,7 @@ from flax.metrics import tensorboard
 import matplotlib.pyplot as plt
 
 sys.path.append("../..")
-from model import init_state, nn_model, init_params  # noqa: E402
+from model import init_state, init_params  # noqa: E402
 from predictive_coding import forward_sweep, infer, compute_grads  # noqa: E402
 
 # from jax.config import config
