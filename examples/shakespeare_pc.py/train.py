@@ -34,7 +34,7 @@ BATCH_SIZE = flags.DEFINE_integer("batch_size", 32, "")
 HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 64, "")
 INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.2, "")
 LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.001, "")
-EPOCHS_NUM = flags.DEFINE_integer("epochs_num", 100, "")
+EPOCHS_NUM = flags.DEFINE_integer("epochs_num", 85, "")
 INFERENCE_STEPS = flags.DEFINE_integer("inference_steps", 100, "")
 INFERENCE_LR = flags.DEFINE_float("inference_lr", 0.1, "")
 SEQ_LEN = flags.DEFINE_integer("seq_len", 50, "")
@@ -88,8 +88,8 @@ def train_step(params, batch, VOCAB_SIZE):
 
     # simple SGD step
     params = jax.tree_multimap(
-        lambda x, y: x + LEARNING_RATE.value * y,
-        jnp.clip(params, -50, 50),
+        lambda x, y: x + LEARNING_RATE.value * jnp.clip(y, -50, 50),
+        params,
         grad,
     )
 

@@ -40,7 +40,7 @@ TARGET_FILE = flags.DEFINE_string(
 )
 LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.5, "")
 INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.1, "")
-TRAINING_STEPS = flags.DEFINE_integer("training_steps", 20_000, "")
+TRAINING_STEPS = flags.DEFINE_integer("training_steps", 10_000, "")
 HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 64, "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 10, "")
 SEQ_LEN = flags.DEFINE_integer("seq_len", 50, "")
