@@ -5,8 +5,6 @@
 # "Practical Real Time Recurrent Learning with a Sparse Approximation to the
 # Jacobian", 2020
 
-import functools
-
 import jax
 import jax.numpy as jnp
 
@@ -138,7 +136,9 @@ def grad_compute(params, batch, state, n_inference_steps, inference_lr):
             new_infl["h1"],
         )
 
-        new_grad_acc = jax.tree_multimap(jnp.add, grad_acc, grads)
+        new_grad_acc = jax.tree_multimap(
+            lambda x, y: jnp.add(x, y) * msk[0], grad_acc, grads
+        )
 
         new_carry = (
             h_pred,

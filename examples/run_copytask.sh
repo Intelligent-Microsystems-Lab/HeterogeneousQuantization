@@ -7,4 +7,6 @@ cd ../copytask_rtrl.py
 python train.py
 cd ../copytask_bptt.py
 python train.py
+cd ../copytask_pc_rtrl.py
+python train.py
 cd ..

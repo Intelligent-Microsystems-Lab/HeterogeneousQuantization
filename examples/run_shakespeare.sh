@@ -7,4 +7,6 @@ cd ../shakespeare_rtrl.py
 python train.py
 cd ../shakespeare_bptt.py
 python train.py
+cd ../shakespeare_pc_rtrl.py
+python train.py
 cd ..

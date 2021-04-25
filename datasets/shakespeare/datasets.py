@@ -13,7 +13,8 @@ def split_input_target(chunk):
 def get_lstm_dataset(seq_length, batch_size, buffer_size=10000):
     path_to_file = tf.keras.utils.get_file(
         "shakespeare.txt",
-        "https://storage.googleapis.com/download.tensorflow.org/data/shakespeare.txt",
+        "https://storage.googleapis.com/download.tensorflow.org/data/"
+        "shakespeare.txt",
     )
     text = open(path_to_file, "rb").read().decode(encoding="utf-8")
     vocab = sorted(set(text))

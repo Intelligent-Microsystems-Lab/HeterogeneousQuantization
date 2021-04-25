@@ -1,22 +1,21 @@
 # copied from https://github.com/BerenMillidge/PredictiveCodingBackprop
 # and modified by Clemens JS Schaefer
-import tensorflow as tf
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.nn.init as init
-import torch.distributions as dist
-import torch.optim as optim
 import numpy as np
-import math
-import os
-import time
-import matplotlib.pyplot as plt
 import subprocess
 import argparse
 from datetime import datetime
-from utils import *
-from datasets import *
+from utils import (
+    set_tensor,
+    linear,
+    linear_deriv,
+    decode_ypreds,
+    inverse_onehot,
+    onehot,
+    relu,
+    relu_deriv,
+)
+from datasets import get_lstm_dataset
 
 
 def rnn_accuracy(model, target_batch):
@@ -101,7 +100,6 @@ class PC_RNN(object):
 
     def infer(self, input_seq, target_seq, fixed_predictions=True):
         with torch.no_grad():
-            # input sequence = [list of [Batch_size x Feature_Dimension]] seq len
             self.e_ys = [
                 [] for i in range(len(target_seq))
             ]  # ouptut prediction errors
@@ -113,7 +111,7 @@ class PC_RNN(object):
             ):
                 for n in range(self.n_inference_steps):
                     self.e_ys[i] = targ - self.y_preds[i]
-                    if fixed_predictions == False:
+                    if fixed_predictions is False:
                         self.h_preds[i + 1] = self.fn(
                             self.Wh @ self.hs[i] + self.Wx @ inp
                         )
@@ -130,7 +128,7 @@ class PC_RNN(object):
                         )
                         hdelta -= self.Wh.T @ (self.e_hs[i + 1] * fn_deriv)
                     self.hs[i + 1] -= self.inference_learning_rate * hdelta
-                    if fixed_predictions == False:
+                    if fixed_predictions is False:
                         self.y_preds[i] = linear(self.Wy @ self.hs[i + 1])
             return self.e_ys, self.e_hs
 
@@ -145,9 +143,7 @@ class PC_RNN(object):
                 )
                 dWy += (
                     self.e_ys[i] * linear_deriv(self.Wy @ self.h_preds[i + 1])
-                ) @ self.h_preds[
-                    i + 1
-                ].T  # if self.e_ys[i] is not None else torch.zeros_like(self.Wy)
+                ) @ self.h_preds[i + 1].T
                 dWx += (self.e_hs[i] * fn_deriv) @ input_seq[i].T
                 dWh += (self.e_hs[i] * fn_deriv) @ self.h_preds[i].T
             # import pdb; pdb.set_trace()
@@ -506,7 +502,6 @@ class Backprop_RNN(object):
                     self.forward_sweep(input_seq)
                     self.backward_sweep(input_seq, target_seq)
                     dWy, dWx, dWh = self.update_weights(input_seq)
-                    # print("gradients: ", torch.mean(torch.abs(dWy)), torch.mean(torch.abs(dWx)), torch.mean(torch.abs(dWh)))
                     if i % save_every == 0:
                         loss = np.sum(
                             np.array(

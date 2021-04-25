@@ -7,4 +7,6 @@ cd ../smile_rtrl.py
 python train.py
 cd ../smile_bptt.py
 python train.py
+cd ../smile_pc_rtrl.py
+python train.py
 cd ..

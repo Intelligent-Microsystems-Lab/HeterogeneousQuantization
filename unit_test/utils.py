@@ -4,15 +4,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
-import torch.distributions as dist
-from copy import deepcopy
 import math
-import matplotlib.pyplot as plt
 
 global DEVICE
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-### General Utils ###
+
+# General Utils
 def boolcheck(x):
     return str(x).lower() in ["true", "1", "yes"]
 
@@ -29,7 +27,7 @@ def edge_zero_pad(img, d):
 
 
 def accuracy(out, L):
-    B, l = out.shape
+    B, _ = out.shape
     total = 0
     for i in range(B):
         if torch.argmax(out[i, :]) == torch.argmax(L[i, :]):
@@ -69,9 +67,9 @@ def custom_onehot(idx, shape):
 def onehot(arr, vocab_size):
     L, B = arr.shape
     ret = np.zeros([L, vocab_size, B])
-    for l in range(L):
+    for i in range(L):
         for b in range(B):
-            ret[l, int(arr[l, b]), b] = 1
+            ret[i, int(arr[i, b]), b] = 1
     return ret
 
 
@@ -79,11 +77,11 @@ def inverse_list_onehot(arr):
     L = len(arr)
     V, B = arr[0].shape
     ret = np.zeros([L, B])
-    for l in range(L):
+    for i in range(L):
         for b in range(B):
             for v in range(V):
-                if arr[l][v, b] == 1:
-                    ret[l, b] = v
+                if arr[i][v, b] == 1:
+                    ret[i, b] = v
     return ret
 
 
@@ -91,10 +89,10 @@ def decode_ypreds(ypreds):
     L = len(ypreds)
     V, B = ypreds[0].shape
     ret = np.zeros([L, B])
-    for l in range(L):
+    for i in range(L):
         for b in range(B):
-            v = torch.argmax(ypreds[l][:, b])
-            ret[l, b] = v
+            v = torch.argmax(ypreds[i][:, b])
+            ret[i, b] = v
     return ret
 
 
@@ -104,15 +102,15 @@ def inverse_onehot(arr):
     else:
         L, V, B = arr.shape
         ret = np.zeros([L, B])
-        for l in range(L):
+        for i in range(L):
             for b in range(B):
                 for v in range(V):
-                    if arr[l, v, b] == 1:
-                        ret[l, b] = v
+                    if arr[i, v, b] == 1:
+                        ret[i, b] = v
         return ret
 
 
-### Activation functions ###
+# Activation functions
 def tanh(xs):
     return torch.tanh(xs)
 
@@ -151,7 +149,7 @@ def sigmoid_deriv(xs):
     return F.sigmoid(xs) * (torch.ones_like(xs) - F.sigmoid(xs))
 
 
-### loss functions
+# loss functions
 def mse_loss(out, label):
     return torch.sum((out - label) ** 2)
 
@@ -182,12 +180,12 @@ def parse_loss_function(loss_arg):
         return my_cross_entropy, cross_entropy_deriv
     else:
         raise ValueError(
-            "loss argument not expected. Can be one of 'mse' and 'crossentropy'. You inputted "
-            + str(loss_arg)
+            "loss argument not expected. Can be one of 'mse' and 'crossentropy"
+            "'. You inputted " + str(loss_arg)
         )
 
 
-### Initialization Functions ###
+# Initialization Functions
 def gaussian_init(W, mean=0.0, std=0.05):
     return W.normal_(mean=0.0, std=0.05)
 
@@ -202,12 +200,6 @@ def kaiming_init(W, a=math.sqrt(5), *kwargs):
 
 def glorot_init(W):
     return init.xavier_normal_(W)
-
-
-def kaiming_bias_init(b, *kwargs):
-    fan_in, _ = init._calculate_fan_in_and_fan_out(self.weight)
-    bound = 1 / math.sqrt(fan_in)
-    return init.uniform_(b, -bound, bound)
 
 
 # the initialization pytorch uses for lstm

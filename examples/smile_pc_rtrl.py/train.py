@@ -18,7 +18,7 @@ from flax.metrics import tensorboard
 import matplotlib.pyplot as plt
 
 sys.path.append("../..")
-from model import init_state, core_fn, output_fn, init_params  # noqa: E402
+from model import init_state, init_params  # noqa: E402
 from pc_rtrl import grad_compute  # noqa: E402
 
 # from jax.config import config
@@ -96,7 +96,11 @@ def get_data():
     x_train = jnp.moveaxis(x_train, (0, 1, 2), (1, 0, 2))
     y_train = jnp.moveaxis(y_train, (0, 1, 2), (1, 0, 2))
 
-    return {"input_seq": x_train, "target_seq": y_train, "mask_seq": None}
+    return {
+        "input_seq": x_train,
+        "target_seq": y_train,
+        "mask_seq": jnp.ones((x_train.shape[0], x_train.shape[1])),
+    }
 
 
 def main(_):

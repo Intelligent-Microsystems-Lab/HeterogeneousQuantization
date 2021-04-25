@@ -18,7 +18,10 @@ It should also contain any processing which has been applied (if any),
 _CITATION = """
 @article{graves2016hybrid,
   title={Hybrid computing using a neural network with dynamic external memory},
-  author={Graves, Alex and Wayne, Greg and Reynolds, Malcolm and Harley, Tim and Danihelka, Ivo and Grabska-Barwi{\'n}ska, Agnieszka and Colmenarejo, Sergio G{\'o}mez and Grefenstette, Edward and Ramalho, Tiago and Agapiou, John and others},
+  author={Graves, Alex and Wayne, Greg and Reynolds, Malcolm and Harley, Tim
+   and Danihelka, Ivo and Grabska-Barwi{\'n}ska, Agnieszka and Colmenarejo,
+    Sergio G{\'o}mez and Grefenstette, Edward and Ramalho, Tiago and Agapiou,
+     John and others},
   journal={Nature},
   volume={538},
   number={7626},
@@ -107,7 +110,7 @@ class CopyTask(tfds.core.GeneratorBasedBuilder):
             description=_DESCRIPTION,
             features=tfds.features.FeaturesDict(
                 {
-                    # These are the features of your dataset like images, labels ...
+                    # These are the features of your dataset like images ...
                     "observations": tfds.features.Tensor(
                         shape=(max_length, self.NUM_BITS + 2), dtype=tf.bool
                     ),
@@ -126,7 +129,8 @@ class CopyTask(tfds.core.GeneratorBasedBuilder):
                 "observations",
                 "target",
             ),  # Set to `None` to disable
-            homepage="https://github.com/deepmind/dnc/blob/master/dnc/repeat_copy.py",
+            homepage="https://github.com/deepmind/dnc/blob/master/dnc/"
+            "repeat_copy.py",
             citation=_CITATION,
         )
 
@@ -140,7 +144,6 @@ class CopyTask(tfds.core.GeneratorBasedBuilder):
     def _generate_examples(self, split_size):
         # short-hand for private fields.
         min_length, max_length = self.MIN_LENGTH, self.MAX_LENGTH
-        min_reps, max_reps = self.MIN_REPEATS, self.MAX_REPEATS
         num_bits = self.NUM_BITS
 
         # We reserve one dimension for the num-repeats and one for the
@@ -167,10 +170,6 @@ class CopyTask(tfds.core.GeneratorBasedBuilder):
 
         max_length_batch = int((self.MAX_LENGTH) * 2 + 3)
         residual_length_batch = max_length_batch - total_length_batch
-
-        obs_batch_shape = [max_length_batch, self.DS_SIZE, full_obs_size]
-        targ_batch_shape = [max_length_batch, self.DS_SIZE, full_targ_size]
-        mask_batch_trans_shape = [self.DS_SIZE, max_length_batch]
 
         for sample_idx in range(split_size):
 
