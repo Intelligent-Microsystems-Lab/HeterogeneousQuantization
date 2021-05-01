@@ -25,7 +25,7 @@ from pc_rtrl import grad_compute  # noqa: E402
 # parameters
 WORK_DIR = flags.DEFINE_string(
     "work_dir",
-    "../../../training_dir/shakespeare_pc-{date:%Y-%m-%d_%H-%M-%S}/".format(
+    "../../../training_dir/shakespeare_rtrl_pc-{date:%Y-%m-%d_%H-%M-%S}/".format(
         date=datetime.datetime.now()
     ),
     "",

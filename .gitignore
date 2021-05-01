@@ -1,2 +1,3 @@
 *.pyc
 *.DS_Store
+examples/dvsgesture_pc_rtrl/data/*
