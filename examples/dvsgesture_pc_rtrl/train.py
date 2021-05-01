@@ -39,7 +39,7 @@ WORK_DIR = flags.DEFINE_string(
 )
 BATCH_SIZE = flags.DEFINE_integer("batch_size", 256, "")
 INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.2, "")
-LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.0001, "")
+LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.001, "")
 TRAINING_STEPS = flags.DEFINE_integer("training_epochs", 100, "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 1, "")
 HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 64, "")
@@ -164,8 +164,10 @@ def main(_):
         root="data/dvs_gesture/dvs_gestures_build19.hdf5",
         batch_size=BATCH_SIZE.value,
         ds=4,
+        n_events_attention=4,
         num_workers=0,
     )
+
     # initialize parameters
     rng, p_rng = jax.random.split(rng, 2)
     params = init_params(
@@ -213,7 +215,7 @@ def main(_):
             logging.info(
                 "step: %d, train_loss: %.4f, train_accuracy: %.4f, eval_loss:"
                 " %.4f, eval_accuracy: %.4f",
-                (step + 1) * BATCH_SIZE.value,
+                (step + 1),
                 train_metrics["loss"],
                 train_metrics["accuracy"],
                 eval_metrics["loss"],
