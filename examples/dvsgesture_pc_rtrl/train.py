@@ -188,7 +188,7 @@ def main(_):
             params, metrics, grads = train_step(params, batch)
             train_metrics.append(metrics)
 
-        train_metrics = common_utils.get_metrics(train_metrics)
+        train_metrics = common_utils.stack_forest(train_metrics)
         train_metrics = jax.tree_map(lambda x: x.mean(), train_metrics)
 
         summary_writer.scalar(
@@ -207,7 +207,7 @@ def main(_):
                 metrics, ts_output = eval_model(params, batch)
                 eval_metrics.append(metrics)
 
-            eval_metrics = common_utils.get_metrics(eval_metrics)
+            eval_metrics = common_utils.stack_forest(eval_metrics)
             eval_metrics = jax.tree_map(lambda x: x.mean(), eval_metrics)
 
             logging.info(
