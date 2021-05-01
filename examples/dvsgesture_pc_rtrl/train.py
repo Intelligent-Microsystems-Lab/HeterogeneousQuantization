@@ -180,7 +180,7 @@ def main(_):
     logging.info("Files in: " + WORK_DIR.value)
     logging.info(jax.devices())
     t_loop_start = time.time()
-    for step in range(int(TRAINING_STEPS.value / BATCH_SIZE.value) + 1):
+    for step in range(TRAINING_STEPS.value):
         # Do a batch of SGD.
         train_metrics = []
         for batch in iter(train_ds):
