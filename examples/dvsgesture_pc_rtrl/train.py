@@ -39,15 +39,15 @@ WORK_DIR = flags.DEFINE_string(
 )
 BATCH_SIZE = flags.DEFINE_integer("batch_size", 256, "")
 INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.2, "")
-LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.001, "")
+LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.0001, "")
 TRAINING_STEPS = flags.DEFINE_integer("training_epochs", 100, "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 1, "")
 HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 64, "")
-INFERENCE_STEPS = flags.DEFINE_integer("inference_steps", 100, "")
+INFERENCE_STEPS = flags.DEFINE_integer("inference_steps", 10, "")
 INFERENCE_LR = flags.DEFINE_float("inference_lr", 0.1, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
 
-FLATTEN_DIM = 2048
+FLATTEN_DIM = 8192
 
 
 def compute_metrics(logits, labels):
@@ -163,8 +163,7 @@ def main(_):
     train_ds, test_ds = create_dataloader(
         root="data/dvs_gesture/dvs_gestures_build19.hdf5",
         batch_size=BATCH_SIZE.value,
-        ds=4,
-        n_events_attention=4,
+        ds=2,
         num_workers=0,
     )
 
