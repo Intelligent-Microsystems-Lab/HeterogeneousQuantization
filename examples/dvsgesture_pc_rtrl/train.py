@@ -31,7 +31,7 @@ from pc_rtrl import grad_compute  # noqa: E402
 # parameters
 WORK_DIR = flags.DEFINE_string(
     "work_dir",
-    "../../../training_dir/copy_task_rtrl_pc-{date:%Y-%m-%d_%H-%M-%S}/".format(
+    "../../../training_dir/dvsgesture_rtrl_pc-{date:%Y-%m-%d_%H-%M-%S}/".format(
         date=datetime.datetime.now()
     ),
     "",
@@ -107,14 +107,14 @@ def eval_model(params, batch):
 
     local_batch = {}
     local_batch["input_seq"] = jnp.moveaxis(
-        batch[0].reshape((local_batch_size, 500, -1)), (0, 1, 2), (1, 0, 2)
+        batch[0].reshape((local_batch_size, 1800, -1)), (0, 1, 2), (1, 0, 2)
     )
     local_batch["target_seq"] = jnp.moveaxis(
-        batch[1].reshape((local_batch_size, 500, -1)), (0, 1, 2), (1, 0, 2)
+        batch[1].reshape((local_batch_size, 1800, -1)), (0, 1, 2), (1, 0, 2)
     )
     local_batch["mask_seq"] = jnp.ones(
         (
-            500,
+            1800,
             local_batch_size,
             1,
         )
