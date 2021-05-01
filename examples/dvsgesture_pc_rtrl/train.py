@@ -162,7 +162,7 @@ def main(_):
     rng = jax.random.PRNGKey(SEED.value)
     train_ds, test_ds = create_dataloader(
         root="data/dvs_gesture/dvs_gestures_build19.hdf5",
-        batch_size=64,
+        batch_size=BATCH_SIZE.value,
         ds=4,
         num_workers=0,
     )
