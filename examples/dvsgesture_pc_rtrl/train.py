@@ -37,7 +37,7 @@ WORK_DIR = flags.DEFINE_string(
     ),
     "",
 )
-BATCH_SIZE = flags.DEFINE_integer("batch_size", 512, "")
+BATCH_SIZE = flags.DEFINE_integer("batch_size", 256, "")
 INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.2, "")
 LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.0001, "")
 TRAINING_STEPS = flags.DEFINE_integer("training_epochs", 100, "")
