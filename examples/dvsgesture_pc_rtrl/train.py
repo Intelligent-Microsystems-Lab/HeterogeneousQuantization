@@ -16,6 +16,7 @@ import sys
 
 import tensorflow_datasets as tfds
 from flax.metrics import tensorboard
+from flax.training import common_utils
 
 import matplotlib.pyplot as plt
 
@@ -38,10 +39,10 @@ WORK_DIR = flags.DEFINE_string(
 )
 BATCH_SIZE = flags.DEFINE_integer("batch_size", 512, "")
 INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.2, "")
-LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.001, "")
-TRAINING_STEPS = flags.DEFINE_integer("training_steps", 5_000_000, "")
+LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.0001, "")
+TRAINING_STEPS = flags.DEFINE_integer("training_epochs", , "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 1, "")
-HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 64, "")
+HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 96, "")
 INFERENCE_STEPS = flags.DEFINE_integer("inference_steps", 100, "")
 INFERENCE_LR = flags.DEFINE_float("inference_lr", 0.1, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
@@ -160,7 +161,7 @@ def main(_):
     train_ds, test_ds = create_dataloader(
         root="data/dvs_gesture/dvs_gestures_build19.hdf5",
         batch_size=64,
-        ds=4,
+        ds=3,
         num_workers=0,
     )
 
@@ -180,9 +181,14 @@ def main(_):
     t_loop_start = time.time()
     for step in range(int(TRAINING_STEPS.value / BATCH_SIZE.value) + 1):
         # Do a batch of SGD.
-        batch = next(iter(train_ds))
-        batch = [jnp.array(x) for x in batch]
-        params, train_metrics, grads = train_step(params, batch)
+        train_metrics = []
+        for batch in iter(train_ds):
+            batch = [jnp.array(x) for x in batch]
+            params, metrics, grads = train_step(params, batch)
+            train_metrics.append(metrics)
+
+        train_metrics = common_utils.get_metrics(train_metrics)
+        train_metrics = jax.tree_map(lambda x: x.mean(), train_metrics)
 
         summary_writer.scalar(
             "step_time", (time.time() - t_loop_start), (step + 1)
@@ -194,9 +200,14 @@ def main(_):
 
         # Periodically report loss and show an example
         if (step + 1) % EVALUATION_INTERVAL.value == 0:
-            batch = next(iter(test_ds))
-            batch = [jnp.array(x) for x in batch]
-            eval_metrics, ts_output = eval_model(params, batch)
+            eval_metrics = []
+            for batch in iter(test_ds):
+                batch = [jnp.array(x) for x in batch]
+                metrics, ts_output = eval_model(params, batch)
+                eval_metrics.append(metrics)
+
+            eval_metrics = common_utils.get_metrics(eval_metrics)
+            eval_metrics = jax.tree_map(lambda x: x.mean(), eval_metrics)
 
             logging.info(
                 "step: %d, train_loss: %.4f, train_accuracy: %.4f, eval_loss:"
