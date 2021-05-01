@@ -47,6 +47,8 @@ INFERENCE_STEPS = flags.DEFINE_integer("inference_steps", 100, "")
 INFERENCE_LR = flags.DEFINE_float("inference_lr", 0.1, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
 
+FLATTEN_DIM = 8192
+
 
 def compute_metrics(logits, labels):
     # simple MSE loss
@@ -82,7 +84,7 @@ def train_step(params, batch):
             1,
         )
     )
-    init_s = init_state(2048, local_batch_size, HIDDEN_SIZE.value)
+    init_s = init_state(FLATTEN_DIM, local_batch_size, HIDDEN_SIZE.value)
 
     grads, output_seq, loss_val = grad_compute(
         params, local_batch, init_s, INFERENCE_STEPS.value, INFERENCE_LR.value
@@ -123,7 +125,7 @@ def eval_model(params, batch):
 
     nn_model_fn = functools.partial(nn_model, params)
 
-    init_s = init_state(2048, local_batch_size, HIDDEN_SIZE.value)
+    init_s = init_state(FLATTEN_DIM, local_batch_size, HIDDEN_SIZE.value)
 
     final_carry, output_seq = jax.lax.scan(
         nn_model_fn,
@@ -161,15 +163,14 @@ def main(_):
     train_ds, test_ds = create_dataloader(
         root="data/dvs_gesture/dvs_gestures_build19.hdf5",
         batch_size=64,
-        ds=3,
+        ds=2,
         num_workers=0,
     )
-
     # initialize parameters
     rng, p_rng = jax.random.split(rng, 2)
     params = init_params(
         p_rng,
-        2048,
+        FLATTEN_DIM,
         11,
         INIT_SCALE_S.value,
         HIDDEN_SIZE.value,
