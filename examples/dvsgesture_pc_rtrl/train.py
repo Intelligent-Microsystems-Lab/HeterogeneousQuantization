@@ -47,7 +47,7 @@ INFERENCE_STEPS = flags.DEFINE_integer("inference_steps", 100, "")
 INFERENCE_LR = flags.DEFINE_float("inference_lr", 0.1, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
 
-FLATTEN_DIM = 8192
+FLATTEN_DIM = 2048
 
 
 def compute_metrics(logits, labels):
@@ -163,7 +163,7 @@ def main(_):
     train_ds, test_ds = create_dataloader(
         root="data/dvs_gesture/dvs_gestures_build19.hdf5",
         batch_size=64,
-        ds=2,
+        ds=4,
         num_workers=0,
     )
     # initialize parameters
