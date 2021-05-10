@@ -9,7 +9,6 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from unit_test.datasets import get_lstm_dataset
 from model import init_params, init_state, nn_model
 from pc_rtrl import (
     grad_compute,

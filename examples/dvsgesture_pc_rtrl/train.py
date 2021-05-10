@@ -18,12 +18,12 @@ import tensorflow_datasets as tfds
 from flax.metrics import tensorboard
 from flax.training import common_utils
 
-import matplotlib.pyplot as plt
-
 # from jax.config import config
 # config.update("jax_disable_jit", True)
 
-from torchneuromorphic.dvs_gestures.dvsgestures_dataloaders import *
+from torchneuromorphic.dvs_gestures.dvsgestures_dataloaders import (
+    create_dataloader,
+)
 
 sys.path.append("../..")
 from model import init_state, init_params, nn_model  # noqa: E402
@@ -32,7 +32,7 @@ from pc_rtrl import grad_compute, init_conv  # noqa: E402
 # parameters
 WORK_DIR = flags.DEFINE_string(
     "work_dir",
-    "../../../training_dir/dvsgesture_rtrl_pc-{date:%Y-%m-%d_%H-%M-%S}/".format(
+    "../../../training_dir/dvsgest_rtrl_pc-{date:%Y-%m-%d_%H-%M-%S}/".format(
         date=datetime.datetime.now()
     ),
     "",
