@@ -8,6 +8,7 @@
 import jax
 import jax.numpy as jnp
 from jax import lax
+from jax.interpreters import xla
 from jax._src.lax.lax import rev, ConvDimensionNumbers
 
 from model import core_fn, output_fn
@@ -298,6 +299,7 @@ def grad_compute(
             inpt, act_tracker = conv_feature_extractor(params, inpt)
             inpt = jnp.reshape(inpt, (inpt.shape[0], -1))
             act_tracker.insert(0, raw_inpt)
+            del raw_inpt
 
         h_pred, y_pred, new_infl = forward_sweep(params, inpt, state, infl_acc)
 
@@ -325,11 +327,13 @@ def grad_compute(
         if static_conv_feature_extractor:
             g = jnp.dot(e_hs, params["cf"]["w1"].transpose())
             grads = conv_feature_extractor_bwd(grads, params, act_tracker, g)
+            del act_tracker, g
 
         new_grad_acc = jax.tree_multimap(
             lambda x, y: jnp.add(x, y) * msk[0], grad_acc, grads
         )
 
+        xla._xla_callable.cache_clear()
         new_carry = (
             h_pred,
             new_infl,
