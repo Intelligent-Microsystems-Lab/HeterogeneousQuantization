@@ -79,9 +79,9 @@ class UnitTests(absltest.TestCase):
         grads = conv_feature_extractor_bwd({}, params, act_tracker, g)
 
         # assert equality here with tight tolerances
-        np.testing.assert_allclose(grads["fe"]["c3"], grad_bp["fe"]["c3"])
-        np.testing.assert_allclose(grads["fe"]["c2"], grad_bp["fe"]["c2"])
-        np.testing.assert_allclose(grads["fe"]["c1"], grad_bp["fe"]["c1"])
+        jax.tree_multimap(
+            lambda x, y: np.testing.assert_allclose(x, y), grads, grad_bp
+        )
 
     def test_pc_rtrl_vs_bptt(self):
         prob_size = 15
