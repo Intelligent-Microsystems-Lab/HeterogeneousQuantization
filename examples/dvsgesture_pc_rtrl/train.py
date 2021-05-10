@@ -27,7 +27,7 @@ from torchneuromorphic.dvs_gestures.dvsgestures_dataloaders import *
 
 sys.path.append("../..")
 from model import init_state, init_params, nn_model  # noqa: E402
-from pc_rtrl import grad_compute  # noqa: E402
+from pc_rtrl import grad_compute, init_conv  # noqa: E402
 
 # parameters
 WORK_DIR = flags.DEFINE_string(
@@ -47,7 +47,7 @@ INFERENCE_STEPS = flags.DEFINE_integer("inference_steps", 10, "")
 INFERENCE_LR = flags.DEFINE_float("inference_lr", 0.1, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
 
-FLATTEN_DIM = 8192
+FLATTEN_DIM = 512
 
 
 def compute_metrics(logits, labels):
@@ -71,12 +71,8 @@ def train_step(params, batch):
     local_batch_size = batch[0].shape[0]
 
     local_batch = {}
-    local_batch["input_seq"] = jnp.moveaxis(
-        batch[0].reshape((local_batch_size, 500, -1)), (0, 1, 2), (1, 0, 2)
-    )
-    local_batch["target_seq"] = jnp.moveaxis(
-        batch[1].reshape((local_batch_size, 500, -1)), (0, 1, 2), (1, 0, 2)
-    )
+    local_batch["input_seq"] = jnp.moveaxis(batch[0], (0, 1, 2), (1, 0, 2))
+    local_batch["target_seq"] = jnp.moveaxis(batch[1], (0, 1, 2), (1, 0, 2))
     local_batch["mask_seq"] = jnp.ones(
         (
             500,
@@ -87,7 +83,12 @@ def train_step(params, batch):
     init_s = init_state(FLATTEN_DIM, local_batch_size, HIDDEN_SIZE.value)
 
     grads, output_seq, loss_val = grad_compute(
-        params, local_batch, init_s, INFERENCE_STEPS.value, INFERENCE_LR.value
+        params,
+        local_batch,
+        init_s,
+        INFERENCE_STEPS.value,
+        INFERENCE_LR.value,
+        static_conv_feature_extractor=True,
     )
     # simple SGD step
     params = jax.tree_multimap(
@@ -109,12 +110,8 @@ def eval_model(params, batch):
     local_batch_size = batch[0].shape[0]
 
     local_batch = {}
-    local_batch["input_seq"] = jnp.moveaxis(
-        batch[0].reshape((local_batch_size, 1800, -1)), (0, 1, 2), (1, 0, 2)
-    )
-    local_batch["target_seq"] = jnp.moveaxis(
-        batch[1].reshape((local_batch_size, 1800, -1)), (0, 1, 2), (1, 0, 2)
-    )
+    local_batch["input_seq"] = jnp.moveaxis(batch[0], (0, 1, 2), (1, 0, 2))
+    local_batch["target_seq"] = jnp.moveaxis(batch[1], (0, 1, 2), (1, 0, 2))
     local_batch["mask_seq"] = jnp.ones(
         (
             1800,
@@ -126,6 +123,8 @@ def eval_model(params, batch):
     nn_model_fn = functools.partial(nn_model, params)
 
     init_s = init_state(FLATTEN_DIM, local_batch_size, HIDDEN_SIZE.value)
+
+    # pre process with conv
 
     final_carry, output_seq = jax.lax.scan(
         nn_model_fn,
@@ -163,7 +162,7 @@ def main(_):
     train_ds, test_ds = create_dataloader(
         root="data/dvs_gesture/dvs_gestures_build19.hdf5",
         batch_size=BATCH_SIZE.value,
-        ds=2,
+        ds=1,
         num_workers=0,
     )
 
@@ -176,6 +175,10 @@ def main(_):
         INIT_SCALE_S.value,
         HIDDEN_SIZE.value,
     )
+
+    # init feaure extractor
+    rng, p_rng = jax.random.split(rng, 2)
+    params = init_conv(p_rng, params)
 
     # Training loop.
     logging.info("Files in: " + WORK_DIR.value)

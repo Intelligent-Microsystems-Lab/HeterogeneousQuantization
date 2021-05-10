@@ -83,3 +83,5 @@ jobs:
         run: |
           python predictive_coding_test.py
           python rtrl_test.py
+          python pc_rtrl_test.py
+          python rtrl_test.py
