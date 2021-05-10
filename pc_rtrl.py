@@ -8,7 +8,6 @@
 import jax
 import jax.numpy as jnp
 from jax import lax
-from jax.interpreters import xla
 from jax._src.lax.lax import rev, ConvDimensionNumbers
 
 from model import core_fn, output_fn
@@ -51,13 +50,13 @@ def init_conv(rng, params):
 def conv_feature_extractor(params, x):
     act_tracker = []
 
-    x = lax.conv(x, params["fe"]["c1"], (3, 3), "VALID")
+    x = lax.conv_general_dilated(x, params["fe"]["c1"], (3, 3), "VALID")
     act_tracker.append(x)
 
-    x = lax.conv(x, params["fe"]["c2"], (3, 3), "VALID")
+    x = lax.conv_general_dilated(x, params["fe"]["c2"], (3, 3), "VALID")
     act_tracker.append(x)
 
-    x = lax.conv(x, params["fe"]["c3"], (3, 3), "VALID")
+    x = lax.conv_general_dilated(x, params["fe"]["c3"], (3, 3), "VALID")
 
     return x, act_tracker
 
@@ -75,44 +74,21 @@ def conv_feature_extractor_bwd(grads, params, act_tracker, g):
     # dimension hard coded
     g = jnp.reshape(g, (act_tracker[0].shape[0], 32, 4, 4))
 
+    # fmt: off
     grads["fe"]["c3"] = lax.conv_general_dilated(
         act_tracker[-1],
         g,
-        window_strides=(
-            1,
-            1,
-        ),
-        padding=[
-            (
-                0,
-                -1,
-            ),
-            (0, -1),
-        ],
-        lhs_dilation=(
-            1,
-            1,
-        ),
+        window_strides=(1, 1,),
+        padding=[(0, -1,), (0, -1)],
+        lhs_dilation=(1, 1,),
         rhs_dilation=(3, 3),
         dimension_numbers=trans_dimension_numbers1,
     )
     g = lax.conv_general_dilated(
         g,
         rev(params["fe"]["c3"], (2, 3)),
-        window_strides=(
-            1,
-            1,
-        ),
-        padding=[
-            (
-                2,
-                3,
-            ),
-            (
-                2,
-                3,
-            ),
-        ],
+        window_strides=(1, 1,),
+        padding=[(2, 3,), (2, 3,)],
         lhs_dilation=(3, 3),
         rhs_dilation=(1, 1),
         dimension_numbers=trans_dimension_numbers2,
@@ -121,41 +97,17 @@ def conv_feature_extractor_bwd(grads, params, act_tracker, g):
     grads["fe"]["c2"] = lax.conv_general_dilated(
         act_tracker[-2],
         g,
-        window_strides=(
-            1,
-            1,
-        ),
-        padding=[
-            (
-                0,
-                0,
-            ),
-            (0, 0),
-        ],
-        lhs_dilation=(
-            1,
-            1,
-        ),
+        window_strides=(1, 1,),
+        padding=[(0, 0,), (0, 0)],
+        lhs_dilation=(1, 1,),
         rhs_dilation=(3, 3),
         dimension_numbers=trans_dimension_numbers1,
     )
     g = lax.conv_general_dilated(
         g,
         rev(params["fe"]["c2"], (2, 3)),
-        window_strides=(
-            1,
-            1,
-        ),
-        padding=[
-            (
-                4,
-                4,
-            ),
-            (
-                4,
-                4,
-            ),
-        ],
+        window_strides=(1, 1,),
+        padding=[(4, 4,), (4, 4,)],
         lhs_dilation=(3, 3),
         rhs_dilation=(1, 1),
         dimension_numbers=trans_dimension_numbers2,
@@ -164,24 +116,13 @@ def conv_feature_extractor_bwd(grads, params, act_tracker, g):
     grads["fe"]["c1"] = lax.conv_general_dilated(
         act_tracker[-3],
         g,
-        window_strides=(
-            1,
-            1,
-        ),
-        padding=[
-            (
-                0,
-                -1,
-            ),
-            (0, -1),
-        ],
-        lhs_dilation=(
-            1,
-            1,
-        ),
+        window_strides=(1, 1,),
+        padding=[(0, -1,), (0, -1)],
+        lhs_dilation=(1, 1,),
         rhs_dilation=(3, 3),
         dimension_numbers=trans_dimension_numbers1,
     )
+    # fmt: on
 
     return grads
 
@@ -218,21 +159,10 @@ def forward_sweep(params, inpt, state, infl_m):
     return h, y_pred, new_infl
 
 
-def infer(
-    params,
-    inpt,
-    targt,
-    y_pred,
-    h_pred,
-    n_inference_steps,
-    inference_lr,
-):
-    # matching inputs and targets here especially inpt, target ...
+def infer(params, inpt, targt, y_pred, h_pred, n_inf_steps, inf_lr):
+    e_ys = targt - y_pred
 
-    hs = h_pred
-
-    for n in range(n_inference_steps):
-        e_ys = targt - y_pred
+    def infer_scan_fn(hs, x):
         e_hs = hs - h_pred
         hdelta = e_hs - jnp.dot(
             e_ys * linear_deriv(jnp.dot(h_pred, params["of"]["wo"])),
@@ -243,9 +173,17 @@ def infer(
             + jnp.dot(inpt, params["cf"]["w1"])
         )  # derivatie of hidden layer
         hdelta -= jnp.dot((e_hs * fn_deriv), params["cf"]["h1"].transpose())
-        hs -= inference_lr * hdelta
+        hs -= inf_lr * hdelta
 
-    return e_ys, e_hs
+        return hs, e_hs
+
+    _, e_hs = jax.lax.scan(
+        infer_scan_fn,
+        init=(h_pred),
+        xs=(jnp.ones(n_inf_steps)),
+    )
+
+    return e_ys, e_hs[-1]
 
 
 def compute_grads(params, inpt, h_inpt, e_ys, e_hs, h_pred, infl_x, infl_h):
@@ -299,7 +237,6 @@ def grad_compute(
             inpt, act_tracker = conv_feature_extractor(params, inpt)
             inpt = jnp.reshape(inpt, (inpt.shape[0], -1))
             act_tracker.insert(0, raw_inpt)
-            del raw_inpt
 
         h_pred, y_pred, new_infl = forward_sweep(params, inpt, state, infl_acc)
 
@@ -327,13 +264,11 @@ def grad_compute(
         if static_conv_feature_extractor:
             g = jnp.dot(e_hs, params["cf"]["w1"].transpose())
             grads = conv_feature_extractor_bwd(grads, params, act_tracker, g)
-            del act_tracker, g
 
         new_grad_acc = jax.tree_multimap(
             lambda x, y: jnp.add(x, y) * msk[0], grad_acc, grads
         )
 
-        xla._xla_callable.cache_clear()
         new_carry = (
             h_pred,
             new_infl,
