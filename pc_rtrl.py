@@ -295,7 +295,8 @@ def grad_compute(
             (local_step + 1) % update_freq == 0,
             lambda _: optimizer.apply_gradient(
                 jax.tree_map(
-                    lambda x: jnp.clip(x, -grad_clip, grad_clip), new_grad_acc
+                    lambda x: jnp.clip(x / update_freq, -grad_clip, grad_clip),
+                    new_grad_acc,
                 ),
                 learning_rate=lr,
             ),

@@ -49,8 +49,9 @@ WORK_DIR = flags.DEFINE_string(
 )
 
 TRAINING_STEPS = flags.DEFINE_integer("training_epochs", 200, "")
-WARMUP_STEPS = flags.DEFINE_integer("warmup_epochs", 0, "")
+WARMUP_STEPS = flags.DEFINE_integer("warmup_epochs", 5, "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 1, "")
+EVAL_BATCH_SIZE = flags.DEFINE_integer("eval_batch_size", 8, "")
 
 HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 64, "")
 
@@ -65,16 +66,13 @@ NOISE_STD_DEV = flags.DEFINE_float("noise_std_dev", 0, "")
 INFERENCE_STEPS = flags.DEFINE_integer("inference_steps", 100, "")
 INFERENCE_LR = flags.DEFINE_float("inference_lr", 0.01, "")
 
-BATCH_SIZE = flags.DEFINE_integer(
-    "batch_size", 128, ""
-)  # 128 with jit possible
-EVAL_BATCH_SIZE = flags.DEFINE_integer("eval_batch_size", 8, "")
+BATCH_SIZE = flags.DEFINE_integer("batch_size", 128, "")
 INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.2, "")
-LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.01, "")
-MOMENTUM = flags.DEFINE_float("momentum", 0.0, "")
-UPDATE_FREQ = flags.DEFINE_integer("update_freq", 500, "")
+LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.0001, "")
+MOMENTUM = flags.DEFINE_float("momentum", 0.9, "")
+UPDATE_FREQ = flags.DEFINE_integer("update_freq", 1, "")
 GRAD_ACCUMULATE = flags.DEFINE_bool("grad_accumulate", True, "")
-GRAD_CLIP = flags.DEFINE_float("grad_clip", 5, "")
+GRAD_CLIP = flags.DEFINE_float("grad_clip", 2.5, "")
 
 TRAIN_SEQ_LEN = flags.DEFINE_integer("train_seq_len", 500, "")
 EVAL_SEQ_LEN = flags.DEFINE_integer("eval_seq_len", 1800, "")
@@ -226,10 +224,11 @@ def main(_):
     steps_per_epoch = len(iter(train_ds)) * (
         TRAIN_SEQ_LEN.value / UPDATE_FREQ.value
     )
-    # learning_rate_fn = create_cosine_learning_rate_schedule(LEARNING_RATE.value, steps_per_epoch,
-    #                                     TRAINING_STEPS.value, warmup_length=WARMUP_STEPS.value)
-    learning_rate_fn = create_constant_learning_rate_schedule(
-        LEARNING_RATE.value, steps_per_epoch, warmup_length=0.0
+    learning_rate_fn = create_cosine_learning_rate_schedule(
+        LEARNING_RATE.value,
+        steps_per_epoch,
+        TRAINING_STEPS.value,
+        warmup_length=WARMUP_STEPS.value,
     )
 
     # Training loop.
@@ -239,11 +238,11 @@ def main(_):
     for step in range(TRAINING_STEPS.value):
         # Do a batch of SGD.
         train_metrics = []
-        step = 0
+        step_opt = 0
         for batch in iter(train_ds):
             batch = [jnp.array(x.bool()) for x in batch]
-            optimizer, metrics, step = train_step(
-                step, optimizer, learning_rate_fn, batch
+            optimizer, metrics, step_opt = train_step(
+                step_opt, optimizer, learning_rate_fn, batch
             )
             train_metrics.append(metrics)
 
