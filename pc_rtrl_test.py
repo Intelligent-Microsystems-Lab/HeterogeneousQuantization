@@ -35,6 +35,10 @@ def mse_loss_bptt(logits, labels, mask):
 
     return loss
 
+def cross_entropy_loss_bptt(logits, targt, mask):
+    logits = jax.nn.log_softmax(logits, axis=-1)
+    return -jnp.mean(jnp.sum(targt * logits, axis=-1))
+
 
 def simple_loss(logits, labels, mask):
     # simple loss
@@ -128,7 +132,7 @@ class UnitTests(absltest.TestCase):
                 init=init_s,
                 xs=inpt,
             )
-            loss = mse_loss_bptt(output_seq, targt, None)
+            loss = cross_entropy_loss_bptt(output_seq, targt, None)
             return loss, output_seq
 
         grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
@@ -167,19 +171,19 @@ class UnitTests(absltest.TestCase):
 
         # note tolerance level here are very high
         np.testing.assert_allclose(
-            grad_pc_rtrl["cf"]["w1"] / 90,
+            grad_pc_rtrl["cf"]["w1"]/prob_size*2,
             grad_bptt["cf"]["w1"],
             rtol=0.8,
             atol=0.8,
         )
         np.testing.assert_allclose(
-            grad_pc_rtrl["cf"]["h1"] / 90,
+            grad_pc_rtrl["cf"]["h1"]/prob_size*2,
             grad_bptt["cf"]["h1"],
             rtol=0.8,
             atol=0.8,
         )
         np.testing.assert_allclose(
-            grad_pc_rtrl["of"]["wo"] / 120,
+            grad_pc_rtrl["of"]["wo"]/prob_size*2,
             grad_bptt["of"]["wo"],
             rtol=0.8,
             atol=0.8,

@@ -161,9 +161,13 @@ def forward_sweep(params, inpt, state, infl_m):
     return h, y_pred, new_infl
 
 
+def cross_entropy_loss(logits, targt):
+    logits = jax.nn.log_softmax(logits, axis=-1)
+    return jnp.mean(jnp.sum(targt * logits, axis=-1))
+
+
 def infer(params, inpt, targt, y_pred, h_pred, n_inf_steps, inf_lr):
-    # loss fn....
-    e_ys = targt - y_pred
+    e_ys = jax.grad(cross_entropy_loss)(y_pred, targt)
 
     def infer_scan_fn(hs, x):
         e_hs = hs - h_pred
@@ -306,7 +310,7 @@ def grad_compute(
 
         # reset of grad_acc after update
         new_grad_acc = jax.tree_map(
-            lambda x: x * ((local_step + 1) % update_freq == 0), new_grad_acc
+            lambda x: x * ((local_step + 1) % update_freq != 0), new_grad_acc
         )
 
         new_carry = (

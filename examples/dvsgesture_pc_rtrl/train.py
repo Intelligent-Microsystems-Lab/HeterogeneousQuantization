@@ -68,32 +68,30 @@ INFERENCE_LR = flags.DEFINE_float("inference_lr", 0.01, "")
 
 BATCH_SIZE = flags.DEFINE_integer("batch_size", 128, "")
 INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.2, "")
-LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.0001, "")
+LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.001, "")
 MOMENTUM = flags.DEFINE_float("momentum", 0.9, "")
-UPDATE_FREQ = flags.DEFINE_integer("update_freq", 1, "")
+UPDATE_FREQ = flags.DEFINE_integer("update_freq", 3, "")
 GRAD_ACCUMULATE = flags.DEFINE_bool("grad_accumulate", True, "")
-GRAD_CLIP = flags.DEFINE_float("grad_clip", 2.5, "")
+GRAD_CLIP = flags.DEFINE_float("grad_clip", 50.0, "")
 
 TRAIN_SEQ_LEN = flags.DEFINE_integer("train_seq_len", 500, "")
 EVAL_SEQ_LEN = flags.DEFINE_integer("eval_seq_len", 1800, "")
 
 
+def cross_entropy_loss(logits, targt):
+    logits = jax.nn.log_softmax(logits, axis=-1)
+    return -jnp.mean(jnp.sum(targt * logits, axis=-1))
+
+
 def compute_metrics(logits, labels):
     # simple MSE loss
-    loss = jnp.mean((logits - labels) ** 2)
+    loss = cross_entropy_loss(logits, labels)
 
     accuracy = 1 - jnp.mean(
         ~(jnp.round(jnp.argmax(logits, axis=2)) == jnp.argmax(labels, axis=2))
     )
 
     return {"loss": loss, "accuracy": accuracy}
-
-
-def mse_loss(logits, labels, mask):
-    # simple MSE loss
-    loss = jnp.mean((logits - labels) ** 2)
-
-    return loss
 
 
 @functools.partial(jax.jit, static_argnums=(2,))
@@ -251,6 +249,9 @@ def main(_):
 
         summary_writer.scalar(
             "step_time", (time.time() - t_loop_start), (step + 1)
+        )
+        summary_writer.scalar(
+            "lr", learning_rate_fn(step * steps_per_epoch), (step + 1)
         )
         t_loop_start = time.time()
         for key, val in train_metrics.items():  # type: ignore
