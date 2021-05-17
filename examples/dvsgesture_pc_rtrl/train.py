@@ -27,7 +27,7 @@ from torchneuromorphic.dvs_gestures.dvsgestures_dataloaders import (
 
 sys.path.append("../..")
 from model import init_state, init_params, nn_model  # noqa: E402
-from pc_rtrl import grad_compute, init_conv  # noqa: E402
+from pc_rtrl import grad_compute, init_conv, conv_feature_extractor  # noqa: E402
 
 # parameters
 WORK_DIR = flags.DEFINE_string(
@@ -37,24 +37,29 @@ WORK_DIR = flags.DEFINE_string(
     ),
     "",
 )
-BATCH_SIZE = flags.DEFINE_integer("batch_size", 256, "")
+BATCH_SIZE = flags.DEFINE_integer("batch_size", 128, "")
+EVAL_BATCH_SIZE = flags.DEFINE_integer("eval_batch_size", 8, "")
 INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.2, "")
-LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.0001, "")
-TRAINING_STEPS = flags.DEFINE_integer("training_epochs", 100, "")
+LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.01, "")
+TRAINING_STEPS = flags.DEFINE_integer("training_epochs", 200, "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 1, "")
 HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 64, "")
-INFERENCE_STEPS = flags.DEFINE_integer("inference_steps", 10, "")
-INFERENCE_LR = flags.DEFINE_float("inference_lr", 0.1, "")
+INFERENCE_STEPS = flags.DEFINE_integer("inference_steps", 100, "")
+INFERENCE_LR = flags.DEFINE_float("inference_lr", 0.01, "")
+CONV_FEATURE_EXTRACTOR = flags.DEFINE_bool("conv_feature_extractor", False, "")
+DOWNSAMPLING = flags.DEFINE_integer("downsampling", 4, "")
+N_ATTENTION = flags.DEFINE_integer("n_attention", None, "")
+FLATTEN_DIM = flags.DEFINE_integer("flatten_dim", 2048, "")
+JITTER_STD_DEV = flags.DEFINE_float("jitter_std_dev", 0, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
 
-FLATTEN_DIM = 512
 
 
 def compute_metrics(logits, labels):
     # simple MSE loss
     loss = jnp.mean((logits - labels) ** 2)
 
-    accuracy = 1 - jnp.mean(~(jnp.round(logits) == labels))
+    accuracy = 1 - jnp.mean(~(jnp.round(jnp.argmax(logits, axis=2)) == jnp.argmax(labels, axis=2)))
 
     return {"loss": loss, "accuracy": accuracy}
 
@@ -80,7 +85,8 @@ def train_step(params, batch):
             1,
         )
     )
-    init_s = init_state(FLATTEN_DIM, local_batch_size, HIDDEN_SIZE.value)
+
+    init_s = init_state(FLATTEN_DIM.value, local_batch_size, HIDDEN_SIZE.value)
 
     grads, output_seq, loss_val = grad_compute(
         params,
@@ -88,7 +94,7 @@ def train_step(params, batch):
         init_s,
         INFERENCE_STEPS.value,
         INFERENCE_LR.value,
-        static_conv_feature_extractor=True,
+        static_conv_feature_extractor=CONV_FEATURE_EXTRACTOR.value,
     )
     # simple SGD step
     params = jax.tree_multimap(
@@ -122,9 +128,13 @@ def eval_model(params, batch):
 
     nn_model_fn = functools.partial(nn_model, params)
 
-    init_s = init_state(FLATTEN_DIM, local_batch_size, HIDDEN_SIZE.value)
+    init_s = init_state(FLATTEN_DIM.value, local_batch_size, HIDDEN_SIZE.value)
 
     # pre process with conv
+    if CONV_FEATURE_EXTRACTOR.value:
+        inpt, _ = conv_feature_extractor(params, jnp.reshape(local_batch["input_seq"], (-1, 2, 128, 128)))
+    
+    local_batch["input_seq"] = jnp.reshape(local_batch["input_seq"], (1800, local_batch_size, -1))
 
     final_carry, output_seq = jax.lax.scan(
         nn_model_fn,
@@ -140,17 +150,6 @@ def eval_model(params, batch):
     return metrics, output_seq
 
 
-def get_datasets():
-    """Load copy_task dataset train and test datasets into memory."""
-    ds_builder = tfds.builder("copy_task")
-    ds_builder.download_and_prepare()
-    train_ds = tfds.as_numpy(
-        ds_builder.as_dataset(split="train", batch_size=-1)
-    )
-    test_ds = tfds.as_numpy(ds_builder.as_dataset(split="test", batch_size=-1))
-    return train_ds, test_ds
-
-
 def main(_):
     summary_writer = tensorboard.SummaryWriter(WORK_DIR.value)
     summary_writer.hparams(
@@ -159,26 +158,36 @@ def main(_):
 
     # get data set
     rng = jax.random.PRNGKey(SEED.value)
-    train_ds, test_ds = create_dataloader(
+    train_ds, _ = create_dataloader(
         root="data/dvs_gesture/dvs_gestures_build19.hdf5",
         batch_size=BATCH_SIZE.value,
-        ds=1,
+        ds=DOWNSAMPLING.value,
+        n_events_attention = N_ATTENTION.value,
+        num_workers=0,
+        jitter_train=JITTER_STD_DEV.value,
+    )
+    _, test_ds = create_dataloader(
+        root="data/dvs_gesture/dvs_gestures_build19.hdf5",
+        batch_size=EVAL_BATCH_SIZE.value,
+        ds=DOWNSAMPLING.value,
+        n_events_attention = N_ATTENTION.value,
         num_workers=0,
     )
-
+    
     # initialize parameters
     rng, p_rng = jax.random.split(rng, 2)
     params = init_params(
         p_rng,
-        FLATTEN_DIM,
+        FLATTEN_DIM.value,
         11,
         INIT_SCALE_S.value,
         HIDDEN_SIZE.value,
     )
 
     # init feaure extractor
-    rng, p_rng = jax.random.split(rng, 2)
-    params = init_conv(p_rng, params)
+    if CONV_FEATURE_EXTRACTOR.value:
+        rng, p_rng = jax.random.split(rng, 2)
+        params = init_conv(p_rng, params)
 
     # Training loop.
     logging.info("Files in: " + WORK_DIR.value)
@@ -188,7 +197,7 @@ def main(_):
         # Do a batch of SGD.
         train_metrics = []
         for batch in iter(train_ds):
-            batch = [jnp.array(x) for x in batch]
+            batch = [jnp.array(x.bool()) for x in batch]
             params, metrics, grads = train_step(params, batch)
             train_metrics.append(metrics)
 
@@ -207,7 +216,7 @@ def main(_):
         if (step + 1) % EVALUATION_INTERVAL.value == 0:
             eval_metrics = []
             for batch in iter(test_ds):
-                batch = [jnp.array(x) for x in batch]
+                batch = [jnp.array(x.bool()) for x in batch]
                 metrics, ts_output = eval_model(params, batch)
                 eval_metrics.append(metrics)
 

@@ -50,7 +50,7 @@ def init_conv(rng, params):
 def conv_feature_extractor(params, x):
     act_tracker = []
 
-    x = lax.conv_general_dilated(x, params["fe"]["c1"], (3, 3), "VALID")
+    x = lax.conv_general_dilated(x.astype(jnp.float32), params["fe"]["c1"], (3, 3), "VALID")
     act_tracker.append(x)
 
     x = lax.conv_general_dilated(x, params["fe"]["c2"], (3, 3), "VALID")
@@ -236,7 +236,9 @@ def grad_compute(
             raw_inpt = inpt
             inpt, act_tracker = conv_feature_extractor(params, inpt)
             inpt = jnp.reshape(inpt, (inpt.shape[0], -1))
-            act_tracker.insert(0, raw_inpt)
+            act_tracker.insert(0, raw_inpt.astype(jnp.float32))
+        else:
+            inpt = jnp.reshape(inpt, (inpt.shape[0], -1))
 
         h_pred, y_pred, new_infl = forward_sweep(params, inpt, state, infl_acc)
 
