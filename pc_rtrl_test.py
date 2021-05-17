@@ -35,6 +35,7 @@ def mse_loss_bptt(logits, labels, mask):
 
     return loss
 
+
 def cross_entropy_loss_bptt(logits, targt, mask):
     logits = jax.nn.log_softmax(logits, axis=-1)
     return -jnp.mean(jnp.sum(targt * logits, axis=-1))
@@ -171,19 +172,19 @@ class UnitTests(absltest.TestCase):
 
         # note tolerance level here are very high
         np.testing.assert_allclose(
-            grad_pc_rtrl["cf"]["w1"]/prob_size*2,
+            grad_pc_rtrl["cf"]["w1"] / prob_size * 2,
             grad_bptt["cf"]["w1"],
             rtol=0.8,
             atol=0.8,
         )
         np.testing.assert_allclose(
-            grad_pc_rtrl["cf"]["h1"]/prob_size*2,
+            grad_pc_rtrl["cf"]["h1"] / prob_size * 2,
             grad_bptt["cf"]["h1"],
             rtol=0.8,
             atol=0.8,
         )
         np.testing.assert_allclose(
-            grad_pc_rtrl["of"]["wo"]/prob_size*2,
+            grad_pc_rtrl["of"]["wo"] / prob_size * 2,
             grad_bptt["of"]["wo"],
             rtol=0.8,
             atol=0.8,
