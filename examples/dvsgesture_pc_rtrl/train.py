@@ -48,8 +48,8 @@ WORK_DIR = flags.DEFINE_string(
     "",
 )
 
-TRAINING_STEPS = flags.DEFINE_integer("training_epochs", 200, "")
-WARMUP_STEPS = flags.DEFINE_integer("warmup_epochs", 5, "")
+TRAINING_STEPS = flags.DEFINE_integer("training_epochs", 40, "")
+WARMUP_STEPS = flags.DEFINE_integer("warmup_epochs", 4, "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 1, "")
 EVAL_BATCH_SIZE = flags.DEFINE_integer("eval_batch_size", 8, "")
 
@@ -70,7 +70,7 @@ BATCH_SIZE = flags.DEFINE_integer("batch_size", 128, "")
 INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.2, "")
 LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.001, "")
 MOMENTUM = flags.DEFINE_float("momentum", 0.9, "")
-UPDATE_FREQ = flags.DEFINE_integer("update_freq", 3, "")
+UPDATE_FREQ = flags.DEFINE_integer("update_freq", 500, "")
 GRAD_ACCUMULATE = flags.DEFINE_bool("grad_accumulate", True, "")
 GRAD_CLIP = flags.DEFINE_float("grad_clip", 50.0, "")
 
