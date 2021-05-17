@@ -17,6 +17,11 @@ import sys
 import tensorflow_datasets as tfds
 from flax.metrics import tensorboard
 from flax.training import common_utils
+from flax import optim
+from flax.training.lr_schedule import (
+    create_cosine_learning_rate_schedule,
+    create_constant_learning_rate_schedule,
+)
 
 # from jax.config import config
 # config.update("jax_disable_jit", True)
@@ -27,9 +32,14 @@ from torchneuromorphic.dvs_gestures.dvsgestures_dataloaders import (
 
 sys.path.append("../..")
 from model import init_state, init_params, nn_model  # noqa: E402
-from pc_rtrl import grad_compute, init_conv, conv_feature_extractor  # noqa: E402
+from pc_rtrl import (
+    grad_compute,
+    init_conv,
+    conv_feature_extractor,
+)  # noqa: E402
 
 # parameters
+SEED = flags.DEFINE_integer("seed", 42, "")
 WORK_DIR = flags.DEFINE_string(
     "work_dir",
     "../../../training_dir/dvsgest_rtrl_pc-{date:%Y-%m-%d_%H-%M-%S}/".format(
@@ -37,29 +47,46 @@ WORK_DIR = flags.DEFINE_string(
     ),
     "",
 )
-BATCH_SIZE = flags.DEFINE_integer("batch_size", 128, "")
-EVAL_BATCH_SIZE = flags.DEFINE_integer("eval_batch_size", 8, "")
-INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.2, "")
-LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.01, "")
+
 TRAINING_STEPS = flags.DEFINE_integer("training_epochs", 200, "")
+WARMUP_STEPS = flags.DEFINE_integer("warmup_epochs", 0, "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 1, "")
+
 HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 64, "")
-INFERENCE_STEPS = flags.DEFINE_integer("inference_steps", 100, "")
-INFERENCE_LR = flags.DEFINE_float("inference_lr", 0.01, "")
+
 CONV_FEATURE_EXTRACTOR = flags.DEFINE_bool("conv_feature_extractor", False, "")
 DOWNSAMPLING = flags.DEFINE_integer("downsampling", 4, "")
 N_ATTENTION = flags.DEFINE_integer("n_attention", None, "")
 FLATTEN_DIM = flags.DEFINE_integer("flatten_dim", 2048, "")
 JITTER_STD_DEV = flags.DEFINE_float("jitter_std_dev", 0, "")
-SEED = flags.DEFINE_integer("seed", 42, "")
+NOISE_STD_DEV = flags.DEFINE_float("noise_std_dev", 0, "")
 
+
+INFERENCE_STEPS = flags.DEFINE_integer("inference_steps", 100, "")
+INFERENCE_LR = flags.DEFINE_float("inference_lr", 0.01, "")
+
+BATCH_SIZE = flags.DEFINE_integer(
+    "batch_size", 128, ""
+)  # 128 with jit possible
+EVAL_BATCH_SIZE = flags.DEFINE_integer("eval_batch_size", 8, "")
+INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.2, "")
+LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.01, "")
+MOMENTUM = flags.DEFINE_float("momentum", 0.0, "")
+UPDATE_FREQ = flags.DEFINE_integer("update_freq", 500, "")
+GRAD_ACCUMULATE = flags.DEFINE_bool("grad_accumulate", True, "")
+GRAD_CLIP = flags.DEFINE_float("grad_clip", 5, "")
+
+TRAIN_SEQ_LEN = flags.DEFINE_integer("train_seq_len", 500, "")
+EVAL_SEQ_LEN = flags.DEFINE_integer("eval_seq_len", 1800, "")
 
 
 def compute_metrics(logits, labels):
     # simple MSE loss
     loss = jnp.mean((logits - labels) ** 2)
 
-    accuracy = 1 - jnp.mean(~(jnp.round(jnp.argmax(logits, axis=2)) == jnp.argmax(labels, axis=2)))
+    accuracy = 1 - jnp.mean(
+        ~(jnp.round(jnp.argmax(logits, axis=2)) == jnp.argmax(labels, axis=2))
+    )
 
     return {"loss": loss, "accuracy": accuracy}
 
@@ -71,8 +98,8 @@ def mse_loss(logits, labels, mask):
     return loss
 
 
-@jax.jit
-def train_step(params, batch):
+@functools.partial(jax.jit, static_argnums=(2,))
+def train_step(step, optimizer, lr_fn, batch):
     local_batch_size = batch[0].shape[0]
 
     local_batch = {}
@@ -80,7 +107,7 @@ def train_step(params, batch):
     local_batch["target_seq"] = jnp.moveaxis(batch[1], (0, 1, 2), (1, 0, 2))
     local_batch["mask_seq"] = jnp.ones(
         (
-            500,
+            TRAIN_SEQ_LEN.value,
             local_batch_size,
             1,
         )
@@ -88,19 +115,18 @@ def train_step(params, batch):
 
     init_s = init_state(FLATTEN_DIM.value, local_batch_size, HIDDEN_SIZE.value)
 
-    grads, output_seq, loss_val = grad_compute(
-        params,
+    optimizer, output_seq, step = grad_compute(
+        step,
+        optimizer,
+        lr_fn,
         local_batch,
         init_s,
         INFERENCE_STEPS.value,
         INFERENCE_LR.value,
+        UPDATE_FREQ.value,
+        GRAD_ACCUMULATE.value,
+        GRAD_CLIP.value,
         static_conv_feature_extractor=CONV_FEATURE_EXTRACTOR.value,
-    )
-    # simple SGD step
-    params = jax.tree_multimap(
-        lambda x, y: x - LEARNING_RATE.value * jnp.clip(y / 500, -5, 5),
-        params,
-        grads,
     )
 
     metrics = compute_metrics(
@@ -108,7 +134,7 @@ def train_step(params, batch):
         local_batch["target_seq"],
     )
 
-    return params, metrics, output_seq
+    return optimizer, metrics, step
 
 
 @jax.jit
@@ -120,7 +146,7 @@ def eval_model(params, batch):
     local_batch["target_seq"] = jnp.moveaxis(batch[1], (0, 1, 2), (1, 0, 2))
     local_batch["mask_seq"] = jnp.ones(
         (
-            1800,
+            EVAL_SEQ_LEN.value,
             local_batch_size,
             1,
         )
@@ -132,9 +158,13 @@ def eval_model(params, batch):
 
     # pre process with conv
     if CONV_FEATURE_EXTRACTOR.value:
-        inpt, _ = conv_feature_extractor(params, jnp.reshape(local_batch["input_seq"], (-1, 2, 128, 128)))
-    
-    local_batch["input_seq"] = jnp.reshape(local_batch["input_seq"], (1800, local_batch_size, -1))
+        inpt, _ = conv_feature_extractor(
+            params, jnp.reshape(local_batch["input_seq"], (-1, 2, 128, 128))
+        )
+
+    local_batch["input_seq"] = jnp.reshape(
+        local_batch["input_seq"], (EVAL_SEQ_LEN.value, local_batch_size, -1)
+    )
 
     final_carry, output_seq = jax.lax.scan(
         nn_model_fn,
@@ -147,7 +177,7 @@ def eval_model(params, batch):
         local_batch["target_seq"],
     )
 
-    return metrics, output_seq
+    return metrics
 
 
 def main(_):
@@ -162,18 +192,19 @@ def main(_):
         root="data/dvs_gesture/dvs_gestures_build19.hdf5",
         batch_size=BATCH_SIZE.value,
         ds=DOWNSAMPLING.value,
-        n_events_attention = N_ATTENTION.value,
+        n_events_attention=N_ATTENTION.value,
         num_workers=0,
         jitter_train=JITTER_STD_DEV.value,
+        spatial_noise_train=NOISE_STD_DEV.value,
     )
     _, test_ds = create_dataloader(
         root="data/dvs_gesture/dvs_gestures_build19.hdf5",
         batch_size=EVAL_BATCH_SIZE.value,
         ds=DOWNSAMPLING.value,
-        n_events_attention = N_ATTENTION.value,
+        n_events_attention=N_ATTENTION.value,
         num_workers=0,
     )
-    
+
     # initialize parameters
     rng, p_rng = jax.random.split(rng, 2)
     params = init_params(
@@ -189,6 +220,18 @@ def main(_):
         rng, p_rng = jax.random.split(rng, 2)
         params = init_conv(p_rng, params)
 
+    optimizer = optim.Momentum(beta=MOMENTUM.value, nesterov=True).create(
+        params
+    )
+    steps_per_epoch = len(iter(train_ds)) * (
+        TRAIN_SEQ_LEN.value / UPDATE_FREQ.value
+    )
+    # learning_rate_fn = create_cosine_learning_rate_schedule(LEARNING_RATE.value, steps_per_epoch,
+    #                                     TRAINING_STEPS.value, warmup_length=WARMUP_STEPS.value)
+    learning_rate_fn = create_constant_learning_rate_schedule(
+        LEARNING_RATE.value, steps_per_epoch, warmup_length=0.0
+    )
+
     # Training loop.
     logging.info("Files in: " + WORK_DIR.value)
     logging.info(jax.devices())
@@ -196,9 +239,12 @@ def main(_):
     for step in range(TRAINING_STEPS.value):
         # Do a batch of SGD.
         train_metrics = []
+        step = 0
         for batch in iter(train_ds):
             batch = [jnp.array(x.bool()) for x in batch]
-            params, metrics, grads = train_step(params, batch)
+            optimizer, metrics, step = train_step(
+                step, optimizer, learning_rate_fn, batch
+            )
             train_metrics.append(metrics)
 
         train_metrics = common_utils.stack_forest(train_metrics)
@@ -212,12 +258,12 @@ def main(_):
             tag = "train_%s" % key
             summary_writer.scalar(tag, val, (step + 1) * BATCH_SIZE.value)
 
-        # Periodically report loss and show an example
+        # Periodically report loss
         if (step + 1) % EVALUATION_INTERVAL.value == 0:
             eval_metrics = []
             for batch in iter(test_ds):
                 batch = [jnp.array(x.bool()) for x in batch]
-                metrics, ts_output = eval_model(params, batch)
+                metrics = eval_model(optimizer.target, batch)
                 eval_metrics.append(metrics)
 
             eval_metrics = common_utils.stack_forest(eval_metrics)
