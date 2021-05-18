@@ -67,14 +67,13 @@ INFERENCE_STEPS = flags.DEFINE_integer("inference_steps", 100, "")
 INFERENCE_LR = flags.DEFINE_float("inference_lr", 0.01, "")
 
 BATCH_SIZE = flags.DEFINE_integer("batch_size", 128, "")
-INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.2, "")
-LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.001, "")
+LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.005, "")
 MOMENTUM = flags.DEFINE_float("momentum", 0.9, "")
 UPDATE_FREQ = flags.DEFINE_integer("update_freq", 500, "")
 GRAD_ACCUMULATE = flags.DEFINE_bool("grad_accumulate", True, "")
-GRAD_CLIP = flags.DEFINE_float("grad_clip", 50.0, "")
+GRAD_CLIP = flags.DEFINE_float("grad_clip", 100.0, "")
 
-TRAIN_SEQ_LEN = flags.DEFINE_integer("train_seq_len", 500, "")
+TRAIN_SEQ_LEN = flags.DEFINE_integer("train_seq_len", 100, "")
 EVAL_SEQ_LEN = flags.DEFINE_integer("eval_seq_len", 1800, "")
 
 
@@ -207,7 +206,7 @@ def main(_):
         p_rng,
         FLATTEN_DIM.value,
         11,
-        INIT_SCALE_S.value,
+        1.,
         HIDDEN_SIZE.value,
     )
 
