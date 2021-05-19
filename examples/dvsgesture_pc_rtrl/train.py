@@ -48,7 +48,7 @@ WORK_DIR = flags.DEFINE_string(
     "",
 )
 
-TRAINING_STEPS = flags.DEFINE_integer("training_epochs", 12, "")
+TRAINING_STEPS = flags.DEFINE_integer("training_epochs", 150, "")
 WARMUP_STEPS = flags.DEFINE_integer("warmup_epochs", 2, "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 1, "")
 EVAL_BATCH_SIZE = flags.DEFINE_integer("eval_batch_size", 8, "")
