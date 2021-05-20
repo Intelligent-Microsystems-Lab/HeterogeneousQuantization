@@ -1,3 +1,6 @@
 *.pyc
 *.DS_Store
 examples/dvsgesture_pc_rtrl/data/*
+examples/dvsgesture_bptt/data/*
+examples/dvsgesture_rtrl/data/*
+examples/dvsgesture_pc/data/*
