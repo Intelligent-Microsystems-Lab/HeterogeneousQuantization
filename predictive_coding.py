@@ -28,11 +28,7 @@ def forward_sweep(input_seq, params, init_s):
     p_core_fn = functools.partial(core_fn, params["cf"])
     p_out_fn = functools.partial(output_fn, params["of"])
 
-    _, h_pred = jax.lax.scan(
-        p_core_fn,
-        init=init_s,
-        xs=input_seq,
-    )
+    _, h_pred = jax.lax.scan(p_core_fn, init=init_s, xs=input_seq)
 
     _, out_pred = jax.lax.scan(
         p_out_fn,
@@ -40,8 +36,11 @@ def forward_sweep(input_seq, params, init_s):
         xs=h_pred,
     )
 
-    return out_pred, jnp.vstack(
-        (jnp.expand_dims(jnp.zeros_like(h_pred[0, :, :]), axis=0), h_pred)
+    return (
+        out_pred,
+        jnp.vstack(
+            (jnp.expand_dims(jnp.zeros_like(h_pred[0, :, :]), axis=0), h_pred)
+        ),
     )
 
 
@@ -113,9 +112,4 @@ def compute_grads(params, input_seq, e_ys, e_hs, h_pred, mask=None):
         )
         dWh += jnp.dot(h_pred[i].transpose(), (e_hs[i] * fn_deriv)) * mask[i]
 
-    return {
-        "cf": {"w1": dWx, "h1": dWh},
-        "of": {
-            "wo": dWy,
-        },
-    }
+    return {"cf": {"w1": dWx, "h1": dWh}, "of": {"wo": dWy}}

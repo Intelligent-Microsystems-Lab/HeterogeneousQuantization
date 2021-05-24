@@ -18,117 +18,6 @@ C2_KERNEL = (16, 8, 5, 5)
 C3_KERNEL = (32, 16, 3, 3)
 
 
-def init_conv(rng, params):
-    rng, c1_rng, c2_rng, c3_rng = jax.random.split(rng, 4)
-
-    params["fe"] = {}
-    params["fe"]["c1"] = (
-        jax.random.normal(
-            c1_rng,
-            C1_KERNEL,
-        )
-        * jnp.sqrt(1.0 / C1_KERNEL[-1] ** 2)
-    )
-    params["fe"]["c2"] = (
-        jax.random.normal(
-            c2_rng,
-            C2_KERNEL,
-        )
-        * jnp.sqrt(1.0 / C2_KERNEL[-1] ** 2)
-    )
-    params["fe"]["c3"] = (
-        jax.random.normal(
-            c3_rng,
-            C3_KERNEL,
-        )
-        * jnp.sqrt(1.0 / C3_KERNEL[-1] ** 2)
-    )
-
-    return params
-
-
-def conv_feature_extractor(params, x):
-    act_tracker = []
-
-    x = lax.conv_general_dilated(
-        x.astype(jnp.float32), params["fe"]["c1"], (3, 3), "VALID"
-    )
-    act_tracker.append(x)
-
-    x = lax.conv_general_dilated(x, params["fe"]["c2"], (3, 3), "VALID")
-    act_tracker.append(x)
-
-    x = lax.conv_general_dilated(x, params["fe"]["c3"], (3, 3), "VALID")
-
-    return x, act_tracker
-
-
-def conv_feature_extractor_bwd(grads, params, act_tracker, g):
-
-    trans_dimension_numbers1 = ConvDimensionNumbers(
-        (1, 0, 2, 3), (1, 0, 2, 3), (1, 0, 2, 3)
-    )
-    trans_dimension_numbers2 = ConvDimensionNumbers(
-        (0, 1, 2, 3), (1, 0, 2, 3), (0, 1, 2, 3)
-    )
-
-    grads["fe"] = {}
-    # dimension hard coded
-    g = jnp.reshape(g, (act_tracker[0].shape[0], 32, 4, 4))
-
-    # fmt: off
-    grads["fe"]["c3"] = lax.conv_general_dilated(
-        act_tracker[-1],
-        g,
-        window_strides=(1, 1,),
-        padding=[(0, -1,), (0, -1)],
-        lhs_dilation=(1, 1,),
-        rhs_dilation=(3, 3),
-        dimension_numbers=trans_dimension_numbers1,
-    )
-    g = lax.conv_general_dilated(
-        g,
-        rev(params["fe"]["c3"], (2, 3)),
-        window_strides=(1, 1,),
-        padding=[(2, 3,), (2, 3,)],
-        lhs_dilation=(3, 3),
-        rhs_dilation=(1, 1),
-        dimension_numbers=trans_dimension_numbers2,
-    )
-
-    grads["fe"]["c2"] = lax.conv_general_dilated(
-        act_tracker[-2],
-        g,
-        window_strides=(1, 1,),
-        padding=[(0, 0,), (0, 0)],
-        lhs_dilation=(1, 1,),
-        rhs_dilation=(3, 3),
-        dimension_numbers=trans_dimension_numbers1,
-    )
-    g = lax.conv_general_dilated(
-        g,
-        rev(params["fe"]["c2"], (2, 3)),
-        window_strides=(1, 1,),
-        padding=[(4, 4,), (4, 4,)],
-        lhs_dilation=(3, 3),
-        rhs_dilation=(1, 1),
-        dimension_numbers=trans_dimension_numbers2,
-    )
-
-    grads["fe"]["c1"] = lax.conv_general_dilated(
-        act_tracker[-3],
-        g,
-        window_strides=(1, 1,),
-        padding=[(0, -1,), (0, -1)],
-        lhs_dilation=(1, 1,),
-        rhs_dilation=(3, 3),
-        dimension_numbers=trans_dimension_numbers1,
-    )
-    # fmt: on
-
-    return grads
-
-
 def relu_deriv(x):
     xrel = jax.nn.relu(x)
     return jax.lax.select(xrel > 0, jnp.ones_like(x), jnp.zeros_like(x))
@@ -185,9 +74,7 @@ def infer(params, inpt, targt, y_pred, h_pred, n_inf_steps, inf_lr):
         return hs, e_hs
 
     _, e_hs = jax.lax.scan(
-        infer_scan_fn,
-        init=(h_pred),
-        xs=(jnp.ones(n_inf_steps)),
+        infer_scan_fn, init=(h_pred), xs=(jnp.ones(n_inf_steps))
     )
 
     return e_ys, e_hs[-1]
@@ -202,12 +89,7 @@ def compute_grads(params, inpt, h_inpt, e_ys, e_hs, h_pred, infl_x, infl_h):
     dWx = jnp.einsum("bH...,bH->...", infl_x, -1 * e_hs)
     dWh = jnp.einsum("bH...,bH->...", infl_h, -1 * e_hs)
 
-    return {
-        "cf": {"w1": dWx, "h1": dWh},
-        "of": {
-            "wo": dWy,
-        },
-    }
+    return {"cf": {"w1": dWx, "h1": dWh}, "of": {"wo": dWy}}
 
 
 def make_zero_infl(param_exemplar, state_exemplar):

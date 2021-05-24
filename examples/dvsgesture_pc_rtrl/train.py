@@ -101,11 +101,7 @@ def train_step(step, optimizer, lr_fn, batch):
     local_batch["input_seq"] = jnp.moveaxis(batch[0], (0, 1, 2), (1, 0, 2))
     local_batch["target_seq"] = jnp.moveaxis(batch[1], (0, 1, 2), (1, 0, 2))
     local_batch["mask_seq"] = jnp.ones(
-        (
-            TRAIN_SEQ_LEN.value,
-            local_batch_size,
-            1,
-        )
+        (TRAIN_SEQ_LEN.value, local_batch_size, 1)
     )
 
     init_s = init_state(FLATTEN_DIM.value, local_batch_size, HIDDEN_SIZE.value)
@@ -124,10 +120,7 @@ def train_step(step, optimizer, lr_fn, batch):
         static_conv_feature_extractor=CONV_FEATURE_EXTRACTOR.value,
     )
 
-    metrics = compute_metrics(
-        output_seq,
-        local_batch["target_seq"],
-    )
+    metrics = compute_metrics(output_seq, local_batch["target_seq"])
 
     return optimizer, metrics, step
 
@@ -140,11 +133,7 @@ def eval_model(params, batch):
     local_batch["input_seq"] = jnp.moveaxis(batch[0], (0, 1, 2), (1, 0, 2))
     local_batch["target_seq"] = jnp.moveaxis(batch[1], (0, 1, 2), (1, 0, 2))
     local_batch["mask_seq"] = jnp.ones(
-        (
-            EVAL_SEQ_LEN.value,
-            local_batch_size,
-            1,
-        )
+        (EVAL_SEQ_LEN.value, local_batch_size, 1)
     )
 
     nn_model_fn = functools.partial(nn_model, params)
@@ -162,15 +151,10 @@ def eval_model(params, batch):
     )
 
     final_carry, output_seq = jax.lax.scan(
-        nn_model_fn,
-        init=init_s,
-        xs=local_batch["input_seq"],
+        nn_model_fn, init=init_s, xs=local_batch["input_seq"]
     )
 
-    metrics = compute_metrics(
-        output_seq,
-        local_batch["target_seq"],
-    )
+    metrics = compute_metrics(output_seq, local_batch["target_seq"])
 
     return metrics
 
@@ -202,13 +186,7 @@ def main(_):
 
     # initialize parameters
     rng, p_rng = jax.random.split(rng, 2)
-    params = init_params(
-        p_rng,
-        FLATTEN_DIM.value,
-        11,
-        1.,
-        HIDDEN_SIZE.value,
-    )
+    params = init_params(p_rng, FLATTEN_DIM.value, 11, 1.0, HIDDEN_SIZE.value)
 
     # init feaure extractor
     if CONV_FEATURE_EXTRACTOR.value:

@@ -94,10 +94,7 @@ def train_step(params, batch, VOCAB_SIZE):
     )
 
     # compute metrics
-    metrics = compute_metrics(
-        out_pred,
-        targt_seq,
-    )
+    metrics = compute_metrics(out_pred, targt_seq)
 
     return params, metrics, grad
 

@@ -88,9 +88,7 @@ def to_human_readable(data, model_output=None, whole_batch=False):
 class CopyTask(tfds.core.GeneratorBasedBuilder):
     """DatasetBuilder for copy_task dataset."""
 
-    RELEASE_NOTES = {
-        "1.20.6": "Initial release.",
-    }
+    RELEASE_NOTES = {"1.20.6": "Initial release."}
     NUM_BITS: int = 6
     MIN_LENGTH: int = 4
     MAX_LENGTH: int = 4
@@ -158,10 +156,7 @@ class CopyTask(tfds.core.GeneratorBasedBuilder):
         self.rng, input_rng = jax.random.split(self.rng)
         sub_seq_length_batch = jnp.array(
             jax.random.uniform(
-                input_rng,
-                [self.DS_SIZE],
-                minval=min_length,
-                maxval=max_length,
+                input_rng, [self.DS_SIZE], minval=min_length, maxval=max_length
             ),
             dtype=jnp.int32,
         )
@@ -211,8 +206,7 @@ class CopyTask(tfds.core.GeneratorBasedBuilder):
                 [start_end_flag_idx], full_obs_size
             )
             num_reps_flag = jax.nn.one_hot(
-                [num_repeats_channel_idx],
-                full_obs_size,
+                [num_repeats_channel_idx], full_obs_size
             )
 
             # note the concatenation dimensions.
@@ -224,8 +218,7 @@ class CopyTask(tfds.core.GeneratorBasedBuilder):
             # channel).
             targ_flag_channel_pad = jnp.zeros([sub_seq_len * num_reps, 1])
             targ_end_flag = jax.nn.one_hot(
-                [start_end_flag_idx],
-                full_targ_size,
+                [start_end_flag_idx], full_targ_size
             )
             targ = jnp.concatenate([targ_pattern, targ_flag_channel_pad], 1)
             targ = jnp.concatenate([targ, targ_end_flag], 0)

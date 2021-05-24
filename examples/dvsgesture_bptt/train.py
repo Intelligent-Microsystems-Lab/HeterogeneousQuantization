@@ -23,15 +23,21 @@ from flax.training.lr_schedule import (
     create_constant_learning_rate_schedule,
 )
 
-# from jax.config import config
-# config.update("jax_disable_jit", True)
+from jax.config import config
+
+config.update("jax_disable_jit", True)
 
 from torchneuromorphic.dvs_gestures.dvsgestures_dataloaders import (
     create_dataloader,
 )
 
 sys.path.append("../..")
-from model import init_state, init_params, nn_model  # noqa: E402
+from model import (
+    init_state,
+    init_params,
+    nn_model,
+    conv_feature_extractor,
+)  # noqa: E402
 
 # parameters
 SEED = flags.DEFINE_integer("seed", 42, "")
@@ -48,16 +54,15 @@ WARMUP_STEPS = flags.DEFINE_integer("warmup_epochs", 5, "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 1, "")
 EVAL_BATCH_SIZE = flags.DEFINE_integer("eval_batch_size", 8, "")
 
-HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 64, "")
+HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 256, "")
 
-#CONV_FEATURE_EXTRACTOR = flags.DEFINE_bool("conv_feature_extractor", False, "")
 DOWNSAMPLING = flags.DEFINE_integer("downsampling", 4, "")
 N_ATTENTION = flags.DEFINE_integer("n_attention", None, "")
 FLATTEN_DIM = flags.DEFINE_integer("flatten_dim", 2048, "")
 JITTER_STD_DEV = flags.DEFINE_float("jitter_std_dev", 0, "")
 NOISE_STD_DEV = flags.DEFINE_float("noise_std_dev", 0, "")
 
-BATCH_SIZE = flags.DEFINE_integer("batch_size", 128, "")
+BATCH_SIZE = flags.DEFINE_integer("batch_size", 256, "")
 LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.005, "")
 MOMENTUM = flags.DEFINE_float("momentum", 0.9, "")
 # UPDATE_FREQ = flags.DEFINE_integer("update_freq", 100, "")
@@ -68,9 +73,16 @@ TRAIN_SEQ_LEN = flags.DEFINE_integer("train_seq_len", 500, "")
 EVAL_SEQ_LEN = flags.DEFINE_integer("eval_seq_len", 1800, "")
 
 
+NUM_CLASSES = 11
+DIM_XY = 32
+INPUT_C = 2
+
+
 def cross_entropy_loss(logits, targt):
-    logits = jax.nn.log_softmax(logits, axis=-1)
-    return -jnp.mean(jnp.sum(targt * logits, axis=-1))
+    # loss function over full time
+    logits = jax.nn.relu(logits)
+    logits = jax.nn.log_softmax(logits.mean(0), axis=-1)
+    return -jnp.mean(jnp.sum(targt[0, :, :] * logits, axis=-1))
 
 
 def compute_metrics(logits, labels):
@@ -84,61 +96,31 @@ def compute_metrics(logits, labels):
     return {"loss": loss, "accuracy": accuracy}
 
 
-# @functools.partial(jax.jit, static_argnums=(2,))
-# def train_step(step, optimizer, lr_fn, batch):
-#     local_batch_size = batch[0].shape[0]
-
-#     local_batch = {}
-#     local_batch["input_seq"] = jnp.moveaxis(batch[0], (0, 1, 2), (1, 0, 2))
-#     local_batch["target_seq"] = jnp.moveaxis(batch[1], (0, 1, 2), (1, 0, 2))
-#     local_batch["mask_seq"] = jnp.ones(
-#         (
-#             TRAIN_SEQ_LEN.value,
-#             local_batch_size,
-#             1,
-#         )
-#     )
-
-#     init_s = init_state(FLATTEN_DIM.value, local_batch_size, HIDDEN_SIZE.value)
-
-#     optimizer, output_seq, step = grad_compute(
-#         step,
-#         optimizer,
-#         lr_fn,
-#         local_batch,
-#         init_s,
-#         INFERENCE_STEPS.value,
-#         INFERENCE_LR.value,
-#         UPDATE_FREQ.value,
-#         GRAD_ACCUMULATE.value,
-#         GRAD_CLIP.value,
-#         static_conv_feature_extractor=CONV_FEATURE_EXTRACTOR.value,
-#     )
-
-#     metrics = compute_metrics(
-#         output_seq,
-#         local_batch["target_seq"],
-#     )
-
-#     return optimizer, metrics, step
-
 @functools.partial(jax.jit, static_argnums=(2,))
 def train_step(step, optimizer, lr_fn, batch):
     local_batch_size = batch[0].shape[0]
 
     local_batch = {}
-    local_batch["input_seq"] = jnp.moveaxis(batch[0], (0, 1, 2), (1, 0, 2))
+    local_batch["input_seq"] = jnp.moveaxis(
+        batch[0], (0, 1, 2, 3, 4), (1, 0, 4, 3, 2)
+    )
     local_batch["target_seq"] = jnp.moveaxis(batch[1], (0, 1, 2), (1, 0, 2))
-    local_batch["input_seq"] = jnp.reshape(local_batch["input_seq"], (local_batch["input_seq"].shape[0], local_batch["input_seq"].shape[1], -1))
 
     init_s = init_state(FLATTEN_DIM.value, local_batch_size, HIDDEN_SIZE.value)
 
     def loss_fn(params):
+        # pre process with conv
+        inpt = conv_feature_extractor().apply(
+            params["conv_fe"],
+            jnp.reshape(
+                local_batch["input_seq"], (-1, DIM_XY, DIM_XY, INPUT_C)
+            ),
+        )
+        inpt = jnp.reshape(inpt, ((TRAIN_SEQ_LEN.value, local_batch_size, -1)))
+
         nn_model_fn = functools.partial(nn_model, params)
         final_carry, output_seq = jax.lax.scan(
-            nn_model_fn,
-            init=init_s,
-            xs=local_batch["input_seq"],
+            nn_model_fn, init=init_s, xs=inpt
         )
         loss = cross_entropy_loss(output_seq, local_batch["target_seq"])
         return loss, output_seq
@@ -147,14 +129,11 @@ def train_step(step, optimizer, lr_fn, batch):
     (loss_val, logits), grad = grad_fn(optimizer.target)
 
     lr = lr_fn(step)
-    optimizer = optimizer.apply_gradient(grad, learning_rate=lr,)
+    optimizer = optimizer.apply_gradient(grad, learning_rate=lr)
 
-    metrics = compute_metrics(
-        logits,
-        local_batch["target_seq"],
-    )
+    metrics = compute_metrics(logits, local_batch["target_seq"])
 
-    return optimizer, metrics, step+1
+    return optimizer, metrics, step + 1
 
 
 @jax.jit
@@ -162,33 +141,24 @@ def eval_model(params, batch):
     local_batch_size = batch[0].shape[0]
 
     local_batch = {}
-    local_batch["input_seq"] = jnp.moveaxis(batch[0], (0, 1, 2), (1, 0, 2))
+    local_batch["input_seq"] = jnp.moveaxis(
+        batch[0], (0, 1, 2, 3, 4), (1, 0, 4, 3, 2)
+    )
     local_batch["target_seq"] = jnp.moveaxis(batch[1], (0, 1, 2), (1, 0, 2))
 
     nn_model_fn = functools.partial(nn_model, params)
 
     init_s = init_state(FLATTEN_DIM.value, local_batch_size, HIDDEN_SIZE.value)
 
-    # # pre process with conv
-    # if CONV_FEATURE_EXTRACTOR.value:
-    #     inpt, _ = conv_feature_extractor(
-    #         params, jnp.reshape(local_batch["input_seq"], (-1, 2, 128, 128))
-    #     )
-
-    local_batch["input_seq"] = jnp.reshape(
-        local_batch["input_seq"], (EVAL_SEQ_LEN.value, local_batch_size, -1)
+    inpt = conv_feature_extractor().apply(
+        params["conv_fe"],
+        jnp.reshape(local_batch["input_seq"], (-1, DIM_XY, DIM_XY, INPUT_C)),
     )
+    inpt = jnp.reshape(inpt, ((EVAL_SEQ_LEN.value, local_batch_size, -1)))
 
-    final_carry, output_seq = jax.lax.scan(
-        nn_model_fn,
-        init=init_s,
-        xs=local_batch["input_seq"],
-    )
+    final_carry, output_seq = jax.lax.scan(nn_model_fn, init=init_s, xs=inpt)
 
-    metrics = compute_metrics(
-        output_seq,
-        local_batch["target_seq"],
-    )
+    metrics = compute_metrics(output_seq, local_batch["target_seq"])
 
     return metrics
 
@@ -207,8 +177,8 @@ def main(_):
         ds=DOWNSAMPLING.value,
         n_events_attention=N_ATTENTION.value,
         num_workers=0,
-        jitter_train=JITTER_STD_DEV.value,
-        spatial_noise_train=NOISE_STD_DEV.value,
+        # jitter_train=JITTER_STD_DEV.value,
+        # spatial_noise_train=NOISE_STD_DEV.value,
     )
     _, test_ds = create_dataloader(
         root="data/dvs_gesture/dvs_gestures_build19.hdf5",
@@ -221,24 +191,21 @@ def main(_):
     # initialize parameters
     rng, p_rng = jax.random.split(rng, 2)
     params = init_params(
-        p_rng,
-        FLATTEN_DIM.value,
-        11,
-        1.,
-        HIDDEN_SIZE.value,
+        p_rng, FLATTEN_DIM.value, NUM_CLASSES, 1.0, HIDDEN_SIZE.value
     )
 
-    # # init feaure extractor
-    # if CONV_FEATURE_EXTRACTOR.value:
-    #     rng, p_rng = jax.random.split(rng, 2)
-    #     params = init_conv(p_rng, params)
+    # init feaure extractor
+    rng, p_rng = jax.random.split(rng, 2)
+    params["conv_fe"] = conv_feature_extractor().init(
+        p_rng, jnp.ones([1, DIM_XY, DIM_XY, INPUT_C])
+    )
 
     optimizer = optim.Momentum(beta=MOMENTUM.value, nesterov=True).create(
         params
     )
-    steps_per_epoch = len(iter(train_ds)) #* (
+    steps_per_epoch = len(iter(train_ds))  # * (
     #    TRAIN_SEQ_LEN.value / UPDATE_FREQ.value
-    #)
+    # )
     learning_rate_fn = create_cosine_learning_rate_schedule(
         LEARNING_RATE.value,
         steps_per_epoch,

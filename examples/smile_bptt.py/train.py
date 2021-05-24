@@ -63,9 +63,7 @@ def train_step(params, batch):
     def loss_fn(params):
         nn_model_fn = functools.partial(nn_model, params)
         final_carry, output_seq = jax.lax.scan(
-            nn_model_fn,
-            init=init_s,
-            xs=batch["input_seq"],
+            nn_model_fn, init=init_s, xs=batch["input_seq"]
         )
         loss = mse_loss(output_seq, batch["target_seq"])
         return loss, output_seq

@@ -14,12 +14,7 @@ from model import init_params, init_state, core_fn, output_fn, nn_model
 
 
 def rtrl_test_data():
-    return (
-        dict(
-            testcase_name="5_steps",
-            prob_size=5,
-        ),
-    )
+    return (dict(testcase_name="5_steps", prob_size=5),)
 
 
 def mse_loss_rtrl(logits, labels, mask):
@@ -38,10 +33,7 @@ def mse_loss_bptt(logits, labels, mask):
 
 class UnitTests(parameterized.TestCase):
     @parameterized.named_parameters(*rtrl_test_data())
-    def test_learn_rtrl(
-        self,
-        prob_size,
-    ):
+    def test_learn_rtrl(self, prob_size):
         rng = jax.random.PRNGKey(42)
         rng, p_rng, i_rng, t_rng = jax.random.split(rng, 4)
 
@@ -84,9 +76,7 @@ class UnitTests(parameterized.TestCase):
         def loss_fn(params):
             nn_model_fn = functools.partial(nn_model, params)
             final_carry, output_seq = jax.lax.scan(
-                nn_model_fn,
-                init=init_s,
-                xs=inpt,
+                nn_model_fn, init=init_s, xs=inpt
             )
             loss = mse_loss_bptt(output_seq, targt, None)
             return loss, output_seq
