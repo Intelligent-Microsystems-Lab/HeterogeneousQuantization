@@ -22,7 +22,7 @@ def set_tensor(xs):
 def edge_zero_pad(img, d):
     N, C, h, w = img.shape
     x = torch.zeros((N, C, h + (d * 2), w + (d * 2))).to(DEVICE)
-    x[:, :, d : h + d, d : w + d] = img
+    x[:, :, d : (h + d), d : (w + d)] = img
     return x
 
 

@@ -7,10 +7,8 @@
 
 import jax
 import jax.numpy as jnp
-from jax import lax
-from jax._src.lax.lax import rev, ConvDimensionNumbers
 
-from model import core_fn, output_fn
+from model import core_fn, output_fn, conv_feature_extractor
 
 
 C1_KERNEL = (8, 2, 7, 7)  # OIHW conv kernel
@@ -163,10 +161,14 @@ def grad_compute(
         )
 
         if static_conv_feature_extractor:
-            g = jnp.dot(e_hs, optimizer.target["cf"]["w1"].transpose())
-            grads = conv_feature_extractor_bwd(
-                grads, optimizer.target, act_tracker, g
-            )
+            pass
+            # g = jnp.dot(e_hs, optimizer.target["cf"]["w1"].transpose())
+
+            # FIX!!!!!
+
+            # grads = conv_feature_extractor_bwd(
+            #    grads, optimizer.target, act_tracker, g
+            # )
 
         if grad_accumulate:
             new_grad_acc = jax.tree_multimap(

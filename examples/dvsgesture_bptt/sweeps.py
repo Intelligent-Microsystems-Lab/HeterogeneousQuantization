@@ -1,5 +1,4 @@
 import subprocess
-import numpy as np
 
 param_sweep = {
     # "init_scale_s": [1, 0.5, 0.1, 0.05, 0.001],

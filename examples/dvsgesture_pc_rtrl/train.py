@@ -14,14 +14,10 @@ import jax.numpy as jnp
 
 import sys
 
-import tensorflow_datasets as tfds
 from flax.metrics import tensorboard
 from flax.training import common_utils
 from flax import optim
-from flax.training.lr_schedule import (
-    create_cosine_learning_rate_schedule,
-    create_constant_learning_rate_schedule,
-)
+from flax.training.lr_schedule import create_cosine_learning_rate_schedule
 
 # from jax.config import config
 # config.update("jax_disable_jit", True)
