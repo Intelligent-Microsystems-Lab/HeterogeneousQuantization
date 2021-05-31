@@ -45,7 +45,7 @@ WORK_DIR = flags.DEFINE_string(
     "",
 )
 
-TRAINING_STEPS = flags.DEFINE_integer("training_epochs", 10000, "")
+TRAINING_STEPS = flags.DEFINE_integer("training_epochs", 40000, "")
 WARMUP_STEPS = flags.DEFINE_integer("warmup_epochs", 100, "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 100, "")
 
@@ -60,6 +60,7 @@ MOMENTUM = flags.DEFINE_float("momentum", 0.9, "")
 
 NUM_CLASSES = 12
 MFCC_DIM = 40
+DTYPE = jnp.float32
 
 
 def cross_entropy_loss(logits, targt):
@@ -83,7 +84,7 @@ def compute_metrics(logits, labels):
 @functools.partial(jax.jit, static_argnums=(2,))
 def train_step(step, optimizer, lr_fn, batch):
     local_batch_size = batch["audio"].shape[1]
-    init_s = init_state(MFCC_DIM, local_batch_size, HIDDEN_SIZE.value)
+    init_s = init_state(MFCC_DIM, local_batch_size, HIDDEN_SIZE.value, DTYPE)
 
     def loss_fn(params):
         nn_model_fn = functools.partial(nn_model, params)
@@ -108,7 +109,7 @@ def train_step(step, optimizer, lr_fn, batch):
 def eval_model(params, batch):
     local_batch_size = batch["audio"].shape[1]
     nn_model_fn = functools.partial(nn_model, params)
-    init_s = init_state(MFCC_DIM, local_batch_size, HIDDEN_SIZE.value)
+    init_s = init_state(MFCC_DIM, local_batch_size, HIDDEN_SIZE.value, DTYPE)
 
     final_carry, output_seq = jax.lax.scan(
         nn_model_fn, init=init_s, xs=batch["audio"]
