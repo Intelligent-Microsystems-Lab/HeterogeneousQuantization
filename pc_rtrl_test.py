@@ -8,6 +8,7 @@ import functools
 import jax
 import jax.numpy as jnp
 import numpy as np
+from flax import optim
 
 from model import init_params, init_state, nn_model
 from pc_rtrl import (
@@ -134,6 +135,8 @@ class UnitTests(absltest.TestCase):
         (loss_val, logits), grad_bptt = grad_fn(params)
 
         # pc gradients
+        optimizer = optim.GradientDescent(1.0).create(params)
+
         local_batch = {}
         local_batch["input_seq"] = jnp.moveaxis(inpt, (0, 1, 2), (1, 0, 2))
         local_batch["target_seq"] = jnp.moveaxis(targt, (0, 1, 2), (1, 0, 2))
@@ -144,33 +147,42 @@ class UnitTests(absltest.TestCase):
                 1,
             )
         )
-        grad_pc_rtrl, output_seq, loss_val = grad_compute(
-            params,
+
+        optimizer, output_seq, step = grad_compute(
+            0,
+            optimizer,
+            lambda x: 1.0,
             local_batch,
             init_s,
             INFERENCE_STEPS,
             INFERENCE_LR,
+            prob_size,
+            True,
+            1e12,
             static_conv_feature_extractor=False,
+        )
+        grad_pc_rtrl = jax.tree_multimap(
+            lambda x, y: x - y, params, optimizer.target
         )
 
         # note tolerance level here are very high
         np.testing.assert_allclose(
-            grad_pc_rtrl["cf"]["w1"] / 1200,
+            grad_pc_rtrl["cf"]["w1"] / 90,
             grad_bptt["cf"]["w1"],
-            rtol=1e-0,
-            atol=1e-0,
+            rtol=0.8,
+            atol=0.8,
         )
         np.testing.assert_allclose(
-            grad_pc_rtrl["cf"]["h1"] / 1200,
+            grad_pc_rtrl["cf"]["h1"] / 90,
             grad_bptt["cf"]["h1"],
-            rtol=1e-0,
-            atol=1e-0,
+            rtol=0.8,
+            atol=0.8,
         )
         np.testing.assert_allclose(
-            grad_pc_rtrl["of"]["wo"] / 1200,
+            grad_pc_rtrl["of"]["wo"] / 120,
             grad_bptt["of"]["wo"],
-            rtol=1e-0,
-            atol=1e-0,
+            rtol=0.8,
+            atol=0.8,
         )
 
 

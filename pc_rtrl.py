@@ -50,7 +50,9 @@ def init_conv(rng, params):
 def conv_feature_extractor(params, x):
     act_tracker = []
 
-    x = lax.conv_general_dilated(x.astype(jnp.float32), params["fe"]["c1"], (3, 3), "VALID")
+    x = lax.conv_general_dilated(
+        x.astype(jnp.float32), params["fe"]["c1"], (3, 3), "VALID"
+    )
     act_tracker.append(x)
 
     x = lax.conv_general_dilated(x, params["fe"]["c2"], (3, 3), "VALID")
@@ -160,6 +162,7 @@ def forward_sweep(params, inpt, state, infl_m):
 
 
 def infer(params, inpt, targt, y_pred, h_pred, n_inf_steps, inf_lr):
+    # loss fn....
     e_ys = targt - y_pred
 
     def infer_scan_fn(hs, x):
@@ -215,15 +218,23 @@ def make_zero_infl(param_exemplar, state_exemplar):
 
 
 def grad_compute(
-    params,
+    step,
+    optimizer,
+    lr_fn,
     batch,
     state,
     n_inference_steps,
     inference_lr,
+    update_freq,
+    grad_accumulate,
+    grad_clip,
     static_conv_feature_extractor=False,
 ):
     def rtrl_pc_scan_fn(carry, x):
         (
+            step,
+            local_step,
+            optimizer,
             state,
             infl_acc,
             grad_acc,
@@ -234,16 +245,18 @@ def grad_compute(
 
         if static_conv_feature_extractor:
             raw_inpt = inpt
-            inpt, act_tracker = conv_feature_extractor(params, inpt)
+            inpt, act_tracker = conv_feature_extractor(optimizer.target, inpt)
             inpt = jnp.reshape(inpt, (inpt.shape[0], -1))
             act_tracker.insert(0, raw_inpt.astype(jnp.float32))
         else:
             inpt = jnp.reshape(inpt, (inpt.shape[0], -1))
 
-        h_pred, y_pred, new_infl = forward_sweep(params, inpt, state, infl_acc)
+        h_pred, y_pred, new_infl = forward_sweep(
+            optimizer.target, inpt, state, infl_acc
+        )
 
         e_ys, e_hs = infer(
-            params,
+            optimizer.target,
             inpt,
             targt,
             y_pred,
@@ -253,7 +266,7 @@ def grad_compute(
         )
 
         grads = compute_grads(
-            params,
+            optimizer.target,
             inpt,
             state,
             e_ys,
@@ -264,14 +277,42 @@ def grad_compute(
         )
 
         if static_conv_feature_extractor:
-            g = jnp.dot(e_hs, params["cf"]["w1"].transpose())
-            grads = conv_feature_extractor_bwd(grads, params, act_tracker, g)
+            g = jnp.dot(e_hs, optimizer.target["cf"]["w1"].transpose())
+            grads = conv_feature_extractor_bwd(
+                grads, optimizer.target, act_tracker, g
+            )
 
-        new_grad_acc = jax.tree_multimap(
-            lambda x, y: jnp.add(x, y) * msk[0], grad_acc, grads
+        if grad_accumulate:
+            new_grad_acc = jax.tree_multimap(
+                lambda x, y: jnp.add(x, y * msk[0]), grad_acc, grads
+            )
+        else:
+            new_grad_acc = jax.tree_map(lambda x: x * msk[0], grads)
+
+        # update weights step
+        lr = lr_fn(step)
+        optimizer = jax.lax.cond(
+            (local_step + 1) % update_freq == 0,
+            lambda _: optimizer.apply_gradient(
+                jax.tree_map(
+                    lambda x: jnp.clip(x / update_freq, -grad_clip, grad_clip),
+                    new_grad_acc,
+                ),
+                learning_rate=lr,
+            ),
+            lambda _: optimizer,
+            operand=None,
+        )
+
+        # reset of grad_acc after update
+        new_grad_acc = jax.tree_map(
+            lambda x: x * ((local_step + 1) % update_freq == 0), new_grad_acc
         )
 
         new_carry = (
+            step + ((local_step + 1) // update_freq),
+            (local_step + 1) % update_freq,
+            optimizer,
             h_pred,
             new_infl,
             new_grad_acc,
@@ -280,13 +321,13 @@ def grad_compute(
 
         return new_carry, y_pred
 
-    zero_infl = make_zero_infl(params["cf"], state)
-    zero_grad = jax.tree_map(jnp.zeros_like, params)
+    zero_infl = make_zero_infl(optimizer.target["cf"], state)
+    zero_grad = jax.tree_map(jnp.zeros_like, optimizer.target)
 
     final_carry, output_seq = jax.lax.scan(
         rtrl_pc_scan_fn,
-        init=(state, zero_infl, zero_grad, 0.0),
+        init=(step, 0, optimizer, state, zero_infl, zero_grad, 0.0),
         xs=(batch["input_seq"], batch["target_seq"], batch["mask_seq"]),
     )
 
-    return final_carry[2], output_seq, final_carry[3]
+    return final_carry[2], output_seq, final_carry[0]
