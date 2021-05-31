@@ -129,9 +129,7 @@ class UnitTests(absltest.TestCase):
         def loss_fn(params):
             nn_model_fn = functools.partial(nn_model, params)
             final_carry, output_seq = jax.lax.scan(
-                nn_model_fn,
-                init=init_s,
-                xs=inpt,
+                nn_model_fn, init=init_s, xs=inpt
             )
             loss = cross_entropy_loss_bptt(output_seq, targt, None)
             return loss, output_seq
@@ -145,13 +143,7 @@ class UnitTests(absltest.TestCase):
         local_batch = {}
         local_batch["input_seq"] = jnp.moveaxis(inpt, (0, 1, 2), (1, 0, 2))
         local_batch["target_seq"] = jnp.moveaxis(targt, (0, 1, 2), (1, 0, 2))
-        local_batch["mask_seq"] = jnp.ones(
-            (
-                15,
-                BATCH_SIZE,
-                1,
-            )
-        )
+        local_batch["mask_seq"] = jnp.ones((15, BATCH_SIZE, 1))
 
         optimizer, output_seq, step = grad_compute(
             0,

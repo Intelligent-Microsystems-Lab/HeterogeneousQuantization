@@ -90,9 +90,7 @@ def train_step(params, batch):
 
     # simple SGD step
     params["cf"] = jax.tree_multimap(
-        lambda x, y: x - LEARNING_RATE.value * y / 5,
-        params["cf"],
-        core_grads,
+        lambda x, y: x - LEARNING_RATE.value * y / 5, params["cf"], core_grads
     )
     params["of"] = jax.tree_multimap(
         lambda x, y: x - LEARNING_RATE.value * y / 5,
@@ -102,9 +100,7 @@ def train_step(params, batch):
 
     # compute metrics
     metrics = compute_metrics(
-        output_seq,
-        batch["target_seq"],
-        batch["mask_seq"],
+        output_seq, batch["target_seq"], batch["mask_seq"]
     )
 
     return params, metrics, {"cf": core_grads, "of": output_grads}

@@ -72,14 +72,9 @@ def train_step(params, batch, VOCAB_SIZE):
     def loss_fn(params):
         nn_model_fn = functools.partial(nn_model, params)
         final_carry, output_seq = jax.lax.scan(
-            nn_model_fn,
-            init=init_s,
-            xs=inpt_seq,
+            nn_model_fn, init=init_s, xs=inpt_seq
         )
-        loss = mse_loss(
-            output_seq,
-            targt_seq,
-        )
+        loss = mse_loss(output_seq, targt_seq)
         return loss, output_seq
 
     grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
@@ -90,10 +85,7 @@ def train_step(params, batch, VOCAB_SIZE):
     )
 
     # compute metrics
-    metrics = compute_metrics(
-        logits,
-        targt_seq,
-    )
+    metrics = compute_metrics(logits, targt_seq)
 
     return params, metrics, grad
 

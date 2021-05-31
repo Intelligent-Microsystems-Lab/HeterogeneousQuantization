@@ -95,13 +95,7 @@ def train_step(params, batch):
         INFERENCE_LR.value,
     )
     # compute gradients based on error nodes - we are not using a mask here...
-    grad = compute_grads(
-        params,
-        batch["observations"],
-        e_ys,
-        e_hs,
-        h_pred,
-    )
+    grad = compute_grads(params, batch["observations"], e_ys, e_hs, h_pred)
 
     # simple SGD step
     params = jax.tree_multimap(
@@ -111,11 +105,7 @@ def train_step(params, batch):
     )
 
     # compute metrics
-    metrics = compute_metrics(
-        out_pred,
-        batch["target"],
-        batch["mask"],
-    )
+    metrics = compute_metrics(out_pred, batch["target"], batch["mask"])
 
     return params, metrics, grad
 

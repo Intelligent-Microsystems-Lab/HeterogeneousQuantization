@@ -95,9 +95,7 @@ def train_step(params, batch):
     )
 
     metrics = compute_metrics(
-        output_seq,
-        batch["target_seq"],
-        batch["mask_seq"],
+        output_seq, batch["target_seq"], batch["mask_seq"]
     )
 
     return params, metrics, output_seq

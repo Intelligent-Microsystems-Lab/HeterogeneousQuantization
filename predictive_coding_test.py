@@ -160,9 +160,7 @@ class UnitTests(absltest.TestCase):
         def loss_fn(params):
             nn_model_fn = functools.partial(nn_model, params)
             final_carry, output_seq = jax.lax.scan(
-                nn_model_fn,
-                init=init_s,
-                xs=inpt,
+                nn_model_fn, init=init_s, xs=inpt
             )
             loss = mse_loss_bptt(output_seq, targt, None)
             return loss, output_seq
@@ -173,14 +171,7 @@ class UnitTests(absltest.TestCase):
         # pc gradients
         out_pred, h_pred = forward_sweep(inpt, params, init_s)
         e_ys, e_hs = infer(
-            params,
-            inpt,
-            targt,
-            out_pred,
-            h_pred,
-            init_s,
-            100,
-            INFERENCE_LR,
+            params, inpt, targt, out_pred, h_pred, init_s, 100, INFERENCE_LR
         )
         grad_pc = compute_grads(params, inpt, e_ys, e_hs, h_pred)
 
