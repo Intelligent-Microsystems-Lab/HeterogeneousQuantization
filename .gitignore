@@ -5,3 +5,4 @@ examples/dvsgesture_bptt/data/*
 examples/dvsgesture_rtrl/data/*
 examples/dvsgesture_pc/data/*
 examples/kws_bptt/data/*
+*kws_streaming*
