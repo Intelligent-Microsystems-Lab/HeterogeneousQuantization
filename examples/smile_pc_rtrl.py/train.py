@@ -47,7 +47,10 @@ SEQ_LEN = flags.DEFINE_integer("seq_len", 50, "")
 INFERENCE_STEPS = flags.DEFINE_integer("inference_steps", 100, "")
 INFERENCE_LR = flags.DEFINE_float("inference_lr", 0.1, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
+#INF_W_NOISE = flags.DEFINE_integer("inference_weight_noise", 0, "")
+TRAIN_W_NOISE = flags.DEFINE_integer("training_weight_noise", 0, "")
 
+DTYPE = jnp.float32
 
 def mse_loss(logits, labels, mask):
     # simple MSE loss
@@ -57,13 +60,26 @@ def mse_loss(logits, labels, mask):
 
 
 @jax.jit
-def train_step(params, batch):
+def train_step(rkey, params, batch):
     out_dim = batch["target_seq"].shape[1]
 
-    init_s = init_state(out_dim, 1, HIDDEN_SIZE.value)
+    init_s = init_state(out_dim, 1, HIDDEN_SIZE.value, DTYPE)
+    
+    rkey, k1, k2, k3 = jax.random.split(rkey, 4)
+    noise_tree = {
+        'cf' : { 
+            'h1': jax.random.normal(k1, params['cf']['h1'].shape) * jnp.max(jnp.abs(params['cf']['h1'])) * TRAIN_W_NOISE.value,
+            'w1': jax.random.normal(k2, params['cf']['w1'].shape) * jnp.max(jnp.abs(params['cf']['w1'])) * TRAIN_W_NOISE.value,
+        },
+        'of' : {
+            'wo': jax.random.normal(k3, params['of']['wo'].shape) * jnp.max(jnp.abs(params['of']['wo'])) * TRAIN_W_NOISE.value,
+        }
+    }
+
+    params_noise = jax.tree_multimap(lambda x, y: x+y, params, noise_tree)
 
     grads, output_seq, loss_val = grad_compute(
-        params, batch, init_s, INFERENCE_STEPS.value, INFERENCE_LR.value
+        params_noise, batch, init_s, INFERENCE_STEPS.value, INFERENCE_LR.value
     )
 
     # simple SGD step
@@ -71,7 +87,7 @@ def train_step(params, batch):
         lambda x, y: x - LEARNING_RATE.value * y / SEQ_LEN.value, params, grads
     )
 
-    return params, loss_val / SEQ_LEN.value, output_seq
+    return rkey, params, loss_val / SEQ_LEN.value, output_seq
 
 
 def get_data():
@@ -128,7 +144,7 @@ def main(_):
 
     t_loop_start = time.time()
     for step in range(TRAINING_STEPS.value):
-        params, loss_val, logits = train_step(params, data)
+        rng, params, loss_val, logits = train_step(rng, params, data)
 
         summary_writer.scalar("train_loss", loss_val, (step + 1))
         summary_writer.scalar(
