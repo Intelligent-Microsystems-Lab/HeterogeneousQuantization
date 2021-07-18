@@ -1,9 +1,9 @@
-# # bptt
-# python3 train.py  --work_dir ../../../training_dir_sweep/bptt_n00_t1 --evaluation_noise 0.0 --seed 2029492581
-# python3 train.py  --work_dir ../../../training_dir_sweep/bptt_n00_t2 --evaluation_noise 0.0 --seed 2223210
-# python3 train.py  --work_dir ../../../training_dir_sweep/bptt_n00_t3 --evaluation_noise 0.0 --seed 1594305760
-# python3 train.py  --work_dir ../../../training_dir_sweep/bptt_n00_t4 --evaluation_noise 0.0 --seed 87953651674304230
-# python3 train.py  --work_dir ../../../training_dir_sweep/bptt_n00_t5 --evaluation_noise 0.0 --seed 2467475923055248755
+# bptt
+python3 train.py  --work_dir ../../../training_dir_sweep/bptt_n$1_t1 --evaluation_noise $1 --seed 2029492581
+python3 train.py  --work_dir ../../../training_dir_sweep/bptt_n$1_t2 --evaluation_noise $1 --seed 2223210
+python3 train.py  --work_dir ../../../training_dir_sweep/bptt_n$1_t3 --evaluation_noise $1 --seed 1594305760
+python3 train.py  --work_dir ../../../training_dir_sweep/bptt_n$1_t4 --evaluation_noise $1 --seed 87953651674304230
+python3 train.py  --work_dir ../../../training_dir_sweep/bptt_n$1_t5 --evaluation_noise $1 --seed 2467475923055248755
 
 # python3 train.py  --work_dir ../../../training_dir_sweep/bptt_n00125_t1 --evaluation_noise 0.0125 --seed 2029492581
 # python3 train.py  --work_dir ../../../training_dir_sweep/bptt_n00125_t2 --evaluation_noise 0.0125 --seed 2223210
