@@ -30,7 +30,7 @@ from predictive_coding import forward_sweep, infer, compute_grads  # noqa: E402
 # parameters
 WORK_DIR = flags.DEFINE_string(
     "work_dir",
-    "../../../training_dir/copy_task_pc-{date:%Y-%m-%d_%H-%M-%S}/".format(
+    "../../../training_dir/075copy_task_pc-{date:%Y-%m-%d_%H-%M-%S}/".format(
         date=datetime.datetime.now()
     ),
     "",
@@ -40,12 +40,14 @@ INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.2, "")
 LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.01, "")
 TRAINING_STEPS = flags.DEFINE_integer("training_steps", 5_000_000, "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 10, "")
+EVALUATION_NOISE = flags.DEFINE_float("evaluation_noise", 0.075, "")
 HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 64, "")
 INFERENCE_STEPS = flags.DEFINE_integer("inference_steps", 100, "")
 INFERENCE_LR = flags.DEFINE_float("inference_lr", 0.1, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
 
 NUM_BITS = 6  # dataset specific value
+DTYPE = jnp.float32
 
 
 def compute_metrics(logits, labels, mask):
@@ -79,7 +81,9 @@ def train_step(params, batch):
     )
     batch["target"] = jnp.moveaxis(batch["target"], (0, 1, 2), (1, 0, 2))
     batch["mask"] = jnp.moveaxis(batch["mask"], (0, 1), (1, 0))
-    init_s = init_state(NUM_BITS + 1, local_batch_size, HIDDEN_SIZE.value)
+    init_s = init_state(
+        NUM_BITS + 1, local_batch_size, HIDDEN_SIZE.value, DTYPE
+    )
 
     # forward sweep to intialize value nodes
     out_pred, h_pred = forward_sweep(batch["observations"], params, init_s)
@@ -111,12 +115,31 @@ def train_step(params, batch):
 
 
 @jax.jit
-def eval_model(params, batch):
+def eval_model(params, batch, rng):
     local_batch_size = batch["observations"].shape[0]
 
-    nn_model_fn = functools.partial(nn_model, params)
+    k1, k2, k3 = jax.random.split(rng, 3)
+    noise_tree = {
+        "cf": {
+            "h1": jax.random.normal(k1, params["cf"]["h1"].shape)
+            * jnp.max(jnp.abs(params["cf"]["h1"]))
+            * EVALUATION_NOISE.value,
+            "w1": jax.random.normal(k2, params["cf"]["w1"].shape)
+            * jnp.max(jnp.abs(params["cf"]["w1"]))
+            * EVALUATION_NOISE.value,
+        },
+        "of": {
+            "wo": jax.random.normal(k3, params["of"]["wo"].shape)
+            * jnp.max(jnp.abs(params["of"]["wo"]))
+            * EVALUATION_NOISE.value,
+        },
+    }
+    params_noise = jax.tree_multimap(lambda x, y: x + y, params, noise_tree)
+    nn_model_fn = functools.partial(nn_model, params_noise)
 
-    init_s = init_state(NUM_BITS + 1, local_batch_size, HIDDEN_SIZE.value)
+    init_s = init_state(
+        NUM_BITS + 1, local_batch_size, HIDDEN_SIZE.value, DTYPE
+    )
 
     final_carry, output_seq = jax.lax.scan(
         nn_model_fn,
@@ -206,8 +229,10 @@ def main(_):
                 "target": test_ds["target"][batch_idx, :, :],
                 "mask": test_ds["mask"][batch_idx, :],
             }
-
-            eval_metrics, ts_output = eval_model(params, shuffle_test_ds)
+            rng, p_rng = jax.random.split(rng, 2)
+            eval_metrics, ts_output = eval_model(
+                params, shuffle_test_ds, p_rng
+            )
 
             logging.info(
                 "step: %d, train_loss: %.4f, train_accuracy: %.4f, eval_loss:"

@@ -272,7 +272,10 @@ def main(_):
             set_size = int(set_size / BATCH_SIZE.value) * BATCH_SIZE.value
 
             for i in range(0, set_size, BATCH_SIZE.value):
-                validation_fingerprints, validation_ground_truth = audio_processor.get_data(
+                (
+                    validation_fingerprints,
+                    validation_ground_truth,
+                ) = audio_processor.get_data(
                     BATCH_SIZE.value,
                     i,
                     flags_input,

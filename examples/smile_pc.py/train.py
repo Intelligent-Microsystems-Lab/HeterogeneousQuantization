@@ -9,6 +9,7 @@ import sys
 from absl import app
 from absl import flags
 from absl import logging
+import functools
 
 import jax
 import jax.numpy as jnp
@@ -18,7 +19,7 @@ from flax.metrics import tensorboard
 import matplotlib.pyplot as plt
 
 sys.path.append("../..")
-from model import init_state, init_params  # noqa: E402
+from model import init_state, init_params, nn_model  # noqa: E402
 from predictive_coding import forward_sweep, infer, compute_grads  # noqa: E402
 
 # from jax.config import config
@@ -43,10 +44,13 @@ INIT_SCALE_S = flags.DEFINE_float("init_scale_s", 0.1, "")
 TRAINING_STEPS = flags.DEFINE_integer("training_steps", 10_000, "")
 HIDDEN_SIZE = flags.DEFINE_integer("hidden_size", 64, "")
 EVALUATION_INTERVAL = flags.DEFINE_integer("evaluation_interval", 10, "")
+EVALUATION_NOISE = flags.DEFINE_float("evaluation_noise", 0.05, "")
 INFERENCE_STEPS = flags.DEFINE_integer("inference_steps", 100, "")
 INFERENCE_LR = flags.DEFINE_float("inference_lr", 0.1, "")
 SEQ_LEN = flags.DEFINE_integer("seq_len", 50, "")
 SEED = flags.DEFINE_integer("seed", 42, "")
+
+DTYPE = jnp.float32
 
 
 def mse_loss(logits, labels):
@@ -60,7 +64,7 @@ def mse_loss(logits, labels):
 def train_step(params, batch):
     out_dim = batch["target_seq"].shape[1]
 
-    init_s = init_state(out_dim, 1, HIDDEN_SIZE.value)
+    init_s = init_state(out_dim, 1, HIDDEN_SIZE.value, DTYPE)
 
     # forward sweep to intialize value nodes
     out_pred, h_pred = forward_sweep(batch["input_seq"], params, init_s)
@@ -85,6 +89,39 @@ def train_step(params, batch):
 
     loss_val = mse_loss(out_pred, batch["target_seq"])
     return params, loss_val, out_pred
+
+
+@jax.jit
+def eval_model(params, batch, rng):
+    out_dim = batch["target_seq"].shape[1]
+
+    init_s = init_state(out_dim, 1, HIDDEN_SIZE.value, DTYPE)
+
+    k1, k2, k3 = jax.random.split(rng, 3)
+    noise_tree = {
+        "cf": {
+            "h1": jax.random.normal(k1, params["cf"]["h1"].shape)
+            * jnp.max(jnp.abs(params["cf"]["h1"]))
+            * EVALUATION_NOISE.value,
+            "w1": jax.random.normal(k2, params["cf"]["w1"].shape)
+            * jnp.max(jnp.abs(params["cf"]["w1"]))
+            * EVALUATION_NOISE.value,
+        },
+        "of": {
+            "wo": jax.random.normal(k3, params["of"]["wo"].shape)
+            * jnp.max(jnp.abs(params["of"]["wo"]))
+            * EVALUATION_NOISE.value,
+        },
+    }
+    params_noise = jax.tree_multimap(lambda x, y: x + y, params, noise_tree)
+
+    nn_model_fn = functools.partial(nn_model, params_noise)
+    final_carry, output_seq = jax.lax.scan(
+        nn_model_fn, init=init_s, xs=batch["input_seq"]
+    )
+    loss = mse_loss(output_seq, batch["target_seq"])
+
+    return loss
 
 
 def get_data():
@@ -142,6 +179,9 @@ def main(_):
         summary_writer.scalar("train_loss", loss_val, (step + 1))
         summary_writer.scalar(
             "step_time", (time.time() - t_loop_start), (step + 1)
+        )
+        summary_writer.scalar(
+            "eval_loss", eval_model(params, data, p_rng), (step + 1)
         )
         t_loop_start = time.time()
 

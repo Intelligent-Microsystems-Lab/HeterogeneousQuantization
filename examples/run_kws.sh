@@ -1,12 +1,12 @@
 #!/bin/bash
 module load python cuda/11.0
 export XLA_FLAGS="--xla_gpu_cuda_data_dir=/afs/crc.nd.edu/x86_64_linux/c/cuda/11.0"
-cd copytask_pc
+cd kws_pc.py
 python train.py
-cd ../copytask_rtrl.py
+cd ../kws_rtrl.py
 python train.py
-cd ../copytask_bptt.py
+cd ../kws_bptt.py
 python train.py
-cd ../copytask_pc_rtrl.py
+cd ../kws_pc_rtrl.py
 python train.py
 cd ..
