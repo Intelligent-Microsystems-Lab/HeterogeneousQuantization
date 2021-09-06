@@ -87,7 +87,7 @@ class UnitTests(absltest.TestCase):
             else x,
             params,
         )
-        init_s = init_state(out_dim, 64, HIDDEN_SIZE)
+        init_s = init_state(out_dim, 64, HIDDEN_SIZE, jnp.float32)
 
         grad = train_step(params, dataset[0], init_s)
 
@@ -154,7 +154,7 @@ class UnitTests(absltest.TestCase):
             * 1.0
         )
 
-        init_s = init_state(prob_size, prob_size, 64) * 1.0
+        init_s = init_state(prob_size, prob_size, 64, jnp.float32) * 1.0
 
         # bptt
         def loss_fn(params):

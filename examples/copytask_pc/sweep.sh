@@ -17,6 +17,7 @@ python3 train.py  --work_dir ../../../training_dir_sweep/pc_n$1_t5 --evaluation_
 # python3 train.py  --work_dir ../../../training_dir_sweep/pc_n0025_t4 --evaluation_noise 0.025 --seed 87953651674304230 
 # python3 train.py  --work_dir ../../../training_dir_sweep/pc_n0025_t5 --evaluation_noise 0.025 --seed 2467475923055248755
 
+
 # python3 train.py  --work_dir ../../../training_dir_sweep/pc_n00375_t1 --evaluation_noise 0.0375 --seed 2029492581 
 # python3 train.py  --work_dir ../../../training_dir_sweep/pc_n00375_t2 --evaluation_noise 0.0375 --seed 2223210 
 # python3 train.py  --work_dir ../../../training_dir_sweep/pc_n00375_t3 --evaluation_noise 0.0375 --seed 1594305760 
