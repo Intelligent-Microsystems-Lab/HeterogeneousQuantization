@@ -135,8 +135,9 @@ def main(_):
   ds_test = ds_test.map(
       normalize_img, num_parallel_calls=tf.data.experimental.AUTOTUNE
   )
-  ds_test = ds_test.batch(cfg.batch_size)
   ds_test = ds_test.cache()
+  ds_test = ds_test.shuffle(ds_info.splits["test"].num_examples)
+  ds_test = ds_test.batch(cfg.batch_size)
   ds_test = ds_test.prefetch(tf.data.experimental.AUTOTUNE)
 
   rng = jax.random.PRNGKey(cfg.seed)
