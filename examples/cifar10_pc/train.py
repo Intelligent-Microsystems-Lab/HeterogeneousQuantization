@@ -98,7 +98,7 @@ def eval_model(params, batch, state):
   label = jax.nn.one_hot(batch[1], num_classes=cfg.num_classes)
 
   out, state = nn_cifar10.apply(
-      {"params": optimizer.target, **state},
+      {"params": params, **state},
       train_x,
       mutable=list(state.keys()),
   )
