@@ -60,163 +60,163 @@ DTYPE = jnp.float32
 
 
 def mse_loss(logits, labels, mask):
-    # simple MSE loss
-    loss = jnp.mean((logits - labels) ** 2)
+  # simple MSE loss
+  loss = jnp.mean((logits - labels) ** 2)
 
-    return loss
+  return loss
 
 
 @jax.jit
 def train_step(optimizer, batch):
-    out_dim = batch["target_seq"].shape[1]
+  out_dim = batch["target_seq"].shape[1]
 
-    init_s = init_state(out_dim, 1, HIDDEN_SIZE.value, DTYPE)
+  init_s = init_state(out_dim, 1, HIDDEN_SIZE.value, DTYPE)
 
-    # grads, output_seq, loss_val = grad_compute(
-    #     params, batch, init_s, INFERENCE_STEPS.value, INFERENCE_LR.value
-    # )
+  # grads, output_seq, loss_val = grad_compute(
+  #     params, batch, init_s, INFERENCE_STEPS.value, INFERENCE_LR.value
+  # )
 
-    # # simple SGD step
-    # params = jax.tree_multimap(
-    #     lambda x, y: x - LEARNING_RATE.value * y / SEQ_LEN.value, params, grads
-    # )
+  # # simple SGD step
+  # params = jax.tree_multimap(
+  #     lambda x, y: x - LEARNING_RATE.value * y / SEQ_LEN.value, params, grads
+  # )
 
-    # return params, loss_val / SEQ_LEN.value, output_seq
+  # return params, loss_val / SEQ_LEN.value, output_seq
 
-    optimizer, output_seq, step = grad_compute(
-        0,
-        optimizer,
-        lambda x: LEARNING_RATE.value,
-        batch,
-        init_s,
-        INFERENCE_STEPS.value,
-        INFERENCE_LR.value,
-        UPDATE_FREQ.value,
-        GRAD_ACCUMULATE.value,
-        GRAD_CLIP.value,
-    )
+  optimizer, output_seq, step = grad_compute(
+      0,
+      optimizer,
+      lambda x: LEARNING_RATE.value,
+      batch,
+      init_s,
+      INFERENCE_STEPS.value,
+      INFERENCE_LR.value,
+      UPDATE_FREQ.value,
+      GRAD_ACCUMULATE.value,
+      GRAD_CLIP.value,
+  )
 
-    metrics = mse_loss(output_seq, batch["target_seq"], None)
+  metrics = mse_loss(output_seq, batch["target_seq"], None)
 
-    return optimizer, metrics, output_seq
+  return optimizer, metrics, output_seq
 
 
 @jax.jit
 def eval_model(params, batch, rng):
-    out_dim = batch["target_seq"].shape[1]
+  out_dim = batch["target_seq"].shape[1]
 
-    init_s = init_state(out_dim, 1, HIDDEN_SIZE.value, DTYPE)
+  init_s = init_state(out_dim, 1, HIDDEN_SIZE.value, DTYPE)
 
-    k1, k2, k3 = jax.random.split(rng, 3)
-    noise_tree = {
-        "cf": {
-            "h1": jax.random.normal(k1, params["cf"]["h1"].shape)
-            * jnp.max(jnp.abs(params["cf"]["h1"]))
-            * EVALUATION_NOISE.value,
-            "w1": jax.random.normal(k2, params["cf"]["w1"].shape)
-            * jnp.max(jnp.abs(params["cf"]["w1"]))
-            * EVALUATION_NOISE.value,
-        },
-        "of": {
-            "wo": jax.random.normal(k3, params["of"]["wo"].shape)
-            * jnp.max(jnp.abs(params["of"]["wo"]))
-            * EVALUATION_NOISE.value,
-        },
-    }
-    params_noise = jax.tree_multimap(lambda x, y: x + y, params, noise_tree)
+  k1, k2, k3 = jax.random.split(rng, 3)
+  noise_tree = {
+      "cf": {
+          "h1": jax.random.normal(k1, params["cf"]["h1"].shape)
+          * jnp.max(jnp.abs(params["cf"]["h1"]))
+          * EVALUATION_NOISE.value,
+          "w1": jax.random.normal(k2, params["cf"]["w1"].shape)
+          * jnp.max(jnp.abs(params["cf"]["w1"]))
+          * EVALUATION_NOISE.value,
+      },
+      "of": {
+          "wo": jax.random.normal(k3, params["of"]["wo"].shape)
+          * jnp.max(jnp.abs(params["of"]["wo"]))
+          * EVALUATION_NOISE.value,
+      },
+  }
+  params_noise = jax.tree_multimap(lambda x, y: x + y, params, noise_tree)
 
-    nn_model_fn = functools.partial(nn_model, params_noise)
-    final_carry, output_seq = jax.lax.scan(
-        nn_model_fn, init=init_s, xs=batch["input_seq"]
-    )
-    loss = mse_loss(output_seq, batch["target_seq"], None)
+  nn_model_fn = functools.partial(nn_model, params_noise)
+  final_carry, output_seq = jax.lax.scan(
+      nn_model_fn, init=init_s, xs=batch["input_seq"]
+  )
+  loss = mse_loss(output_seq, batch["target_seq"], None)
 
-    return loss
+  return loss
 
 
 def get_data():
-    """Load smile dataset into memory."""
-    with open(INPUT_FILE.value, "rb") as f:
-        x_train = jnp.expand_dims(jnp.array(pickle.load(f)).transpose(), 0)
+  """Load smile dataset into memory."""
+  with open(INPUT_FILE.value, "rb") as f:
+    x_train = jnp.expand_dims(jnp.array(pickle.load(f)).transpose(), 0)
 
-    with open(TARGET_FILE.value, "rb") as f:
-        y_train = jnp.expand_dims(jnp.array(pickle.load(f)).transpose(), 0)
+  with open(TARGET_FILE.value, "rb") as f:
+    y_train = jnp.expand_dims(jnp.array(pickle.load(f)).transpose(), 0)
 
-    x_train = jax.image.resize(
-        x_train,
-        (x_train.shape[0], SEQ_LEN.value, x_train.shape[2]),
-        method="linear",
-    )
-    y_train = jax.image.resize(
-        y_train,
-        (y_train.shape[0], SEQ_LEN.value, SEQ_LEN.value),
-        method="linear",
-    )
+  x_train = jax.image.resize(
+      x_train,
+      (x_train.shape[0], SEQ_LEN.value, x_train.shape[2]),
+      method="linear",
+  )
+  y_train = jax.image.resize(
+      y_train,
+      (y_train.shape[0], SEQ_LEN.value, SEQ_LEN.value),
+      method="linear",
+  )
 
-    x_train = jnp.moveaxis(x_train, (0, 1, 2), (1, 0, 2))
-    y_train = jnp.moveaxis(y_train, (0, 1, 2), (1, 0, 2))
+  x_train = jnp.moveaxis(x_train, (0, 1, 2), (1, 0, 2))
+  y_train = jnp.moveaxis(y_train, (0, 1, 2), (1, 0, 2))
 
-    return {
-        "input_seq": x_train,
-        "target_seq": y_train,
-        "mask_seq": jnp.ones((x_train.shape[0], x_train.shape[1])),
-    }
+  return {
+      "input_seq": x_train,
+      "target_seq": y_train,
+      "mask_seq": jnp.ones((x_train.shape[0], x_train.shape[1])),
+  }
 
 
 def main(_):
-    summary_writer = tensorboard.SummaryWriter(WORK_DIR.value)
-    summary_writer.hparams(
-        jax.tree_util.tree_map(lambda x: x.value, flags.FLAGS.__flags)
+  summary_writer = tensorboard.SummaryWriter(WORK_DIR.value)
+  summary_writer.hparams(
+      jax.tree_util.tree_map(lambda x: x.value, flags.FLAGS.__flags)
+  )
+
+  # get data set
+  rng = jax.random.PRNGKey(SEED.value)
+  data = get_data()
+
+  inp_dim = data["input_seq"].shape[2]
+  out_dim = data["target_seq"].shape[2]
+
+  # initialize parameters
+  rng, p_rng = jax.random.split(rng, 2)
+  params = init_params(
+      p_rng, inp_dim, out_dim, INIT_SCALE_S.value, HIDDEN_SIZE.value
+  )
+  optimizer = optim.GradientDescent(LEARNING_RATE.value).create(params)
+
+  # Training loop.
+  logging.info("Files in: " + WORK_DIR.value)
+  logging.info(jax.devices())
+
+  t_loop_start = time.time()
+  for step in range(TRAINING_STEPS.value):
+    optimizer, loss_val, logits = train_step(optimizer, data)
+
+    summary_writer.scalar("train_loss", loss_val, (step + 1))
+    summary_writer.scalar(
+        "step_time", (time.time() - t_loop_start), (step + 1)
     )
-
-    # get data set
-    rng = jax.random.PRNGKey(SEED.value)
-    data = get_data()
-
-    inp_dim = data["input_seq"].shape[2]
-    out_dim = data["target_seq"].shape[2]
-
-    # initialize parameters
-    rng, p_rng = jax.random.split(rng, 2)
-    params = init_params(
-        p_rng, inp_dim, out_dim, INIT_SCALE_S.value, HIDDEN_SIZE.value
+    summary_writer.scalar(
+        "eval_loss", eval_model(optimizer.target, data, p_rng), (step + 1)
     )
-    optimizer = optim.GradientDescent(LEARNING_RATE.value).create(params)
-
-    # Training loop.
-    logging.info("Files in: " + WORK_DIR.value)
-    logging.info(jax.devices())
-
     t_loop_start = time.time()
-    for step in range(TRAINING_STEPS.value):
-        optimizer, loss_val, logits = train_step(optimizer, data)
 
-        summary_writer.scalar("train_loss", loss_val, (step + 1))
-        summary_writer.scalar(
-            "step_time", (time.time() - t_loop_start), (step + 1)
-        )
-        summary_writer.scalar(
-            "eval_loss", eval_model(optimizer.target, data, p_rng), (step + 1)
-        )
-        t_loop_start = time.time()
+    # Periodically report loss and show an example
+    if (step + 1) % EVALUATION_INTERVAL.value == 0:
+      logging.info("step: %d, loss: %.4f", step + 1, loss_val)
 
-        # Periodically report loss and show an example
-        if (step + 1) % EVALUATION_INTERVAL.value == 0:
-            logging.info("step: %d, loss: %.4f", step + 1, loss_val)
-
-            # save picture
-            plt.clf()
-            fig, axes = plt.subplots(nrows=1, ncols=3)
-            axes[0].matshow(data["target_seq"][:, 0, :].transpose())
-            axes[1].matshow(logits[:, 0, :].transpose())
-            axes[2].matshow(
-                data["target_seq"][:, 0, :].transpose()
-                - logits[:, 0, :].transpose()
-            )
-            plt.tight_layout()
-            plt.savefig(WORK_DIR.value + "/smile.png")
-            plt.close()
+      # save picture
+      plt.clf()
+      fig, axes = plt.subplots(nrows=1, ncols=3)
+      axes[0].matshow(data["target_seq"][:, 0, :].transpose())
+      axes[1].matshow(logits[:, 0, :].transpose())
+      axes[2].matshow(
+          data["target_seq"][:, 0, :].transpose()
+          - logits[:, 0, :].transpose()
+      )
+      plt.tight_layout()
+      plt.savefig(WORK_DIR.value + "/smile.png")
+      plt.close()
 
 
 if __name__ == "__main__":
-    app.run(main)
+  app.run(main)

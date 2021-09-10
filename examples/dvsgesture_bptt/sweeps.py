@@ -8,13 +8,13 @@ param_sweep = {
 }
 
 for key, sweep_list in param_sweep.items():
-    for param_val in sweep_list:
-        process = subprocess.Popen(
-            'XLA_FLAGS="--xla_tpu_detect_nan=true" python3 train.py --'
-            + key
-            + " "
-            + str(param_val),
-            shell=True,
-        )
-        process.wait()
-        print(process.returncode)
+  for param_val in sweep_list:
+    process = subprocess.Popen(
+        'XLA_FLAGS="--xla_tpu_detect_nan=true" python3 train.py --'
+        + key
+        + " "
+        + str(param_val),
+        shell=True,
+    )
+    process.wait()
+    print(process.returncode)
