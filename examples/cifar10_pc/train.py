@@ -99,7 +99,7 @@ def eval_model(params, batch, state):
 
   out, state = nn_cifar10.apply(
       {"params": params, **state},
-      train_x,
+      image,
       mutable=list(state.keys()),
   )
 
