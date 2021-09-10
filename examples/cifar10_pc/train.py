@@ -71,7 +71,7 @@ def compute_metrics(logits, labels):
 
 @functools.partial(jax.jit, static_argnums=(2,))
 def train_step(step, optimizer, lr_fn, batch, state):
-  image = batch[0].reshape((cfg.batch_size, -1))
+  image = batch[0].reshape((-1, 3072))
   label = jax.nn.one_hot(batch[1], num_classes=cfg.num_classes)
   grads, state = nn_cifar10.apply(
       {"params": optimizer.target, **state},
@@ -94,7 +94,7 @@ def train_step(step, optimizer, lr_fn, batch, state):
 @jax.jit
 def eval_model(params, batch, state):
 
-  image = batch[0].reshape((cfg.batch_size, -1))
+  image = batch[0].reshape((-1, 3072))
   label = jax.nn.one_hot(batch[1], num_classes=cfg.num_classes)
 
   out, state = nn_cifar10.apply(
@@ -156,7 +156,7 @@ def main(_):
   rng = jax.random.PRNGKey(cfg.seed)
   rng, p_rng = jax.random.split(rng, 2)
 
-  variables = nn_cifar10.init(p_rng, jnp.ones((128, 3072)))
+  variables = nn_cifar10.init(p_rng, jnp.ones((cfg.batch_size, 3072)))
   state, params = variables.pop("params")
 
   optimizer = optim.Momentum(beta=cfg.momentum, nesterov=True).create(params)
