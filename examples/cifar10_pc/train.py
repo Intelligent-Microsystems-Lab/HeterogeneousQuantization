@@ -4,7 +4,9 @@
 from absl import app
 from absl import flags
 from absl import logging
-from itertools import islice
+
+from ml_collections import config_flags
+
 import functools
 import time
 import datetime
@@ -19,10 +21,11 @@ from flax.training import common_utils
 from flax import optim
 from flax.training.lr_schedule import create_cosine_learning_rate_schedule
 
-import ml_collections
-
 import tensorflow.compat.v2 as tf
 import tensorflow_datasets as tfds
+
+
+from configs.default import get_config
 
 # from jax.config import config
 # config.update("jax_debug_nans", True)
@@ -31,24 +34,7 @@ import tensorflow_datasets as tfds
 sys.path.append("../..")
 from pc_modular import DensePC, PC_NN  # noqa: E402
 
-cfg = ml_collections.ConfigDict()
-cfg.seed = 203853699
-
-
-cfg.work_dir = (
-    "../../../training_dir/cifar10_pc-{date:%Y-%m-%d_%H-%M-%S}/".format(
-        date=datetime.datetime.now()
-    )
-)
-cfg.batch_size = 128
-cfg.num_epochs = 10
-cfg.warmup_epochs = 5
-cfg.momentum = 0.9
-cfg.learning_rate = 0.1
-cfg.infer_lr = 0.2
-cfg.infer_steps = 100
-cfg.num_classes = 10
-cfg.label_smoothing = 0.1
+cfg = get_config()
 
 
 def cross_entropy_loss(logits, targt):
@@ -69,7 +55,7 @@ def compute_metrics(logits, labels):
   return {"loss": loss, "accuracy": accuracy}
 
 
-@functools.partial(jax.jit, static_argnums=(2,))
+@functools.partial(jax.jit, static_argnums=(2))
 def train_step(step, optimizer, lr_fn, batch, state):
   image = batch[0].reshape((-1, 3072))
   label = jax.nn.one_hot(batch[1], num_classes=cfg.num_classes)
@@ -187,7 +173,6 @@ def main(_):
       metrics = eval_model(optimizer.target, batch, state)
       eval_metrics.append(metrics)
 
-    import pdb; pdb.set_trace()
     eval_metrics = common_utils.stack_forest(eval_metrics)
     eval_metrics = jax.tree_map(lambda x: x.mean(), eval_metrics)
 
