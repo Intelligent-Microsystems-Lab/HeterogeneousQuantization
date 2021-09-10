@@ -187,6 +187,7 @@ def main(_):
       metrics = eval_model(optimizer.target, batch, state)
       eval_metrics.append(metrics)
 
+    import pdb; pdb.set_trace()
     eval_metrics = common_utils.stack_forest(eval_metrics)
     eval_metrics = jax.tree_map(lambda x: x.mean(), eval_metrics)
 
@@ -195,7 +196,7 @@ def main(_):
 
     logging.info(
         "step: %d, train_loss: %.4f, train_accuracy: %.4f, "
-        "test_loss: %.4f, test_accuracy: %.4f, ~length train batch: %.4f s",
+        "test_loss: %.4f, test_accuracy: %.4f, time train batch: %.4f s",
         (step + 1),
         train_metrics["loss"],
         train_metrics["accuracy"],
