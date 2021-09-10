@@ -201,6 +201,7 @@ def main(_):
         train_metrics["accuracy"],
         eval_metrics["loss"],
         eval_metrics["accuracy"],
+        train_metrics["time"]
     )
 
 
