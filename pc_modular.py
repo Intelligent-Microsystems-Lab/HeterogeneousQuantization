@@ -13,7 +13,7 @@ from flax import linen as nn
 from flax.core import freeze, unfreeze, FrozenDict
 from flax.linen.initializers import lecun_normal, variance_scaling, zeros
 
-from jax._src.lax.lax import _conv_general_dilated_transpose_lhs, _conv_general_dilated_transpose_rhs, _canonicalize_precision
+from jax._src.lax.lax import _conv_general_dilated_transpose_lhs, _conv_general_dilated_transpose_rhs, _canonicalize_precision, conv_dimension_numbers, padtype_to_pads
 
 default_kernel_init = lecun_normal()
 
@@ -30,7 +30,7 @@ def _conv_dimension_numbers(input_shape):
   lhs_spec = (0, ndim - 1) + tuple(range(1, ndim - 1))
   rhs_spec = (ndim - 1, ndim - 2) + tuple(range(0, ndim - 2))
   out_spec = lhs_spec
-  return lax.ConvDimensionNumbers(lhs_spec, rhs_spec, out_spec)
+  return jax.lax.ConvDimensionNumbers(lhs_spec, rhs_spec, out_spec)
 
 
 def MaxPoolPC():
@@ -50,6 +50,7 @@ class ConvolutionalPC(nn.Module):
   kernel_dilation: Union[None, int, Iterable[int]] = 1
   feature_group_count: int = 1
   non_linearity: Callable = jax.nn.relu
+  precision: Any = None
   kernel_init: Callable[[PRNGKey, Shape, Dtype], Array] = default_kernel_init
   config: dict = None
 
@@ -69,15 +70,15 @@ class ConvolutionalPC(nn.Module):
 
     in_features = inpt.shape[-1]
     assert in_features % self.feature_group_count == 0
-    strides = maybe_broadcast(self.strides)
-    input_dilation = maybe_broadcast(self.input_dilation)
-    kernel_dilation = maybe_broadcast(self.kernel_dilation)
-    kernel_shape = kernel_size + (
+    strides = self.maybe_broadcast(self.strides)
+    input_dilation = self.maybe_broadcast(self.input_dilation)
+    kernel_dilation = self.maybe_broadcast(self.kernel_dilation)
+    kernel_shape = self.kernel_size + (
         in_features // self.feature_group_count, self.features)
     kernel = self.param("kernel", self.kernel_init, kernel_shape)
 
-    dimension_numbers = _conv_dimension_numbers(inputs.shape)
-    y = lax.conv_general_dilated(
+    dimension_numbers = _conv_dimension_numbers(inpt.shape)
+    y = jax.lax.conv_general_dilated(
         inpt,
         kernel,
         strides,
@@ -99,22 +100,33 @@ class ConvolutionalPC(nn.Module):
     val = self.get_variable("pc", "value")
     kernel = self.get_variable("params", "kernel")
 
-    strides = maybe_broadcast(self.strides)
-    input_dilation = maybe_broadcast(self.input_dilation)
-    kernel_dilation = maybe_broadcast(self.kernel_dilation)
+    strides = self.maybe_broadcast(self.strides)
+    input_dilation = self.maybe_broadcast(self.input_dilation)
+    kernel_dilation = self.maybe_broadcast(self.kernel_dilation)
     dimension_numbers = _conv_dimension_numbers(val.shape)
 
     pred_err = pred - val
     if self.non_linearity is not None:
       out = self.get_variable("pc", "out")
       deriv = jax.jacfwd(self.non_linearity)(out)
-      err_prev = jnp.einsum("dcab,ab->ab", deriv, err_prev)
+      err_prev = jnp.einsum("xzyuabcd,abcd->abcd", deriv, err_prev)
+
+
+    if isinstance(self.padding, str):
+      rhs_dilation = (1,) * (kernel.ndim - 2)
+      dnums = conv_dimension_numbers(val.shape, kernel.shape, dimension_numbers)
+      lhs_perm, rhs_perm, _ = dnums
+      rhs_shape = np.take(kernel.shape, rhs_perm)[2:]  # type: ignore[index]
+      effective_rhs_shape = [(k-1) * r + 1 for k, r in zip(rhs_shape, rhs_dilation)]
+      padding = padtype_to_pads(
+          np.take(val.shape, lhs_perm)[2:], effective_rhs_shape,  # type: ignore[index]
+          strides, self.padding)
 
     err = _conv_general_dilated_transpose_lhs(
         g=err_prev,
         rhs=kernel,
         window_strides=strides,
-        padding=self.padding,
+        padding=padding,
         lhs_dilation=input_dilation,
         rhs_dilation=kernel_dilation,
         dimension_numbers=dimension_numbers,
@@ -138,7 +150,7 @@ class ConvolutionalPC(nn.Module):
     if self.non_linearity is not None:
       out = self.get_variable("pc", "out")
       deriv = jax.jacfwd(self.non_linearity)(out)
-      err = jnp.einsum("dcab,ab->ab", deriv, err)
+      err = jnp.einsum("xzyuabcd,abcd->abcd", deriv, err)
 
     kernel_grads = _conv_general_dilated_transpose_rhs(
         g=err,
