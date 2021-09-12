@@ -20,6 +20,10 @@ from utils import *
 from layers import *
 
 
+save_dir_fc = 'unit_test_fc/'
+subprocess.call(["mkdir", "-p", str(save_dir_fc)])
+
+
 class PCNet(object):
   def __init__(
       self,
@@ -60,7 +64,7 @@ class PCNet(object):
         true_dW = l.update_weights(
             self.predictions[i + 1], update_weights=True
         )
-        np.save("dw" + str(i) + "_train.npy", true_dW)
+        np.save(save_dir_fc+"dw" + str(i) + "_train.npy", true_dW)
         diff = torch.sum((dW - true_dW) ** 2).item()
         weight_diffs.append(diff)
         if print_weight_grads:
@@ -95,7 +99,7 @@ class PCNet(object):
         # initialize mus with forward predictions
         self.mus[i + 1] = l.forward(self.mus[i])
         self.outs[i + 1] = self.mus[i + 1].clone()
-      np.save("out_train.npy", self.mus[-1])
+      np.save(save_dir_fc+"out_train.npy", self.mus[-1])
       self.mus[-1] = label.clone()  # setup final label
       self.prediction_errors[-1] = -self.loss_fn_deriv(
           self.outs[-1], self.mus[-1]
@@ -113,11 +117,11 @@ class PCNet(object):
             self.mus[j] -= self.inference_learning_rate * (
                 2 * dx_l
             )
-      np.save("pred0_train.npy", self.predictions[1])
-      np.save("pred1_train.npy", self.predictions[2])
-      np.save("mus0_train.npy", self.mus[0])
-      np.save("mus1_train.npy", self.mus[1])
-      np.save("mus2_train.npy", self.mus[2])
+      np.save(save_dir_fc+"pred0_train.npy", self.predictions[1])
+      np.save(save_dir_fc+"pred1_train.npy", self.predictions[2])
+      np.save(save_dir_fc+"mus0_train.npy", self.mus[0])
+      np.save(save_dir_fc+"mus1_train.npy", self.mus[1])
+      np.save(save_dir_fc+"mus2_train.npy", self.mus[2])
       # update weights
       weight_diffs = self.update_weights()
       # get loss:
@@ -173,19 +177,19 @@ class PCNet(object):
       weight_diffs_list.append(weight_diffs)
       print("TEST ACCURACY: ", mean_test_acc)
       print("SAVING MODEL")
-      self.save_model(
-          logdir, savedir, losses, accs, weight_diffs_list, test_accs
-      )
+      # self.save_model(
+      #    logdir, savedir, losses, accs, weight_diffs_list, test_accs
+      # )
 
   def save_model(
       self, savedir, logdir, losses, accs, weight_diffs_list, test_accs
   ):
     for i, l in enumerate(self.layers):
       l.save_layer(logdir, i)
-    np.save(logdir + "losses.npy", np.array(losses))
-    np.save(logdir + "accs.npy", np.array(accs))
-    np.save(logdir + "weight_diffs.npy", np.array(weight_diffs_list))
-    np.save(logdir + "test_accs.npy", np.array(test_accs))
+    np.save(save_dir_fc + "losses.npy", np.array(losses))
+    np.save(save_dir_fc + "accs.npy", np.array(accs))
+    np.save(save_dir_fc + "weight_diffs.npy", np.array(weight_diffs_list))
+    np.save(save_dir_fc + "test_accs.npy", np.array(test_accs))
     # subprocess.call(['rsync','--archive','--update','--compress','--progress',str(logdir) +"/",str(savedir)])
     print(
         "Rsynced files from: " + str(logdir) + "/ " + " to" + str(savedir)
@@ -222,10 +226,10 @@ if __name__ == "__main__":
   args = parser.parse_args()
   print("Args parsed")
   # create folders
-  if args.savedir != "":
-    subprocess.call(["mkdir", "-p", str(args.savedir)])
-  if args.logdir != "":
-    subprocess.call(["mkdir", "-p", str(args.logdir)])
+  # if args.savedir != "":
+  #   subprocess.call(["mkdir", "-p", str(args.savedir)])
+  # if args.logdir != "":
+  #   subprocess.call(["mkdir", "-p", str(args.logdir)])
   print("folders created")
 
   dataset_x = torch.randn((256, 500))
@@ -233,8 +237,8 @@ if __name__ == "__main__":
   dataset = [[dataset_x[:128, :], dataset_y[:128, :]]]
   testset = [[dataset_x[128:, :], dataset_y[128:, :]]]
 
-  np.save(args.savedir + "/dataset_x.npy", np.array(dataset_x))
-  np.save(args.savedir + "/dataset_y.npy", np.array(dataset_y))
+  np.save(save_dir_fc + "/dataset_x.npy", np.array(dataset_x))
+  np.save(save_dir_fc + "/dataset_y.npy", np.array(dataset_y))
   loss_fn, loss_fn_deriv = parse_loss_function(args.loss_fn)
 
   if args.dataset in ["cifar", "mnist", "svhn"]:
@@ -290,16 +294,16 @@ if __name__ == "__main__":
     raise Exception(
         "Network type not recognised: must be one of 'backprop', 'pc'"
     )
-  net.save_model("logs", "", [], [], [], [])
+  net.save_model("logs", 'unit_test_fc/', [], [], [], [])
   net.train(
       dataset,
       testset,
       args.N_epochs,
       args.n_inference_steps,
-      args.savedir,
-      args.logdir,
+      save_dir_fc,
+      save_dir_fc,
       args.old_savedir,
       args.save_every,
       args.print_every,
   )
-  net.save_model("logs", "", [], [], [], [])
+  #net.save_model("logs", 'unit_test_fc/', [], [], [], [])

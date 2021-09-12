@@ -37,6 +37,18 @@ from pc_modular import DensePC, PC_NN  # noqa: E402
 cfg = get_config()
 
 
+class test_pc_nn(PC_NN):
+  def setup(self):
+    self.layers = [
+        DensePC(100, config=cfg),
+        DensePC(100, config=cfg),
+        DensePC(10, config=cfg, non_linearity=None),
+    ]
+
+
+nn_cifar10 = test_pc_nn(config=cfg, loss_fn=cross_entropy_loss)
+
+
 def cross_entropy_loss(logits, targt):
   targt = targt * (1.0 - cfg.label_smoothing) + (
       cfg.label_smoothing / cfg.num_classes
@@ -47,10 +59,15 @@ def cross_entropy_loss(logits, targt):
   return -jnp.mean(jnp.sum(targt * logits, axis=-1))
 
 
-def compute_metrics(logits, labels):
-  loss = cross_entropy_loss(logits, labels)
+def mse(logits, target):
+  return jnp.sum((logits-target)**2)
 
-  accuracy = jnp.mean(jnp.argmax(logits.sum(0), axis=-1) == labels)
+
+def compute_metrics(logits, labels):
+  loss = mse(logits, labels)
+
+  accuracy = jnp.mean(jnp.argmax(logits, axis=-1) ==
+                      jnp.argmax(labels, axis=-1))
 
   return {"loss": loss, "accuracy": accuracy}
 
@@ -97,18 +114,6 @@ def eval_model(params, batch, state):
 def normalize_img(image, label):
   """Normalizes images: `uint8` -> `float32`."""
   return tf.cast(image, tf.float32) / 255.0, label
-
-
-class test_pc_nn(PC_NN):
-  def setup(self):
-    self.layers = [
-        DensePC(100, config=cfg),
-        DensePC(100, config=cfg),
-        DensePC(10, config=cfg),
-    ]
-
-
-nn_cifar10 = test_pc_nn(config=cfg, loss_fn=cross_entropy_loss)
 
 
 def main(_):

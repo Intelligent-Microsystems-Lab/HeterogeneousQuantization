@@ -15,14 +15,19 @@ def get_config():
           date=datetime.datetime.now()
       )
   )
-  config.batch_size = 128
-  config.num_epochs = 10
+  config.batch_size = 64
+  config.num_epochs = 70
   config.warmup_epochs = 5
-  config.momentum = 0.9
-  config.learning_rate = 0.1
-  config.infer_lr = 0.2
+  config.momentum = .0
+  config.learning_rate = 0.0005
+  config.infer_lr = 0.1
   config.infer_steps = 100
   config.num_classes = 10
   config.label_smoothing = 0.1
+
+  config.weight_noise = .1
+  config.act_noise = .1
+  config.err_inpt_noise = .1
+  config.err_weight_noise = .1
 
   return config
