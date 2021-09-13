@@ -13,7 +13,19 @@ from flax import linen as nn
 from flax.core import freeze, unfreeze, FrozenDict
 from flax.linen.initializers import lecun_normal, variance_scaling, zeros
 
-from jax._src.lax.lax import _canonicalize_precision, conv_dimension_numbers, padtype_to_pads, ConvDimensionNumbers, _conv_sdims, _conv_spec_transpose, _conv_general_vjp_lhs_padding, rev, conv_general_dilated
+from jax._src.lax.lax import (
+    _conv_general_dilated_transpose_lhs,
+    _canonicalize_precision,
+    conv_dimension_numbers,
+    padtype_to_pads,
+    ConvDimensionNumbers,
+    _conv_sdims,
+    _conv_spec_transpose,
+    _conv_general_vjp_lhs_padding,
+    _conv_general_vjp_rhs_padding,
+    rev,
+    conv_general_dilated,
+)
 
 default_kernel_init = lecun_normal()
 
@@ -41,50 +53,90 @@ def RecurrentPC():
   pass
 
 
-def conv_fwd(lhs, rhs, window_strides, padding, lhs_dilation, rhs_dilation, dimension_numbers, feature_group_count,
-    precision, batch_group_count, preferred_element_type):
+def conv_fwd(
+    lhs,
+    rhs,
+    window_strides,
+    padding,
+    lhs_dilation,
+    rhs_dilation,
+    dimension_numbers,
+    feature_group_count,
+    precision,
+    batch_group_count,
+    preferred_element_type,
+):
   dnums = conv_dimension_numbers(lhs.shape, rhs.shape, dimension_numbers)
   if lhs_dilation is None:
     lhs_dilation = (1,) * (lhs.ndim - 2)
-  elif isinstance(padding, str) and not len(lhs_dilation) == lhs_dilation.count(1):
+  elif isinstance(padding, str) and not len(
+      lhs_dilation
+  ) == lhs_dilation.count(1):
     raise ValueError(
         "String padding is not implemented for transposed convolution "
         "using this op. Please either exactly specify the required padding or "
-        "use conv_transpose.")
+        "use conv_transpose."
+    )
   if rhs_dilation is None:
     rhs_dilation = (1,) * (rhs.ndim - 2)
   if isinstance(padding, str):
     lhs_perm, rhs_perm, _ = dnums
     rhs_shape = np.take(rhs.shape, rhs_perm)[2:]  # type: ignore[index]
-    effective_rhs_shape = [(k-1) * r + 1 for k, r in zip(rhs_shape, rhs_dilation)]
+    effective_rhs_shape = [
+        (k - 1) * r + 1 for k, r in zip(rhs_shape, rhs_dilation)
+    ]
     padding = padtype_to_pads(
-        np.take(lhs.shape, lhs_perm)[2:], effective_rhs_shape,  # type: ignore[index]
-        window_strides, padding)
+        np.take(lhs.shape, lhs_perm)[2:],
+        effective_rhs_shape,  # type: ignore[index]
+        window_strides,
+        padding,
+    )
 
   return jax.lax.conv_general_dilated(
-      lhs, rhs, window_strides=tuple(window_strides), padding=tuple(padding),
-      lhs_dilation=tuple(lhs_dilation), rhs_dilation=tuple(rhs_dilation),
+      lhs,
+      rhs,
+      window_strides=tuple(window_strides),
+      padding=tuple(padding),
+      lhs_dilation=tuple(lhs_dilation),
+      rhs_dilation=tuple(rhs_dilation),
       dimension_numbers=dnums,
       feature_group_count=feature_group_count,
       batch_group_count=batch_group_count,
-      #lhs_shape=lhs.shape, rhs_shape=rhs.shape,
+      # lhs_shape=lhs.shape, rhs_shape=rhs.shape,
       precision=_canonicalize_precision(precision),
-      preferred_element_type=preferred_element_type
-    )
+      preferred_element_type=preferred_element_type,
+  )
+
 
 def conv_bwd_inpt(
-    g, rhs, window_strides, padding, lhs_dilation, rhs_dilation,
-    dimension_numbers, feature_group_count, batch_group_count,
-    lhs_shape, rhs_shape, precision, preferred_element_type):
+    g,
+    rhs,
+    *,
+    window_strides,
+    padding,
+    lhs_dilation,
+    rhs_dilation,
+    dimension_numbers,
+    feature_group_count,
+    batch_group_count,
+    lhs_shape,
+    rhs_shape,
+    precision,
+    preferred_element_type,
+):
   dnums = conv_dimension_numbers(lhs_shape, rhs_shape, dimension_numbers)
   if isinstance(padding, str):
     lhs_perm, rhs_perm, _ = dnums
     rhs_shape = np.take(rhs_shape, rhs_perm)[2:]  # type: ignore[index]
-    effective_rhs_shape = [(k-1) * r + 1 for k, r in zip(rhs_shape, rhs_dilation)]
+    effective_rhs_shape = [
+        (k - 1) * r + 1 for k, r in zip(rhs_shape, rhs_dilation)
+    ]
     padding = padtype_to_pads(
-        np.take(lhs_shape, lhs_perm)[2:], effective_rhs_shape,  # type: ignore[index]
-        window_strides, padding)
-
+        np.take(lhs_shape, lhs_perm)[2:],
+        effective_rhs_shape,  # type: ignore[index]
+        window_strides,
+        padding,
+    )
 
   assert type(dimension_numbers) is ConvDimensionNumbers
   assert batch_group_count == 1 or feature_group_count == 1
@@ -100,31 +152,99 @@ def conv_bwd_inpt(
     rhs = _reshape_axis_out_of(rhs_spec[0], batch_group_count, rhs)
     rhs = _reshape_axis_into(rhs_spec[0], rhs_spec[1], rhs)
     feature_group_count = batch_group_count
-  trans_dimension_numbers = ConvDimensionNumbers(out_spec, t_rhs_spec, lhs_spec)
+  trans_dimension_numbers = ConvDimensionNumbers(
+      out_spec, t_rhs_spec, lhs_spec
+  )
   padding = _conv_general_vjp_lhs_padding(
-      np.take(lhs_shape, lhs_sdims), np.take(rhs_shape, rhs_sdims),
-      window_strides, np.take(g.shape, out_sdims), padding, lhs_dilation,
-      rhs_dilation)
+      np.take(lhs_shape, lhs_sdims),
+      np.take(rhs_shape, rhs_sdims),
+      window_strides,
+      np.take(g.shape, out_sdims),
+      padding,
+      lhs_dilation,
+      rhs_dilation,
+  )
   revd_weights = rev(rhs, rhs_sdims)
 
   out = conv_general_dilated(
-      g, revd_weights, window_strides=lhs_dilation, padding=padding,
-      lhs_dilation=window_strides, rhs_dilation=rhs_dilation,
+      g,
+      revd_weights,
+      window_strides=lhs_dilation,
+      padding=padding,
+      lhs_dilation=window_strides,
+      rhs_dilation=rhs_dilation,
       dimension_numbers=trans_dimension_numbers,
       feature_group_count=feature_group_count,
-      batch_group_count=1, precision=precision,
-      preferred_element_type=preferred_element_type)
+      batch_group_count=1,
+      precision=precision,
+      preferred_element_type=preferred_element_type,
+  )
   if batch_group_count > 1:
     out = _reshape_axis_out_of(lhs_spec[1], batch_group_count, out)
     out = _reshape_axis_into(lhs_spec[1], lhs_spec[0], out)
   return out
 
 
+def conv_bwd_kernel(
+        g, lhs, *, window_strides, padding, lhs_dilation, rhs_dilation,
+        dimension_numbers: ConvDimensionNumbers, feature_group_count: int,
+        batch_group_count: int, lhs_shape, rhs_shape, precision,
+        preferred_element_type):
+
+  dnums = conv_dimension_numbers(lhs_shape, rhs_shape, dimension_numbers)
+  if isinstance(padding, str):
+    lhs_perm, rhs_perm, _ = dnums
+    rhs_shape = np.take(rhs_shape, rhs_perm)[2:]  # type: ignore[index]
+    effective_rhs_shape = [
+        (k - 1) * r + 1 for k, r in zip(rhs_shape, rhs_dilation)
+    ]
+    padding = padtype_to_pads(
+        np.take(lhs_shape, lhs_perm)[2:],
+        effective_rhs_shape,  # type: ignore[index]
+        window_strides,
+        padding,
+    )
+
+  assert type(dimension_numbers) is ConvDimensionNumbers
+  if np.size(g) == 0:
+    # Avoids forming degenerate convolutions where the RHS has spatial size 0.
+    # Awkwardly, we don't have an aval for the rhs readily available, so instead
+    # of returning an ad_util.Zero instance here, representing a symbolic zero
+    # value, we instead return a None, which is meant to represent having no
+    # cotangent at all (and is thus incorrect for this situation), since the two
+    # are treated the same operationally.
+    # TODO(mattjj): adjust defbilinear so that the rhs aval is available here
+    return None
+  lhs_sdims, rhs_sdims, out_sdims = map(_conv_sdims, dimension_numbers)
+  lhs_trans, rhs_trans, out_trans = map(
+      _conv_spec_transpose, dimension_numbers)
+  assert batch_group_count == 1 or feature_group_count == 1
+  if batch_group_count > 1:
+    feature_group_count = batch_group_count
+    batch_group_count = 1
+  elif feature_group_count > 1:
+    batch_group_count = feature_group_count
+    feature_group_count = 1
+  trans_dimension_numbers = ConvDimensionNumbers(
+      lhs_trans, out_trans, rhs_trans)
+  padding = _conv_general_vjp_rhs_padding(
+      np.take(lhs_shape, lhs_sdims), np.take(rhs_shape, rhs_sdims),
+      window_strides, np.take(g.shape, out_sdims), padding, lhs_dilation,
+      rhs_dilation)
+  return conv_general_dilated(
+      lhs, g, window_strides=rhs_dilation, padding=padding,
+      lhs_dilation=lhs_dilation, rhs_dilation=window_strides,
+      dimension_numbers=trans_dimension_numbers,
+      feature_group_count=feature_group_count,
+      batch_group_count=batch_group_count, precision=precision,
+      preferred_element_type=preferred_element_type)
+
+
 class ConvolutionalPC(nn.Module):
   features: int
   kernel_size: Iterable[int]
   strides: Union[None, int, Iterable[int]] = 1
-  padding: Union[str, Iterable[Tuple[int, int]]] = 'SAME'
+  padding: Union[str, Iterable[Tuple[int, int]]] = "SAME"
   input_dilation: Union[None, int, Iterable[int]] = 1
   kernel_dilation: Union[None, int, Iterable[int]] = 1
   feature_group_count: int = 1
@@ -136,7 +256,6 @@ class ConvolutionalPC(nn.Module):
   non_linearity: Callable = jax.nn.relu
   config: dict = None
 
-
   @nn.module.compact
   def __call__(self, inputs):
     val = self.variable("pc", "value", jnp.zeros, ())
@@ -145,10 +264,13 @@ class ConvolutionalPC(nn.Module):
     # flax conv prep
     inputs = jnp.asarray(inputs, self.dtype)
     if isinstance(self.kernel_size, int):
-      raise TypeError('The kernel size must be specified as a'
-                      ' tuple/list of integers (eg.: [3, 3]).')
+      raise TypeError(
+          "The kernel size must be specified as a"
+          " tuple/list of integers (eg.: [3, 3])."
+      )
     else:
       kernel_size = tuple(self.kernel_size)
+
     def maybe_broadcast(x):
       if x is None:
         # backward compatibility with using None as sentinel for
@@ -157,67 +279,38 @@ class ConvolutionalPC(nn.Module):
       if isinstance(x, int):
         return (x,) * len(kernel_size)
       return x
+
     is_single_input = False
     if inputs.ndim == len(kernel_size) + 1:
       is_single_input = True
       inputs = jnp.expand_dims(inputs, axis=0)
-    strides = maybe_broadcast(self.strides)  # self.strides or (1,) * (inputs.ndim - 2)
+    # self.strides or (1,) * (inputs.ndim - 2)
+    strides = maybe_broadcast(self.strides)
     input_dilation = maybe_broadcast(self.input_dilation)
     kernel_dilation = maybe_broadcast(self.kernel_dilation)
     in_features = inputs.shape[-1]
     assert in_features % self.feature_group_count == 0
     kernel_shape = kernel_size + (
-        in_features // self.feature_group_count, self.features)
-    kernel = self.param('kernel', self.kernel_init, kernel_shape)
+        in_features // self.feature_group_count,
+        self.features,
+    )
+    kernel = self.param("kernel", self.kernel_init, kernel_shape)
     kernel = jnp.asarray(kernel, self.dtype)
     dimension_numbers = _conv_dimension_numbers(inputs.shape)
 
-    # lhs=inputs
-    # rhs=kernel
-    # window_strides=strides
-    # padding=self.padding
-    # lhs_dilation=input_dilation
-    # rhs_dilation=kernel_dilation
-    # dimension_numbers=dimension_numbers
-    # feature_group_count=self.feature_group_count
-    # precision=self.precision
-    # batch_group_count=1
-    # preferred_element_type=None
-
-
-    # save 
-    # self.window_strides=tuple(window_strides)
-    # self.padding=tuple(padding)
-    # self.lhs_dilation=tuple(lhs_dilation) 
-    # self.rhs_dilation=tuple(rhs_dilation)
-    # self.dimension_numbers=dnums,
-    # self.feature_group_count=feature_group_count
-    # self.batch_group_count=batch_group_count
-    # self.lhs_shape=lhs.shape, rhs_shape=rhs.shape
-    # self.precision=_canonicalize_precision(precision)
-    # self.preferred_element_type=preferred_element_type
-
-    y = conv_fwd(lhs=inputs,
-    rhs=kernel,
-    window_strides=strides,
-    padding=self.padding,
-    lhs_dilation=input_dilation,
-    rhs_dilation=kernel_dilation,
-    dimension_numbers=dimension_numbers,
-    feature_group_count=self.feature_group_count,
-    precision=self.precision,
-    batch_group_count=1,
-    preferred_element_type=None)
-    # y = jax.lax.conv_general_dilated(
-    #   lhs, rhs, window_strides=tuple(window_strides), padding=tuple(padding),
-    #   lhs_dilation=tuple(lhs_dilation), rhs_dilation=tuple(rhs_dilation),
-    #   dimension_numbers=dnums,
-    #   feature_group_count=feature_group_count,
-    #   batch_group_count=batch_group_count,
-    #   #lhs_shape=lhs.shape, rhs_shape=rhs.shape,
-    #   precision=_canonicalize_precision(precision),
-    #   preferred_element_type=preferred_element_type
-    # )
+    y = conv_fwd(
+        lhs=inputs,
+        rhs=kernel,
+        window_strides=strides,
+        padding=self.padding,
+        lhs_dilation=input_dilation,
+        rhs_dilation=kernel_dilation,
+        dimension_numbers=dimension_numbers,
+        feature_group_count=self.feature_group_count,
+        precision=self.precision,
+        batch_group_count=1,
+        preferred_element_type=None,
+    )
 
     if self.non_linearity is not None:
       out = self.variable("pc", "out", jnp.zeros, ())
@@ -233,17 +326,21 @@ class ConvolutionalPC(nn.Module):
     pred_err = pred - val
     if self.non_linearity is not None:
       out = self.get_variable("pc", "out")
-      deriv = jax.jacfwd(self.non_linearity)(out)
-      err_prev = jnp.einsum("xzyuabcd,abcd->abcd", deriv, err_prev)
-
+      deriv = jax.vmap(
+          jax.vmap(jax.vmap(jax.vmap(jax.grad(self.non_linearity))))
+      )(out)
+      err_prev = deriv * err_prev
 
     # flax conv prep
     inputs = jnp.asarray(val, self.dtype)
     if isinstance(self.kernel_size, int):
-      raise TypeError('The kernel size must be specified as a'
-                      ' tuple/list of integers (eg.: [3, 3]).')
+      raise TypeError(
+          "The kernel size must be specified as a"
+          " tuple/list of integers (eg.: [3, 3])."
+      )
     else:
       kernel_size = tuple(self.kernel_size)
+
     def maybe_broadcast(x):
       if x is None:
         # backward compatibility with using None as sentinel for
@@ -252,66 +349,80 @@ class ConvolutionalPC(nn.Module):
       if isinstance(x, int):
         return (x,) * len(kernel_size)
       return x
+
     is_single_input = False
     if inputs.ndim == len(kernel_size) + 1:
       is_single_input = True
       inputs = jnp.expand_dims(inputs, axis=0)
-    strides = maybe_broadcast(self.strides)  # self.strides or (1,) * (inputs.ndim - 2)
+    # self.strides or (1,) * (inputs.ndim - 2)
+    strides = maybe_broadcast(self.strides)
     input_dilation = maybe_broadcast(self.input_dilation)
     kernel_dilation = maybe_broadcast(self.kernel_dilation)
     in_features = inputs.shape[-1]
     assert in_features % self.feature_group_count == 0
-    #kernel_shape = kernel_size + (
-    #    in_features // self.feature_group_count, self.features)
-    #kernel = self.param('kernel', self.kernel_init, kernel_shape)
-    #kernel = jnp.asarray(kernel, self.dtype)
     dimension_numbers = _conv_dimension_numbers(inputs.shape)
 
-
-
-    err = conv_bwd_inpt(g=err_prev,
-        rhs=kernel,window_strides=strides,
-    padding=self.padding,
-    lhs_dilation=input_dilation,
-    rhs_dilation=kernel_dilation,
-    dimension_numbers=dimension_numbers,
-    feature_group_count=self.feature_group_count,
-    lhs_shape=inputs.shape,
-    rhs_shape=kernel.shape,
-    precision=self.precision,
-    batch_group_count=1,
-    preferred_element_type=None)
-    # err = _conv_general_dilated_transpose_lhs(
-    #     g=err_prev,
-    #     rhs=kernel,
-    #     window_strides=strides,
-    #     padding=padding,
-    #     lhs_dilation=input_dilation,
-    #     rhs_dilation=kernel_dilation,
-    #     dimension_numbers=dimension_numbers,
-    #     feature_group_count=self.feature_group_count,
-    #     batch_group_count=1,
-    #     #lhs_shape=val.shape,
-    #     #rhs_shape=kernel.shape,
-    #     precision=_canonicalize_precision(self.precision),
-    #     preferred_element_type=None)
-
+    err = conv_bwd_inpt(
+        g=err_prev,
+        rhs=kernel,
+        window_strides=strides,
+        padding=self.padding,
+        lhs_dilation=input_dilation,
+        rhs_dilation=kernel_dilation,
+        dimension_numbers=dimension_numbers,
+        feature_group_count=self.feature_group_count,
+        lhs_shape=inputs.shape,
+        rhs_shape=kernel.shape,
+        precision=self.precision,
+        batch_group_count=1,
+        preferred_element_type=None,
+    )
     pred -= self.config.infer_lr * (pred_err - err)
     return err, pred
 
   def grads(self, err):
+    kernel = self.get_variable("params", "kernel")
+    val = self.get_variable("pc", "value")
+
+    if self.non_linearity is not None:
+      out = self.get_variable("pc", "out")
+      deriv = jax.vmap(
+          jax.vmap(jax.vmap(jax.vmap(jax.grad(self.non_linearity))))
+      )(out)
+      err = deriv * err
+
+    # flax conv prep
+    inputs = jnp.asarray(val, self.dtype)
+    if isinstance(self.kernel_size, int):
+      raise TypeError(
+          "The kernel size must be specified as a"
+          " tuple/list of integers (eg.: [3, 3])."
+      )
+    else:
+      kernel_size = tuple(self.kernel_size)
+
+    def maybe_broadcast(x):
+      if x is None:
+        # backward compatibility with using None as sentinel for
+        # broadcast 1
+        x = 1
+      if isinstance(x, int):
+        return (x,) * len(kernel_size)
+      return x
+
+    is_single_input = False
+    if inputs.ndim == len(kernel_size) + 1:
+      is_single_input = True
+      inputs = jnp.expand_dims(inputs, axis=0)
+    # self.strides or (1,) * (inputs.ndim - 2)
     strides = maybe_broadcast(self.strides)
     input_dilation = maybe_broadcast(self.input_dilation)
     kernel_dilation = maybe_broadcast(self.kernel_dilation)
+    in_features = inputs.shape[-1]
+    assert in_features % self.feature_group_count == 0
     dimension_numbers = _conv_dimension_numbers(inputs.shape)
 
-    val = self.get_variable("pc", "value")
-    if self.non_linearity is not None:
-      out = self.get_variable("pc", "out")
-      deriv = jax.jacfwd(self.non_linearity)(out)
-      err = jnp.einsum("xzyuabcd,abcd->abcd", deriv, err)
-
-    kernel_grads = _conv_general_dilated_transpose_rhs(
+    kernel_grads = conv_bwd_kernel(
         g=err,
         lhs=val,
         window_strides=strides,
@@ -320,11 +431,12 @@ class ConvolutionalPC(nn.Module):
         rhs_dilation=kernel_dilation,
         dimension_numbers=dimension_numbers,
         feature_group_count=self.feature_group_count,
-        batch_group_count=1,
-        lhs_shape=val.shape,
+        lhs_shape=inputs.shape,
         rhs_shape=kernel.shape,
-        precision=_canonicalize_precision(self.precision),
-        preferred_element_type=None)
+        precision=self.precision,
+        batch_group_count=1,
+        preferred_element_type=None,
+    )
     return {"kernel": kernel_grads}
 
 
@@ -363,8 +475,8 @@ class DensePC(nn.Module):
     pred_err = pred - val
     if self.non_linearity is not None:
       out = self.get_variable("pc", "out")
-      deriv = jax.jacfwd(self.non_linearity)(out)
-      err_prev = jnp.einsum("dcab,ab->ab", deriv, err_prev)
+      deriv = jax.vmap(jax.vmap(jax.grad(self.non_linearity)))(out)
+      err_prev = deriv * err_prev
 
     err = jnp.dot(err_prev, jnp.transpose(kernel))
     pred -= self.config.infer_lr * (pred_err - err)

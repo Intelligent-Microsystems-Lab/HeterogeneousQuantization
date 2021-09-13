@@ -20,7 +20,7 @@ from utils import *
 from layers import *
 
 
-save_dir_fc = 'unit_test_conv/'
+save_dir_fc = "unit_test_conv/"
 subprocess.call(["mkdir", "-p", str(save_dir_fc)])
 
 
@@ -64,7 +64,7 @@ class PCNet(object):
         true_dW = l.update_weights(
             self.predictions[i + 1], update_weights=True
         )
-        np.save(save_dir_fc+"dw" + str(i) + "_train.npy", true_dW)
+        np.save(save_dir_fc + "dw" + str(i) + "_train.npy", true_dW)
         diff = torch.sum((dW - true_dW) ** 2).item()
         weight_diffs.append(diff)
         if print_weight_grads:
@@ -99,7 +99,7 @@ class PCNet(object):
         # initialize mus with forward predictions
         self.mus[i + 1] = l.forward(self.mus[i])
         self.outs[i + 1] = self.mus[i + 1].clone()
-      np.save(save_dir_fc+"out_train.npy", self.mus[-1])
+      np.save(save_dir_fc + "out_train.npy", self.mus[-1])
       self.mus[-1] = label.clone()  # setup final label
       self.prediction_errors[-1] = -self.loss_fn_deriv(
           self.outs[-1], self.mus[-1]
@@ -117,11 +117,11 @@ class PCNet(object):
             self.mus[j] -= self.inference_learning_rate * (
                 2 * dx_l
             )
-      np.save(save_dir_fc+"pred0_train.npy", self.predictions[1])
-      np.save(save_dir_fc+"pred1_train.npy", self.predictions[2])
-      np.save(save_dir_fc+"mus0_train.npy", self.mus[0])
-      np.save(save_dir_fc+"mus1_train.npy", self.mus[1])
-      np.save(save_dir_fc+"mus2_train.npy", self.mus[2])
+      np.save(save_dir_fc + "pred0_train.npy", self.predictions[1])
+      np.save(save_dir_fc + "pred1_train.npy", self.predictions[2])
+      np.save(save_dir_fc + "mus0_train.npy", self.mus[0])
+      np.save(save_dir_fc + "mus1_train.npy", self.mus[1])
+      np.save(save_dir_fc + "mus2_train.npy", self.mus[2])
       # update weights
       weight_diffs = self.update_weights()
       # get loss:
@@ -129,14 +129,14 @@ class PCNet(object):
           self.outs[-1], self.mus[-1]
       ).item()  # torch.sum(self.prediction_errors[-1]**2).item()
       # get accuracy
-      acc = 0.  # accuracy(self.no_grad_forward(inp), label)
+      acc = 0.0  # accuracy(self.no_grad_forward(inp), label)
       return L, acc, weight_diffs
 
   def test_accuracy(self, testset):
     accs = []
     for i, (inp, label) in enumerate(testset):
       pred_y = self.no_grad_forward(inp.to(DEVICE))
-      acc = 0.  # accuracy(pred_y, onehot(label).to(DEVICE))
+      acc = 0.0  # accuracy(pred_y, onehot(label).to(DEVICE))
       accs.append(acc)
     return np.mean(np.array(accs)), accs
 
@@ -257,11 +257,27 @@ if __name__ == "__main__":
   )
   if args.loss_fn == "crossentropy":
     l6 = ConvLayer(
-        28, 6, 12, 128, 5, args.learning_rate, relu, relu_deriv, device=DEVICE
+        28,
+        6,
+        12,
+        128,
+        5,
+        args.learning_rate,
+        relu,
+        relu_deriv,
+        device=DEVICE,
     )
   else:
     l6 = ConvLayer(
-        28, 6, 12, 128, 5, args.learning_rate, relu, relu_deriv, device=DEVICE
+        28,
+        6,
+        12,
+        128,
+        5,
+        args.learning_rate,
+        relu,
+        relu_deriv,
+        device=DEVICE,
     )
   layers = [l5, l6]
 
@@ -294,4 +310,4 @@ if __name__ == "__main__":
       args.save_every,
       args.print_every,
   )
-  #net.save_model("logs", 'unit_test_fc/', [], [], [], [])
+  # net.save_model("logs", 'unit_test_fc/', [], [], [], [])

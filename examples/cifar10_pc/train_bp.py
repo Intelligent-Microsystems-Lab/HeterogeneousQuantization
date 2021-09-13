@@ -48,15 +48,25 @@ class LeNet_BP(nn.Module):
   def __call__(self, x, rng):
 
     rng, subkey = jax.random.split(rng, 2)
-    x = QuantConv(features=6, kernel_size=(5, 5),
-                  padding='VALID', use_bias=False, config=self.config)(x, subkey)
+    x = QuantConv(
+        features=6,
+        kernel_size=(5, 5),
+        padding="VALID",
+        use_bias=False,
+        config=self.config,
+    )(x, subkey)
     x = nn.relu(x)
     x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
     rng, subkey = jax.random.split(rng, 2)
-    x = QuantConv(features=16, kernel_size=(5, 5),
-                  padding='VALID', use_bias=False, config=self.config)(x, subkey)
+    x = QuantConv(
+        features=16,
+        kernel_size=(5, 5),
+        padding="VALID",
+        use_bias=False,
+        config=self.config,
+    )(x, subkey)
     x = nn.relu(x)
-    #x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
+    # x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
     x = x.reshape((x.shape[0], -1))
     rng, subkey = jax.random.split(rng, 2)
     x = QuantDense(features=200, use_bias=False)(x, subkey)
@@ -82,14 +92,15 @@ nn_cifar10 = LeNet_BP(config=cfg)
 
 
 def mse(logits, target):
-  return jnp.sum((logits-target)**2)
+  return jnp.sum((logits - target) ** 2)
 
 
 def compute_metrics(logits, labels):
   loss = mse(logits, labels)
 
-  accuracy = jnp.mean(jnp.argmax(logits, axis=-1) ==
-                      jnp.argmax(labels, axis=-1))
+  accuracy = jnp.mean(
+      jnp.argmax(logits, axis=-1) == jnp.argmax(labels, axis=-1)
+  )
 
   return {"loss": loss, "accuracy": accuracy}
 
@@ -100,7 +111,11 @@ def train_step(step, optimizer, lr_fn, batch, state, rng):
 
   def loss_fn(params):
     logits, _ = nn_cifar10.apply(
-        {'params': params, **state}, batch[0], rng, mutable=list(state.keys()),)
+        {"params": params, **state},
+        batch[0],
+        rng,
+        mutable=list(state.keys()),
+    )
     loss = mse(logits, label)
     return loss, logits
 
@@ -108,12 +123,10 @@ def train_step(step, optimizer, lr_fn, batch, state, rng):
   (loss, logits), grads = grad_fn(optimizer.target)
 
   grads = jax.tree_map(lambda x: jnp.clip(x, -50, 50), grads)
-  #lr = lr_fn(step)
+  # lr = lr_fn(step)
   optimizer = optimizer.apply_gradient(grads)
 
-  metrics = compute_metrics(
-      logits, label
-  )
+  metrics = compute_metrics(logits, label)
 
   return optimizer, metrics
 
@@ -124,7 +137,8 @@ def eval_model(params, batch, state, rng):
 
   out, _ = nn_cifar10.apply(
       {"params": params, **state},
-      batch[0], rng,
+      batch[0],
+      rng,
       mutable=list(state.keys()),
   )
 
@@ -160,19 +174,21 @@ def main(_):
   summary_writer.hparams(cfg)
 
   # get data set
-  ds_train = get_ds('train')
-  ds_test = get_ds('test')
+  ds_train = get_ds("train")
+  ds_test = get_ds("test")
 
   rng = jax.random.PRNGKey(cfg.seed)
   rng, p_rng, subkey = jax.random.split(rng, 3)
 
-  variables = nn_cifar10.init(p_rng, jnp.ones(
-      (cfg.batch_size, 32, 32, 3)), subkey)
+  variables = nn_cifar10.init(
+      p_rng, jnp.ones((cfg.batch_size, 32, 32, 3)), subkey
+  )
   state, params = variables.pop("params")
 
-  optimizer = optim.GradientDescent(
-      learning_rate=cfg.learning_rate).create(params)
-  learning_rate_fn = None,  # create_cosine_learning_rate_schedule(
+  optimizer = optim.GradientDescent(learning_rate=cfg.learning_rate).create(
+      params
+  )
+  learning_rate_fn = (None,)  # create_cosine_learning_rate_schedule(
   #    cfg.learning_rate,
   #    len(ds_train),
   #    cfg.num_epochs,
@@ -215,7 +231,7 @@ def main(_):
         train_metrics["accuracy"],
         eval_metrics["loss"],
         eval_metrics["accuracy"],
-        train_metrics["time"]
+        train_metrics["time"],
     )
 
 

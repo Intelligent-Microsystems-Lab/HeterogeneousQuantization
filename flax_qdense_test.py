@@ -29,7 +29,7 @@ from flax_qdense import (
 
 
 class DQG(nn.Module):
-  """ A simple fully connected model with QuantDense """
+  """A simple fully connected model with QuantDense"""
 
   @nn.compact
   def __call__(self, x, channels, config, rng):
@@ -57,7 +57,7 @@ class DQG(nn.Module):
 
 
 class Dlinen(nn.Module):
-  """ Same model as above but with nn.Dense """
+  """Same model as above but with nn.Dense"""
 
   @nn.compact
   def __call__(self, x, channels):
@@ -153,12 +153,14 @@ def dense_test_data():
           examples=512,
           inp_channels=100,
           channels=[20, 10],
-          config=ml_collections.FrozenConfigDict({
-              'weight_noise': .0,
-              'act_noise': .0,
-              'err_inpt_noise': .0,
-              'err_weight_nois': .0,
-          }),
+          config=ml_collections.FrozenConfigDict(
+              {
+                  "weight_noise": 0.0,
+                  "act_noise": 0.0,
+                  "err_inpt_noise": 0.0,
+                  "err_weight_nois": 0.0,
+              }
+          ),
           numerical_tolerance=0,
       ),
   )

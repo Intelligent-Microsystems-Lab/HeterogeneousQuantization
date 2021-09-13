@@ -51,8 +51,8 @@ from flax.linen.linear import (
     _conv_dimension_numbers,
 )
 
-#from casting import int_quant, downcast_sat_ftz, get_bounds
-#from grad_metrics import metric_grad_single, metric_grad_couple
+# from casting import int_quant, downcast_sat_ftz, get_bounds
+# from grad_metrics import metric_grad_single, metric_grad_couple
 
 
 def conv_general_dilated(
@@ -209,10 +209,11 @@ def _conv_general_dilated_transpose_lhs(
   )
   revd_weights = rev(rhs, rhs_sdims)
 
-  if config is not None and 'err_inpt_noise' in config:
-    if config['err_inpt_noise'] != 0.:
-      g = g + jnp.max(g) * config['err_inpt_noise'] * \
-          np.random.randn(*g.shape)
+  if config is not None and "err_inpt_noise" in config:
+    if config["err_inpt_noise"] != 0.0:
+      g = g + jnp.max(g) * config["err_inpt_noise"] * np.random.randn(
+          *g.shape
+      )
 
   out = conv_general_dilated(
       g,
@@ -287,10 +288,11 @@ def _conv_general_dilated_transpose_rhs(
       rhs_dilation,
   )
 
-  if config is not None and 'err_weight_noise' in config:
-    if config['err_weight_noise'] != 0.:
-      g = g + jnp.max(g) * config['err_weight_noise'] * \
-          np.random.randn(*g.shape)
+  if config is not None and "err_weight_noise" in config:
+    if config["err_weight_noise"] != 0.0:
+      g = g + jnp.max(g) * config["err_weight_noise"] * np.random.randn(
+          *g.shape
+      )
 
   out = conv_general_dilated(
       lhs,
@@ -420,19 +422,19 @@ class QuantConv(Module):
     kernel = jnp.asarray(kernel, self.dtype)
     dimension_numbers = _conv_dimension_numbers(inputs.shape)
 
-    if self.config is not None and 'weight_noise' in self.config:
-      if self.config['weight_noise'] != 0.:
+    if self.config is not None and "weight_noise" in self.config:
+      if self.config["weight_noise"] != 0.0:
         rng, prng = jax.random.split(rng, 2)
-        kernel = kernel + \
-            jnp.max(kernel) * self.config['weight_noise'] * \
-            jax.random.normal(prng, kernel.shape)
+        kernel = kernel + jnp.max(kernel) * self.config[
+            "weight_noise"
+        ] * jax.random.normal(prng, kernel.shape)
 
-    if self.config is not None and 'act_noise' in self.config:
-      if self.config['act_noise'] != 0.:
+    if self.config is not None and "act_noise" in self.config:
+      if self.config["act_noise"] != 0.0:
         rng, prng = jax.random.split(rng, 2)
-        inputs = inputs + \
-            jnp.max(inputs) * self.config['act_noise'] * \
-            jax.random.normal(prng, inputs.shape)
+        inputs = inputs + jnp.max(inputs) * self.config[
+            "act_noise"
+        ] * jax.random.normal(prng, inputs.shape)
 
     y = conv_general_dilated(
         inputs,

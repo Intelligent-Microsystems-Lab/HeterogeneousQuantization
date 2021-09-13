@@ -34,7 +34,9 @@ class CQG(nn.Module):
   no quantization"""
 
   @nn.compact
-  def __call__(self, x, features, kernel_size, strides, padding, config, rng):
+  def __call__(
+      self, x, features, kernel_size, strides, padding, config, rng
+  ):
     rng1, rng2 = jax.random.split(rng, 2)
     x = QuantConv(
         features=features[0],
@@ -58,7 +60,7 @@ class CQG(nn.Module):
 
 
 class Clinen(nn.Module):
-  """ Same model as above but with nn.Conv """
+  """Same model as above but with nn.Conv"""
 
   @nn.compact
   def __call__(self, x, features, kernel_size, strides, padding):
@@ -93,7 +95,14 @@ def cross_entropy_loss(logits, labels):
 
 # Train step for QuantConv layer
 def train_step_conv_quant_grad(
-    optimizer, batch, features, kernel_size, strides, padding, config, rng,
+    optimizer,
+    batch,
+    features,
+    kernel_size,
+    strides,
+    padding,
+    config,
+    rng,
 ):
   """Train for a single step."""
 
@@ -297,12 +306,14 @@ def conv_noise_test():
           kernel_size=(2, 2),
           strides=(1, 1),
           padding="SAME",
-          config=ml_collections.FrozenConfigDict({
-              'weight_noise': .0,
-              'act_noise': .0,
-              'err_inpt_noise': .0,
-              'err_weight_nois': .0,
-          }),
+          config=ml_collections.FrozenConfigDict(
+              {
+                  "weight_noise": 0.0,
+                  "act_noise": 0.0,
+                  "err_inpt_noise": 0.0,
+                  "err_weight_nois": 0.0,
+              }
+          ),
           numerical_tolerance=0.0,
       ),
       # dict(

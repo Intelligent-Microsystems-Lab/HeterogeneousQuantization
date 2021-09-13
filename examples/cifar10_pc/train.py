@@ -60,14 +60,15 @@ def cross_entropy_loss(logits, targt):
 
 
 def mse(logits, target):
-  return jnp.sum((logits-target)**2)
+  return jnp.sum((logits - target) ** 2)
 
 
 def compute_metrics(logits, labels):
   loss = mse(logits, labels)
 
-  accuracy = jnp.mean(jnp.argmax(logits, axis=-1) ==
-                      jnp.argmax(labels, axis=-1))
+  accuracy = jnp.mean(
+      jnp.argmax(logits, axis=-1) == jnp.argmax(labels, axis=-1)
+  )
 
   return {"loss": loss, "accuracy": accuracy}
 
@@ -193,7 +194,7 @@ def main(_):
         train_metrics["accuracy"],
         eval_metrics["loss"],
         eval_metrics["accuracy"],
-        train_metrics["time"]
+        train_metrics["time"],
     )
 
 
