@@ -22,7 +22,6 @@ from flax.training import common_utils
 from flax import optim
 from flax.training.lr_schedule import create_cosine_learning_rate_schedule
 
-from flax.linen.initializers import zeros, ones
 
 import tensorflow.compat.v2 as tf
 import tensorflow_datasets as tfds
@@ -181,10 +180,6 @@ def main(_):
   ds_test = get_ds("test")
 
   rng = jax.random.PRNGKey(cfg.seed)
-
-  # rng, subkey, subkey1 = jax.random.split(rng, 3)
-  # dummy_batch = (jax.random.normal(subkey, (64, 32, 32, 3)), jax.random.normal(subkey1, (64,)).astype(jnp.int8))
-
   rng, p_rng, subkey = jax.random.split(rng, 3)
 
   variables = nn_cifar10.init(
