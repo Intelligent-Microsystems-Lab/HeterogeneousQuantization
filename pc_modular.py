@@ -35,6 +35,9 @@ Shape = Iterable[int]
 Dtype = Any
 Array = Any
 
+from jax.config import config
+config.update("jax_debug_nans", True)
+config.update("jax_disable_jit", True)
 
 def _conv_dimension_numbers(input_shape):
   """Computes the dimension numbers based on the input shape."""
@@ -491,8 +494,59 @@ class DensePC(nn.Module):
     return {"kernel": jnp.dot(jnp.transpose(val), err)}
 
 
+# class MaxPoolPC(nn.Module):
+#   window_shape 
+#   strides=None
+#   padding="VALID"
+#   config: dict = None
+
+#   @nn.module.compact
+#   def __call__(self, inpt):
+#     val = self.variable("pc", "value", jnp.zeros, ())
+#     val.value = inpt
+
+#     y = nn.max_pool(inpt, window_shape, strides, padding)
+
+#     return y
+
+#   def infer(self, err_prev, pred):
+#     val = self.get_variable("pc", "value")
+
+#     # do some kind of unpooling
+#     err = jnp.dot(err_prev, jnp.transpose(kernel))
+
+#     return err, _
+
+#   def grads(self, err):
+#     return {}
+
+
+class FlattenPC(nn.Module):
+  config: dict = None
+
+  @nn.module.compact
+  def __call__(self, inpt):
+    val = self.variable("pc", "value", jnp.zeros, ())
+    val.value = inpt
+
+    y = jnp.ravel(inpt)
+
+    return y
+
+  def infer(self, err_prev, pred):
+    val = self.get_variable("pc", "value")
+
+    # do some kind of unpooling
+    err = jnp.reshape(err_prev, val.shape)
+
+    return err, _
+
+  def grads(self, err):
+    return {}
+
+
 class PC_NN(nn.Module):
-  """A simple PC model."""
+  """Abstract Base PC model."""
 
   config: dict = None
   loss_fn: Callable = None
@@ -500,36 +554,37 @@ class PC_NN(nn.Module):
   def setup(self):
     self.layers = []
 
-  def __call__(self, x):
+  def __call__(self, x, rng, err_init=False):
+    err = {}
     for l in self.layers:
       x = l(x)
+      err[l.name] = jnp.zeros_like(x)
+
+    if err_init:
+      return x, err
+
     return x
 
-  def grads(self, x, y):
-    out = self.__call__(x)
-    err = self.inference(y, out)
+  def grads(self, x, y, rng):
+    out, err_init = self.__call__(x, rng, err_init=True)
+    err = self.inference(y, out, rng, err_init)
 
     grads = {}
     for l in self.layers:
       grads[l.name] = l.grads(err[l.name])
     return FrozenDict(grads)
 
-  def inference(self, y, out):
+  def inference(self, y, out, rng, err_init):
     pred = unfreeze(self.variables["pc"])
     err_fin = -jax.grad(self.loss_fn)(out, y)
     layer_names = list(pred.keys())
 
-    err_init = {}
-    for i in layer_names:
-      err_init[i] = self.variables["pc"][i]["out"]
     err_init[layer_names[-1]] = err_fin
 
     def scan_fn(carry, _):
       pred, err = carry
       t_err = err_fin
-      for l, l_name in zip(
-          reversed(self.layers[1:]), reversed(layer_names[:1])
-      ):
+      for l, l_name in zip(self.layers[1:][::-1], layer_names[:-1][::-1]): 
         t_err, pred[l.name]["value"] = l.infer(
             t_err, pred[l.name]["value"]
         )

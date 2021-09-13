@@ -56,7 +56,7 @@ class LeNet_BP(nn.Module):
         config=self.config,
     )(x, subkey)
     x = nn.relu(x)
-    x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
+    #x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
     rng, subkey = jax.random.split(rng, 2)
     x = QuantConv(
         features=16,

@@ -20,9 +20,9 @@ from pc_modular import DensePC, PC_NN, ConvolutionalPC
 import ml_collections
 
 
-from jax.config import config
-config.update("jax_debug_nans", True)
-config.update("jax_disable_jit", True)
+# from jax.config import config
+# config.update("jax_debug_nans", True)
+# config.update("jax_disable_jit", True)
 
 
 class UnitTests(absltest.TestCase):
@@ -56,8 +56,8 @@ class UnitTests(absltest.TestCase):
 
     nn_unit_test = test_pc_nn(config=cfg, loss_fn=sse_loss)
 
-    rng, trng = jax.random.split(rng, 2)
-    variables = nn_unit_test.init(trng, train_x)
+    rng, trng, subkey1, subkey2 = jax.random.split(rng, 4)
+    variables = nn_unit_test.init(trng, train_x, subkey2)
     state, params = variables.pop("params")
 
     params = unfreeze(params)
@@ -66,7 +66,7 @@ class UnitTests(absltest.TestCase):
     params = freeze(params)
 
     out, state = nn_unit_test.apply(
-        {"params": params, **state}, train_x, mutable=list(state.keys())
+        {"params": params, **state}, train_x, subkey1, mutable=list(state.keys())
     )
 
     np.testing.assert_almost_equal(out, out_ref, decimal=6)
@@ -102,8 +102,8 @@ class UnitTests(absltest.TestCase):
 
     nn_unit_test = test_pc_nn(config=cfg, loss_fn=sse_loss)
 
-    rng, trng = jax.random.split(rng, 2)
-    variables = nn_unit_test.init(trng, train_x)
+    rng, trng, subkey1, subkey2, subkey3 = jax.random.split(rng, 5)
+    variables = nn_unit_test.init(trng, train_x, subkey3)
     state, params = variables.pop("params")
 
     params = unfreeze(params)
@@ -111,14 +111,16 @@ class UnitTests(absltest.TestCase):
     params["layers_1"]["kernel"] = jnp.array(l2w)
     params = freeze(params)
 
-    out, state = nn_unit_test.apply(
-        {"params": params, **state}, train_x, mutable=list(state.keys())
+    (out, err_init), state = nn_unit_test.apply(
+        {"params": params, **state}, train_x, subkey1, True, mutable=list(state.keys())
     )
 
     err, state = nn_unit_test.apply(
         {"params": params, **state},
         train_y,
         out,
+        subkey2,
+        err_init,
         mutable=list(state.keys()),
         method=PC_NN.inference,
     )
@@ -203,8 +205,8 @@ class UnitTests(absltest.TestCase):
 
     nn_unit_test = test_pc_nn(config=cfg, loss_fn=sse_loss)
 
-    rng, trng = jax.random.split(rng, 2)
-    variables = nn_unit_test.init(trng, train_x)
+    rng, trng, subkey1, subkey2 = jax.random.split(rng, 4)
+    variables = nn_unit_test.init(trng, train_x, subkey2)
     state, params = variables.pop("params")
 
     params = unfreeze(params)
@@ -216,6 +218,7 @@ class UnitTests(absltest.TestCase):
         {"params": params, **state},
         train_x,
         train_y,
+        subkey1,
         mutable=list(state.keys()),
         method=PC_NN.grads,
     )
@@ -268,8 +271,8 @@ class UnitTests(absltest.TestCase):
 
     nn_unit_test = test_pc_nn(config=cfg, loss_fn=sse_loss)
 
-    rng, trng, subkey1, subkey2 = jax.random.split(rng, 4)
-    variables = nn_unit_test.init(trng, train_x)
+    rng, trng, subkey1, subkey2, subkey3 = jax.random.split(rng, 5)
+    variables = nn_unit_test.init(trng, train_x, subkey3)
     state, params = variables.pop("params")
 
     params = unfreeze(params)
@@ -278,7 +281,7 @@ class UnitTests(absltest.TestCase):
     params = freeze(params)
 
     out, state = nn_unit_test.apply(
-        {"params": params, **state}, train_x, mutable=list(state.keys())
+        {"params": params, **state}, train_x, subkey1, mutable=list(state.keys())
     )
     np.testing.assert_almost_equal(
         np.array(out),
@@ -328,8 +331,8 @@ class UnitTests(absltest.TestCase):
 
     nn_unit_test = test_pc_nn(config=cfg, loss_fn=sse_loss)
 
-    rng, trng = jax.random.split(rng, 2)
-    variables = nn_unit_test.init(trng, train_x)
+    rng, trng, subkey1, subkey2, subkey3 = jax.random.split(rng, 5)
+    variables = nn_unit_test.init(trng, train_x, subkey3)
     state, params = variables.pop("params")
 
     params = unfreeze(params)
@@ -337,14 +340,16 @@ class UnitTests(absltest.TestCase):
     params["layers_1"]["kernel"] = jnp.transpose(l2w)
     params = freeze(params)
 
-    out, state = nn_unit_test.apply(
-        {"params": params, **state}, train_x, mutable=list(state.keys())
+    (out, err_init), state = nn_unit_test.apply(
+        {"params": params, **state}, train_x, subkey2, True, mutable=list(state.keys())
     )
 
     err, state = nn_unit_test.apply(
         {"params": params, **state},
         train_y,
         out,
+        subkey1,
+        err_init,
         mutable=list(state.keys()),
         method=PC_NN.inference,
     )
@@ -402,25 +407,30 @@ class UnitTests(absltest.TestCase):
 
     nn_unit_test = test_pc_nn(config=cfg, loss_fn=sse_loss)
 
-    rng, trng = jax.random.split(rng, 2)
-    variables = nn_unit_test.init(trng, train_x)
+    rng, trng, subkey1, subkey2 = jax.random.split(rng, 4)
+    variables = nn_unit_test.init(trng, train_x, subkey2)
     state, params = variables.pop("params")
     params = unfreeze(params)
     params["layers_0"]["kernel"] = jnp.transpose(l1w)
     params["layers_1"]["kernel"] = jnp.transpose(l2w)
     params = freeze(params)
     grads, state = nn_unit_test.apply(
-        {"params": params, **state},
-        train_x,
-        train_y,
-        mutable=list(state.keys()),
-        method=PC_NN.grads,
+      {"params": params, **state},
+      train_x,
+      train_y,
+      subkey1,
+      mutable=list(state.keys()),
+      method=PC_NN.grads,
     )
     np.testing.assert_almost_equal(
-        np.array(grads["layers_0"]["kernel"]), np.array((dw0_ref).transpose()), decimal=3
+      np.array(grads["layers_0"]["kernel"]), 
+      np.array((dw0_ref).transpose()), 
+      decimal=3
     )
     np.testing.assert_almost_equal(
-        np.array(grads["layers_1"]["kernel"]), np.array((dw1_ref).transpose()), decimal=3
+      np.array(grads["layers_1"]["kernel"]), 
+      np.array((dw1_ref).transpose()), 
+      decimal=3
     )
 
 

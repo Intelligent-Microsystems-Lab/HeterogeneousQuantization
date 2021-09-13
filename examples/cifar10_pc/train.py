@@ -32,7 +32,7 @@ from configs.default import get_config
 # config.update("jax_disable_jit", True)
 
 sys.path.append("../..")
-from pc_modular import DensePC, PC_NN  # noqa: E402
+from pc_modular import ConvolutionalPC, DensePC, FlattenPC, PC_NN  # noqa: E402
 
 cfg = get_config()
 
@@ -40,27 +40,45 @@ cfg = get_config()
 class test_pc_nn(PC_NN):
   def setup(self):
     self.layers = [
-        DensePC(100, config=cfg),
-        DensePC(100, config=cfg),
-        DensePC(10, config=cfg, non_linearity=None),
+        ConvolutionalPC(
+            features=6,
+            kernel_size=(5, 5),
+            padding="VALID",
+            non_linearity = jax.nn.relu,
+            config=cfg,
+        ),
+        #x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
+        ConvolutionalPC(
+            features=16,
+            kernel_size=(5, 5),
+            padding="VALID",
+            non_linearity = jax.nn.relu,
+            config=cfg,
+        ),
+        # x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
+        FlattenPC(config=cfg),
+        DensePC(features=200, non_linearity = jax.nn.relu, config=cfg),
+        DensePC(features=150, non_linearity = jax.nn.relu, config=cfg),
+        DensePC(features=10, non_linearity = None, config=cfg),
     ]
-
-
-nn_cifar10 = test_pc_nn(config=cfg, loss_fn=cross_entropy_loss)
-
-
-def cross_entropy_loss(logits, targt):
-  targt = targt * (1.0 - cfg.label_smoothing) + (
-      cfg.label_smoothing / cfg.num_classes
-  )
-
-  logits = jax.nn.log_softmax(logits, axis=-1)
-
-  return -jnp.mean(jnp.sum(targt * logits, axis=-1))
-
 
 def mse(logits, target):
   return jnp.sum((logits - target) ** 2)
+
+nn_cifar10 = test_pc_nn(config=cfg, loss_fn=mse)
+
+
+# def cross_entropy_loss(logits, targt):
+#   targt = targt * (1.0 - cfg.label_smoothing) + (
+#       cfg.label_smoothing / cfg.num_classes
+#   )
+
+#   logits = jax.nn.log_softmax(logits, axis=-1)
+
+#   return -jnp.mean(jnp.sum(targt * logits, axis=-1))
+
+
+
 
 
 def compute_metrics(logits, labels):
@@ -74,41 +92,39 @@ def compute_metrics(logits, labels):
 
 
 @functools.partial(jax.jit, static_argnums=(2))
-def train_step(step, optimizer, lr_fn, batch, state):
-  image = batch[0].reshape((-1, 3072))
+def train_step(step, optimizer, lr_fn, batch, state, rng):
   label = jax.nn.one_hot(batch[1], num_classes=cfg.num_classes)
+
   grads, state = nn_cifar10.apply(
       {"params": optimizer.target, **state},
-      image,
+      batch[0],
       label,
+      rng,
       mutable=list(state.keys()),
       method=PC_NN.grads,
   )
 
-  lr = lr_fn(step)
-  optimizer = optimizer.apply_gradient(grads, learning_rate=lr)
+  grads = jax.tree_map(lambda x: jnp.clip(x, -50, 50), grads)
+  # lr = lr_fn(step)
+  optimizer = optimizer.apply_gradient(grads)
 
-  metrics = compute_metrics(
-      state["pc"][list(state["pc"].keys())[-1]]["out"], label
-  )
+  metrics = compute_metrics(logits, label)
 
   return optimizer, metrics
 
 
 @jax.jit
-def eval_model(params, batch, state):
-
-  image = batch[0].reshape((-1, 3072))
+def eval_model(params, batch, state, rng):
   label = jax.nn.one_hot(batch[1], num_classes=cfg.num_classes)
 
-  out, state = nn_cifar10.apply(
+  out, _ = nn_cifar10.apply(
       {"params": params, **state},
-      image,
+      batch[0],
+      rng,
       mutable=list(state.keys()),
   )
 
   metrics = compute_metrics(out, label)
-
   return metrics
 
 
@@ -117,11 +133,7 @@ def normalize_img(image, label):
   return tf.cast(image, tf.float32) / 255.0, label
 
 
-def main(_):
-  summary_writer = tensorboard.SummaryWriter(cfg.work_dir)
-  summary_writer.hparams(cfg)
-
-  # get data set
+def get_ds(split):
   (ds_train, ds_test), ds_info = tfds.load(
       "cifar10",
       split=["train", "test"],
@@ -134,31 +146,36 @@ def main(_):
       normalize_img, num_parallel_calls=tf.data.experimental.AUTOTUNE
   )
   ds_train = ds_train.cache()
-  ds_train = ds_train.shuffle(ds_info.splits["train"].num_examples)
+  ds_train = ds_train.shuffle(ds_info.splits[split].num_examples)
   ds_train = ds_train.batch(cfg.batch_size)
-  ds_train = ds_train.prefetch(tf.data.experimental.AUTOTUNE)
+  return ds_train.prefetch(tf.data.experimental.AUTOTUNE)
 
-  ds_test = ds_test.map(
-      normalize_img, num_parallel_calls=tf.data.experimental.AUTOTUNE
-  )
-  ds_test = ds_test.cache()
-  ds_test = ds_test.shuffle(ds_info.splits["test"].num_examples)
-  ds_test = ds_test.batch(cfg.batch_size)
-  ds_test = ds_test.prefetch(tf.data.experimental.AUTOTUNE)
+
+def main(_):
+  summary_writer = tensorboard.SummaryWriter(cfg.work_dir)
+  summary_writer.hparams(cfg)
+
+  # get data set
+  ds_train = get_ds("train")
+  ds_test = get_ds("test")
 
   rng = jax.random.PRNGKey(cfg.seed)
-  rng, p_rng = jax.random.split(rng, 2)
+  rng, p_rng, subkey = jax.random.split(rng, 3)
 
-  variables = nn_cifar10.init(p_rng, jnp.ones((cfg.batch_size, 3072)))
+  variables = nn_cifar10.init(
+      p_rng, jnp.ones((cfg.batch_size, 32, 32, 3)), subkey
+  )
   state, params = variables.pop("params")
 
-  optimizer = optim.Momentum(beta=cfg.momentum, nesterov=True).create(params)
-  learning_rate_fn = create_cosine_learning_rate_schedule(
-      cfg.learning_rate,
-      len(ds_train),
-      cfg.num_epochs,
-      warmup_length=cfg.warmup_epochs,
+  optimizer = optim.GradientDescent(learning_rate=cfg.learning_rate).create(
+      params
   )
+  learning_rate_fn = (None,)  # create_cosine_learning_rate_schedule(
+  #    cfg.learning_rate,
+  #    len(ds_train),
+  #    cfg.num_epochs,
+  #    warmup_length=cfg.warmup_epochs,
+  # )
 
   # Training loop.
   logging.info(cfg)
@@ -168,16 +185,18 @@ def main(_):
     # Do a batch of SGD.
     train_metrics = []
     for batch in tfds.as_numpy(ds_train):
+      rng, subkey = jax.random.split(rng, 2)
       t_start = time.time()
       optimizer, metrics = train_step(
-          step, optimizer, learning_rate_fn, batch, state
+          step, optimizer, learning_rate_fn, batch, state, subkey
       )
       metrics["time"] = time.time() - t_start
       train_metrics.append(metrics)
 
     eval_metrics = []
-    for image, label in tfds.as_numpy(ds_test):
-      metrics = eval_model(optimizer.target, batch, state)
+    for batch in tfds.as_numpy(ds_test):
+      rng, subkey = jax.random.split(rng, 2)
+      metrics = eval_model(optimizer.target, batch, state, subkey)
       eval_metrics.append(metrics)
 
     eval_metrics = common_utils.stack_forest(eval_metrics)
