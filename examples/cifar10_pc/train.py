@@ -16,6 +16,8 @@ import jax.numpy as jnp
 
 import sys
 
+from flax.linen.initializers import zeros, ones
+
 from flax.metrics import tensorboard
 from flax.training import common_utils
 from flax import optim
@@ -46,6 +48,7 @@ class test_pc_nn(PC_NN):
             padding="VALID",
             non_linearity=jax.nn.relu,
             config=cfg,
+
         ),
         #x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
         ConvolutionalPC(
@@ -54,12 +57,13 @@ class test_pc_nn(PC_NN):
             padding="VALID",
             non_linearity=jax.nn.relu,
             config=cfg,
+
         ),
         # x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
         FlattenPC(config=cfg),
-        DensePC(features=200, non_linearity=jax.nn.relu, config=cfg),
-        DensePC(features=150, non_linearity=jax.nn.relu, config=cfg),
-        DensePC(features=10, non_linearity=None, config=cfg),
+        DensePC(features=200, non_linearity=jax.nn.relu, config=cfg, ),
+        DensePC(features=150, non_linearity=jax.nn.relu, config=cfg, ),
+        DensePC(features=10, non_linearity=None, config=cfg, ),
     ]
 
 
@@ -90,7 +94,7 @@ def compute_metrics(logits, labels):
   return {"loss": loss, "accuracy": accuracy}
 
 
-@functools.partial(jax.jit, static_argnums=(2))
+# @functools.partial(jax.jit, static_argnums=(2))
 def train_step(step, optimizer, lr_fn, batch, state, rng):
   label = jax.nn.one_hot(batch[1], num_classes=cfg.num_classes)
 
@@ -104,6 +108,7 @@ def train_step(step, optimizer, lr_fn, batch, state, rng):
   )
 
   grads = jax.tree_map(lambda x: jnp.clip(x, -50, 50), grads)
+
   # lr = lr_fn(step)
   optimizer = optimizer.apply_gradient(grads)
 
@@ -145,7 +150,7 @@ def get_ds(split):
       normalize_img, num_parallel_calls=tf.data.experimental.AUTOTUNE
   )
   ds_train = ds_train.cache()
-  ds_train = ds_train.shuffle(ds_info.splits[split].num_examples)
+  #ds_train = ds_train.shuffle(ds_info.splits[split].num_examples)
   ds_train = ds_train.batch(cfg.batch_size)
   return ds_train.prefetch(tf.data.experimental.AUTOTUNE)
 
@@ -159,6 +164,10 @@ def main(_):
   ds_test = get_ds("test")
 
   rng = jax.random.PRNGKey(cfg.seed)
+
+  # rng, subkey, subkey1 = jax.random.split(rng, 3)
+  # dummy_batch = (jax.random.normal(subkey, (64, 32, 32, 3)), jax.random.normal(subkey1, (64,)).astype(jnp.int8))
+
   rng, p_rng, subkey = jax.random.split(rng, 3)
 
   variables = nn_cifar10.init(

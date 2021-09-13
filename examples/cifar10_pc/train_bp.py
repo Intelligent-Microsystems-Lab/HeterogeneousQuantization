@@ -22,6 +22,7 @@ from flax.training import common_utils
 from flax import optim
 from flax.training.lr_schedule import create_cosine_learning_rate_schedule
 
+from flax.linen.initializers import zeros, ones
 
 import tensorflow.compat.v2 as tf
 import tensorflow_datasets as tfds
@@ -54,6 +55,7 @@ class LeNet_BP(nn.Module):
         padding="VALID",
         use_bias=False,
         config=self.config,
+
     )(x, subkey)
     x = nn.relu(x)
     #x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
@@ -64,18 +66,19 @@ class LeNet_BP(nn.Module):
         padding="VALID",
         use_bias=False,
         config=self.config,
+
     )(x, subkey)
     x = nn.relu(x)
     # x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
     x = x.reshape((x.shape[0], -1))
     rng, subkey = jax.random.split(rng, 2)
-    x = QuantDense(features=200, use_bias=False)(x, subkey)
+    x = QuantDense(features=200, use_bias=False, )(x, subkey)
     x = nn.relu(x)
     rng, subkey = jax.random.split(rng, 2)
-    x = QuantDense(features=150, use_bias=False)(x, subkey)
+    x = QuantDense(features=150, use_bias=False, )(x, subkey)
     x = nn.relu(x)
     rng, subkey = jax.random.split(rng, 2)
-    x = QuantDense(features=10, use_bias=False)(x, subkey)
+    x = QuantDense(features=10, use_bias=False, )(x, subkey)
     return x
 
 
@@ -105,7 +108,7 @@ def compute_metrics(logits, labels):
   return {"loss": loss, "accuracy": accuracy}
 
 
-@functools.partial(jax.jit, static_argnums=(2))
+# @functools.partial(jax.jit, static_argnums=(2))
 def train_step(step, optimizer, lr_fn, batch, state, rng):
   label = jax.nn.one_hot(batch[1], num_classes=cfg.num_classes)
 
@@ -164,7 +167,7 @@ def get_ds(split):
       normalize_img, num_parallel_calls=tf.data.experimental.AUTOTUNE
   )
   ds_train = ds_train.cache()
-  ds_train = ds_train.shuffle(ds_info.splits[split].num_examples)
+  #ds_train = ds_train.shuffle(ds_info.splits[split].num_examples)
   ds_train = ds_train.batch(cfg.batch_size)
   return ds_train.prefetch(tf.data.experimental.AUTOTUNE)
 
@@ -178,6 +181,10 @@ def main(_):
   ds_test = get_ds("test")
 
   rng = jax.random.PRNGKey(cfg.seed)
+
+  # rng, subkey, subkey1 = jax.random.split(rng, 3)
+  # dummy_batch = (jax.random.normal(subkey, (64, 32, 32, 3)), jax.random.normal(subkey1, (64,)).astype(jnp.int8))
+
   rng, p_rng, subkey = jax.random.split(rng, 3)
 
   variables = nn_cifar10.init(

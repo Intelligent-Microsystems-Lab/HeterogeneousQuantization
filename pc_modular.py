@@ -482,8 +482,12 @@ class DensePC(nn.Module):
     val = self.get_variable("pc", "value")
     if self.non_linearity is not None:
       out = self.get_variable("pc", "out")
-      deriv = jax.jacfwd(self.non_linearity)(out)
-      err = jnp.einsum("dcab,ab->ab", deriv, err)
+      deriv = jax.vmap(jax.vmap(jax.grad(self.non_linearity)))(out)
+      err = deriv * err
+
+      #out = self.get_variable("pc", "out")
+      #deriv = jax.jacfwd(self.non_linearity)(out)
+      #err = jnp.einsum("dcab,ab->ab", deriv, err)
     return {"kernel": jnp.dot(jnp.transpose(val), err)}
 
 
@@ -565,7 +569,8 @@ class PC_NN(nn.Module):
     for l in self.layers:
       if l.grads(err[l.name]) != {}:
         grads[l.name] = l.grads(err[l.name])
-    return FrozenDict(grads), out
+
+    return FrozenDict(jax.tree_map(lambda x: -1 * x, grads)), out
 
   def inference(self, y, out, rng, err_init):
     pred = unfreeze(self.variables["pc"])
