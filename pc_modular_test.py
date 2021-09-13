@@ -214,7 +214,7 @@ class UnitTests(absltest.TestCase):
     params["layers_1"]["kernel"] = jnp.array(l2w)
     params = freeze(params)
 
-    grads, state = nn_unit_test.apply(
+    (grads, _), state = nn_unit_test.apply(
         {"params": params, **state},
         train_x,
         train_y,
@@ -414,23 +414,23 @@ class UnitTests(absltest.TestCase):
     params["layers_0"]["kernel"] = jnp.transpose(l1w)
     params["layers_1"]["kernel"] = jnp.transpose(l2w)
     params = freeze(params)
-    grads, state = nn_unit_test.apply(
-      {"params": params, **state},
-      train_x,
-      train_y,
-      subkey1,
-      mutable=list(state.keys()),
-      method=PC_NN.grads,
+    (grads, _), state = nn_unit_test.apply(
+        {"params": params, **state},
+        train_x,
+        train_y,
+        subkey1,
+        mutable=list(state.keys()),
+        method=PC_NN.grads,
     )
     np.testing.assert_almost_equal(
-      np.array(grads["layers_0"]["kernel"]), 
-      np.array((dw0_ref).transpose()), 
-      decimal=3
+        np.array(grads["layers_0"]["kernel"]),
+        np.array((dw0_ref).transpose()),
+        decimal=3
     )
     np.testing.assert_almost_equal(
-      np.array(grads["layers_1"]["kernel"]), 
-      np.array((dw1_ref).transpose()), 
-      decimal=3
+        np.array(grads["layers_1"]["kernel"]),
+        np.array((dw1_ref).transpose()),
+        decimal=3
     )
 
 

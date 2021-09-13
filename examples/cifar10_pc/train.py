@@ -44,7 +44,7 @@ class test_pc_nn(PC_NN):
             features=6,
             kernel_size=(5, 5),
             padding="VALID",
-            non_linearity = jax.nn.relu,
+            non_linearity=jax.nn.relu,
             config=cfg,
         ),
         #x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
@@ -52,18 +52,20 @@ class test_pc_nn(PC_NN):
             features=16,
             kernel_size=(5, 5),
             padding="VALID",
-            non_linearity = jax.nn.relu,
+            non_linearity=jax.nn.relu,
             config=cfg,
         ),
         # x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
         FlattenPC(config=cfg),
-        DensePC(features=200, non_linearity = jax.nn.relu, config=cfg),
-        DensePC(features=150, non_linearity = jax.nn.relu, config=cfg),
-        DensePC(features=10, non_linearity = None, config=cfg),
+        DensePC(features=200, non_linearity=jax.nn.relu, config=cfg),
+        DensePC(features=150, non_linearity=jax.nn.relu, config=cfg),
+        DensePC(features=10, non_linearity=None, config=cfg),
     ]
+
 
 def mse(logits, target):
   return jnp.sum((logits - target) ** 2)
+
 
 nn_cifar10 = test_pc_nn(config=cfg, loss_fn=mse)
 
@@ -76,9 +78,6 @@ nn_cifar10 = test_pc_nn(config=cfg, loss_fn=mse)
 #   logits = jax.nn.log_softmax(logits, axis=-1)
 
 #   return -jnp.mean(jnp.sum(targt * logits, axis=-1))
-
-
-
 
 
 def compute_metrics(logits, labels):
@@ -95,7 +94,7 @@ def compute_metrics(logits, labels):
 def train_step(step, optimizer, lr_fn, batch, state, rng):
   label = jax.nn.one_hot(batch[1], num_classes=cfg.num_classes)
 
-  grads, state = nn_cifar10.apply(
+  (grads, logits), state = nn_cifar10.apply(
       {"params": optimizer.target, **state},
       batch[0],
       label,

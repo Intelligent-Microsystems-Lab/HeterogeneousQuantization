@@ -35,9 +35,6 @@ Shape = Iterable[int]
 Dtype = Any
 Array = Any
 
-from jax.config import config
-config.update("jax_debug_nans", True)
-config.update("jax_disable_jit", True)
 
 def _conv_dimension_numbers(input_shape):
   """Computes the dimension numbers based on the input shape."""
@@ -46,10 +43,6 @@ def _conv_dimension_numbers(input_shape):
   rhs_spec = (ndim - 1, ndim - 2) + tuple(range(0, ndim - 2))
   out_spec = lhs_spec
   return jax.lax.ConvDimensionNumbers(lhs_spec, rhs_spec, out_spec)
-
-
-def MaxPoolPC():
-  pass
 
 
 def RecurrentPC():
@@ -495,7 +488,7 @@ class DensePC(nn.Module):
 
 
 # class MaxPoolPC(nn.Module):
-#   window_shape 
+#   window_shape
 #   strides=None
 #   padding="VALID"
 #   config: dict = None
@@ -529,17 +522,16 @@ class FlattenPC(nn.Module):
     val = self.variable("pc", "value", jnp.zeros, ())
     val.value = inpt
 
-    y = jnp.ravel(inpt)
+    y = inpt.reshape((inpt.shape[0], -1))
 
     return y
 
   def infer(self, err_prev, pred):
     val = self.get_variable("pc", "value")
 
-    # do some kind of unpooling
     err = jnp.reshape(err_prev, val.shape)
 
-    return err, _
+    return err, jnp.zeros_like(pred)
 
   def grads(self, err):
     return {}
@@ -571,8 +563,9 @@ class PC_NN(nn.Module):
 
     grads = {}
     for l in self.layers:
-      grads[l.name] = l.grads(err[l.name])
-    return FrozenDict(grads)
+      if l.grads(err[l.name]) != {}:
+        grads[l.name] = l.grads(err[l.name])
+    return FrozenDict(grads), out
 
   def inference(self, y, out, rng, err_init):
     pred = unfreeze(self.variables["pc"])
@@ -584,12 +577,12 @@ class PC_NN(nn.Module):
     def scan_fn(carry, _):
       pred, err = carry
       t_err = err_fin
-      for l, l_name in zip(self.layers[1:][::-1], layer_names[:-1][::-1]): 
+      for l, l_name in zip(self.layers[1:][::-1], layer_names[:-1][::-1]):
         t_err, pred[l.name]["value"] = l.infer(
             t_err, pred[l.name]["value"]
         )
         err[l_name] = t_err
-      return (pred, err), _
+      return (pred, err), None
 
     (_, err), _ = jax.lax.scan(
         scan_fn, (pred, err_init), xs=None, length=self.config.infer_steps
