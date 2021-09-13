@@ -23,7 +23,7 @@ from flax import optim
 from flax.training.lr_schedule import create_cosine_learning_rate_schedule
 
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 import tensorflow_datasets as tfds
 
 from configs.default import get_config
@@ -35,6 +35,9 @@ from configs.default import get_config
 sys.path.append("../..")
 from flax_qdense import QuantDense  # noqa: E402
 from flax_qconv import QuantConv  # noqa: E402
+
+
+tf.config.set_visible_devices([], 'GPU')
 
 cfg = get_config()
 cfg = FrozenConfigDict(cfg)
@@ -104,7 +107,7 @@ def compute_metrics(logits, labels):
       jnp.argmax(logits, axis=-1) == jnp.argmax(labels, axis=-1)
   )
 
-  return {"loss": loss, "accuracy": accuracy}
+  return {"loss": float(loss), "accuracy": float(accuracy)}
 
 
 # @functools.partial(jax.jit, static_argnums=(2))
