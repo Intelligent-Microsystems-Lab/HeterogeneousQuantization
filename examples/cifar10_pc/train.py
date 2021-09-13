@@ -92,10 +92,10 @@ def compute_metrics(logits, labels):
       jnp.argmax(logits, axis=-1) == jnp.argmax(labels, axis=-1)
   )
 
-  return {"loss": float(loss), "accuracy": float(accuracy)}
+  return {"loss": loss, "accuracy": accuracy}
 
 
-# @functools.partial(jax.jit, static_argnums=(2))
+@functools.partial(jax.jit, static_argnums=(2))
 def train_step(step, optimizer, lr_fn, batch, state, rng):
   label = jax.nn.one_hot(batch[1], num_classes=cfg.num_classes)
 
@@ -195,6 +195,8 @@ def main(_):
       optimizer, metrics = train_step(
           step, optimizer, learning_rate_fn, batch, state, subkey
       )
+      metrics['accuracy'] = float(metrics['accuracy'])
+      metrics['loss'] = float(metrics['loss'])
       metrics["time"] = time.time() - t_start
       train_metrics.append(metrics)
 

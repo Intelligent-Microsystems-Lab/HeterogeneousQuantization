@@ -110,7 +110,7 @@ def compute_metrics(logits, labels):
   return {"loss": float(loss), "accuracy": float(accuracy)}
 
 
-# @functools.partial(jax.jit, static_argnums=(2))
+@functools.partial(jax.jit, static_argnums=(2))
 def train_step(step, optimizer, lr_fn, batch, state, rng):
   label = jax.nn.one_hot(batch[1], num_classes=cfg.num_classes)
 
