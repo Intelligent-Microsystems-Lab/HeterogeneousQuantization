@@ -253,7 +253,7 @@ class UnitTests(absltest.TestCase):
 
     nn_unit_test = test_pc_nn(config=cfg, loss_fn=sse_loss)
 
-    rng, trng = jax.random.split(rng, 2)
+    rng, trng, subkey1, subkey2 = jax.random.split(rng, 4)
     variables = nn_unit_test.init(trng, train_x)
     state, params = variables.pop("params")
 
@@ -323,6 +323,11 @@ class UnitTests(absltest.TestCase):
     np.testing.assert_almost_equal(np.array(err["layers_1"]), np.array(jnp.moveaxis(err1_ref, (0,1,2,3) , (0,3,2,1))), decimal=6)
     #np.testing.assert_almost_equal(err["layers_0"], err0_ref, decimal=5)
     #np.testing.assert_almost_equal(err["layers_1"], err1_ref, decimal=5)
+
+
+
+
+
 
   # def test_pc_dw_equality(self):
   #   cfg = ml_collections.ConfigDict()
