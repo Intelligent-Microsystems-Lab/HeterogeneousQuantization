@@ -5,7 +5,7 @@ from absl import app
 from absl import flags
 from absl import logging
 
-from ml_collections import config_flags
+from ml_collections import config_flags, FrozenConfigDict
 
 import functools
 import time
