@@ -57,6 +57,7 @@ if __name__ == "__main__":
     job_script += ".log\n\nmodule load python cuda/11.2 tensorflow/2.6\n"
     job_script += "setenv XLA_FLAGS \"--xla_gpu_cuda_data_dir=/afs/crc.nd.edu/x86_64_linux/c/cuda/11.2\"\n"
     job_script += "setenv OMP_NUM_THREADS $NSLOTS\n"
+    job_script += "pip3 install --user clu\n"
     job_script += "python3 train"
     if args.network_type == 'pc':
       pass
