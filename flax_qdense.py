@@ -248,9 +248,9 @@ def _dot_general_transpose_lhs(
 
   if config is not None and "err_inpt_noise" in config:
     if config["err_inpt_noise"] != 0.0:
-      g = g + jnp.max(g) * config["err_inpt_noise"] * np.random.randn(
-          *g.shape
-      )
+      g = g + jnp.max(jnp.abs(g)) * config[
+          "err_inpt_noise"
+      ] * np.random.randn(*g.shape)
 
   results = transpose(
       dot_general(
@@ -281,9 +281,9 @@ def _dot_general_transpose_rhs(
 
   if config is not None and "err_weight_noise" in config:
     if config["err_weight_noise"] != 0.0:
-      g = g + jnp.max(g) * config["err_weight_noise"] * np.random.randn(
-          *g.shape
-      )
+      g = g + jnp.max(jnp.abs(g)) * config[
+          "err_weight_noise"
+      ] * np.random.randn(*g.shape)
 
   results = _dot_general_transpose_lhs(
       g,
@@ -393,14 +393,14 @@ class QuantDense(Module):
     if self.config is not None and "weight_noise" in self.config:
       if self.config["weight_noise"] != 0.0:
         rng, prng = jax.random.split(rng, 2)
-        kernel = kernel + jnp.max(kernel) * self.config[
+        kernel = kernel + jnp.max(jnp.abs(kernel)) * self.config[
             "weight_noise"
         ] * jax.random.normal(prng, kernel.shape)
 
     if self.config is not None and "act_noise" in self.config:
       if self.config["act_noise"] != 0.0:
         rng, prng = jax.random.split(rng, 2)
-        inputs = inputs + jnp.max(inputs) * self.config[
+        inputs = inputs + jnp.max(jnp.abs(inputs)) * self.config[
             "act_noise"
         ] * jax.random.normal(prng, inputs.shape)
 
