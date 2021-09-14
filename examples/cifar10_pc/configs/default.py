@@ -23,11 +23,11 @@ def get_config():
   config.infer_lr = 0.2
   config.infer_steps = 100
   config.num_classes = 10
-  config.label_smoothing = 0.1
+  #config.label_smoothing = 0.1
 
-  config.weight_noise = 0.
-  config.act_noise = 0.
-  config.err_inpt_noise = 0.
-  config.err_weight_noise = 0.
+  config.weight_noise = .1
+  config.act_noise = .0
+  config.err_inpt_noise = .0
+  config.err_weight_noise = .0
 
   return config
