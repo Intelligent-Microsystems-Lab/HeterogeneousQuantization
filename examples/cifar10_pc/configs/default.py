@@ -17,8 +17,8 @@ def get_config():
   )
   config.batch_size = 64
   config.num_epochs = 70
-  config.warmup_epochs = 5
-  config.momentum = 0.0
+  #config.warmup_epochs = 5
+  #config.momentum = 0.0
   config.learning_rate = 0.0005
   config.infer_lr = 0.2
   config.infer_steps = 100

@@ -2,7 +2,7 @@ import argparse
 import subprocess
 import numpy as np
 
-# sweep.py --parameter noise_weight --from .0 --to .25 --steps 25 --network_type pc --result_dir cifar10_pc_weight_noise
+# Script to setup noise sweeps on Notre Dame CRC cluster.
 
 parser = argparse.ArgumentParser(
     description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -42,7 +42,8 @@ if __name__ == "__main__":
   for val in np.arange(start=args.start, stop=args.stop, step=args.step):
     subprocess.call(["mkdir", args.result_dir+'/{:.6f}'.format(val)])
 
-    name = '_' + args.parameter + '_' + str(val) + '_' + args.network_type
+    name = args.parameter + '_' + \
+        "{:.6f}".format(val) + '_' + args.network_type
 
     job_script = "#!/bin/csh \n#$ -M "
     job_script += args.user
