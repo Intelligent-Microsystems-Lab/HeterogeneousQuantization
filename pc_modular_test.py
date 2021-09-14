@@ -430,7 +430,7 @@ class UnitTests(absltest.TestCase):
     np.testing.assert_almost_equal(
         np.array(grads["layers_1"]["kernel"]),
         -1*np.array((dw1_ref).transpose()),
-        decimal=3
+        decimal=2
     )
 
 
