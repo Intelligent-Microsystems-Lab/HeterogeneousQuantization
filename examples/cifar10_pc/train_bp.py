@@ -42,12 +42,13 @@ from flax_qconv import QuantConv  # noqa: E402
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('workdir', None, 'Directory to store model data.')
+flags.DEFINE_string("workdir", None, "Directory to store model data.")
 config_flags.DEFINE_config_file(
-    'config',
+    "config",
     None,
-    'File path to the training hyperparameter configuration.',
-    lock_config=True)
+    "File path to the training hyperparameter configuration.",
+    lock_config=True,
+)
 
 
 class LeNet_BP(nn.Module):
@@ -64,10 +65,9 @@ class LeNet_BP(nn.Module):
         padding="VALID",
         use_bias=False,
         config=self.config,
-
     )(x, subkey)
     x = nn.relu(x)
-    #x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
+    # x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
     rng, subkey = jax.random.split(rng, 2)
     x = QuantConv(
         features=16,
@@ -75,21 +75,30 @@ class LeNet_BP(nn.Module):
         padding="VALID",
         use_bias=False,
         config=self.config,
-
     )(x, subkey)
     x = nn.relu(x)
     # x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
     x = x.reshape((x.shape[0], -1))
     rng, subkey = jax.random.split(rng, 2)
-    x = QuantDense(features=200, use_bias=False,
-                   config=self.config,)(x, subkey)
+    x = QuantDense(
+        features=200,
+        use_bias=False,
+        config=self.config,
+    )(x, subkey)
     x = nn.relu(x)
     rng, subkey = jax.random.split(rng, 2)
-    x = QuantDense(features=150, use_bias=False,
-                   config=self.config,)(x, subkey)
+    x = QuantDense(
+        features=150,
+        use_bias=False,
+        config=self.config,
+    )(x, subkey)
     x = nn.relu(x)
     rng, subkey = jax.random.split(rng, 2)
-    x = QuantDense(features=10, use_bias=False, config=self.config,)(x, subkey)
+    x = QuantDense(
+        features=10,
+        use_bias=False,
+        config=self.config,
+    )(x, subkey)
     return x
 
 
@@ -181,11 +190,12 @@ def get_ds(split, cfg):
 
 
 def train_and_evaluate(cfg, workdir):
-  #summary_writer = tensorboard.SummaryWriter(work_dir)
+  # summary_writer = tensorboard.SummaryWriter(work_dir)
   # summary_writer.hparams(cfg)
   cfg = FrozenConfigDict(cfg)
   writer = metric_writers.create_default_writer(
-      logdir=workdir, just_logging=jax.process_index() != 0)
+      logdir=workdir, just_logging=jax.process_index() != 0
+  )
   writer.write_hparams(cfg)
 
   nn_cifar10 = LeNet_BP(config=cfg)
@@ -227,17 +237,26 @@ def train_and_evaluate(cfg, workdir):
       rng, subkey = jax.random.split(rng, 2)
       t_start = time.time()
       optimizer, metrics = train_step(
-          step, optimizer, learning_rate_fn, nn_fn, batch, state, subkey, cfg
+          step,
+          optimizer,
+          learning_rate_fn,
+          nn_fn,
+          batch,
+          state,
+          subkey,
+          cfg,
       )
-      metrics['accuracy'] = float(metrics['accuracy'])
-      metrics['loss'] = float(metrics['loss'])
+      metrics["accuracy"] = float(metrics["accuracy"])
+      metrics["loss"] = float(metrics["loss"])
       metrics["time"] = time.time() - t_start
       train_metrics.append(metrics)
 
     eval_metrics = []
     for batch in tfds.as_numpy(ds_test):
       rng, subkey = jax.random.split(rng, 2)
-      metrics = eval_model(optimizer.target, batch, state, subkey, nn_fn, cfg)
+      metrics = eval_model(
+          optimizer.target, batch, state, subkey, nn_fn, cfg
+      )
       eval_metrics.append(metrics)
 
     eval_metrics = common_utils.stack_forest(eval_metrics)
@@ -247,7 +266,8 @@ def train_and_evaluate(cfg, workdir):
     train_metrics = jax.tree_map(lambda x: x.mean(), train_metrics)
 
     writer.write_scalars(
-        step + 1, {f'eval_{key}': val for key, val in eval_metrics.items()})
+        step + 1, {f"eval_{key}": val for key, val in eval_metrics.items()}
+    )
     writer.write_scalars(step + 1, train_metrics)
     # logging.info(
     #    "step: %d, train_loss: %.4f, train_accuracy: %.4f, "
@@ -264,26 +284,30 @@ def train_and_evaluate(cfg, workdir):
 
 def main(argv):
   if len(argv) > 1:
-    raise app.UsageError('Too many command-line arguments.')
+    raise app.UsageError("Too many command-line arguments.")
 
   # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
   # it unavailable to JAX.
-  tf.config.experimental.set_visible_devices([], 'GPU')
+  tf.config.experimental.set_visible_devices([], "GPU")
 
-  logging.info('JAX process: %d / %d',
-               jax.process_index(), jax.process_count())
-  logging.info('JAX local devices: %r', jax.local_devices())
+  logging.info(
+      "JAX process: %d / %d", jax.process_index(), jax.process_count()
+  )
+  logging.info("JAX local devices: %r", jax.local_devices())
 
   # Add a note so that we can tell which task is which JAX host.
   # (Depending on the platform task 0 is not guaranteed to be host 0)
-  platform.work_unit().set_task_status(f'process_index: {jax.process_index()}, '
-                                       f'process_count: {jax.process_count()}')
-  platform.work_unit().create_artifact(platform.ArtifactType.DIRECTORY,
-                                       FLAGS.workdir, 'workdir')
+  platform.work_unit().set_task_status(
+      f"process_index: {jax.process_index()}, "
+      f"process_count: {jax.process_count()}"
+  )
+  platform.work_unit().create_artifact(
+      platform.ArtifactType.DIRECTORY, FLAGS.workdir, "workdir"
+  )
 
   train_and_evaluate(FLAGS.config, FLAGS.workdir)
 
 
 if __name__ == "__main__":
-  flags.mark_flags_as_required(['config', 'workdir'])
+  flags.mark_flags_as_required(["config", "workdir"])
   app.run(main)

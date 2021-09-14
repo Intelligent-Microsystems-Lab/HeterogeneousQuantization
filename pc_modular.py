@@ -183,10 +183,21 @@ def conv_bwd_inpt(
 
 
 def conv_bwd_kernel(
-        g, lhs, *, window_strides, padding, lhs_dilation, rhs_dilation,
-        dimension_numbers: ConvDimensionNumbers, feature_group_count: int,
-        batch_group_count: int, lhs_shape, rhs_shape, precision,
-        preferred_element_type):
+    g,
+    lhs,
+    *,
+    window_strides,
+    padding,
+    lhs_dilation,
+    rhs_dilation,
+    dimension_numbers: ConvDimensionNumbers,
+    feature_group_count: int,
+    batch_group_count: int,
+    lhs_shape,
+    rhs_shape,
+    precision,
+    preferred_element_type,
+):
 
   dnums = conv_dimension_numbers(lhs_shape, rhs_shape, dimension_numbers)
   if isinstance(padding, str):
@@ -214,7 +225,8 @@ def conv_bwd_kernel(
     return None
   lhs_sdims, rhs_sdims, out_sdims = map(_conv_sdims, dimension_numbers)
   lhs_trans, rhs_trans, out_trans = map(
-      _conv_spec_transpose, dimension_numbers)
+      _conv_spec_transpose, dimension_numbers
+  )
   assert batch_group_count == 1 or feature_group_count == 1
   if batch_group_count > 1:
     feature_group_count = batch_group_count
@@ -223,18 +235,30 @@ def conv_bwd_kernel(
     batch_group_count = feature_group_count
     feature_group_count = 1
   trans_dimension_numbers = ConvDimensionNumbers(
-      lhs_trans, out_trans, rhs_trans)
+      lhs_trans, out_trans, rhs_trans
+  )
   padding = _conv_general_vjp_rhs_padding(
-      np.take(lhs_shape, lhs_sdims), np.take(rhs_shape, rhs_sdims),
-      window_strides, np.take(g.shape, out_sdims), padding, lhs_dilation,
-      rhs_dilation)
+      np.take(lhs_shape, lhs_sdims),
+      np.take(rhs_shape, rhs_sdims),
+      window_strides,
+      np.take(g.shape, out_sdims),
+      padding,
+      lhs_dilation,
+      rhs_dilation,
+  )
   return conv_general_dilated(
-      lhs, g, window_strides=rhs_dilation, padding=padding,
-      lhs_dilation=lhs_dilation, rhs_dilation=window_strides,
+      lhs,
+      g,
+      window_strides=rhs_dilation,
+      padding=padding,
+      lhs_dilation=lhs_dilation,
+      rhs_dilation=window_strides,
       dimension_numbers=trans_dimension_numbers,
       feature_group_count=feature_group_count,
-      batch_group_count=batch_group_count, precision=precision,
-      preferred_element_type=preferred_element_type)
+      batch_group_count=batch_group_count,
+      precision=precision,
+      preferred_element_type=preferred_element_type,
+  )
 
 
 class ConvolutionalPC(nn.Module):
@@ -296,16 +320,14 @@ class ConvolutionalPC(nn.Module):
     dimension_numbers = _conv_dimension_numbers(inputs.shape)
 
     if self.config is not None and "weight_noise" in self.config:
-      if self.config["weight_noise"] != 0.0:
-        kernel = kernel + jnp.max(kernel) * self.config["weight_noise"] \
-            * np.random.randn(*kernel.shape
-                              )
+      kernel = kernel + jnp.max(kernel) * self.config[
+          "weight_noise"
+      ] * np.random.randn(*kernel.shape)
 
     if self.config is not None and "act_noise" in self.config:
-      if self.config["act_noise"] != 0.0:
-        inputs = inputs + jnp.max(inputs) * self.config["act_noise"] \
-            * np.random.randn(*inputs.shape
-                              )
+      inputs = inputs + jnp.max(inputs) * self.config[
+          "act_noise"
+      ] * np.random.randn(*inputs.shape)
 
     y = conv_fwd(
         lhs=inputs,
@@ -336,16 +358,14 @@ class ConvolutionalPC(nn.Module):
     kernel = self.get_variable("params", "kernel")
 
     if self.config is not None and "weight_noise" in self.config:
-      if self.config["weight_noise"] != 0.0:
-        kernel = kernel + jnp.max(kernel) * self.config["weight_noise"] \
-            * np.random.randn(*kernel.shape
-                              )
+      kernel = kernel + jnp.max(kernel) * self.config[
+          "weight_noise"
+      ] * np.random.randn(*kernel.shape)
 
     if self.config is not None and "act_noise" in self.config:
-      if self.config["act_noise"] != 0.0:
-        val = val + jnp.max(val) * self.config["act_noise"] * np.random.randn(
-            *val.shape
-        )
+      val = val + jnp.max(val) * self.config[
+          "act_noise"
+      ] * np.random.randn(*val.shape)
 
     pred_err = pred - val
     if self.non_linearity is not None:
@@ -385,9 +405,9 @@ class ConvolutionalPC(nn.Module):
     dimension_numbers = _conv_dimension_numbers(inputs.shape)
 
     if self.config is not None and "err_inpt_noise" in self.config:
-      if self.config["err_inpt_noise"] != 0.0:
-        err_prev = err_prev + jnp.max(err_prev) \
-            * self.config["err_inpt_noise"] * np.random.randn(*err_prev.shape)
+      err_prev = err_prev + jnp.max(err_prev) * self.config[
+          "err_inpt_noise"
+      ] * np.random.randn(*err_prev.shape)
 
     err = conv_bwd_inpt(
         g=err_prev,
@@ -413,10 +433,9 @@ class ConvolutionalPC(nn.Module):
     val = self.get_variable("pc", "value")
 
     if self.config is not None and "act_noise" in self.config:
-      if self.config["act_noise"] != 0.0:
-        val = val + jnp.max(val) * self.config["act_noise"] * np.random.randn(
-            *val.shape
-        )
+      val = val + jnp.max(val) * self.config[
+          "act_noise"
+      ] * np.random.randn(*val.shape)
 
     if self.non_linearity is not None:
       out = self.get_variable("pc", "out")
@@ -455,10 +474,9 @@ class ConvolutionalPC(nn.Module):
     dimension_numbers = _conv_dimension_numbers(inputs.shape)
 
     if self.config is not None and "err_weight_noise" in self.config:
-      if self.config["err_weight_noise"] != 0.0:
-        err = err + jnp.max(err) * self.config["err_weight_noise"] \
-            * np.random.randn(*err.shape
-                              )
+      err = err + jnp.max(err) * self.config[
+          "err_weight_noise"
+      ] * np.random.randn(*err.shape)
 
     kernel_grads = conv_bwd_kernel(
         g=err,
@@ -493,17 +511,16 @@ class DensePC(nn.Module):
         "kernel", self.kernel_init, (inpt.shape[-1], self.features)
     )
 
+    subkey1, subkey2 = jax.random.split(rng, 2)
     if self.config is not None and "weight_noise" in self.config:
-      if self.config["weight_noise"] != 0.0:
-        kernel = kernel + jnp.max(kernel) * self.config["weight_noise"] \
-            * np.random.randn(*kernel.shape
-                              )
+      kernel = kernel + jnp.max(kernel) * self.config[
+          "weight_noise"
+      ] * jax.random.normal(subkey1, kernel.shape)
 
     if self.config is not None and "act_noise" in self.config:
-      if self.config["act_noise"] != 0.0:
-        inpt = inpt + jnp.max(inpt) * self.config["act_noise"] \
-            * np.random.randn(*inpt.shape
-                              )
+      inpt = inpt + jnp.max(inpt) * self.config[
+          "act_noise"
+      ] * jax.random.normal(subkey2, inpt.shape)
 
     y = jax.lax.dot_general(
         inpt,
@@ -522,17 +539,17 @@ class DensePC(nn.Module):
     val = self.get_variable("pc", "value")
     kernel = self.get_variable("params", "kernel")
 
+    subkey1, subkey2, subkey3 = jax.random.split(rng, 3)
+
     if self.config is not None and "weight_noise" in self.config:
-      if self.config["weight_noise"] != 0.0:
-        kernel = kernel + jnp.max(kernel) * self.config["weight_noise"] \
-            * np.random.randn(*kernel.shape
-                              )
+      kernel = kernel + jnp.max(kernel) * self.config[
+          "weight_noise"
+      ] * jax.random.normal(subkey1, kernel.shape)
 
     if self.config is not None and "act_noise" in self.config:
-      if self.config["act_noise"] != 0.0:
-        val = val + jnp.max(val) * self.config["act_noise"] * np.random.randn(
-            *val.shape
-        )
+      val = val + jnp.max(val) * self.config[
+          "act_noise"
+      ] * jax.random.normal(subkey2, val.shape)
 
     pred_err = pred - val
     if self.non_linearity is not None:
@@ -541,10 +558,10 @@ class DensePC(nn.Module):
       err_prev = deriv * err_prev
 
     if self.config is not None and "err_inpt_noise" in self.config:
-      if self.config["err_inpt_noise"] != 0.0:
-        err_prev = err_prev + jnp.max(err_prev) \
-            * self.config["err_inpt_noise"] * np.random.randn(*err_prev.shape
-                                                              )
+
+      err_prev = err_prev + jnp.max(err_prev) * self.config[
+          "err_inpt_noise"
+      ] * jax.random.normal(subkey3, err_prev.shape)
 
     err = jnp.dot(err_prev, jnp.transpose(kernel))
     pred -= self.config.infer_lr * (pred_err - err)
@@ -553,11 +570,12 @@ class DensePC(nn.Module):
   def grads(self, err, rng):
     val = self.get_variable("pc", "value")
 
+    subkey1, subkey2 = jax.random.split(rng, 2)
+
     if self.config is not None and "act_noise" in self.config:
-      if self.config["act_noise"] != 0.0:
-        val = val + jnp.max(val) * self.config["act_noise"] * np.random.randn(
-            *val.shape
-        )
+      val = val + jnp.max(val) * self.config[
+          "act_noise"
+      ] * jax.random.normal(subkey1, val.shape)
 
     if self.non_linearity is not None:
       out = self.get_variable("pc", "out")
@@ -565,10 +583,9 @@ class DensePC(nn.Module):
       err = deriv * err
 
     if self.config is not None and "err_weight_noise" in self.config:
-      if self.config["err_weight_noise"] != 0.0:
-        err = err + jnp.max(err) * self.config["err_weight_noise"]\
-            * np.random.randn(*err.shape
-                              )
+      err = err + jnp.max(err) * self.config[
+          "err_weight_noise"
+      ] * jax.random.normal(subkey2, err.shape)
 
     return {"kernel": jnp.dot(jnp.transpose(val), err)}
 
@@ -668,7 +685,9 @@ class PC_NN(nn.Module):
     def scan_fn(carry, _):
       pred, err, rng = carry
       t_err = err_fin
-      for l, l_name in zip(self.layers[1:][::-1], layer_names[:-1][::-1]):
+      for l, l_name in zip(
+          self.layers[1:][::-1], layer_names[:-1][::-1]
+      ):
         rng, subkey = jax.random.split(rng, 2)
         t_err, pred[l.name]["value"] = l.infer(
             t_err, pred[l.name]["value"], subkey
@@ -677,7 +696,10 @@ class PC_NN(nn.Module):
       return (pred, err, rng), None
 
     (_, err, _), _ = jax.lax.scan(
-        scan_fn, (pred, err_init, rng), xs=None, length=self.config.infer_steps
+        scan_fn,
+        (pred, err_init, rng),
+        xs=None,
+        length=self.config.infer_steps,
     )
 
     return err

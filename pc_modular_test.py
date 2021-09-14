@@ -30,6 +30,10 @@ class UnitTests(absltest.TestCase):
     cfg = ml_collections.ConfigDict()
     cfg.infer_lr = 0.2
     cfg.infer_steps = 100
+    cfg.weight_noise = 0.0
+    cfg.act_noise = 0.0
+    cfg.err_inpt_noise = 0.0
+    cfg.err_weight_noise = 0.0
 
     rng = jax.random.PRNGKey(0)
 
@@ -66,7 +70,10 @@ class UnitTests(absltest.TestCase):
     params = freeze(params)
 
     out, state = nn_unit_test.apply(
-        {"params": params, **state}, train_x, subkey1, mutable=list(state.keys())
+        {"params": params, **state},
+        train_x,
+        subkey1,
+        mutable=list(state.keys()),
     )
 
     np.testing.assert_almost_equal(out, out_ref, decimal=6)
@@ -75,6 +82,10 @@ class UnitTests(absltest.TestCase):
     cfg = ml_collections.ConfigDict()
     cfg.infer_lr = 0.2
     cfg.infer_steps = 100
+    cfg.weight_noise = 0.0
+    cfg.act_noise = 0.0
+    cfg.err_inpt_noise = 0.0
+    cfg.err_weight_noise = 0.0
 
     rng = jax.random.PRNGKey(0)
 
@@ -112,7 +123,11 @@ class UnitTests(absltest.TestCase):
     params = freeze(params)
 
     (out, err_init), state = nn_unit_test.apply(
-        {"params": params, **state}, train_x, subkey1, True, mutable=list(state.keys())
+        {"params": params, **state},
+        train_x,
+        subkey1,
+        True,
+        mutable=list(state.keys()),
     )
 
     err, state = nn_unit_test.apply(
@@ -178,6 +193,10 @@ class UnitTests(absltest.TestCase):
     cfg = ml_collections.ConfigDict()
     cfg.infer_lr = 0.2
     cfg.infer_steps = 100
+    cfg.weight_noise = 0.0
+    cfg.act_noise = 0.0
+    cfg.err_inpt_noise = 0.0
+    cfg.err_weight_noise = 0.0
 
     rng = jax.random.PRNGKey(0)
 
@@ -224,10 +243,10 @@ class UnitTests(absltest.TestCase):
     )
 
     np.testing.assert_almost_equal(
-        grads["layers_0"]["kernel"], -1*dw0_ref, decimal=4
+        grads["layers_0"]["kernel"], -1 * dw0_ref, decimal=4
     )
     np.testing.assert_almost_equal(
-        grads["layers_1"]["kernel"], -1*dw1_ref, decimal=3
+        grads["layers_1"]["kernel"], -1 * dw1_ref, decimal=3
     )
 
   # Conv Test
@@ -235,6 +254,10 @@ class UnitTests(absltest.TestCase):
     cfg = ml_collections.ConfigDict()
     cfg.infer_lr = 0.2
     cfg.infer_steps = 100
+    cfg.weight_noise = 0.0
+    cfg.act_noise = 0.0
+    cfg.err_inpt_noise = 0.0
+    cfg.err_weight_noise = 0.0
 
     rng = jax.random.PRNGKey(0)
 
@@ -281,7 +304,10 @@ class UnitTests(absltest.TestCase):
     params = freeze(params)
 
     out, state = nn_unit_test.apply(
-        {"params": params, **state}, train_x, subkey1, mutable=list(state.keys())
+        {"params": params, **state},
+        train_x,
+        subkey1,
+        mutable=list(state.keys()),
     )
     np.testing.assert_almost_equal(
         np.array(out),
@@ -293,6 +319,10 @@ class UnitTests(absltest.TestCase):
     cfg = ml_collections.ConfigDict()
     cfg.infer_lr = 0.2
     cfg.infer_steps = 100
+    cfg.weight_noise = 0.0
+    cfg.act_noise = 0.0
+    cfg.err_inpt_noise = 0.0
+    cfg.err_weight_noise = 0.0
 
     rng = jax.random.PRNGKey(0)
 
@@ -306,11 +336,14 @@ class UnitTests(absltest.TestCase):
     err1_ref = np.load("unit_test/unit_test_conv/pred1_train.npy")
 
     train_x = jnp.moveaxis(x[:128], (0, 1, 2, 3), (0, 3, 2, 1))
-    train_y = jnp.moveaxis(y[:128], (0, 1, 2, 3),
-                           (0, 3, 2, 1)).astype(jnp.int8)
+    train_y = jnp.moveaxis(y[:128], (0, 1, 2, 3), (0, 3, 2, 1)).astype(
+        jnp.int8
+    )
 
     test_x = jnp.moveaxis(x[128:], (0, 1, 2, 3), (0, 3, 2, 1))
-    test_y = jnp.moveaxis(y[128:], (0, 1, 2, 3), (0, 3, 2, 1)).astype(jnp.int8)
+    test_y = jnp.moveaxis(y[128:], (0, 1, 2, 3), (0, 3, 2, 1)).astype(
+        jnp.int8
+    )
 
     class test_pc_nn(PC_NN):
       def setup(self):
@@ -341,7 +374,11 @@ class UnitTests(absltest.TestCase):
     params = freeze(params)
 
     (out, err_init), state = nn_unit_test.apply(
-        {"params": params, **state}, train_x, subkey2, True, mutable=list(state.keys())
+        {"params": params, **state},
+        train_x,
+        subkey2,
+        True,
+        mutable=list(state.keys()),
     )
 
     err, state = nn_unit_test.apply(
@@ -369,6 +406,10 @@ class UnitTests(absltest.TestCase):
     cfg = ml_collections.ConfigDict()
     cfg.infer_lr = 0.2
     cfg.infer_steps = 100
+    cfg.weight_noise = 0.0
+    cfg.act_noise = 0.0
+    cfg.err_inpt_noise = 0.0
+    cfg.err_weight_noise = 0.0
 
     rng = jax.random.PRNGKey(0)
 
@@ -382,11 +423,14 @@ class UnitTests(absltest.TestCase):
     dw1_ref = np.load("unit_test/unit_test_conv/dw1_train.npy")
 
     train_x = jnp.moveaxis(x[:128], (0, 1, 2, 3), (0, 3, 2, 1))
-    train_y = jnp.moveaxis(y[:128], (0, 1, 2, 3),
-                           (0, 3, 2, 1)).astype(jnp.int8)
+    train_y = jnp.moveaxis(y[:128], (0, 1, 2, 3), (0, 3, 2, 1)).astype(
+        jnp.int8
+    )
 
     test_x = jnp.moveaxis(x[128:], (0, 1, 2, 3), (0, 3, 2, 1))
-    test_y = jnp.moveaxis(y[128:], (0, 1, 2, 3), (0, 3, 2, 1)).astype(jnp.int8)
+    test_y = jnp.moveaxis(y[128:], (0, 1, 2, 3), (0, 3, 2, 1)).astype(
+        jnp.int8
+    )
 
     class test_pc_nn(PC_NN):
       def setup(self):
@@ -424,13 +468,13 @@ class UnitTests(absltest.TestCase):
     )
     np.testing.assert_almost_equal(
         np.array(grads["layers_0"]["kernel"]),
-        -1*np.array((dw0_ref).transpose()),
-        decimal=3
+        -1 * np.array((dw0_ref).transpose()),
+        decimal=2,
     )
     np.testing.assert_almost_equal(
         np.array(grads["layers_1"]["kernel"]),
-        -1*np.array((dw1_ref).transpose()),
-        decimal=2
+        -1 * np.array((dw1_ref).transpose()),
+        decimal=2,
     )
 
 
