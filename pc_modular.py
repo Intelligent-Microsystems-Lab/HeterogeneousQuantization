@@ -253,7 +253,7 @@ class ConvolutionalPC(nn.Module):
   config: dict = None
 
   @nn.module.compact
-  def __call__(self, inputs):
+  def __call__(self, inputs, rng):
     val = self.variable("pc", "value", jnp.zeros, ())
     val.value = inputs
 
@@ -315,7 +315,7 @@ class ConvolutionalPC(nn.Module):
 
     return y
 
-  def infer(self, err_prev, pred):
+  def infer(self, err_prev, pred, rng):
     val = self.get_variable("pc", "value")
     kernel = self.get_variable("params", "kernel")
 
@@ -376,7 +376,7 @@ class ConvolutionalPC(nn.Module):
     pred -= self.config.infer_lr * (pred_err - err)
     return err, pred
 
-  def grads(self, err):
+  def grads(self, err, rng):
     kernel = self.get_variable("params", "kernel")
     val = self.get_variable("pc", "value")
 
@@ -443,7 +443,7 @@ class DensePC(nn.Module):
   config: dict = None
 
   @nn.module.compact
-  def __call__(self, inpt):
+  def __call__(self, inpt, rng):
     val = self.variable("pc", "value", jnp.zeros, ())
     val.value = inpt
 
@@ -464,7 +464,7 @@ class DensePC(nn.Module):
 
     return y
 
-  def infer(self, err_prev, pred):
+  def infer(self, err_prev, pred, rng):
     val = self.get_variable("pc", "value")
     kernel = self.get_variable("params", "kernel")
 
@@ -478,7 +478,7 @@ class DensePC(nn.Module):
     pred -= self.config.infer_lr * (pred_err - err)
     return pred_err, pred
 
-  def grads(self, err):
+  def grads(self, err, rng):
     val = self.get_variable("pc", "value")
     if self.non_linearity is not None:
       out = self.get_variable("pc", "out")
@@ -522,7 +522,7 @@ class FlattenPC(nn.Module):
   config: dict = None
 
   @nn.module.compact
-  def __call__(self, inpt):
+  def __call__(self, inpt, rng):
     val = self.variable("pc", "value", jnp.zeros, ())
     val.value = inpt
 
@@ -530,14 +530,14 @@ class FlattenPC(nn.Module):
 
     return y
 
-  def infer(self, err_prev, pred):
+  def infer(self, err_prev, pred, rng):
     val = self.get_variable("pc", "value")
 
     err = jnp.reshape(err_prev, val.shape)
 
     return err, jnp.zeros_like(pred)
 
-  def grads(self, err):
+  def grads(self, err, rng):
     return {}
 
 
@@ -553,7 +553,8 @@ class PC_NN(nn.Module):
   def __call__(self, x, rng, err_init=False):
     err = {}
     for l in self.layers:
-      x = l(x)
+      rng, subkey = jax.random.split(rng, 2)
+      x = l(x, subkey)
       err[l.name] = jnp.zeros_like(x)
 
     if err_init:
@@ -562,13 +563,15 @@ class PC_NN(nn.Module):
     return x
 
   def grads(self, x, y, rng):
-    out, err_init = self.__call__(x, rng, err_init=True)
-    err = self.inference(y, out, rng, err_init)
+    rng, subkey1, subkey2 = jax.random.split(rng, 3)
+    out, err_init = self.__call__(x, subkey1, err_init=True)
+    err = self.inference(y, out, subkey2, err_init)
 
     grads = {}
     for l in self.layers:
       if l.grads(err[l.name]) != {}:
-        grads[l.name] = l.grads(err[l.name])
+        rng, subkey = jax.random.split(rng, 2)
+        grads[l.name] = l.grads(err[l.name], subkey)
 
     return FrozenDict(jax.tree_map(lambda x: -1 * x, grads)), out
 
@@ -580,17 +583,18 @@ class PC_NN(nn.Module):
     err_init[layer_names[-1]] = err_fin
 
     def scan_fn(carry, _):
-      pred, err = carry
+      pred, err, rng = carry
       t_err = err_fin
       for l, l_name in zip(self.layers[1:][::-1], layer_names[:-1][::-1]):
+        rng, subkey = jax.random.split(rng, 2)
         t_err, pred[l.name]["value"] = l.infer(
-            t_err, pred[l.name]["value"]
+            t_err, pred[l.name]["value"], subkey
         )
         err[l_name] = t_err
-      return (pred, err), None
+      return (pred, err, rng), None
 
-    (_, err), _ = jax.lax.scan(
-        scan_fn, (pred, err_init), xs=None, length=self.config.infer_steps
+    (_, err, _), _ = jax.lax.scan(
+        scan_fn, (pred, err_init, rng), xs=None, length=self.config.infer_steps
     )
 
     return err

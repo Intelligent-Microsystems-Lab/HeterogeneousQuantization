@@ -139,21 +139,20 @@ def normalize_img(image, label):
 
 
 def get_ds(split):
-  (ds_train, ds_test), ds_info = tfds.load(
+  (ds,), ds_info = tfds.load(
       "cifar10",
-      split=["train", "test"],
+      split=[split],
       shuffle_files=True,
       as_supervised=True,
       with_info=True,
   )
-
-  ds_train = ds_train.map(
+  ds = ds.map(
       normalize_img, num_parallel_calls=tf.data.experimental.AUTOTUNE
   )
-  ds_train = ds_train.cache()
-  ds_train = ds_train.shuffle(ds_info.splits[split].num_examples)
-  ds_train = ds_train.batch(cfg.batch_size)
-  return ds_train.prefetch(tf.data.experimental.AUTOTUNE)
+  ds = ds.cache()
+  ds = ds.shuffle(ds_info.splits[split].num_examples)
+  ds = ds.batch(cfg.batch_size)
+  return ds.prefetch(tf.data.experimental.AUTOTUNE)
 
 
 def main(_):
