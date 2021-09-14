@@ -224,10 +224,10 @@ class UnitTests(absltest.TestCase):
     )
 
     np.testing.assert_almost_equal(
-        grads["layers_0"]["kernel"], dw0_ref, decimal=4
+        grads["layers_0"]["kernel"], -1*dw0_ref, decimal=4
     )
     np.testing.assert_almost_equal(
-        grads["layers_1"]["kernel"], dw1_ref, decimal=3
+        grads["layers_1"]["kernel"], -1*dw1_ref, decimal=3
     )
 
   # Conv Test
@@ -424,12 +424,12 @@ class UnitTests(absltest.TestCase):
     )
     np.testing.assert_almost_equal(
         np.array(grads["layers_0"]["kernel"]),
-        np.array((dw0_ref).transpose()),
+        -1*np.array((dw0_ref).transpose()),
         decimal=3
     )
     np.testing.assert_almost_equal(
         np.array(grads["layers_1"]["kernel"]),
-        np.array((dw1_ref).transpose()),
+        -1*np.array((dw1_ref).transpose()),
         decimal=3
     )
 

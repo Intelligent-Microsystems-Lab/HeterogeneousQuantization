@@ -38,7 +38,6 @@ from jax.interpreters import masking
 from flax.linen.module import Module, compact
 from flax.linen.initializers import lecun_normal, zeros
 
-from jax import lax
 import jax
 import numpy as np
 import jax.numpy as jnp

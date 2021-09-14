@@ -7,14 +7,13 @@ import jax.numpy as jnp
 
 import numpy as np
 
-from typing import Any, Callable, Iterable, Optional, Tuple, Union
+from typing import Any, Callable, Iterable, Tuple, Union
 
 from flax import linen as nn
-from flax.core import freeze, unfreeze, FrozenDict
-from flax.linen.initializers import lecun_normal, variance_scaling, zeros
+from flax.core import unfreeze, FrozenDict
+from flax.linen.initializers import lecun_normal, zeros
 
 from jax._src.lax.lax import (
-    _conv_general_dilated_transpose_lhs,
     _canonicalize_precision,
     conv_dimension_numbers,
     padtype_to_pads,
@@ -23,6 +22,8 @@ from jax._src.lax.lax import (
     _conv_spec_transpose,
     _conv_general_vjp_lhs_padding,
     _conv_general_vjp_rhs_padding,
+    _reshape_axis_out_of,
+    _reshape_axis_into,
     rev,
     conv_general_dilated,
 )
@@ -204,11 +205,11 @@ def conv_bwd_kernel(
   assert type(dimension_numbers) is ConvDimensionNumbers
   if np.size(g) == 0:
     # Avoids forming degenerate convolutions where the RHS has spatial size 0.
-    # Awkwardly, we don't have an aval for the rhs readily available, so instead
-    # of returning an ad_util.Zero instance here, representing a symbolic zero
-    # value, we instead return a None, which is meant to represent having no
-    # cotangent at all (and is thus incorrect for this situation), since the two
-    # are treated the same operationally.
+    # Awkwardly, we don't have an aval for the rhs readily available, so
+    # instead of returning an ad_util.Zero instance here, representing a
+    # symbolic zero value, we instead return a None, which is meant to
+    # represent having no cotangent at all (and is thus incorrect for this
+    # situation), since the two are treated the same operationally.
     # TODO(mattjj): adjust defbilinear so that the rhs aval is available here
     return None
   lhs_sdims, rhs_sdims, out_sdims = map(_conv_sdims, dimension_numbers)
@@ -296,15 +297,15 @@ class ConvolutionalPC(nn.Module):
 
     if self.config is not None and "weight_noise" in self.config:
       if self.config["weight_noise"] != 0.0:
-        kernel = kernel + jnp.max(kernel) * self.config["weight_noise"] * np.random.randn(
-            *kernel.shape
-        )
+        kernel = kernel + jnp.max(kernel) * self.config["weight_noise"] \
+            * np.random.randn(*kernel.shape
+                              )
 
     if self.config is not None and "act_noise" in self.config:
       if self.config["act_noise"] != 0.0:
-        inputs = inputs + jnp.max(inputs) * self.config["act_noise"] * np.random.randn(
-            *inputs.shape
-        )
+        inputs = inputs + jnp.max(inputs) * self.config["act_noise"] \
+            * np.random.randn(*inputs.shape
+                              )
 
     y = conv_fwd(
         lhs=inputs,
@@ -320,6 +321,9 @@ class ConvolutionalPC(nn.Module):
         preferred_element_type=None,
     )
 
+    if is_single_input:
+      y = jnp.squeeze(y, axis=0)
+
     if self.non_linearity is not None:
       out = self.variable("pc", "out", jnp.zeros, ())
       out.value = y
@@ -333,9 +337,9 @@ class ConvolutionalPC(nn.Module):
 
     if self.config is not None and "weight_noise" in self.config:
       if self.config["weight_noise"] != 0.0:
-        kernel = kernel + jnp.max(kernel) * self.config["weight_noise"] * np.random.randn(
-            *kernel.shape
-        )
+        kernel = kernel + jnp.max(kernel) * self.config["weight_noise"] \
+            * np.random.randn(*kernel.shape
+                              )
 
     if self.config is not None and "act_noise" in self.config:
       if self.config["act_noise"] != 0.0:
@@ -370,9 +374,7 @@ class ConvolutionalPC(nn.Module):
         return (x,) * len(kernel_size)
       return x
 
-    is_single_input = False
     if inputs.ndim == len(kernel_size) + 1:
-      is_single_input = True
       inputs = jnp.expand_dims(inputs, axis=0)
     # self.strides or (1,) * (inputs.ndim - 2)
     strides = maybe_broadcast(self.strides)
@@ -384,9 +386,8 @@ class ConvolutionalPC(nn.Module):
 
     if self.config is not None and "err_inpt_noise" in self.config:
       if self.config["err_inpt_noise"] != 0.0:
-        err_prev = err_prev + jnp.max(err_prev) * self.config["err_inpt_noise"] * np.random.randn(
-            *err_prev.shape
-        )
+        err_prev = err_prev + jnp.max(err_prev) \
+            * self.config["err_inpt_noise"] * np.random.randn(*err_prev.shape)
 
     err = conv_bwd_inpt(
         g=err_prev,
@@ -403,6 +404,7 @@ class ConvolutionalPC(nn.Module):
         batch_group_count=1,
         preferred_element_type=None,
     )
+
     pred -= self.config.infer_lr * (pred_err - err)
     return err, pred
 
@@ -442,9 +444,7 @@ class ConvolutionalPC(nn.Module):
         return (x,) * len(kernel_size)
       return x
 
-    is_single_input = False
     if inputs.ndim == len(kernel_size) + 1:
-      is_single_input = True
       inputs = jnp.expand_dims(inputs, axis=0)
     # self.strides or (1,) * (inputs.ndim - 2)
     strides = maybe_broadcast(self.strides)
@@ -456,9 +456,9 @@ class ConvolutionalPC(nn.Module):
 
     if self.config is not None and "err_weight_noise" in self.config:
       if self.config["err_weight_noise"] != 0.0:
-        err = err + jnp.max(err) * self.config["err_weight_noise"] * np.random.randn(
-            *err.shape
-        )
+        err = err + jnp.max(err) * self.config["err_weight_noise"] \
+            * np.random.randn(*err.shape
+                              )
 
     kernel_grads = conv_bwd_kernel(
         g=err,
@@ -495,15 +495,15 @@ class DensePC(nn.Module):
 
     if self.config is not None and "weight_noise" in self.config:
       if self.config["weight_noise"] != 0.0:
-        kernel = kernel + jnp.max(kernel) * self.config["weight_noise"] * np.random.randn(
-            *kernel.shape
-        )
+        kernel = kernel + jnp.max(kernel) * self.config["weight_noise"] \
+            * np.random.randn(*kernel.shape
+                              )
 
     if self.config is not None and "act_noise" in self.config:
       if self.config["act_noise"] != 0.0:
-        inpt = inpt + jnp.max(inpt) * self.config["act_noise"] * np.random.randn(
-            *inpt.shape
-        )
+        inpt = inpt + jnp.max(inpt) * self.config["act_noise"] \
+            * np.random.randn(*inpt.shape
+                              )
 
     y = jax.lax.dot_general(
         inpt,
@@ -524,9 +524,9 @@ class DensePC(nn.Module):
 
     if self.config is not None and "weight_noise" in self.config:
       if self.config["weight_noise"] != 0.0:
-        kernel = kernel + jnp.max(kernel) * self.config["weight_noise"] * np.random.randn(
-            *kernel.shape
-        )
+        kernel = kernel + jnp.max(kernel) * self.config["weight_noise"] \
+            * np.random.randn(*kernel.shape
+                              )
 
     if self.config is not None and "act_noise" in self.config:
       if self.config["act_noise"] != 0.0:
@@ -542,9 +542,9 @@ class DensePC(nn.Module):
 
     if self.config is not None and "err_inpt_noise" in self.config:
       if self.config["err_inpt_noise"] != 0.0:
-        err_prev = err_prev + jnp.max(err_prev) * self.config["err_inpt_noise"] * np.random.randn(
-            *err_prev.shape
-        )
+        err_prev = err_prev + jnp.max(err_prev) \
+            * self.config["err_inpt_noise"] * np.random.randn(*err_prev.shape
+                                                              )
 
     err = jnp.dot(err_prev, jnp.transpose(kernel))
     pred -= self.config.infer_lr * (pred_err - err)
@@ -566,9 +566,9 @@ class DensePC(nn.Module):
 
     if self.config is not None and "err_weight_noise" in self.config:
       if self.config["err_weight_noise"] != 0.0:
-        err = err + jnp.max(err) * self.config["err_weight_noise"] * np.random.randn(
-            *err.shape
-        )
+        err = err + jnp.max(err) * self.config["err_weight_noise"]\
+            * np.random.randn(*err.shape
+                              )
 
     return {"kernel": jnp.dot(jnp.transpose(val), err)}
 

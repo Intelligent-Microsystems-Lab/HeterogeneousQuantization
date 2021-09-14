@@ -21,12 +21,7 @@ from jax import lax
 import jax.numpy as jnp
 from flax import jax_utils
 
-from flax_qconv import (
-    QuantConv,
-    _conv_general_dilated_transpose_rhs,
-    _conv_general_dilated_transpose_lhs,
-    _conv_dimension_numbers,
-)
+from flax_qconv import QuantConv
 
 
 class CQG(nn.Module):
