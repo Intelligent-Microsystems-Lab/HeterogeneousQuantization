@@ -569,9 +569,10 @@ class PC_NN(nn.Module):
 
     grads = {}
     for l in self.layers:
-      if l.grads(err[l.name]) != {}:
-        rng, subkey = jax.random.split(rng, 2)
-        grads[l.name] = l.grads(err[l.name], subkey)
+      rng, subkey = jax.random.split(rng, 2)
+      g_temp = l.grads(err[l.name], subkey)
+      if g_temp != {}:
+        grads[l.name] = g_temp
 
     return FrozenDict(jax.tree_map(lambda x: -1 * x, grads)), out
 
