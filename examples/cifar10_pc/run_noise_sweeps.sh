@@ -7,7 +7,7 @@ MAIN_DIR="/afs/crc.nd.edu/user/c/cschaef6/cifar10_noise_sweeps"
 USER="cschaef6"
 GPU_Q="gpu@@joshi"
 START="0."
-END=".15"
+STOP=".15"
 STEP="0.001"
 
 mkdir /afs/crc.nd.edu/user/c/cschaef6/cifar10_noise_sweeps
