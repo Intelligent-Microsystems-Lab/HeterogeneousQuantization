@@ -151,7 +151,7 @@ def get_ds(split):
       normalize_img, num_parallel_calls=tf.data.experimental.AUTOTUNE
   )
   ds_train = ds_train.cache()
-  #ds_train = ds_train.shuffle(ds_info.splits[split].num_examples)
+  ds_train = ds_train.shuffle(ds_info.splits[split].num_examples)
   ds_train = ds_train.batch(cfg.batch_size)
   return ds_train.prefetch(tf.data.experimental.AUTOTUNE)
 
