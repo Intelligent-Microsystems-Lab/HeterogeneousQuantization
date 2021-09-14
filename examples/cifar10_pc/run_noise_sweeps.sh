@@ -2,6 +2,7 @@
 module load python
 
 # Several noise sweeps on Notre Dame CRC cluster.
+mkdir /afs/crc.nd.edu/user/c/cschaef6/cifar10_noise_sweeps
 
 # Predictive Coding Sweeps
 python3 sweep.py --result_dir /afs/crc.nd.edu/user/c/cschaef6/cifar10_noise_sweeps/weight_noise_pc --start 0 --stop .3 --step .01 --parameter weight_noise --network_type pc --user cschaef6 --queue gpu@@joshi
