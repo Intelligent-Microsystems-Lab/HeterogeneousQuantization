@@ -30,7 +30,7 @@ if __name__ == "__main__":
   # create sweep values
   for i in range(args.trials):
     for val in np.arange(start=args.start, stop=args.stop, step=args.step):
-      work_dir =  args.result_dir + "/{:.6f}_t".format(val, i)
+      work_dir =  args.result_dir + "/{:.6f}_t{}".format(val, i)
       subprocess.call(["mkdir", work_dir])
 
       name = (
