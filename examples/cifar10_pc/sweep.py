@@ -21,7 +21,7 @@ parser.add_argument("--trials", type=int, default=1, help="Random Seed")
 args = parser.parse_args()
 
 
-seed_list = [2029492581, 2223210, 1594305760, 87953651674304230, 2467475923055248755]
+seed_list = [2029492581, 2223210, 1594305760, 87953651674304230, 2467475923055248755, 203853699, 2151901553968352745]
 
 if __name__ == "__main__":
   # creat result dir
@@ -69,7 +69,7 @@ if __name__ == "__main__":
       job_script += work_dir
       job_script += " --config=configs/default.py"
       job_script += " --config." + args.parameter + "=" + str(val)
-      job_script += " --config.seed=" + str(seed[i])
+      job_script += " --config.seed=" + str(seed_list[i])
       job_script += "\n"
 
       with open(
