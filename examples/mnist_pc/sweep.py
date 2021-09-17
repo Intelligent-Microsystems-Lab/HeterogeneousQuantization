@@ -11,7 +11,7 @@ parser.add_argument("--parameter", type=str, default="weight_noise", help="Rando
 parser.add_argument("--start", type=float, default=None, help="Random Seed")
 parser.add_argument("--stop", type=float, default=None, help="Random Seed")
 parser.add_argument("--step", type=float, default=None, help="Random Seed")
-parser.add_argument("--list", type=list, default=str, help="Random Seed")
+parser.add_argument("--list", type=str, default=None, help="Random Seed")
 parser.add_argument(
     "--network_type", type=str, default=None, help="Random Seed"
 )
