@@ -90,61 +90,61 @@ def mean_std_eval_acc(path, samples):
   return np.array(mean_obs)[idx], np.array(std_obs)[idx], np.array(x_obs)[idx]
 
 
-samples = 1
-mean_pc_weight, std_obs_weight, x_pc_weight = mean_std_eval_acc(
-    pc_weight_noise, samples
-)
-mean_pc_act, std_obs_act, x_pc_act = mean_std_eval_acc(pc_act_noise, samples)
-mean_pc_err_inpt, std_obs_err_inpt, x_pc_err_inpt = mean_std_eval_acc(
-    pc_err_inpt_noise, samples
-)
-mean_pc_err_weight, std_obs_err_weight, x_pc_err_weight = mean_std_eval_acc(
-    pc_err_weight_noise, samples
-)
+# samples = 1
+# mean_pc_weight, std_obs_weight, x_pc_weight = mean_std_eval_acc(
+#     pc_weight_noise, samples
+# )
+# mean_pc_act, std_obs_act, x_pc_act = mean_std_eval_acc(pc_act_noise, samples)
+# mean_pc_err_inpt, std_obs_err_inpt, x_pc_err_inpt = mean_std_eval_acc(
+#     pc_err_inpt_noise, samples
+# )
+# mean_pc_err_weight, std_obs_err_weight, x_pc_err_weight = mean_std_eval_acc(
+#     pc_err_weight_noise, samples
+# )
 
-# Plot PC
+# # Plot PC
 
-#def plot_figure()
-fig, ax = plt.subplots(figsize=(8, 5.5))
-ax.spines["top"].set_visible(False)
-ax.spines["right"].set_visible(False)
+# #def plot_figure()
+# fig, ax = plt.subplots(figsize=(8, 5.5))
+# ax.spines["top"].set_visible(False)
+# ax.spines["right"].set_visible(False)
 
-ax.plot(x_pc_weight, mean_pc_weight, label="Weight")
-ax.fill_between(
-    x_pc_weight,
-    mean_pc_weight - std_obs_weight,
-    mean_pc_weight + std_obs_weight,
-    alpha=0.1,
-)
+# ax.plot(x_pc_weight, mean_pc_weight, label="Weight")
+# ax.fill_between(
+#     x_pc_weight,
+#     mean_pc_weight - std_obs_weight,
+#     mean_pc_weight + std_obs_weight,
+#     alpha=0.1,
+# )
 
-ax.plot(x_pc_act, mean_pc_act, label="Activation")
-ax.fill_between(
-    x_pc_act, mean_pc_act - std_obs_act, mean_pc_act + std_obs_act, alpha=0.1
-)
+# ax.plot(x_pc_act, mean_pc_act, label="Activation")
+# ax.fill_between(
+#     x_pc_act, mean_pc_act - std_obs_act, mean_pc_act + std_obs_act, alpha=0.1
+# )
 
-ax.plot(x_pc_err_inpt, mean_pc_err_inpt, label="Error Activation")
-ax.fill_between(
-    x_pc_err_inpt,
-    mean_pc_err_inpt - std_obs_err_inpt,
-    mean_pc_err_inpt + std_obs_err_inpt,
-    alpha=0.1,
-)
+# ax.plot(x_pc_err_inpt, mean_pc_err_inpt, label="Error Activation")
+# ax.fill_between(
+#     x_pc_err_inpt,
+#     mean_pc_err_inpt - std_obs_err_inpt,
+#     mean_pc_err_inpt + std_obs_err_inpt,
+#     alpha=0.1,
+# )
 
-ax.plot(x_pc_err_weight, mean_pc_err_weight, label="Error Weight")
-ax.fill_between(
-    x_pc_err_weight,
-    mean_pc_err_weight - std_obs_err_weight,
-    mean_pc_err_weight + std_obs_err_weight,
-    alpha=0.1,
-)
+# ax.plot(x_pc_err_weight, mean_pc_err_weight, label="Error Weight")
+# ax.fill_between(
+#     x_pc_err_weight,
+#     mean_pc_err_weight - std_obs_err_weight,
+#     mean_pc_err_weight + std_obs_err_weight,
+#     alpha=0.1,
+# )
 
-plt.legend(
-    bbox_to_anchor=(0.5, 1.2), loc="upper center", ncol=2, frameon=False
-)
-plt.tight_layout()
-plt.savefig("figures/pc_noise_ablation.png")
-# plt.show()
-plt.close()
+# plt.legend(
+#     bbox_to_anchor=(0.5, 1.2), loc="upper center", ncol=2, frameon=False
+# )
+# plt.tight_layout()
+# plt.savefig("figures/pc_noise_ablation.png")
+# # plt.show()
+# plt.close()
 
 
 samples = 1
@@ -193,7 +193,8 @@ ax.fill_between(
     mean_pc_err_weight + std_obs_err_weight,
     alpha=0.1,
 )
-
+ax.set_xscale('log')
+ax.set_yscale('log')
 plt.legend(
     bbox_to_anchor=(0.5, 1.2), loc="upper center", ncol=2, frameon=False
 )

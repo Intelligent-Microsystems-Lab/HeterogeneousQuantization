@@ -22,12 +22,18 @@ def get_config():
   config.learning_rate = 0.0005
   config.infer_lr = 0.2
   config.infer_steps = 100
-  config.num_classes = 10
   # config.label_smoothing = 0.1
 
   config.weight_noise = 0.0
   config.act_noise = 0.0
   config.err_inpt_noise = 0.0
   config.err_weight_noise = 0.0
+
+
+  config.ds = 'fashion_mnist'
+  config.num_classes = 10
+  config.ds_xdim = 28 
+  config.ds_ydim = 28 
+  config.ds_channels = 1 
 
   return config

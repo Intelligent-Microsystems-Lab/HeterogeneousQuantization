@@ -74,6 +74,11 @@ class test_pc_nn(PC_NN):
             config=self.config,
         ),
         DensePC(
+            features=1000,
+            non_linearity=jax.nn.relu,
+            config=self.config,
+        ),
+        DensePC(
             features=500,
             non_linearity=jax.nn.relu,
             config=self.config,
@@ -155,7 +160,7 @@ def normalize_img(image, label):
 
 def get_ds(split, cfg):
   (ds,), ds_info = tfds.load(
-      "mnist",
+      "svhn_cropped",
       split=[split],
       shuffle_files=True,
       as_supervised=True,
@@ -192,7 +197,7 @@ def train_and_evaluate(cfg, workdir):
   rng, p_rng, subkey = jax.random.split(rng, 3)
 
   variables = nn_cifar10.init(
-      p_rng, jnp.ones((cfg.batch_size, 28, 28, 1)), subkey
+      p_rng, jnp.ones((cfg.batch_size, 32, 32, 3)), subkey
   )
   state, params = variables.pop("params")
 

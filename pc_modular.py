@@ -552,8 +552,8 @@ class DensePC(nn.Module):
     if self.config is not None and "weight_noise" in self.config:
       kernel = kernel + get_noise(kernel, self.config["weight_noise"], subkey1)
 
-    if self.config is not None and "act_noise" in self.config:
-      val = val + get_noise(val, self.config["act_noise"], subkey2)
+    if self.config is not None and "val_noise" in self.config:
+      val = val + get_noise(val, self.config["val_noise"], subkey2)
 
     pred_err = pred - val
     if self.non_linearity is not None:

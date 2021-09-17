@@ -51,6 +51,10 @@ config_flags.DEFINE_config_file(
 )
 
 
+def dropout(x, rate, rng):
+  mask = jax.random.bernoulli(rng, p=rate, shape=x.shape)
+  return jax.lax.select(mask, x / rate, jnp.zeros_like(x))
+
 class LeNet_BP(nn.Module):
   # LeNet with ReLU activations
   config: dict = None
@@ -81,21 +85,29 @@ class LeNet_BP(nn.Module):
     x = x.reshape((x.shape[0], -1))
     rng, subkey = jax.random.split(rng, 2)
     x = QuantDense(
-        features=1000,
+        features=512,
         use_bias=False,
         config=self.config,
     )(x, subkey)
     x = nn.relu(x)
+
+    rng, subkey = jax.random.split(rng, 2)
+    x = dropout(x, .2, subkey)
+
     rng, subkey = jax.random.split(rng, 2)
     x = QuantDense(
-        features=500,
+        features=128,
         use_bias=False,
         config=self.config,
     )(x, subkey)
     x = nn.relu(x)
+
+    rng, subkey = jax.random.split(rng, 2)
+    x = dropout(x, .2, subkey)
+
     rng, subkey = jax.random.split(rng, 2)
     x = QuantDense(
-        features=10,
+        features=self.config.num_classes,
         use_bias=False,
         config=self.config,
     )(x, subkey)
@@ -174,7 +186,7 @@ def normalize_img(image, label):
 
 def get_ds(split, cfg):
   (ds,), ds_info = tfds.load(
-      "mnist",
+      cfg.ds,
       split=[split],
       shuffle_files=True,
       as_supervised=True,
@@ -212,7 +224,7 @@ def train_and_evaluate(cfg, workdir):
   rng, p_rng, subkey = jax.random.split(rng, 3)
 
   variables = nn_cifar10.init(
-      p_rng, jnp.ones((cfg.batch_size, 28, 28, 1)), subkey
+      p_rng, jnp.ones((cfg.batch_size, cfg.ds_xdim, cfg.ds_ydim, cfg.ds_channels)), subkey
   )
   state, params = variables.pop("params")
 

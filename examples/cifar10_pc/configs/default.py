@@ -27,6 +27,7 @@ def get_config():
 
   config.weight_noise = 0.0
   config.act_noise = 0.0
+  config.val_noise = 0.0
   config.err_inpt_noise = 0.0
   config.err_weight_noise = 0.0
 
