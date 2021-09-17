@@ -9,7 +9,7 @@ START="0."
 STOP=".15"
 STEP="0.01"
 
-mkdir /afs/crc.nd.edu/user/c/cschaef6/cifar10_noise_sweeps
+mkdir /afs/crc.nd.edu/user/c/cschaef6/mnist_noise_sweeps
 
 
 # Backpropagation Sweeps
