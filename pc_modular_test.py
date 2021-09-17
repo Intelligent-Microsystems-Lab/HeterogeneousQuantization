@@ -6,6 +6,7 @@
 # Find modified files to obtain test data in unit_test sub directory.
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import functools
 
 import jax
@@ -13,6 +14,8 @@ import jax.numpy as jnp
 import numpy as np
 
 from flax.core import freeze, unfreeze
+
+from jax.nn import initializers
 
 from utils import sse_loss
 from pc_modular import DensePC, PC_NN, ConvolutionalPC
@@ -25,7 +28,155 @@ import ml_collections
 # config.update("jax_disable_jit", True)
 
 
-class UnitTests(absltest.TestCase):
+def dense_act_noise_data():
+  return (
+      dict(
+          testcase_name="noise_act_01",
+          examples=1000,
+          inp_channels=2000,
+          out_channels=3000,
+          noise=0.01,
+          numerical_tolerance=5e-2,
+      ),
+      dict(
+          testcase_name="noise_act_05",
+          examples=1000,
+          inp_channels=3000,
+          out_channels=2000,
+          noise=0.05,
+          numerical_tolerance=5e-2,
+      ),
+      dict(
+          testcase_name="noise_act_10",
+          examples=2000,
+          inp_channels=4000,
+          out_channels=2000,
+          noise=0.1,
+          numerical_tolerance=5e-2,
+      ),
+      dict(
+          testcase_name="noise_act_20",
+          examples=1000,
+          inp_channels=2000,
+          out_channels=2000,
+          noise=0.2,
+          numerical_tolerance=5e-2,
+      ),
+  )
+
+
+def dense_weight_noise_data():
+  return (
+      dict(
+          testcase_name="noise_weight_01",
+          examples=1000,
+          inp_channels=2000,
+          out_channels=2000,
+          noise=0.01,
+          numerical_tolerance=5e-2,
+      ),
+      dict(
+          testcase_name="noise_weight_05",
+          examples=1000,
+          inp_channels=3000,
+          out_channels=2000,
+          noise=0.05,
+          numerical_tolerance=5e-2,
+      ),
+      dict(
+          testcase_name="noise_weight_10",
+          examples=1000,
+          inp_channels=2000,
+          out_channels=2000,
+          noise=0.1,
+          numerical_tolerance=5e-2,
+      ),
+      dict(
+          testcase_name="noise_weight_20",
+          examples=1000,
+          inp_channels=2000,
+          out_channels=2000,
+          noise=0.2,
+          numerical_tolerance=5e-2,
+      ),
+  )
+
+
+def dense_err_inpt_noise_data():
+  return (
+      dict(
+          testcase_name="noise_err_inpt_01",
+          examples=1000,
+          inp_channels=1000,
+          out_channels=2000,
+          noise=0.01,
+          numerical_tolerance=5e-2,
+      ),
+      dict(
+          testcase_name="noise_err_inpt_05",
+          examples=1000,
+          inp_channels=3000,
+          out_channels=2000,
+          noise=0.05,
+          numerical_tolerance=5e-2,
+      ),
+      dict(
+          testcase_name="noise_err_inpt_10",
+          examples=1000,
+          inp_channels=2000,
+          out_channels=2000,
+          noise=0.1,
+          numerical_tolerance=5e-2,
+      ),
+      dict(
+          testcase_name="noise_err_inpt_20",
+          examples=1000,
+          inp_channels=2000,
+          out_channels=2000,
+          noise=0.2,
+          numerical_tolerance=5e-2,
+      ),
+  )
+
+
+def dense_err_weight_noise_data():
+  return (
+      dict(
+          testcase_name="noise_weight_noise_01",
+          examples=10000,
+          inp_channels=1000,
+          out_channels=2000,
+          noise=0.01,
+          numerical_tolerance=1e-3,
+      ),
+      dict(
+          testcase_name="noise_weight_noise_05",
+          examples=10000,
+          inp_channels=3000,
+          out_channels=2000,
+          noise=0.05,
+          numerical_tolerance=1e-3,
+      ),
+      dict(
+          testcase_name="noise_weight_noise_10",
+          examples=10000,
+          inp_channels=2000,
+          out_channels=2000,
+          noise=0.1,
+          numerical_tolerance=1e-3,
+      ),
+      dict(
+          testcase_name="noise_weight_noise_20",
+          examples=10000,
+          inp_channels=2000,
+          out_channels=2000,
+          noise=0.2,
+          numerical_tolerance=1e-3,
+      ),
+  )
+
+
+class UnitTests(parameterized.TestCase):
   def test_pc_fc_out_equality(self):
     cfg = ml_collections.ConfigDict()
     cfg.infer_lr = 0.2
@@ -475,6 +626,267 @@ class UnitTests(absltest.TestCase):
         np.array(grads["layers_1"]["kernel"]),
         -1 * np.array((dw1_ref).transpose()),
         decimal=2,
+    )
+
+  @parameterized.named_parameters(*dense_act_noise_data())
+  def test_act_noise(
+      self, examples, inp_channels, out_channels, noise, numerical_tolerance
+  ):
+    """
+    Unit test to check whether QuantDense does exactly the same as
+    nn.Dense when gradient quantization is turned off.
+    """
+    config = ml_collections.FrozenConfigDict(
+        {
+            "weight_noise": 0.0,
+            "act_noise": noise,
+            "err_inpt_noise": 0.0,
+            "err_weight_nois": 0.0,
+            "infer_lr": 1,
+        }
+    )
+
+    key = jax.random.PRNGKey(34835972)
+    rng1, rng2, rng3, rng4 = jax.random.split(key, 4)
+
+    data = jnp.ones((examples, inp_channels))
+
+    test_dense = DensePC(
+        features=out_channels,
+        kernel_init=initializers.ones,
+        config=config,
+    )
+
+    variables = test_dense.init(rng1, data, rng2)
+    state, params = variables.pop("params")
+    out_d, state_out = test_dense.apply(
+        {"params": params, **state}, data, rng3, mutable=list(state.keys()),)
+
+    # test for mean
+    np.testing.assert_allclose(
+        jnp.mean(out_d),
+        inp_channels,
+        rtol=numerical_tolerance,
+    )
+
+    # test for variance
+    np.testing.assert_allclose(
+        jnp.std(out_d),
+        jnp.sqrt((1 / 12 * (noise * 2) ** 2) * inp_channels),
+        rtol=numerical_tolerance,
+    )
+
+    grads_wrt_weights, state_out2 = test_dense.apply(
+        {"params": params, **state}, jnp.ones_like(out_d), rng4, mutable=list(state.keys()), method=test_dense.grads,)
+
+    # test for mean
+    np.testing.assert_allclose(
+        jnp.mean(grads_wrt_weights["kernel"]),
+        examples,
+        rtol=numerical_tolerance,
+    )
+
+    # test for variance
+    np.testing.assert_allclose(
+        jnp.std(grads_wrt_weights["kernel"]),
+        jnp.sqrt((1 / 12 * (noise * 2) ** 2) * examples),
+        rtol=numerical_tolerance,
+    )
+
+    state = unfreeze(state)
+    state['pc']['out'] = jnp.ones_like(state['pc']['out'])
+    state = freeze(state)
+
+    (pe, _), _ = test_dense.apply({"params": params, **state}, jnp.ones_like(
+        out_d), data, rng4, mutable=list(state.keys()), method=test_dense.infer,)
+
+    # test for mean
+    np.testing.assert_allclose(
+        1+jnp.mean(pe),
+        1+0,
+        rtol=numerical_tolerance,
+    )
+
+    # test for variance
+    np.testing.assert_allclose(
+        jnp.std(pe),
+        np.sqrt((2*noise)**2/12),
+        rtol=numerical_tolerance,
+    )
+
+  @parameterized.named_parameters(*dense_weight_noise_data())
+  def test_weight_noise(
+      self, examples, inp_channels, out_channels, noise, numerical_tolerance
+  ):
+    """
+    Unit test to check whether QuantDense does exactly the same as
+    nn.Dense when gradient quantization is turned off.
+    """
+    config = ml_collections.FrozenConfigDict(
+        {
+            "weight_noise": noise,
+            "act_noise": 0.0,
+            "err_inpt_noise": 0.0,
+            "err_weight_nois": 0.0,
+            "infer_lr": 1,
+        }
+    )
+
+    key = jax.random.PRNGKey(34835972)
+    rng1, rng2, rng3, rng4 = jax.random.split(key, 4)
+
+    data = jnp.ones((examples, inp_channels))
+
+    test_dense = DensePC(
+        features=out_channels,
+        kernel_init=initializers.ones,
+        config=config,
+    )
+
+    variables = test_dense.init(rng1, data, rng2)
+    state, params = variables.pop("params")
+    out_d, state_out = test_dense.apply(
+        {"params": params, **state}, data, rng3, mutable=list(state.keys()),)
+
+    # test for mean
+    np.testing.assert_allclose(
+        jnp.mean(out_d),
+        inp_channels,
+        rtol=numerical_tolerance,
+    )
+
+    # test for variance
+    np.testing.assert_allclose(
+        jnp.std(out_d),
+        jnp.sqrt((1 / 12 * (noise * 2) ** 2) * inp_channels),
+        rtol=numerical_tolerance,
+    )
+
+    state = unfreeze(state)
+    state['pc']['value'] = jnp.zeros_like(state['pc']['value'])
+    state = freeze(state)
+
+    (_, grads_wrt_inpt), _ = test_dense.apply({"params": params, **state}, jnp.ones_like(
+        out_d), jnp.zeros_like(data), rng4, mutable=list(state.keys()), method=test_dense.infer,)
+
+    # test for mean
+    np.testing.assert_allclose(
+        jnp.mean(grads_wrt_inpt),
+        out_channels,
+        rtol=numerical_tolerance,
+    )
+
+    # test for variance
+    np.testing.assert_allclose(
+        jnp.std(grads_wrt_inpt),
+        jnp.sqrt((1 / 12 * (noise * 2) ** 2) * out_channels),
+        rtol=numerical_tolerance,
+    )
+
+  @parameterized.named_parameters(*dense_err_inpt_noise_data())
+  def test_err_inpt_noise(
+      self, examples, inp_channels, out_channels, noise, numerical_tolerance
+  ):
+    """
+    Unit test to check whether QuantDense does exactly the same as
+    nn.Dense when gradient quantization is turned off.
+    """
+    config = ml_collections.FrozenConfigDict(
+        {
+            "weight_noise": 0.0,
+            "act_noise": 0.0,
+            "err_inpt_noise": noise,
+            "err_weight_nois": 0.0,
+            "infer_lr": 1,
+        }
+    )
+
+    key = jax.random.PRNGKey(34835972)
+    rng1, rng2, rng3, rng4 = jax.random.split(key, 4)
+
+    data = jnp.ones((examples, inp_channels))
+
+    test_dense = DensePC(
+        features=out_channels,
+        kernel_init=initializers.ones,
+        config=config,
+    )
+
+    variables = test_dense.init(rng1, data, rng2)
+    state, params = variables.pop("params")
+    out_d, state_out = test_dense.apply(
+        {"params": params, **state}, data, rng3, mutable=list(state.keys()),)
+
+    state = unfreeze(state)
+    state['pc']['value'] = jnp.zeros_like(state['pc']['value'])
+    state = freeze(state)
+
+    (_, grads_wrt_inpt), _ = test_dense.apply({"params": params, **state}, jnp.ones_like(
+        out_d), jnp.zeros_like(data), rng4, mutable=list(state.keys()), method=test_dense.infer,)
+
+    # test for mean
+    np.testing.assert_allclose(
+        jnp.mean(grads_wrt_inpt),
+        out_channels,
+        rtol=numerical_tolerance,
+    )
+
+    # test for variance
+    np.testing.assert_allclose(
+        jnp.std(grads_wrt_inpt),
+        jnp.sqrt((1 / 12 * (noise * 2) ** 2) * out_channels),
+        rtol=numerical_tolerance,
+    )
+
+  @parameterized.named_parameters(*dense_err_weight_noise_data())
+  def test_err_weight_noise(
+      self, examples, inp_channels, out_channels, noise, numerical_tolerance
+  ):
+    """
+    Unit test to check whether QuantDense does exactly the same as
+    nn.Dense when gradient quantization is turned off.
+    """
+    config = ml_collections.FrozenConfigDict(
+        {
+            "weight_noise": 0.0,
+            "act_noise": 0.0,
+            "err_inpt_noise": 0.0,
+            "err_weight_noise": noise,
+            "infer_lr": 1,
+        }
+    )
+
+    key = jax.random.PRNGKey(34835972)
+    rng1, rng2, rng3, rng4 = jax.random.split(key, 4)
+
+    data = jnp.ones((examples, inp_channels))
+
+    test_dense = DensePC(
+        features=out_channels,
+        kernel_init=initializers.ones,
+        config=config,
+    )
+
+    variables = test_dense.init(rng1, data, rng2)
+    state, params = variables.pop("params")
+    out_d, state_out = test_dense.apply(
+        {"params": params, **state}, data, rng3, mutable=list(state.keys()),)
+
+    grads_wrt_weights, state_out2 = test_dense.apply(
+        {"params": params, **state}, jnp.ones_like(out_d), rng4, mutable=list(state.keys()), method=test_dense.grads,)
+
+    # test for mean
+    np.testing.assert_allclose(
+        jnp.mean(grads_wrt_weights["kernel"]),
+        examples,
+        rtol=numerical_tolerance,
+    )
+
+    # test for variance
+    np.testing.assert_allclose(
+        jnp.std(grads_wrt_weights["kernel"]),
+        jnp.sqrt((1 / 12 * (noise * 2) ** 2) * examples),
+        rtol=numerical_tolerance,
     )
 
 

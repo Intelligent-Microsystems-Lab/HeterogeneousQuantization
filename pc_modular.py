@@ -37,6 +37,14 @@ Dtype = Any
 Array = Any
 
 
+def get_noise(x, percentage, rng):
+  return (
+      jnp.max(jnp.abs(x))
+      * percentage
+      * jax.random.uniform(rng, x.shape, minval=-1, maxval=1.0)
+  )
+
+
 def _conv_dimension_numbers(input_shape):
   """Computes the dimension numbers based on the input shape."""
   ndim = len(input_shape)
@@ -517,14 +525,10 @@ class DensePC(nn.Module):
 
     subkey1, subkey2 = jax.random.split(rng, 2)
     if self.config is not None and "weight_noise" in self.config:
-      kernel = kernel + jnp.max(jnp.abs(kernel)) * self.config[
-          "weight_noise"
-      ] * jax.random.uniform(subkey1, kernel.shape)
+      kernel = kernel + get_noise(kernel, self.config["weight_noise"], subkey1)
 
     if self.config is not None and "act_noise" in self.config:
-      inpt = inpt + jnp.max(jnp.abs(inpt)) * self.config[
-          "act_noise"
-      ] * jax.random.uniform(subkey2, inpt.shape)
+      inpt = inpt + get_noise(inpt, self.config["act_noise"], subkey2)
 
     y = jax.lax.dot_general(
         inpt,
@@ -546,14 +550,10 @@ class DensePC(nn.Module):
     subkey1, subkey2, subkey3 = jax.random.split(rng, 3)
 
     if self.config is not None and "weight_noise" in self.config:
-      kernel = kernel + jnp.max(jnp.abs(kernel)) * self.config[
-          "weight_noise"
-      ] * jax.random.uniform(subkey1, kernel.shape)
+      kernel = kernel + get_noise(kernel, self.config["weight_noise"], subkey1)
 
     if self.config is not None and "act_noise" in self.config:
-      val = val + jnp.max(jnp.abs(val)) * self.config[
-          "act_noise"
-      ] * jax.random.uniform(subkey2, val.shape)
+      val = val + get_noise(val, self.config["act_noise"], subkey2)
 
     pred_err = pred - val
     if self.non_linearity is not None:
@@ -562,10 +562,8 @@ class DensePC(nn.Module):
       err_prev = deriv * err_prev
 
     if self.config is not None and "err_inpt_noise" in self.config:
-
-      err_prev = err_prev + jnp.max(jnp.abs(err_prev)) * self.config[
-          "err_inpt_noise"
-      ] * jax.random.uniform(subkey3, err_prev.shape)
+      err_prev = err_prev + \
+          get_noise(err_prev, self.config["err_inpt_noise"], subkey3)
 
     err = jnp.dot(err_prev, jnp.transpose(kernel))
     pred -= self.config.infer_lr * (pred_err - err)
@@ -577,9 +575,7 @@ class DensePC(nn.Module):
     subkey1, subkey2 = jax.random.split(rng, 2)
 
     if self.config is not None and "act_noise" in self.config:
-      val = val + jnp.max(jnp.abs(val)) * self.config[
-          "act_noise"
-      ] * jax.random.uniform(subkey1, val.shape)
+      val = val + get_noise(val, self.config["act_noise"], subkey1)
 
     if self.non_linearity is not None:
       out = self.get_variable("pc", "out")
@@ -587,9 +583,7 @@ class DensePC(nn.Module):
       err = deriv * err
 
     if self.config is not None and "err_weight_noise" in self.config:
-      err = err + jnp.max(jnp.abs(err)) * self.config[
-          "err_weight_noise"
-      ] * jax.random.uniform(subkey2, err.shape)
+      err = err + get_noise(err, self.config["err_weight_noise"], subkey2)
 
     return {"kernel": jnp.dot(jnp.transpose(val), err)}
 
