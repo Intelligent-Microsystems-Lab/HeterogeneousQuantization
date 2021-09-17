@@ -8,10 +8,10 @@ parser = argparse.ArgumentParser(
     description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
 parser.add_argument("--parameter", type=str, default="weight_noise", help="Random Seed")
-parser.add_argument("--start", type=float, default=16., help="Random Seed")
-parser.add_argument("--stop", type=float, default=1., help="Random Seed")
-parser.add_argument("--step", type=float, default=-1, help="Random Seed")
-parser.add_argument("--type", type=str, default="noise_bits", help="Random Seed")
+parser.add_argument("--start", type=float, default=None, help="Random Seed")
+parser.add_argument("--stop", type=float, default=None, help="Random Seed")
+parser.add_argument("--step", type=float, default=None, help="Random Seed")
+parser.add_argument("--list", type=list, default=str, help="Random Seed")
 parser.add_argument(
     "--network_type", type=str, default=None, help="Random Seed"
 )
@@ -33,11 +33,10 @@ seed_list = [
 ]
 
 
-if args.type == 'linear':
+if args.start is not None:
   val_sweep = np.arange(start=args.start, stop=args.stop, step=args.step)
-elif args.type == 'noise_bits':
-  np.arange(start=args.start, stop=args.stop, step=args.step)
-
+elif args.list is not None:
+  val_sweep = [float(x) for x in args.list.split(',')]
 
 if __name__ == "__main__":
   # creat result dir
