@@ -7,10 +7,11 @@ import numpy as np
 parser = argparse.ArgumentParser(
     description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
-parser.add_argument("--parameter", type=str, default=None, help="Random Seed")
-parser.add_argument("--start", type=float, default=None, help="Random Seed")
-parser.add_argument("--stop", type=float, default=None, help="Random Seed")
-parser.add_argument("--step", type=float, default=None, help="Random Seed")
+parser.add_argument("--parameter", type=str, default="weight_noise", help="Random Seed")
+parser.add_argument("--start", type=float, default=16., help="Random Seed")
+parser.add_argument("--stop", type=float, default=1., help="Random Seed")
+parser.add_argument("--step", type=float, default=-1, help="Random Seed")
+parser.add_argument("--type", type=str, default="noise_bits", help="Random Seed")
 parser.add_argument(
     "--network_type", type=str, default=None, help="Random Seed"
 )
@@ -31,13 +32,20 @@ seed_list = [
     2151901553968352745,
 ]
 
+
+if args.type == 'linear':
+  val_sweep = np.arange(start=args.start, stop=args.stop, step=args.step)
+elif args.type == 'noise_bits':
+  np.arange(start=args.start, stop=args.stop, step=args.step)
+
+
 if __name__ == "__main__":
   # creat result dir
   subprocess.call(["mkdir", args.result_dir])
 
   # create sweep values
   for i in range(args.trials):
-    for val in np.arange(start=args.start, stop=args.stop, step=args.step):
+    for val in val_sweep:
       work_dir = args.result_dir + "/{:.6f}_t{}".format(val, i)
       subprocess.call(["mkdir", work_dir])
 

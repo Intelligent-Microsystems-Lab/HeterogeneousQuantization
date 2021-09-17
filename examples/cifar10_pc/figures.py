@@ -36,20 +36,6 @@ bp_err_weight_noise = (
 
 
 
-bp_weight_noise = (
-    "/Users/clemens/Desktop/cifar10_noise_sweeps/weight_noise_bp"
-)
-bp_act_noise = (
-    "/Users/clemens/Desktop/cifar10_noise_sweeps/act_noise_bp"
-)
-bp_err_inpt_noise = (
-    "/Users/clemens/Desktop/cifar10_noise_sweeps/err_inpt_noise_bp"
-)
-bp_err_weight_noise = (
-    "/Users/clemens/Desktop/cifar10_noise_sweeps/err_weight_noise_bp"
-)
-
-
 def read_tfevents(path):
   data = {}
   for batch in tf.data.TFRecordDataset(path):
