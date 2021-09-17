@@ -51,30 +51,30 @@ config_flags.DEFINE_config_file(
 class test_pc_nn(PC_NN):
   def setup(self):
     self.layers = [
-        ConvolutionalPC(
-            features=6,
-            kernel_size=(5, 5),
-            padding="VALID",
-            non_linearity=jax.nn.relu,
-            config=self.config,
-        ),
-        # x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
-        ConvolutionalPC(
-            features=16,
-            kernel_size=(5, 5),
-            padding="VALID",
-            non_linearity=jax.nn.relu,
-            config=self.config,
-        ),
-        # x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
+        # ConvolutionalPC(
+        #     features=6,
+        #     kernel_size=(5, 5),
+        #     padding="VALID",
+        #     non_linearity=jax.nn.relu,
+        #     config=self.config,
+        # ),
+        # # x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
+        # ConvolutionalPC(
+        #     features=16,
+        #     kernel_size=(5, 5),
+        #     padding="VALID",
+        #     non_linearity=jax.nn.relu,
+        #     config=self.config,
+        # ),
+        # # x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
         FlattenPC(config=self.config),
         DensePC(
-            features=200,
+            features=1000,
             non_linearity=jax.nn.relu,
             config=self.config,
         ),
         DensePC(
-            features=150,
+            features=500,
             non_linearity=jax.nn.relu,
             config=self.config,
         ),

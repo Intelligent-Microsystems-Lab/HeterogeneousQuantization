@@ -58,37 +58,37 @@ class LeNet_BP(nn.Module):
   @nn.compact
   def __call__(self, x, rng):
 
-    rng, subkey = jax.random.split(rng, 2)
-    x = QuantConv(
-        features=6,
-        kernel_size=(5, 5),
-        padding="VALID",
-        use_bias=False,
-        config=self.config,
-    )(x, subkey)
-    x = nn.relu(x)
-    # x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
-    rng, subkey = jax.random.split(rng, 2)
-    x = QuantConv(
-        features=16,
-        kernel_size=(5, 5),
-        padding="VALID",
-        use_bias=False,
-        config=self.config,
-    )(x, subkey)
-    x = nn.relu(x)
+    # rng, subkey = jax.random.split(rng, 2)
+    # x = QuantConv(
+    #     features=6,
+    #     kernel_size=(5, 5),
+    #     padding="VALID",
+    #     use_bias=False,
+    #     config=self.config,
+    # )(x, subkey)
+    # x = nn.relu(x)
+    # # x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
+    # rng, subkey = jax.random.split(rng, 2)
+    # x = QuantConv(
+    #     features=16,
+    #     kernel_size=(5, 5),
+    #     padding="VALID",
+    #     use_bias=False,
+    #     config=self.config,
+    # )(x, subkey)
+    # x = nn.relu(x)
     # x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
     x = x.reshape((x.shape[0], -1))
     rng, subkey = jax.random.split(rng, 2)
     x = QuantDense(
-        features=200,
+        features=1000,
         use_bias=False,
         config=self.config,
     )(x, subkey)
     x = nn.relu(x)
     rng, subkey = jax.random.split(rng, 2)
     x = QuantDense(
-        features=150,
+        features=500,
         use_bias=False,
         config=self.config,
     )(x, subkey)

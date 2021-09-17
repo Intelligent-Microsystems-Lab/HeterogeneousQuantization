@@ -21,7 +21,15 @@ parser.add_argument("--trials", type=int, default=1, help="Random Seed")
 args = parser.parse_args()
 
 
-seed_list = [2029492581, 2223210, 1594305760, 87953651674304230, 2467475923055248755, 203853699, 2151901553968352745]
+seed_list = [
+    2029492581,
+    2223210,
+    1594305760,
+    87953651674304230,
+    2467475923055248755,
+    203853699,
+    2151901553968352745,
+]
 
 if __name__ == "__main__":
   # creat result dir
@@ -30,7 +38,7 @@ if __name__ == "__main__":
   # create sweep values
   for i in range(args.trials):
     for val in np.arange(start=args.start, stop=args.stop, step=args.step):
-      work_dir =  args.result_dir + "/{:.6f}_t{}".format(val, i)
+      work_dir = args.result_dir + "/{:.6f}_t{}".format(val, i)
       subprocess.call(["mkdir", work_dir])
 
       name = (
@@ -52,10 +60,10 @@ if __name__ == "__main__":
       job_script += "\n#$ -o "
       job_script += work_dir + "/out_" + name
       job_script += ".log \n#$ -e "
+      job_script += work_dir + "/error_" + name
       job_script += (
-          work_dir + "/error_" + name
+          ".log\n\nmodule load python cuda/11.2 tensorflow/2.6\n"
       )
-      job_script += ".log\n\nmodule load python cuda/11.2 tensorflow/2.6\n"
       job_script += 'setenv XLA_FLAGS "--xla_gpu_cuda_data_dir=/afs/crc.nd.edu/x86_64_linux/c/cuda/11.2"\n'
       job_script += "setenv OMP_NUM_THREADS $NSLOTS\n"
       job_script += "python3 train"
@@ -72,11 +80,7 @@ if __name__ == "__main__":
       job_script += " --config.seed=" + str(seed_list[i])
       job_script += "\n"
 
-      with open(
-          work_dir + "/job.script", "w"
-      ) as text_file:
+      with open(work_dir + "/job.script", "w") as text_file:
         text_file.write(job_script)
 
-      subprocess.call(
-          ["qsub", work_dir + "/job.script"]
-      )
+      subprocess.call(["qsub", work_dir + "/job.script"])
