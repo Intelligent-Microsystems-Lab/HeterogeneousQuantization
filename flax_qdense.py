@@ -4,50 +4,24 @@
 # https://github.com/google/flax/blob/master/flax/linen/linear.py and
 # modified to accomodate noise and quantization
 
-
-# from jax._src.lax.lax import (
-#     standard_primitive,
-#     _dot_general_batch_rule,
-#     _dot_general_masking_rule,
-#     remaining,
-#     ranges_like,
-#     transpose,
-#     DotDimensionNumbers,
-#     PrecisionLike,
-#     _canonicalize_precision,
-#     naryop_dtype_rule,
-#     _input_dtype,
-#     _any,
-#     xops,
-#     xc,
-#     _precision_config,
-#     dtypes,
-#     xla_client,
-# )
 from typing import (
     Any,
-    Optional,
     Callable,
     Sequence,
 )
-from jax.interpreters import ad
-from jax.interpreters import batching
-from jax.interpreters import masking
+
 
 from flax.linen.module import Module, compact
 from flax.linen.initializers import lecun_normal, zeros
 
 import jax
-import numpy as np
 import jax.numpy as jnp
 
-import functools
 
 default_kernel_init = lecun_normal()
 
 Array = Any
-DType = Any
-Dtype = Any  # this could be a real type?
+Dtype = Any
 PRNGKey = Any
 Shape = Sequence[int]
 

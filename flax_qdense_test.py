@@ -1,9 +1,6 @@
 # IMSL Lab - University of Notre Dame
 # Author: Clemens JS Schaefer
 # Unit Test for QuantDense
-# 1. Unite test to compare nn.Dense layer with QuantDense. Simply training a two
-# layer convolutional network initialized with all zeros and comparing the
-# weight after update
 
 
 from absl.testing import absltest
@@ -629,7 +626,7 @@ class QuantDenseTest(parameterized.TestCase):
     )
 
   @parameterized.named_parameters(*dense_err_weight_noise_data())
-  def test_err_inpt_noise(
+  def test_err_weight_noise(
       self, examples, inp_channels, out_channels, noise, numerical_tolerance
   ):
     """
