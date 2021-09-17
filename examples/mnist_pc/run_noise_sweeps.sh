@@ -20,8 +20,8 @@ python3 sweep.py --result_dir $MAIN_DIR/act_noise_bp --list $LIST --user $USER -
 python3 sweep.py --result_dir $MAIN_DIR/err_inpt_noise_bp --list $LIST --user $USER --trials 5 --queue $GPU_Q --parameter err_inpt_noise --network_type bp
 python3 sweep.py  --result_dir $MAIN_DIR/err_weight_noise_bp --list $LIST --user $USER --trials 5 --queue $GPU_Q --parameter err_weight_noise --network_type bp
 
-# Predictive Coding Sweeps
-python3 sweep.py --result_dir $MAIN_DIR/weight_noise_pc --list $LIST --user $USER --trials 5 --queue $GPU_Q --parameter weight_noise --network_type pc
-python3 sweep.py --result_dir $MAIN_DIR/act_noise_pc --list $LIST --user $USER --trials 5 --queue $GPU_Q  --parameter act_noise --network_type pc
-python3 sweep.py --result_dir $MAIN_DIR/err_inpt_noise_pc --list $LIST --user $USER --trials 5 --queue $GPU_Q --parameter err_inpt_noise --network_type pc
-python3 sweep.py  --result_dir $MAIN_DIR/err_weight_noise_pc --list $LIST --user $USER --trials 5 --queue $GPU_Q --parameter err_weight_noise --network_type pc
+# # Predictive Coding Sweeps
+# python3 sweep.py --result_dir $MAIN_DIR/weight_noise_pc --list $LIST --user $USER --trials 5 --queue $GPU_Q --parameter weight_noise --network_type pc
+# python3 sweep.py --result_dir $MAIN_DIR/act_noise_pc --list $LIST --user $USER --trials 5 --queue $GPU_Q  --parameter act_noise --network_type pc
+# python3 sweep.py --result_dir $MAIN_DIR/err_inpt_noise_pc --list $LIST --user $USER --trials 5 --queue $GPU_Q --parameter err_inpt_noise --network_type pc
+# python3 sweep.py  --result_dir $MAIN_DIR/err_weight_noise_pc --list $LIST --user $USER --trials 5 --queue $GPU_Q --parameter err_weight_noise --network_type pc

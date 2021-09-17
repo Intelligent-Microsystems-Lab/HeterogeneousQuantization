@@ -83,16 +83,16 @@ class LeNet_BP(nn.Module):
     # x = nn.relu(x)
     # x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
     x = x.reshape((x.shape[0], -1))
-    rng, subkey = jax.random.split(rng, 2)
-    x = QuantDense(
-        features=512,
-        use_bias=False,
-        config=self.config,
-    )(x, subkey)
-    x = nn.relu(x)
+    # rng, subkey = jax.random.split(rng, 2)
+    # x = QuantDense(
+    #     features=512,
+    #     use_bias=False,
+    #     config=self.config,
+    # )(x, subkey)
+    # x = nn.relu(x)
 
-    rng, subkey = jax.random.split(rng, 2)
-    x = dropout(x, .2, subkey)
+    # rng, subkey = jax.random.split(rng, 2)
+    # x = dropout(x, .5, subkey)
 
     rng, subkey = jax.random.split(rng, 2)
     x = QuantDense(
@@ -102,8 +102,8 @@ class LeNet_BP(nn.Module):
     )(x, subkey)
     x = nn.relu(x)
 
-    rng, subkey = jax.random.split(rng, 2)
-    x = dropout(x, .2, subkey)
+    # rng, subkey = jax.random.split(rng, 2)
+    # x = dropout(x, .5, subkey)
 
     rng, subkey = jax.random.split(rng, 2)
     x = QuantDense(
@@ -114,14 +114,14 @@ class LeNet_BP(nn.Module):
     return x
 
 
-# def cross_entropy_loss(logits, targt):
-#   targt = targt * (1.0 - cfg.label_smoothing) + (
-#       cfg.label_smoothing / cfg.num_classes
-#   )
+def cross_entropy_loss(logits, targt):
+  #targt = targt * (1.0 - cfg.label_smoothing) + (
+  #    cfg.label_smoothing / cfg.num_classes
+  #)
 
-#   logits = jax.nn.log_softmax(logits, axis=-1)
+  logits = jax.nn.log_softmax(logits, axis=-1)
 
-#   return -jnp.mean(jnp.sum(targt * logits, axis=-1))
+  return -jnp.mean(jnp.sum(targt * logits, axis=-1))
 
 
 def mse(logits, target):
@@ -129,7 +129,7 @@ def mse(logits, target):
 
 
 def compute_metrics(logits, labels):
-  loss = mse(logits, labels)
+  loss = cross_entropy_loss(logits, labels)
 
   accuracy = jnp.mean(
       jnp.argmax(logits, axis=-1) == jnp.argmax(labels, axis=-1)
@@ -149,14 +149,13 @@ def train_step(step, optimizer, lr_fn, nn_fn, batch, state, rng, cfg):
         rng,
         mutable=list(state.keys()),
     )
-    loss = mse(logits, label)
+    loss = cross_entropy_loss(logits, label)
     return loss, logits
 
   grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
   (loss, logits), grads = grad_fn(optimizer.target)
 
   grads = jax.tree_map(lambda x: jnp.clip(x, -50, 50), grads)
-  # lr = lr_fn(step)
   optimizer = optimizer.apply_gradient(grads)
 
   metrics = compute_metrics(logits, label)
@@ -205,16 +204,16 @@ def train_and_evaluate(cfg, workdir):
   # summary_writer = tensorboard.SummaryWriter(work_dir)
   # summary_writer.hparams(cfg)
   cfg = FrozenConfigDict(cfg)
-  writer = metric_writers.create_default_writer(
-      logdir=workdir, just_logging=jax.process_index() != 0
+  writer_train = metric_writers.create_default_writer(
+      logdir=workdir+'/train', just_logging=jax.process_index() != 0
   )
-  writer.write_hparams(cfg)
+  writer_eval = metric_writers.create_default_writer(
+      logdir=workdir+'/eval', just_logging=jax.process_index() != 0
+  )
+  writer_train.write_hparams(cfg)
 
   nn_cifar10 = LeNet_BP(config=cfg)
   nn_fn = nn_cifar10.apply
-
-  # with open(cfg.work_dir+'/config.json', 'w') as f:
-  #  json.dump(cfg, f)
 
   # get data set
   ds_train = get_ds("train", cfg)
@@ -228,7 +227,7 @@ def train_and_evaluate(cfg, workdir):
   )
   state, params = variables.pop("params")
 
-  optimizer = optim.GradientDescent(learning_rate=cfg.learning_rate).create(
+  optimizer = optim.Adam(learning_rate=cfg.learning_rate).create(
       params
   )
   learning_rate_fn = (None,)  # create_cosine_learning_rate_schedule(
@@ -277,10 +276,8 @@ def train_and_evaluate(cfg, workdir):
     train_metrics = common_utils.stack_forest(train_metrics)
     train_metrics = jax.tree_map(lambda x: x.mean(), train_metrics)
 
-    writer.write_scalars(
-        step + 1, {f"eval_{key}": val for key, val in eval_metrics.items()}
-    )
-    writer.write_scalars(step + 1, train_metrics)
+    writer_eval.write_scalars(step + 1,  eval_metrics)
+    writer_train.write_scalars(step + 1, train_metrics)
     # logging.info(
     #    "step: %d, train_loss: %.4f, train_accuracy: %.4f, "
     #    "test_loss: %.4f, test_accuracy: %.4f, time train batch: %.4f s",
@@ -291,7 +288,8 @@ def train_and_evaluate(cfg, workdir):
     #    eval_metrics["accuracy"],
     #    train_metrics["time"],
     # )
-    writer.flush()
+    writer_eval.flush()
+    writer_train.flush()
 
 
 def main(argv):

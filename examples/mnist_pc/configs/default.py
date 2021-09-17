@@ -10,16 +10,16 @@ def get_config():
   config = ml_collections.ConfigDict()
 
   config.seed = 203853699
-  config.work_dir = (
-      "../../../training_dir/cifar10_pc-{date:%Y-%m-%d_%H-%M-%S}/".format(
-          date=datetime.datetime.now()
-      )
-  )
-  config.batch_size = 128
-  config.num_epochs = 30
+  #config.work_dir = (
+  #    "../../../training_dir/cifar10_pc-{date:%Y-%m-%d_%H-%M-%S}/".format(
+  #        date=datetime.datetime.now()
+  #    )
+  #)
+  config.batch_size = 32
+  config.num_epochs = 10
   # config.warmup_epochs = 5
   # config.momentum = 0.0
-  config.learning_rate = 0.0005
+  config.learning_rate = 0.001
   config.infer_lr = 0.2
   config.infer_steps = 100
   # config.label_smoothing = 0.1
