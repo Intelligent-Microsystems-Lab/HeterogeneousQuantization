@@ -654,7 +654,9 @@ class PC_NN(nn.Module):
   def setup(self):
     self.layers = []
 
-  def __call__(self, x: Array, rng: PRNGKey, err_init: bool = False) -> Array:
+  def __call__(
+      self, x: Array, rng: PRNGKey, err_init: bool = False
+  ) -> Array:
     err = {}
     for layer in self.layers:
       rng, subkey = jax.random.split(rng, 2)
@@ -680,7 +682,9 @@ class PC_NN(nn.Module):
 
     return FrozenDict(jax.tree_map(lambda x: -1 * x, grads)), out
 
-  def inference(self, y: Array, out: Array, rng: PRNGKey, err_init: dict) -> dict:
+  def inference(
+      self, y: Array, out: Array, rng: PRNGKey, err_init: dict
+  ) -> dict:
     pred = unfreeze(self.variables["pc"])
     err_fin = -jax.grad(self.loss_fn)(out, y)
     layer_names = list(pred.keys())

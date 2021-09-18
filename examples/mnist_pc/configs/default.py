@@ -10,32 +10,36 @@ def get_config():
   config = ml_collections.ConfigDict()
 
   config.seed = 203853699
-  # config.work_dir = (
-  #    "../../../training_dir/cifar10_pc-{date:%Y-%m-%d_%H-%M-%S}/".format(
-  #        date=datetime.datetime.now()
-  #    )
-  # )
+
   config.batch_size = 32
   config.num_epochs = 10
-  # config.warmup_epochs = 5
-  # config.momentum = 0.0
   config.learning_rate = 0.001
+
+  # PC parameters
   config.infer_lr = 0.2
   config.infer_steps = 100
-  # config.label_smoothing = 0.1
 
-  # noise config
-  config.weight_noise = 0.0
-  config.act_noise = 0.0
+  config.quant = {
+    # noise
+    'weight_noise' : 0.0,
+    'act_noise' : 0.0,
+    'weight_bwd_noise' : 0.0,
+    'act_bwd_noise' : 0.0,
+    'val_noise' : 0.0,
+    'err_inpt_noise' : 0.0,
+    'err_weight_noise' : 0.0,
 
-  config.weight_bwd_noise = 0.0
-  config.act_bwd_noise = 0.0
+    # quant 
+    # 'weight_bits' : 16,
+    # 'act_bits' : 16,
+    # 'weight_bwd_bits' : 16,
+    # 'act_bwd_bits' : 16,
+    # 'val_bits' : 16,
+    # 'err_inpt_bits' : 16,
+    # 'err_weight_bits' : 16,
+  }
 
-  config.val_noise = 0.0
-
-  config.err_inpt_noise = 0.0
-  config.err_weight_noise = 0.0
-
+  # data set 
   config.ds = "fashion_mnist"
   config.num_classes = 10
   config.ds_xdim = 28

@@ -124,7 +124,7 @@ def dense_test_data():
           examples=512,
           inp_channels=100,
           channels=[20, 10],
-          config=None,
+          config=ml_collections.FrozenConfigDict({}),
           numerical_tolerance=0,
       ),
       dict(
@@ -132,7 +132,7 @@ def dense_test_data():
           examples=1024,
           inp_channels=1,
           channels=[1, 1],
-          config=None,
+          config=ml_collections.FrozenConfigDict({}),
           numerical_tolerance=0,
       ),
       dict(
@@ -140,7 +140,7 @@ def dense_test_data():
           examples=256,
           inp_channels=1,
           channels=[200, 1],
-          config=None,
+          config=ml_collections.FrozenConfigDict({}),
           numerical_tolerance=1e-7,
       ),
       dict(
@@ -153,7 +153,7 @@ def dense_test_data():
                   "weight_noise": 0.0,
                   "act_noise": 0.0,
                   "err_inpt_noise": 0.0,
-                  "err_weight_nois": 0.0,
+                  "err_weight_noise": 0.0,
               }
           ),
           numerical_tolerance=0,
@@ -432,7 +432,7 @@ class QuantDenseTest(parameterized.TestCase):
             "weight_noise": 0.0,
             "act_noise": noise,
             "err_inpt_noise": 0.0,
-            "err_weight_nois": 0.0,
+            "err_weight_noise": 0.0,
         }
     )
 
@@ -475,7 +475,7 @@ class QuantDenseTest(parameterized.TestCase):
             "weight_noise": noise,
             "act_noise": 0.0,
             "err_inpt_noise": 0.0,
-            "err_weight_nois": 0.0,
+            "err_weight_noise": 0.0,
         }
     )
 
@@ -528,7 +528,7 @@ class QuantDenseTest(parameterized.TestCase):
             "weight_noise": 0.0,
             "act_noise": 0.0,
             "err_inpt_noise": noise,
-            "err_weight_nois": 0.0,
+            "err_weight_noise": 0.0,
         }
     )
 
@@ -556,14 +556,13 @@ class QuantDenseTest(parameterized.TestCase):
     np.testing.assert_allclose(
         jnp.mean(grads_wrt_inpt),
         out_channels,
-        rtol=1e-04,
+        rtol=numerical_tolerance,
         atol=0,
         equal_nan=True,
         err_msg="",
         verbose=True,
     )
 
-    # test for variance
     np.testing.assert_allclose(
         jnp.std(grads_wrt_inpt),
         jnp.sqrt((1 / 12 * (noise * 2) ** 2) * out_channels),
@@ -646,7 +645,7 @@ class QuantDenseTest(parameterized.TestCase):
             "weight_noise": 0.0,
             "act_bwd_noise": noise,
             "err_inpt_noise": 0.0,
-            "err_weight_nois": 0.0,
+            "err_weight_noise": 0.0,
         }
     )
 
@@ -697,7 +696,7 @@ class QuantDenseTest(parameterized.TestCase):
             "weight_bwd_noise": noise,
             "act_noise": 0.0,
             "err_inpt_noise": 0.0,
-            "err_weight_nois": 0.0,
+            "err_weight_noise": 0.0,
         }
     )
 

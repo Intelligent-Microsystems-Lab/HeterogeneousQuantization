@@ -37,4 +37,16 @@ def get_config():
   config.err_inpt_noise = 0.0
   config.err_weight_noise = 0.0
 
+  # quant
+  config.weight_bits = 8
+  config.act_bits = 8
+
+  config.weight_bwd_bits = 8
+  config.act_bwd_bits = 8
+
+  config.val_bits = 8
+
+  config.err_inpt_bits = 8
+  config.err_weight_bits = 8
+
   return config

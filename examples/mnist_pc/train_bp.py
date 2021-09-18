@@ -99,7 +99,7 @@ class LeNet_BP(nn.Module):
     x = QuantDense(
         features=128,
         use_bias=False,
-        config=self.config,
+        config=self.config.quant,
     )(x, subkey)
     x = nn.relu(x)
 
@@ -110,15 +110,12 @@ class LeNet_BP(nn.Module):
     x = QuantDense(
         features=self.config.num_classes,
         use_bias=False,
-        config=self.config,
+        config=self.config.quant,
     )(x, subkey)
     return x
 
 
 def cross_entropy_loss(logits, targt):
-  # targt = targt * (1.0 - cfg.label_smoothing) + (
-  #    cfg.label_smoothing / cfg.num_classes
-  # )
 
   logits = jax.nn.log_softmax(logits, axis=-1)
 
@@ -211,7 +208,9 @@ def train_and_evaluate(cfg, workdir):
   writer_eval = metric_writers.create_default_writer(
       logdir=workdir + "/eval", just_logging=jax.process_index() != 0
   )
-  writer_train.write_hparams(cfg)
+
+  writer_train.write_hparams({k:v for k,v in cfg.items() if k not in ['quant']})
+  writer_train.write_hparams(cfg.quant)
 
   nn_cifar10 = LeNet_BP(config=cfg)
   nn_fn = nn_cifar10.apply
@@ -231,16 +230,7 @@ def train_and_evaluate(cfg, workdir):
   state, params = variables.pop("params")
 
   optimizer = optim.Adam(learning_rate=cfg.learning_rate).create(params)
-  learning_rate_fn = (None,)  # create_cosine_learning_rate_schedule(
-  #    cfg.learning_rate,
-  #    len(ds_train),
-  #    cfg.num_epochs,
-  #    warmup_length=cfg.warmup_epochs,
-  # )
-
-  # Training loop.
-  # logging.info(cfg)
-  # logging.info(jax.devices())
+  learning_rate_fn = (None,)
 
   for step in range(cfg.num_epochs):
     # Do a batch of SGD.
@@ -258,8 +248,6 @@ def train_and_evaluate(cfg, workdir):
           subkey,
           cfg,
       )
-      metrics["accuracy"] = float(metrics["accuracy"])
-      metrics["loss"] = float(metrics["loss"])
       metrics["time"] = time.time() - t_start
       train_metrics.append(metrics)
 
@@ -279,16 +267,7 @@ def train_and_evaluate(cfg, workdir):
 
     writer_eval.write_scalars(step + 1, eval_metrics)
     writer_train.write_scalars(step + 1, train_metrics)
-    # logging.info(
-    #    "step: %d, train_loss: %.4f, train_accuracy: %.4f, "
-    #    "test_loss: %.4f, test_accuracy: %.4f, time train batch: %.4f s",
-    #    (step + 1),
-    #    train_metrics["loss"],
-    #    train_metrics["accuracy"],
-    #    eval_metrics["loss"],
-    #    eval_metrics["accuracy"],
-    #    train_metrics["time"],
-    # )
+
     writer_eval.flush()
     writer_train.flush()
 
