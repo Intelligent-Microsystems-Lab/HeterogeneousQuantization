@@ -172,7 +172,6 @@ class QuantDense(Module):
     else:
       weight_noise = self.config["weight_noise"]
 
-
     if self.config is None or "act_bwd_noise" not in self.config:
       act_bwd_noise = 0.0
     else:
@@ -182,7 +181,6 @@ class QuantDense(Module):
       weight_bwd_noise = 0.0
     else:
       weight_bwd_noise = self.config["weight_bwd_noise"]
-
 
     if self.config is None or "err_inpt_noise" not in self.config:
       err_inpt_noise = 0.0

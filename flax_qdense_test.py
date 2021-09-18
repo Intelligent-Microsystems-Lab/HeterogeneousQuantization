@@ -515,7 +515,6 @@ class QuantDenseTest(parameterized.TestCase):
         verbose=True,
     )
 
-
   @parameterized.named_parameters(*dense_err_inpt_noise_data())
   def test_err_inpt_noise(
       self, examples, inp_channels, out_channels, noise, numerical_tolerance
@@ -634,7 +633,6 @@ class QuantDenseTest(parameterized.TestCase):
         verbose=True,
     )
 
-
   @parameterized.named_parameters(*dense_act_noise_data())
   def test_act_bwd_noise(
       self, examples, inp_channels, out_channels, noise, numerical_tolerance
@@ -664,8 +662,6 @@ class QuantDenseTest(parameterized.TestCase):
     )
 
     variables = test_dense.init(rng1, data, rng2)
-    out_d = test_dense.apply(variables, data, rng3)
-
 
     # test for
     def loss_fn(params):
@@ -717,7 +713,6 @@ class QuantDenseTest(parameterized.TestCase):
     )
 
     variables = test_dense.init(rng1, data, rng2)
-    out_d = test_dense.apply(variables, data, rng3)
 
     # test for
     def loss_fn(data):
@@ -748,7 +743,6 @@ class QuantDenseTest(parameterized.TestCase):
         err_msg="",
         verbose=True,
     )
-
 
 
 if __name__ == "__main__":

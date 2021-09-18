@@ -20,7 +20,6 @@ pc_err_weight_noise = (
 )
 
 
-
 bp_weight_noise = (
     "/afs/crc.nd.edu/user/c/cschaef6/mnist_noise_sweeps/weight_noise_bp"
 )
@@ -59,14 +58,14 @@ def read_data_from_dir(path):
 
   for subdir in glob(path + "/*"):
     if len(glob(subdir + "/eval/*tfevents*")) >= 1:
-      if float(subdir.split("/")[-1].split('_')[0]) in data:
-        data[float(subdir.split("/")[-1].split('_')[0])].append(read_tfevents(
-            glob(subdir + "/eval/*tfevents*")[0]
-        ))
+      if float(subdir.split("/")[-1].split("_")[0]) in data:
+        data[float(subdir.split("/")[-1].split("_")[0])].append(
+            read_tfevents(glob(subdir + "/eval/*tfevents*")[0])
+        )
       else:
-        data[float(subdir.split("/")[-1].split('_')[0])] = [read_tfevents(
-            glob(subdir + "/eval/*tfevents*")[0]
-        )]
+        data[float(subdir.split("/")[-1].split("_")[0])] = [
+            read_tfevents(glob(subdir + "/eval/*tfevents*")[0])
+        ]
 
   return data
 
@@ -81,18 +80,21 @@ def mean_std_eval_acc(path, samples):
   for i, val in data.items():
     if val == {}:
       continue
-    
-    
+
     sub_sample = []
     for sub_val in val:
-      sub_sample.append( np.sort(sub_val["accuracy"])[-samples:] )
+      sub_sample.append(np.sort(sub_val["accuracy"])[-samples:])
 
     x_obs.append(i)
     mean_obs.append(np.mean(sub_sample))
     std_obs.append(np.std(sub_sample))
 
   idx = np.argsort(x_obs)
-  return np.array(mean_obs)[idx], np.array(std_obs)[idx], np.array(x_obs)[idx]
+  return (
+      np.array(mean_obs)[idx],
+      np.array(std_obs)[idx],
+      np.array(x_obs)[idx],
+  )
 
 
 # samples = 1
@@ -153,13 +155,23 @@ def mean_std_eval_acc(path, samples):
 
 
 samples = 1
-mean_pc_weight, std_obs_weight, x_pc_weight = mean_std_eval_acc(bp_weight_noise, samples)
+mean_pc_weight, std_obs_weight, x_pc_weight = mean_std_eval_acc(
+    bp_weight_noise, samples
+)
 mean_pc_act, std_obs_act, x_pc_act = mean_std_eval_acc(bp_act_noise, samples)
-mean_pc_err_inpt, std_obs_err_inpt, x_pc_err_inpt = mean_std_eval_acc(bp_err_inpt_noise, samples)
-mean_pc_err_weight, std_obs_err_weight, x_pc_err_weight = mean_std_eval_acc(bp_err_weight_noise, samples)
+mean_pc_err_inpt, std_obs_err_inpt, x_pc_err_inpt = mean_std_eval_acc(
+    bp_err_inpt_noise, samples
+)
+mean_pc_err_weight, std_obs_err_weight, x_pc_err_weight = mean_std_eval_acc(
+    bp_err_weight_noise, samples
+)
 
-mean_pc_weight_bwd, std_obs_weight_bwd, x_pc_weight_bwd = mean_std_eval_acc(bp_weight_bwd_noise, samples)
-mean_pc_act_bwd, std_obs_act_bwd, x_pc_act_bwd = mean_std_eval_acc(bp_act_bwd_noise, samples)
+mean_pc_weight_bwd, std_obs_weight_bwd, x_pc_weight_bwd = mean_std_eval_acc(
+    bp_weight_bwd_noise, samples
+)
+mean_pc_act_bwd, std_obs_act_bwd, x_pc_act_bwd = mean_std_eval_acc(
+    bp_act_bwd_noise, samples
+)
 
 # Plot PC
 
@@ -207,12 +219,15 @@ ax.fill_between(
 
 ax.plot(x_pc_act_bwd, mean_pc_act_bwd, label="Activation BWD")
 ax.fill_between(
-    x_pc_act_bwd, mean_pc_act_bwd - std_obs_act_bwd, mean_pc_act_bwd + std_obs_act_bwd, alpha=0.1
+    x_pc_act_bwd,
+    mean_pc_act_bwd - std_obs_act_bwd,
+    mean_pc_act_bwd + std_obs_act_bwd,
+    alpha=0.1,
 )
 
 
-#ax.set_xscale('log')
-#ax.set_yscale('log')
+# ax.set_xscale('log')
+# ax.set_yscale('log')
 plt.legend(
     bbox_to_anchor=(0.5, 1.2), loc="upper center", ncol=2, frameon=False
 )

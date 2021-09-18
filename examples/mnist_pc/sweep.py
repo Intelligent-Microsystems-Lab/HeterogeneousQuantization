@@ -7,7 +7,9 @@ import numpy as np
 parser = argparse.ArgumentParser(
     description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
-parser.add_argument("--parameter", type=str, default="weight_noise", help="Random Seed")
+parser.add_argument(
+    "--parameter", type=str, default="weight_noise", help="Random Seed"
+)
 parser.add_argument("--start", type=float, default=None, help="Random Seed")
 parser.add_argument("--stop", type=float, default=None, help="Random Seed")
 parser.add_argument("--step", type=float, default=None, help="Random Seed")
@@ -36,7 +38,7 @@ seed_list = [
 if args.start is not None:
   val_sweep = np.arange(start=args.start, stop=args.stop, step=args.step)
 elif args.list is not None:
-  val_sweep = [float(x) for x in args.list.split(',')]
+  val_sweep = [float(x) for x in args.list.split(",")]
 
 if __name__ == "__main__":
   # creat result dir

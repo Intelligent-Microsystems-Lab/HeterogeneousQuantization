@@ -16,28 +16,28 @@ on: [push, pull_request]
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # This workflow contains a single job called "build"
-  # lint:
-  #   # The type of runner that the job will run on
-  #   runs-on: ubuntu-latest
-  #   strategy:
-  #     matrix:
-  #       python-version: [3.7]
+  lint:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.7]
 
-  #   # Steps represent a sequence of tasks that will be executed as part of the job
-  #   steps:
-  #     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-  #     - uses: actions/checkout@v2
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
 
-  #     - name: Set up Python ${{ matrix.python-version }}
-  #       uses: actions/setup-python@v2
-  #       with:
-  #         python-version: ${{ matrix.python-version }}
-  #     - name: Install dependencies
-  #       run: |
-  #         pip install flake8
-  #     - name: Lint with flake8 
-  #       run: |
-  #         flake8 --ignore=E203,W503,E111,E114 *.py
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          pip install flake8
+      - name: Lint with flake8 
+        run: |
+          flake8 --ignore=W503,E111,E114 *.py
   typecheck_pytype:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
@@ -87,3 +87,4 @@ jobs:
           python rtrl_test.py
           python pc_rtrl_test.py
           python rtrl_test.py
+          python quant_test.py

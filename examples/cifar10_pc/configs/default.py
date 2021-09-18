@@ -25,8 +25,6 @@ def get_config():
   config.num_classes = 10
   # config.label_smoothing = 0.1
 
-
-
   # noise config
   config.weight_noise = 0.0
   config.act_noise = 0.0

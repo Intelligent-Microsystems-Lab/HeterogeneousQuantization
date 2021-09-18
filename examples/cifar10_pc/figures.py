@@ -20,7 +20,6 @@ pc_err_weight_noise = (
 )
 
 
-
 bp_weight_noise = (
     "/afs/crc.nd.edu/user/c/cschaef6/cifar10_noise_sweeps/weight_noise_bp"
 )
@@ -33,7 +32,6 @@ bp_err_inpt_noise = (
 bp_err_weight_noise = (
     "/afs/crc.nd.edu/user/c/cschaef6/cifar10_noise_sweeps/err_weight_noise_bp"
 )
-
 
 
 def read_tfevents(path):
@@ -54,12 +52,14 @@ def read_data_from_dir(path):
 
   for subdir in glob(path + "/*"):
     if len(glob(subdir + "/*tfevents*")) >= 1:
-      if float(subdir.split("/")[-1].split('_')[0]) in data:
-        data[float(subdir.split("/")[-1].split('_')[0])].append(read_tfevents(glob(subdir + "/*tfevents*")[0]))
+      if float(subdir.split("/")[-1].split("_")[0]) in data:
+        data[float(subdir.split("/")[-1].split("_")[0])].append(
+            read_tfevents(glob(subdir + "/*tfevents*")[0])
+        )
       else:
-        data[float(subdir.split("/")[-1].split('_')[0])] = [read_tfevents(
-            glob(subdir + "/*tfevents*")[0]
-        )]
+        data[float(subdir.split("/")[-1].split("_")[0])] = [
+            read_tfevents(glob(subdir + "/*tfevents*")[0])
+        ]
 
   return data
 
@@ -74,18 +74,21 @@ def mean_std_eval_acc(path, samples):
   for i, val in data.items():
     if val == {}:
       continue
-    
-    
+
     sub_sample = []
     for sub_val in val:
-      sub_sample.append( np.sort(sub_val["eval_accuracy"])[-samples:] )
+      sub_sample.append(np.sort(sub_val["eval_accuracy"])[-samples:])
 
     x_obs.append(i)
     mean_obs.append(np.mean(sub_sample))
     std_obs.append(np.std(sub_sample))
 
   idx = np.argsort(x_obs)
-  return np.array(mean_obs)[idx], np.array(std_obs)[idx], np.array(x_obs)[idx]
+  return (
+      np.array(mean_obs)[idx],
+      np.array(std_obs)[idx],
+      np.array(x_obs)[idx],
+  )
 
 
 samples = 1
@@ -102,7 +105,7 @@ mean_pc_err_weight, std_obs_err_weight, x_pc_err_weight = mean_std_eval_acc(
 
 # Plot PC
 
-#def plot_figure()
+# def plot_figure()
 fig, ax = plt.subplots(figsize=(8, 5.5))
 ax.spines["top"].set_visible(False)
 ax.spines["right"].set_visible(False)

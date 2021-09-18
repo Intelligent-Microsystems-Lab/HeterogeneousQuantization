@@ -7,7 +7,6 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import functools
 
 import jax
 import jax.numpy as jnp
@@ -189,7 +188,6 @@ class UnitTests(parameterized.TestCase):
     rng = jax.random.PRNGKey(0)
 
     x = np.load("unit_test/unit_test_fc/dataset_x.npy")
-    y = np.load("unit_test/unit_test_fc/dataset_y.npy")
 
     l1w = np.load("unit_test/unit_test_fc/layer_0_weights.npy")
     l2w = np.load("unit_test/unit_test_fc/layer_1_weights.npy")
@@ -197,10 +195,6 @@ class UnitTests(parameterized.TestCase):
     out_ref = np.load("unit_test/unit_test_fc/out_train.npy")
 
     train_x = x[:128]
-    train_y = y[:128]
-
-    test_x = x[128:]
-    test_y = y[128:]
 
     class test_pc_nn(PC_NN):
       def setup(self):
@@ -251,9 +245,6 @@ class UnitTests(parameterized.TestCase):
 
     train_x = x[:128]
     train_y = y[:128]
-
-    test_x = x[128:]
-    test_y = y[128:]
 
     class test_pc_nn(PC_NN):
       def setup(self):
@@ -363,9 +354,6 @@ class UnitTests(parameterized.TestCase):
     train_x = x[:128]
     train_y = y[:128]
 
-    test_x = x[128:]
-    test_y = y[128:]
-
     class test_pc_nn(PC_NN):
       def setup(self):
         self.layers = [
@@ -413,7 +401,6 @@ class UnitTests(parameterized.TestCase):
     rng = jax.random.PRNGKey(0)
 
     x = np.load("unit_test/unit_test_conv/dataset_x.npy")
-    y = np.load("unit_test/unit_test_conv/dataset_y.npy")
 
     l1w = np.load("unit_test/unit_test_conv/layer_0_weights.npy")
     l2w = np.load("unit_test/unit_test_conv/layer_1_weights.npy")
@@ -421,10 +408,6 @@ class UnitTests(parameterized.TestCase):
     out_ref = np.load("unit_test/unit_test_conv/out_train.npy")
 
     train_x = jnp.moveaxis(x[:128], (0, 1, 2, 3), (0, 3, 2, 1))
-    train_y = jnp.moveaxis(y[:128], (0, 1, 2, 3), (0, 3, 2, 1))
-
-    test_x = jnp.moveaxis(x[128:], (0, 1, 2, 3), (0, 3, 2, 1))
-    test_y = jnp.moveaxis(y[128:], (0, 1, 2, 3), (0, 3, 2, 1))
 
     class test_pc_nn(PC_NN):
       def setup(self):
@@ -488,11 +471,6 @@ class UnitTests(parameterized.TestCase):
 
     train_x = jnp.moveaxis(x[:128], (0, 1, 2, 3), (0, 3, 2, 1))
     train_y = jnp.moveaxis(y[:128], (0, 1, 2, 3), (0, 3, 2, 1)).astype(
-        jnp.int8
-    )
-
-    test_x = jnp.moveaxis(x[128:], (0, 1, 2, 3), (0, 3, 2, 1))
-    test_y = jnp.moveaxis(y[128:], (0, 1, 2, 3), (0, 3, 2, 1)).astype(
         jnp.int8
     )
 
@@ -578,11 +556,6 @@ class UnitTests(parameterized.TestCase):
         jnp.int8
     )
 
-    test_x = jnp.moveaxis(x[128:], (0, 1, 2, 3), (0, 3, 2, 1))
-    test_y = jnp.moveaxis(y[128:], (0, 1, 2, 3), (0, 3, 2, 1)).astype(
-        jnp.int8
-    )
-
     class test_pc_nn(PC_NN):
       def setup(self):
         self.layers = [
@@ -660,7 +633,11 @@ class UnitTests(parameterized.TestCase):
     variables = test_dense.init(rng1, data, rng2)
     state, params = variables.pop("params")
     out_d, state_out = test_dense.apply(
-        {"params": params, **state}, data, rng3, mutable=list(state.keys()),)
+        {"params": params, **state},
+        data,
+        rng3,
+        mutable=list(state.keys()),
+    )
 
     # test for mean
     np.testing.assert_allclose(
@@ -677,7 +654,12 @@ class UnitTests(parameterized.TestCase):
     )
 
     grads_wrt_weights, state_out2 = test_dense.apply(
-        {"params": params, **state}, jnp.ones_like(out_d), rng4, mutable=list(state.keys()), method=test_dense.grads,)
+        {"params": params, **state},
+        jnp.ones_like(out_d),
+        rng4,
+        mutable=list(state.keys()),
+        method=test_dense.grads,
+    )
 
     # test for mean
     np.testing.assert_allclose(
@@ -692,27 +674,6 @@ class UnitTests(parameterized.TestCase):
         jnp.sqrt((1 / 12 * (noise * 2) ** 2) * examples),
         rtol=numerical_tolerance,
     )
-
-    # state = unfreeze(state)
-    # state['pc']['out'] = jnp.ones_like(state['pc']['out'])
-    # state = freeze(state)
-
-    # (pe, _), _ = test_dense.apply({"params": params, **state}, jnp.ones_like(
-    #     out_d), data, rng4, mutable=list(state.keys()), method=test_dense.infer,)
-
-    # # test for mean
-    # np.testing.assert_allclose(
-    #     1+jnp.mean(pe),
-    #     1+0,
-    #     rtol=numerical_tolerance,
-    # )
-
-    # # test for variance
-    # np.testing.assert_allclose(
-    #     jnp.std(pe),
-    #     np.sqrt((2*noise)**2/12),
-    #     rtol=numerical_tolerance,
-    # )
 
   @parameterized.named_parameters(*dense_weight_noise_data())
   def test_weight_noise(
@@ -746,7 +707,11 @@ class UnitTests(parameterized.TestCase):
     variables = test_dense.init(rng1, data, rng2)
     state, params = variables.pop("params")
     out_d, state_out = test_dense.apply(
-        {"params": params, **state}, data, rng3, mutable=list(state.keys()),)
+        {"params": params, **state},
+        data,
+        rng3,
+        mutable=list(state.keys()),
+    )
 
     # test for mean
     np.testing.assert_allclose(
@@ -763,11 +728,17 @@ class UnitTests(parameterized.TestCase):
     )
 
     state = unfreeze(state)
-    state['pc']['value'] = jnp.zeros_like(state['pc']['value'])
+    state["pc"]["value"] = jnp.zeros_like(state["pc"]["value"])
     state = freeze(state)
 
-    (_, grads_wrt_inpt), _ = test_dense.apply({"params": params, **state}, jnp.ones_like(
-        out_d), jnp.zeros_like(data), rng4, mutable=list(state.keys()), method=test_dense.infer,)
+    (_, grads_wrt_inpt), _ = test_dense.apply(
+        {"params": params, **state},
+        jnp.ones_like(out_d),
+        jnp.zeros_like(data),
+        rng4,
+        mutable=list(state.keys()),
+        method=test_dense.infer,
+    )
 
     # test for mean
     np.testing.assert_allclose(
@@ -815,14 +786,24 @@ class UnitTests(parameterized.TestCase):
     variables = test_dense.init(rng1, data, rng2)
     state, params = variables.pop("params")
     out_d, state_out = test_dense.apply(
-        {"params": params, **state}, data, rng3, mutable=list(state.keys()),)
+        {"params": params, **state},
+        data,
+        rng3,
+        mutable=list(state.keys()),
+    )
 
     state = unfreeze(state)
-    state['pc']['value'] = jnp.zeros_like(state['pc']['value'])
+    state["pc"]["value"] = jnp.zeros_like(state["pc"]["value"])
     state = freeze(state)
 
-    (_, grads_wrt_inpt), _ = test_dense.apply({"params": params, **state}, jnp.ones_like(
-        out_d), jnp.zeros_like(data), rng4, mutable=list(state.keys()), method=test_dense.infer,)
+    (_, grads_wrt_inpt), _ = test_dense.apply(
+        {"params": params, **state},
+        jnp.ones_like(out_d),
+        jnp.zeros_like(data),
+        rng4,
+        mutable=list(state.keys()),
+        method=test_dense.infer,
+    )
 
     # test for mean
     np.testing.assert_allclose(
@@ -870,10 +851,19 @@ class UnitTests(parameterized.TestCase):
     variables = test_dense.init(rng1, data, rng2)
     state, params = variables.pop("params")
     out_d, state_out = test_dense.apply(
-        {"params": params, **state}, data, rng3, mutable=list(state.keys()),)
+        {"params": params, **state},
+        data,
+        rng3,
+        mutable=list(state.keys()),
+    )
 
     grads_wrt_weights, state_out2 = test_dense.apply(
-        {"params": params, **state}, jnp.ones_like(out_d), rng4, mutable=list(state.keys()), method=test_dense.grads,)
+        {"params": params, **state},
+        jnp.ones_like(out_d),
+        rng4,
+        mutable=list(state.keys()),
+        method=test_dense.grads,
+    )
 
     # test for mean
     np.testing.assert_allclose(

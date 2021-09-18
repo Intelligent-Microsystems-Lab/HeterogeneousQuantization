@@ -10,11 +10,11 @@ def get_config():
   config = ml_collections.ConfigDict()
 
   config.seed = 203853699
-  #config.work_dir = (
+  # config.work_dir = (
   #    "../../../training_dir/cifar10_pc-{date:%Y-%m-%d_%H-%M-%S}/".format(
   #        date=datetime.datetime.now()
   #    )
-  #)
+  # )
   config.batch_size = 32
   config.num_epochs = 10
   # config.warmup_epochs = 5
@@ -36,10 +36,10 @@ def get_config():
   config.err_inpt_noise = 0.0
   config.err_weight_noise = 0.0
 
-  config.ds = 'fashion_mnist'
+  config.ds = "fashion_mnist"
   config.num_classes = 10
-  config.ds_xdim = 28 
-  config.ds_ydim = 28 
-  config.ds_channels = 1 
+  config.ds_xdim = 28
+  config.ds_ydim = 28
+  config.ds_channels = 1
 
   return config

@@ -55,6 +55,7 @@ def dropout(x, rate, rng):
   mask = jax.random.bernoulli(rng, p=rate, shape=x.shape)
   return jax.lax.select(mask, x / rate, jnp.zeros_like(x))
 
+
 class LeNet_BP(nn.Module):
   # LeNet with ReLU activations
   config: dict = None
@@ -115,9 +116,9 @@ class LeNet_BP(nn.Module):
 
 
 def cross_entropy_loss(logits, targt):
-  #targt = targt * (1.0 - cfg.label_smoothing) + (
+  # targt = targt * (1.0 - cfg.label_smoothing) + (
   #    cfg.label_smoothing / cfg.num_classes
-  #)
+  # )
 
   logits = jax.nn.log_softmax(logits, axis=-1)
 
@@ -205,10 +206,10 @@ def train_and_evaluate(cfg, workdir):
   # summary_writer.hparams(cfg)
   cfg = FrozenConfigDict(cfg)
   writer_train = metric_writers.create_default_writer(
-      logdir=workdir+'/train', just_logging=jax.process_index() != 0
+      logdir=workdir + "/train", just_logging=jax.process_index() != 0
   )
   writer_eval = metric_writers.create_default_writer(
-      logdir=workdir+'/eval', just_logging=jax.process_index() != 0
+      logdir=workdir + "/eval", just_logging=jax.process_index() != 0
   )
   writer_train.write_hparams(cfg)
 
@@ -223,13 +224,13 @@ def train_and_evaluate(cfg, workdir):
   rng, p_rng, subkey = jax.random.split(rng, 3)
 
   variables = nn_cifar10.init(
-      p_rng, jnp.ones((cfg.batch_size, cfg.ds_xdim, cfg.ds_ydim, cfg.ds_channels)), subkey
+      p_rng,
+      jnp.ones((cfg.batch_size, cfg.ds_xdim, cfg.ds_ydim, cfg.ds_channels)),
+      subkey,
   )
   state, params = variables.pop("params")
 
-  optimizer = optim.Adam(learning_rate=cfg.learning_rate).create(
-      params
-  )
+  optimizer = optim.Adam(learning_rate=cfg.learning_rate).create(params)
   learning_rate_fn = (None,)  # create_cosine_learning_rate_schedule(
   #    cfg.learning_rate,
   #    len(ds_train),
@@ -276,7 +277,7 @@ def train_and_evaluate(cfg, workdir):
     train_metrics = common_utils.stack_forest(train_metrics)
     train_metrics = jax.tree_map(lambda x: x.mean(), train_metrics)
 
-    writer_eval.write_scalars(step + 1,  eval_metrics)
+    writer_eval.write_scalars(step + 1, eval_metrics)
     writer_train.write_scalars(step + 1, train_metrics)
     # logging.info(
     #    "step: %d, train_loss: %.4f, train_accuracy: %.4f, "

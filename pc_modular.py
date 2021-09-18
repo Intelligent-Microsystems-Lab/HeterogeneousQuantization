@@ -37,7 +37,7 @@ Dtype = Any
 Array = Any
 
 
-def get_noise(x, percentage, rng):
+def get_noise(x: Array, percentage: float, rng: PRNGKey) -> Array:
   return (
       jnp.max(jnp.abs(x))
       * percentage
@@ -525,7 +525,9 @@ class DensePC(nn.Module):
 
     subkey1, subkey2 = jax.random.split(rng, 2)
     if self.config is not None and "weight_noise" in self.config:
-      kernel = kernel + get_noise(kernel, self.config["weight_noise"], subkey1)
+      kernel = kernel + get_noise(
+          kernel, self.config["weight_noise"], subkey1
+      )
 
     if self.config is not None and "act_noise" in self.config:
       inpt = inpt + get_noise(inpt, self.config["act_noise"], subkey2)
@@ -550,7 +552,9 @@ class DensePC(nn.Module):
     subkey1, subkey2, subkey3 = jax.random.split(rng, 3)
 
     if self.config is not None and "weight_noise" in self.config:
-      kernel = kernel + get_noise(kernel, self.config["weight_noise"], subkey1)
+      kernel = kernel + get_noise(
+          kernel, self.config["weight_noise"], subkey1
+      )
 
     if self.config is not None and "val_noise" in self.config:
       val = val + get_noise(val, self.config["val_noise"], subkey2)
@@ -562,8 +566,9 @@ class DensePC(nn.Module):
       err_prev = deriv * err_prev
 
     if self.config is not None and "err_inpt_noise" in self.config:
-      err_prev = err_prev + \
-          get_noise(err_prev, self.config["err_inpt_noise"], subkey3)
+      err_prev = err_prev + get_noise(
+          err_prev, self.config["err_inpt_noise"], subkey3
+      )
 
     err = jnp.dot(err_prev, jnp.transpose(kernel))
     pred -= self.config.infer_lr * (pred_err - err)
@@ -583,7 +588,9 @@ class DensePC(nn.Module):
       err = deriv * err
 
     if self.config is not None and "err_weight_noise" in self.config:
-      err = err + get_noise(err, self.config["err_weight_noise"], subkey2)
+      err = err + get_noise(
+          err, self.config["err_weight_noise"], subkey2
+      )
 
     return {"kernel": jnp.dot(jnp.transpose(val), err)}
 
@@ -647,29 +654,29 @@ class PC_NN(nn.Module):
   def setup(self):
     self.layers = []
 
-  def __call__(self, x, rng, err_init=False):
+  def __call__(self, x: Array, rng: PRNGKey, err_init: bool = False) -> Array:
     err = {}
-    for l in self.layers:
+    for layer in self.layers:
       rng, subkey = jax.random.split(rng, 2)
-      x = l(x, subkey)
-      err[l.name] = jnp.zeros_like(x)
+      x = layer(x, subkey)
+      err[layer.name] = jnp.zeros_like(x)
 
     if err_init:
       return x, err
 
     return x
 
-  def grads(self, x, y, rng):
+  def grads(self, x: Array, y: Array, rng: PRNGKey) -> FrozenDict:
     rng, subkey1, subkey2 = jax.random.split(rng, 3)
     out, err_init = self.__call__(x, subkey1, err_init=True)
     err = self.inference(y, out, subkey2, err_init)
 
     grads = {}
-    for l in self.layers:
+    for layer in self.layers:
       rng, subkey = jax.random.split(rng, 2)
-      g_temp = l.grads(err[l.name], subkey)
+      g_temp = layer.grads(err[layer.name], subkey)
       if g_temp != {}:
-        grads[l.name] = g_temp
+        grads[layer.name] = g_temp
 
     return FrozenDict(jax.tree_map(lambda x: -1 * x, grads)), out
 
@@ -683,12 +690,12 @@ class PC_NN(nn.Module):
     def scan_fn(carry, _):
       pred, err, rng = carry
       t_err = err_fin
-      for l, l_name in zip(
+      for layer, l_name in zip(
           self.layers[1:][::-1], layer_names[:-1][::-1]
       ):
         rng, subkey = jax.random.split(rng, 2)
-        t_err, pred[l.name]["value"] = l.infer(
-            t_err, pred[l.name]["value"], subkey
+        t_err, pred[layer.name]["value"] = layer.infer(
+            t_err, pred[layer.name]["value"], subkey
         )
         err[l_name] = t_err
       return (pred, err, rng), None

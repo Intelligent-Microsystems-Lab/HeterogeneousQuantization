@@ -9,7 +9,6 @@ from typing import Any, Callable, Iterable, Optional, Tuple, Union
 
 import jax.numpy as jnp
 import numpy as np
-from jax import lax
 import jax
 
 from jax._src.lax.lax import (
