@@ -24,11 +24,17 @@ def get_config():
   config.infer_steps = 100
   # config.label_smoothing = 0.1
 
+  # noise config
   config.weight_noise = 0.0
   config.act_noise = 0.0
+
+  config.weight_bwd_noise = 0.0
+  config.act_bwd_noise = 0.0
+
+  config.val_noise = 0.0
+
   config.err_inpt_noise = 0.0
   config.err_weight_noise = 0.0
-
 
   config.ds = 'fashion_mnist'
   config.num_classes = 10

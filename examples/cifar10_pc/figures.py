@@ -55,10 +55,7 @@ def read_data_from_dir(path):
   for subdir in glob(path + "/*"):
     if len(glob(subdir + "/*tfevents*")) >= 1:
       if float(subdir.split("/")[-1].split('_')[0]) in data:
-
-        data[float(subdir.split("/")[-1].split('_')[0])].append(read_tfevents(
-            glob(subdir + "/*tfevents*")[0]
-        ))
+        data[float(subdir.split("/")[-1].split('_')[0])].append(read_tfevents(glob(subdir + "/*tfevents*")[0]))
       else:
         data[float(subdir.split("/")[-1].split('_')[0])] = [read_tfevents(
             glob(subdir + "/*tfevents*")[0]

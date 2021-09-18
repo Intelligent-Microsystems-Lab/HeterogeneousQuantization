@@ -693,26 +693,26 @@ class UnitTests(parameterized.TestCase):
         rtol=numerical_tolerance,
     )
 
-    state = unfreeze(state)
-    state['pc']['out'] = jnp.ones_like(state['pc']['out'])
-    state = freeze(state)
+    # state = unfreeze(state)
+    # state['pc']['out'] = jnp.ones_like(state['pc']['out'])
+    # state = freeze(state)
 
-    (pe, _), _ = test_dense.apply({"params": params, **state}, jnp.ones_like(
-        out_d), data, rng4, mutable=list(state.keys()), method=test_dense.infer,)
+    # (pe, _), _ = test_dense.apply({"params": params, **state}, jnp.ones_like(
+    #     out_d), data, rng4, mutable=list(state.keys()), method=test_dense.infer,)
 
-    # test for mean
-    np.testing.assert_allclose(
-        1+jnp.mean(pe),
-        1+0,
-        rtol=numerical_tolerance,
-    )
+    # # test for mean
+    # np.testing.assert_allclose(
+    #     1+jnp.mean(pe),
+    #     1+0,
+    #     rtol=numerical_tolerance,
+    # )
 
-    # test for variance
-    np.testing.assert_allclose(
-        jnp.std(pe),
-        np.sqrt((2*noise)**2/12),
-        rtol=numerical_tolerance,
-    )
+    # # test for variance
+    # np.testing.assert_allclose(
+    #     jnp.std(pe),
+    #     np.sqrt((2*noise)**2/12),
+    #     rtol=numerical_tolerance,
+    # )
 
   @parameterized.named_parameters(*dense_weight_noise_data())
   def test_weight_noise(

@@ -52,15 +52,14 @@ def read_data_from_dir(path):
   data = {}
 
   for subdir in glob(path + "/*"):
-    if len(glob(subdir + "/*tfevents*")) >= 1:
+    if len(glob(subdir + "/eval/*tfevents*")) >= 1:
       if float(subdir.split("/")[-1].split('_')[0]) in data:
-
         data[float(subdir.split("/")[-1].split('_')[0])].append(read_tfevents(
-            glob(subdir + "/*tfevents*")[0]
+            glob(subdir + "/eval/*tfevents*")[0]
         ))
       else:
         data[float(subdir.split("/")[-1].split('_')[0])] = [read_tfevents(
-            glob(subdir + "/*tfevents*")[0]
+            glob(subdir + "/eval/*tfevents*")[0]
         )]
 
   return data
@@ -80,7 +79,7 @@ def mean_std_eval_acc(path, samples):
     
     sub_sample = []
     for sub_val in val:
-      sub_sample.append( np.sort(sub_val["eval_accuracy"])[-samples:] )
+      sub_sample.append( np.sort(sub_val["accuracy"])[-samples:] )
 
     x_obs.append(i)
     mean_obs.append(np.mean(sub_sample))

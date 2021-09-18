@@ -41,6 +41,8 @@ def dot_general(
     rng,
     weight_noise,
     act_noise,
+    weight_bwd_noise,
+    act_bwd_noise,
     err_inpt_noise,
     err_weight_noise,
 ):
@@ -59,6 +61,8 @@ def dot_general_fwd(
     rng,
     weight_noise,
     act_noise,
+    weight_bwd_noise,
+    act_bwd_noise,
     err_inpt_noise,
     err_weight_noise,
 ):
@@ -69,6 +73,8 @@ def dot_general_fwd(
       rng,
       weight_noise,
       act_noise,
+      weight_bwd_noise,
+      act_bwd_noise,
       err_inpt_noise,
       err_weight_noise,
   ), (
@@ -77,6 +83,8 @@ def dot_general_fwd(
       prng,
       weight_noise,
       act_noise,
+      weight_bwd_noise,
+      act_bwd_noise,
       err_inpt_noise,
       err_weight_noise,
   )
@@ -89,16 +97,18 @@ def dot_general_bwd(res, g):
       rng,
       weight_noise,
       act_noise,
+      weight_bwd_noise,
+      act_bwd_noise,
       err_inpt_noise,
       err_weight_noise,
   ) = res
   g_inpt = g_weight = g
 
   rng, prng = jax.random.split(rng, 2)
-  kernel = kernel + get_noise(kernel, weight_noise, prng)
+  kernel = kernel + get_noise(kernel, weight_bwd_noise, prng)
 
   rng, prng = jax.random.split(rng, 2)
-  inpt = inpt + get_noise(inpt, act_noise, prng)
+  inpt = inpt + get_noise(inpt, act_bwd_noise, prng)
 
   rng, prng = jax.random.split(rng, 2)
   g_inpt = g_inpt + get_noise(g_inpt, err_inpt_noise, prng)
@@ -110,7 +120,7 @@ def dot_general_bwd(res, g):
 
   g_kernel_fwd = jnp.dot(jnp.transpose(inpt), g_weight)
 
-  return (g_inpt_fwd, g_kernel_fwd, None, None, None, None, None)
+  return (g_inpt_fwd, g_kernel_fwd, None, None, None, None, None, None, None)
 
 
 dot_general.defvjp(dot_general_fwd, dot_general_bwd)
@@ -162,6 +172,18 @@ class QuantDense(Module):
     else:
       weight_noise = self.config["weight_noise"]
 
+
+    if self.config is None or "act_bwd_noise" not in self.config:
+      act_bwd_noise = 0.0
+    else:
+      act_bwd_noise = self.config["act_bwd_noise"]
+
+    if self.config is None or "weight_bwd_noise" not in self.config:
+      weight_bwd_noise = 0.0
+    else:
+      weight_bwd_noise = self.config["weight_bwd_noise"]
+
+
     if self.config is None or "err_inpt_noise" not in self.config:
       err_inpt_noise = 0.0
     else:
@@ -178,6 +200,8 @@ class QuantDense(Module):
         rng,
         jnp.array(weight_noise),
         jnp.array(act_noise),
+        jnp.array(weight_bwd_noise),
+        jnp.array(act_bwd_noise),
         jnp.array(err_inpt_noise),
         jnp.array(err_weight_noise),
     )
