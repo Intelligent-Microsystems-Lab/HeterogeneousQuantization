@@ -99,7 +99,8 @@ def dot_general_bwd(res: tuple, g: Array) -> tuple:
     g_inpt = signed_uniform_max_scale_quant_ste(g_inpt, cfg["err_inpt_bits"])
 
   if "err_weight_bits" in cfg:
-    g_weight = signed_uniform_max_scale_quant_ste(g_weight, cfg["err_weight_bits"])
+    g_weight = signed_uniform_max_scale_quant_ste(g_weight,
+                                                  cfg["err_weight_bits"])
 
   g_inpt_fwd = jnp.dot(g_inpt, jnp.transpose(kernel))
 
