@@ -626,7 +626,7 @@ class FlattenPC(nn.Module):
   config: dict = None
 
   @nn.module.compact
-  def __call__(self, inpt, rng):
+  def __call__(self, inpt: Array, rng: PRNGKey) -> Array:
     val = self.variable("pc", "value", jnp.zeros, ())
     val.value = inpt
 
@@ -634,14 +634,14 @@ class FlattenPC(nn.Module):
 
     return y
 
-  def infer(self, err_prev, pred, rng):
+  def infer(self, err_prev: Array, pred: Array, rng: PRNGKey) -> Array:
     val = self.get_variable("pc", "value")
 
     err = jnp.reshape(err_prev, val.shape)
 
     return err, jnp.zeros_like(pred)
 
-  def grads(self, err, rng):
+  def grads(self, err: Array, rng: PRNGKey) -> dict:
     return {}
 
 
@@ -666,7 +666,7 @@ class PC_NN(nn.Module):
 
     return x
 
-  def grads(self, x: Array, y: Array, rng: PRNGKey) -> FrozenDict:
+  def grads(self, x: Array, y: Array, rng: PRNGKey) -> tuple:
     rng, subkey1, subkey2 = jax.random.split(rng, 3)
     out, err_init = self.__call__(x, subkey1, err_init=True)
     err = self.inference(y, out, subkey2, err_init)
@@ -680,14 +680,14 @@ class PC_NN(nn.Module):
 
     return FrozenDict(jax.tree_map(lambda x: -1 * x, grads)), out
 
-  def inference(self, y, out, rng, err_init):
+  def inference(self, y: Array, out: Array, rng: PRNGKey, err_init: dict) -> dict:
     pred = unfreeze(self.variables["pc"])
     err_fin = -jax.grad(self.loss_fn)(out, y)
     layer_names = list(pred.keys())
 
     err_init[layer_names[-1]] = err_fin
 
-    def scan_fn(carry, _):
+    def scan_fn(carry: tuple, _) -> tuple:
       pred, err, rng = carry
       t_err = err_fin
       for layer, l_name in zip(
