@@ -6,7 +6,7 @@ MAIN_DIR="/afs/crc.nd.edu/user/c/cschaef6/mnist_noise_sweeps"
 USER="cschaef6"
 GPU_Q="gpu@@joshi"
 START="0."
-STOP=".2"
+STOP=".35"
 STEP="0.025"
 
 

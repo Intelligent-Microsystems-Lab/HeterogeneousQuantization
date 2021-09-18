@@ -9,12 +9,12 @@ def get_config():
   """Get the default hyperparameter configuration."""
   config = ml_collections.ConfigDict()
 
-  config.seed = 203853699
-  config.work_dir = (
-      "../../../training_dir/cifar10_pc-{date:%Y-%m-%d_%H-%M-%S}/".format(
-          date=datetime.datetime.now()
-      )
-  )
+  # config.seed = 203853699
+  # config.work_dir = (
+  #     "../../../training_dir/cifar10_pc-{date:%Y-%m-%d_%H-%M-%S}/".format(
+  #         date=datetime.datetime.now()
+  #     )
+  # )
   config.batch_size = 64
   config.num_epochs = 70
   # config.warmup_epochs = 5
