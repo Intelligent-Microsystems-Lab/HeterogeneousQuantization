@@ -339,8 +339,8 @@ ax.fill_between(
     alpha=0.1,
 )
 
-ax.set_xlable('Bits')
-ax.set_ylable('Eval Acc')
+ax.set_xlabel('Bits')
+ax.set_ylabel('Eval Acc')
 
 # ax.set_xscale('log')
 # ax.set_yscale('log')
