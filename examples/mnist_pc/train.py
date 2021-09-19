@@ -34,7 +34,7 @@ from configs.default import get_config
 # config.update("jax_disable_jit", True)
 
 sys.path.append("../..")
-from pc_modular import ConvolutionalPC, DensePC, FlattenPC, PC_NN  # noqa: E402
+from pc_modular import ConvolutionalPC, DensePC, FlattenPC, MaxPoolPC, PC_NN  # noqa: E402
 
 
 FLAGS = flags.FLAGS
@@ -51,42 +51,50 @@ config_flags.DEFINE_config_file(
 class test_pc_nn(PC_NN):
   def setup(self):
     self.layers = [
-        # ConvolutionalPC(
-        #     features=6,
-        #     kernel_size=(5, 5),
-        #     padding="VALID",
-        #     non_linearity=jax.nn.relu,
-        #     config=self.config,
-        # ),
-        # # x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
-        # ConvolutionalPC(
-        #     features=16,
-        #     kernel_size=(5, 5),
-        #     padding="VALID",
-        #     non_linearity=jax.nn.relu,
-        #     config=self.config,
-        # ),
-        # # x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
+        ConvolutionalPC(
+            features=32,
+            kernel_size=(3, 3),
+            strides=(2,2),
+            padding="VALID",
+            non_linearity=jax.nn.relu,
+            infer_lr=self.config.infer_lr,
+            config=self.config.quant,
+        ),
+        # MaxPoolPC(window_shape=(2, 2), strides=(2, 2)),
+
+        ConvolutionalPC(
+            features=64,
+            kernel_size=(3, 3),
+            strides=(2,2),
+            padding="VALID",
+            non_linearity=jax.nn.relu,
+            infer_lr=self.config.infer_lr,
+            config=self.config.quant,
+        ),
+        # MaxPoolPC(window_shape=(2, 2), strides=(2, 2)),
+
+
+        ConvolutionalPC(
+            features=64,
+            kernel_size=(3, 3),
+            padding="VALID",
+            non_linearity=jax.nn.relu,
+            infer_lr=self.config.infer_lr,
+            config=self.config.quant,
+        ),
+
         FlattenPC(config=self.config),
         DensePC(
-            features=1000,
+            features=64,
             non_linearity=jax.nn.relu,
-            config=self.config,
+            infer_lr=self.config.infer_lr,
+            cfg=self.config.quant,
         ),
         DensePC(
-            features=1000,
-            non_linearity=jax.nn.relu,
-            config=self.config,
-        ),
-        DensePC(
-            features=500,
-            non_linearity=jax.nn.relu,
-            config=self.config,
-        ),
-        DensePC(
-            features=10,
+            features=self.config.num_classes,
             non_linearity=None,
-            config=self.config,
+            infer_lr=self.config.infer_lr,
+            cfg=self.config.quant,
         ),
     ]
 
@@ -95,18 +103,19 @@ def mse(logits, target):
   return jnp.sum((logits - target) ** 2)
 
 
-# def cross_entropy_loss(logits, targt):
-#   targt = targt * (1.0 - cfg.label_smoothing) + (
-#       cfg.label_smoothing / cfg.num_classes
-#   )
+def cross_entropy_loss(logits, targt):
 
-#   logits = jax.nn.log_softmax(logits, axis=-1)
+  logits = jax.nn.log_softmax(logits, axis=-1)
 
-#   return -jnp.mean(jnp.sum(targt * logits, axis=-1))
+  return -jnp.mean(jnp.sum(targt * logits, axis=-1))
+
+
+def mse(logits, target):
+  return jnp.sum((logits - target) ** 2)
 
 
 def compute_metrics(logits, labels):
-  loss = mse(logits, labels)
+  loss = cross_entropy_loss(logits, labels)
 
   accuracy = jnp.mean(
       jnp.argmax(logits, axis=-1) == jnp.argmax(labels, axis=-1)
@@ -160,7 +169,7 @@ def normalize_img(image, label):
 
 def get_ds(split, cfg):
   (ds,), ds_info = tfds.load(
-      "svhn_cropped",
+      cfg.ds,
       split=[split],
       shuffle_files=True,
       as_supervised=True,
@@ -176,18 +185,21 @@ def get_ds(split, cfg):
 
 
 def train_and_evaluate(cfg, workdir):
-  # summary_writer = tensorboard.SummaryWriter(work_dir)
-  # summary_writer.hparams(cfg)
   cfg = FrozenConfigDict(cfg)
-  writer = metric_writers.create_default_writer(
-      logdir=workdir, just_logging=jax.process_index() != 0
+  writer_train = metric_writers.create_default_writer(
+      logdir=workdir + "/train", just_logging=jax.process_index() != 0
   )
-  writer.write_hparams(cfg)
+  writer_eval = metric_writers.create_default_writer(
+      logdir=workdir + "/eval", just_logging=jax.process_index() != 0
+  )
 
-  nn_cifar10 = test_pc_nn(config=cfg, loss_fn=mse)
+  writer_train.write_hparams(
+      {k: v for k, v in cfg.items() if k not in ["quant"]}
+  )
+  writer_train.write_hparams(cfg.quant)
+
+  nn_cifar10 = test_pc_nn(config=cfg, loss_fn=cross_entropy_loss)
   nn_fn = nn_cifar10.apply
-  # with open(cfg.work_dir+'/config.json', 'w') as f:
-  #  json.dump(cfg, f)
 
   # get data set
   ds_train = get_ds("train", cfg)
@@ -197,23 +209,14 @@ def train_and_evaluate(cfg, workdir):
   rng, p_rng, subkey = jax.random.split(rng, 3)
 
   variables = nn_cifar10.init(
-      p_rng, jnp.ones((cfg.batch_size, 32, 32, 3)), subkey
+      p_rng,
+      jnp.ones((cfg.batch_size, cfg.ds_xdim, cfg.ds_ydim, cfg.ds_channels)),
+      subkey,
   )
   state, params = variables.pop("params")
 
-  optimizer = optim.GradientDescent(learning_rate=cfg.learning_rate).create(
-      params
-  )
-  learning_rate_fn = (None,)  # create_cosine_learning_rate_schedule(
-  #    cfg.learning_rate,
-  #    len(ds_train),
-  #    cfg.num_epochs,
-  #    warmup_length=cfg.warmup_epochs,
-  # )
-
-  # Training loop.
-  # logging.info(cfg)
-  # logging.info(jax.devices())
+  optimizer = optim.Adam(learning_rate=cfg.learning_rate).create(params)
+  learning_rate_fn = (None,)
 
   for step in range(cfg.num_epochs):
     # Do a batch of SGD.
@@ -231,8 +234,6 @@ def train_and_evaluate(cfg, workdir):
           subkey,
           cfg,
       )
-      metrics["accuracy"] = float(metrics["accuracy"])
-      metrics["loss"] = float(metrics["loss"])
       metrics["time"] = time.time() - t_start
       train_metrics.append(metrics)
 
@@ -250,21 +251,11 @@ def train_and_evaluate(cfg, workdir):
     train_metrics = common_utils.stack_forest(train_metrics)
     train_metrics = jax.tree_map(lambda x: x.mean(), train_metrics)
 
-    writer.write_scalars(
-        step + 1, {f"eval_{key}": val for key, val in eval_metrics.items()}
-    )
-    writer.write_scalars(step + 1, train_metrics)
-    # logging.info(
-    #    "step: %d, train_loss: %.4f, train_accuracy: %.4f, "
-    #    "test_loss: %.4f, test_accuracy: %.4f, time train batch: %.4f s",
-    #    (step + 1),
-    #    train_metrics["loss"],
-    #    train_metrics["accuracy"],
-    #    eval_metrics["loss"],
-    #    eval_metrics["accuracy"],
-    #    train_metrics["time"],
-    # )
-    writer.flush()
+    writer_eval.write_scalars(step + 1, eval_metrics)
+    writer_train.write_scalars(step + 1, train_metrics)
+
+    writer_eval.flush()
+    writer_train.flush()
 
 
 def main(argv):

@@ -67,21 +67,23 @@ class LeNet_BP(nn.Module):
     x = QuantConv(
         features=32,
         kernel_size=(3, 3),
+        strides=(2,2),
         padding="VALID",
         config=self.config.quant,
     )(x, subkey)
     x = nn.relu(x)
-    x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
+    # x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
 
     rng, subkey = jax.random.split(rng, 2)
     x = QuantConv(
         features=64,
         kernel_size=(3, 3),
+        strides=(2,2),
         padding="VALID",
         config=self.config.quant,
     )(x, subkey)
     x = nn.relu(x)
-    x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
+    # x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
 
     rng, subkey = jax.random.split(rng, 2)
     x = QuantConv(
@@ -193,8 +195,6 @@ def get_ds(split, cfg):
 
 
 def train_and_evaluate(cfg, workdir):
-  # summary_writer = tensorboard.SummaryWriter(work_dir)
-  # summary_writer.hparams(cfg)
   cfg = FrozenConfigDict(cfg)
   writer_train = metric_writers.create_default_writer(
       logdir=workdir + "/train", just_logging=jax.process_index() != 0
