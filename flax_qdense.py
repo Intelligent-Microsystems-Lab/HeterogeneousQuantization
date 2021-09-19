@@ -12,7 +12,7 @@ from typing import (
 
 
 from flax.linen.module import Module, compact
-from flax.linen.initializers import lecun_normal, zeros
+from flax.linen.initializers import lecun_normal  # , zeros
 
 import ml_collections
 
@@ -134,11 +134,11 @@ class QuantDense(Module):
   """
 
   features: int
-  #use_bias: bool = True
+  # use_bias: bool = True
   dtype: Any = jnp.float32
   precision: Any = None
   kernel_init: Callable[[PRNGKey, Shape, Dtype], Array] = default_kernel_init
-  #bias_init: Callable[[PRNGKey, Shape, Dtype], Array] = zeros
+  # bias_init: Callable[[PRNGKey, Shape, Dtype], Array] = zeros
   config: dict = ml_collections.FrozenConfigDict({})
 
   @compact

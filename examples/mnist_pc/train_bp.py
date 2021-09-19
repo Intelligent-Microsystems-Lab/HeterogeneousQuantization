@@ -73,7 +73,6 @@ class LeNet_BP(nn.Module):
     x = nn.relu(x)
     x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
 
-
     rng, subkey = jax.random.split(rng, 2)
     x = QuantConv(
         features=64,
@@ -84,7 +83,6 @@ class LeNet_BP(nn.Module):
     x = nn.relu(x)
     x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
 
-
     rng, subkey = jax.random.split(rng, 2)
     x = QuantConv(
         features=64,
@@ -94,9 +92,7 @@ class LeNet_BP(nn.Module):
     )(x, subkey)
     x = nn.relu(x)
 
-
     x = x.reshape((x.shape[0], -1))
-
 
     rng, subkey = jax.random.split(rng, 2)
     x = QuantDense(
@@ -104,7 +100,6 @@ class LeNet_BP(nn.Module):
         config=self.config.quant,
     )(x, subkey)
     x = nn.relu(x)
-
 
     rng, subkey = jax.random.split(rng, 2)
     x = QuantDense(
