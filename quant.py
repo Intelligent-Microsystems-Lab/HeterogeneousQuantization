@@ -5,12 +5,14 @@ from typing import Any
 
 
 Array = Any
+PRNGKey = Any
 
 
 def signed_uniform_max_scale_quant_ste(x: Array, bits: int) -> Array:
   if type(bits) == int:
-    assert bits > 1, "Bit widths below 2 bits are not supported but got: " + \
-        str(bits)
+    assert (
+        bits > 1
+    ), "Bit widths below 2 bits are not supported but got: " + str(bits)
 
   scale = jnp.max(jnp.abs(x))
 
@@ -23,3 +25,11 @@ def signed_uniform_max_scale_quant_ste(x: Array, bits: int) -> Array:
   xq = xq * scale
 
   return x - jax.lax.stop_gradient(x - xq)
+
+
+def get_noise(x: Array, percentage: float, rng: PRNGKey) -> Array:
+  return (
+      jnp.max(jnp.abs(x))
+      * percentage
+      * jax.random.uniform(rng, x.shape, minval=-1, maxval=1.0)
+  )

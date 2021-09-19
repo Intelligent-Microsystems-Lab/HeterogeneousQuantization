@@ -40,15 +40,10 @@ bp_act_bwd_noise = (
 )
 
 
-
-
-
 bp_weight_bits = (
     "/afs/crc.nd.edu/user/c/cschaef6/mnist_noise_sweeps/weight_bits_bp"
 )
-bp_act_bits = (
-    "/afs/crc.nd.edu/user/c/cschaef6/mnist_noise_sweeps/act_bits_bp"
-)
+bp_act_bits = "/afs/crc.nd.edu/user/c/cschaef6/mnist_noise_sweeps/act_bits_bp"
 bp_err_inpt_bits = (
     "/afs/crc.nd.edu/user/c/cschaef6/mnist_noise_sweeps/err_inpt_bits_bp"
 )
@@ -260,14 +255,6 @@ def mean_std_eval_acc(path, samples):
 # plt.close()
 
 
-
-
-
-
-
-
-
-
 samples = 1
 mean_pc_weight, std_obs_weight, x_pc_weight = mean_std_eval_acc(
     bp_weight_bits, samples
@@ -339,8 +326,8 @@ ax.fill_between(
     alpha=0.1,
 )
 
-ax.set_xlabel('Bits')
-ax.set_ylabel('Eval Acc')
+ax.set_xlabel("Bits")
+ax.set_ylabel("Eval Acc")
 
 # ax.set_xscale('log')
 # ax.set_yscale('log')

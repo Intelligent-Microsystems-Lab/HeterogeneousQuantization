@@ -210,7 +210,8 @@ def train_and_evaluate(cfg, workdir):
   )
 
   writer_train.write_hparams(
-      {k: v for k, v in cfg.items() if k not in ['quant']})
+      {k: v for k, v in cfg.items() if k not in ["quant"]}
+  )
   writer_train.write_hparams(cfg.quant)
 
   nn_cifar10 = LeNet_BP(config=cfg)

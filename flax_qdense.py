@@ -19,7 +19,7 @@ import ml_collections
 import jax
 import jax.numpy as jnp
 
-from quant import signed_uniform_max_scale_quant_ste
+from quant import get_noise, signed_uniform_max_scale_quant_ste
 
 
 default_kernel_init = lecun_normal()
@@ -28,14 +28,6 @@ Array = Any
 Dtype = Any
 PRNGKey = Any
 Shape = Sequence[int]
-
-
-def get_noise(x: Array, percentage: float, rng: PRNGKey) -> Array:
-  return (
-      jnp.max(jnp.abs(x))
-      * percentage
-      * jax.random.uniform(rng, x.shape, minval=-1, maxval=1.0)
-  )
 
 
 @jax.custom_vjp
@@ -59,14 +51,25 @@ def dot_general(inpt: Array, kernel: Array, rng: PRNGKey, cfg: dict) -> Array:
   return jnp.dot(inpt, kernel)
 
 
-def dot_general_fwd(inpt: Array, kernel: Array, rng: PRNGKey, cfg: dict
-                    ) -> Array:
+def dot_general_fwd(
+    inpt: Array, kernel: Array, rng: PRNGKey, cfg: dict
+) -> Array:
   rng, prng = jax.random.split(rng, 2)
-  return dot_general(inpt, kernel, rng, cfg,), (inpt, kernel, prng, cfg,)
+  return dot_general(inpt, kernel, rng, cfg,), (
+      inpt,
+      kernel,
+      prng,
+      cfg,
+  )
 
 
 def dot_general_bwd(res: tuple, g: Array) -> tuple:
-  (inpt, kernel, rng, cfg,) = res
+  (
+      inpt,
+      kernel,
+      rng,
+      cfg,
+  ) = res
   g_inpt = g_weight = g
 
   # Noise
@@ -90,17 +93,22 @@ def dot_general_bwd(res: tuple, g: Array) -> tuple:
 
   # Quantization
   if "weight_bwd_bits" in cfg:
-    kernel = signed_uniform_max_scale_quant_ste(kernel, cfg["weight_bwd_bits"])
+    kernel = signed_uniform_max_scale_quant_ste(
+        kernel, cfg["weight_bwd_bits"]
+    )
 
   if "act_bwd_bits" in cfg:
     inpt = signed_uniform_max_scale_quant_ste(inpt, cfg["act_bwd_bits"])
 
   if "err_inpt_bits" in cfg:
-    g_inpt = signed_uniform_max_scale_quant_ste(g_inpt, cfg["err_inpt_bits"])
+    g_inpt = signed_uniform_max_scale_quant_ste(
+        g_inpt, cfg["err_inpt_bits"]
+    )
 
   if "err_weight_bits" in cfg:
-    g_weight = signed_uniform_max_scale_quant_ste(g_weight,
-                                                  cfg["err_weight_bits"])
+    g_weight = signed_uniform_max_scale_quant_ste(
+        g_weight, cfg["err_weight_bits"]
+    )
 
   g_inpt_fwd = jnp.dot(g_inpt, jnp.transpose(kernel))
 
@@ -149,7 +157,9 @@ class QuantDense(Module):
     kernel = jnp.asarray(kernel, self.dtype)
 
     y = dot_general(inputs, kernel, rng, dict(self.config))
+
     if self.use_bias:
+      assert False, "Bias for Dense layer not supported yet."
       bias = self.param("bias", self.bias_init, (self.features,))
       bias = jnp.asarray(bias, self.dtype)
       y = y + bias

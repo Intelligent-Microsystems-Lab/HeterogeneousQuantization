@@ -21,22 +21,21 @@ def get_config():
 
   config.quant = {
       # noise
-      'weight_noise': 0.0,
-      'act_noise': 0.0,
-      'weight_bwd_noise': 0.0,
-      'act_bwd_noise': 0.0,
-      'val_noise': 0.0,
-      'err_inpt_noise': 0.0,
-      'err_weight_noise': 0.0,
-
+      "weight_noise": 0.0,
+      "act_noise": 0.0,
+      "weight_bwd_noise": 0.0,
+      "act_bwd_noise": 0.0,
+      "val_noise": 0.0,
+      "err_inpt_noise": 0.0,
+      "err_weight_noise": 0.0,
       # quant
-      'weight_bits': 16.,
-      'act_bits': 16.,
-      'weight_bwd_bits': 16.,
-      'act_bwd_bits': 16.,
-      'val_bits': 16.,
-      'err_inpt_bits': 16.,
-      'err_weight_bits': 16.,
+      "weight_bits": 16.0,
+      "act_bits": 16.0,
+      "weight_bwd_bits": 16.0,
+      "act_bwd_bits": 16.0,
+      "val_bits": 16.0,
+      "err_inpt_bits": 16.0,
+      "err_weight_bits": 16.0,
   }
 
   # data set

@@ -40,7 +40,7 @@ class CQG(nn.Module):
         padding=padding,
         kernel_init=initializers.lecun_normal(),
         config=config,
-        use_bias=False,
+        # use_bias=False,
     )(x, rng1)
     x = QuantConv(
         features=features[1],
@@ -49,7 +49,7 @@ class CQG(nn.Module):
         padding=padding,
         kernel_init=initializers.lecun_normal(),
         config=config,
-        use_bias=False,
+        # use_bias=False,
     )(x, rng2)
     return x
 
