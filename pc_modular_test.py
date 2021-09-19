@@ -199,8 +199,8 @@ class UnitTests(parameterized.TestCase):
     class test_pc_nn(PC_NN):
       def setup(self):
         self.layers = [
-            DensePC(100, config=cfg),
-            DensePC(10, config=cfg),
+            DensePC(100, cfg=cfg),
+            DensePC(10, cfg=cfg),
         ]
 
     nn_unit_test = test_pc_nn(config=cfg, loss_fn=sse_loss)
@@ -225,7 +225,6 @@ class UnitTests(parameterized.TestCase):
 
   def test_pc_fc_err_equality(self):
     cfg = ml_collections.ConfigDict()
-    cfg.infer_lr = 0.2
     cfg.infer_steps = 100
     cfg.weight_noise = 0.0
     cfg.act_noise = 0.0
@@ -249,8 +248,8 @@ class UnitTests(parameterized.TestCase):
     class test_pc_nn(PC_NN):
       def setup(self):
         self.layers = [
-            DensePC(100, config=cfg),
-            DensePC(10, config=cfg),
+            DensePC(100, cfg=cfg, infer_lr=.2),
+            DensePC(10, cfg=cfg, infer_lr=.2),
         ]
 
     nn_unit_test = test_pc_nn(config=cfg, loss_fn=sse_loss)
@@ -333,7 +332,6 @@ class UnitTests(parameterized.TestCase):
 
   def test_pc_fc_dw_equality(self):
     cfg = ml_collections.ConfigDict()
-    cfg.infer_lr = 0.2
     cfg.infer_steps = 100
     cfg.weight_noise = 0.0
     cfg.act_noise = 0.0
@@ -357,8 +355,8 @@ class UnitTests(parameterized.TestCase):
     class test_pc_nn(PC_NN):
       def setup(self):
         self.layers = [
-            DensePC(100, config=cfg),
-            DensePC(10, config=cfg),
+            DensePC(100, cfg=cfg, infer_lr=.2),
+            DensePC(10, cfg=cfg, infer_lr=.2),
         ]
 
     nn_unit_test = test_pc_nn(config=cfg, loss_fn=sse_loss)
@@ -615,7 +613,6 @@ class UnitTests(parameterized.TestCase):
             "act_noise": noise,
             "err_inpt_noise": 0.0,
             "err_weight_nois": 0.0,
-            "infer_lr": 1,
         }
     )
 
@@ -627,7 +624,8 @@ class UnitTests(parameterized.TestCase):
     test_dense = DensePC(
         features=out_channels,
         kernel_init=initializers.ones,
-        config=config,
+        cfg=config,
+        infer_lr=1.,
     )
 
     variables = test_dense.init(rng1, data, rng2)
@@ -651,6 +649,44 @@ class UnitTests(parameterized.TestCase):
         jnp.std(out_d),
         jnp.sqrt((1 / 12 * (noise * 2) ** 2) * inp_channels),
         rtol=numerical_tolerance,
+    )
+
+  @parameterized.named_parameters(*dense_act_noise_data())
+  def test_act_bwd_noise(
+      self, examples, inp_channels, out_channels, noise, numerical_tolerance
+  ):
+    """
+    Unit test to check whether QuantDense does exactly the same as
+    nn.Dense when gradient quantization is turned off.
+    """
+    config = ml_collections.FrozenConfigDict(
+        {
+            "weight_noise": 0.0,
+            "act_bwd_noise": noise,
+            "err_inpt_noise": 0.0,
+            "err_weight_nois": 0.0,
+        }
+    )
+
+    key = jax.random.PRNGKey(34835972)
+    rng1, rng2, rng3, rng4 = jax.random.split(key, 4)
+
+    data = jnp.ones((examples, inp_channels))
+
+    test_dense = DensePC(
+        features=out_channels,
+        kernel_init=initializers.ones,
+        cfg=config,
+        infer_lr=1.,
+    )
+
+    variables = test_dense.init(rng1, data, rng2)
+    state, params = variables.pop("params")
+    out_d, state_out = test_dense.apply(
+        {"params": params, **state},
+        data,
+        rng3,
+        mutable=list(state.keys()),
     )
 
     grads_wrt_weights, state_out2 = test_dense.apply(
@@ -689,7 +725,6 @@ class UnitTests(parameterized.TestCase):
             "act_noise": 0.0,
             "err_inpt_noise": 0.0,
             "err_weight_nois": 0.0,
-            "infer_lr": 1,
         }
     )
 
@@ -701,7 +736,8 @@ class UnitTests(parameterized.TestCase):
     test_dense = DensePC(
         features=out_channels,
         kernel_init=initializers.ones,
-        config=config,
+        cfg=config,
+        infer_lr=1.,
     )
 
     variables = test_dense.init(rng1, data, rng2)
@@ -725,6 +761,40 @@ class UnitTests(parameterized.TestCase):
         jnp.std(out_d),
         jnp.sqrt((1 / 12 * (noise * 2) ** 2) * inp_channels),
         rtol=numerical_tolerance,
+    )
+
+  @parameterized.named_parameters(*dense_weight_noise_data())
+  def test_weight_bwd_noise(
+      self, examples, inp_channels, out_channels, noise, numerical_tolerance
+  ):
+    config = ml_collections.FrozenConfigDict(
+        {
+            "weight_bwd_noise": noise,
+            "act_noise": 0.0,
+            "err_inpt_noise": 0.0,
+            "err_weight_nois": 0.0,
+        }
+    )
+
+    key = jax.random.PRNGKey(34835972)
+    rng1, rng2, rng3, rng4 = jax.random.split(key, 4)
+
+    data = jnp.ones((examples, inp_channels))
+
+    test_dense = DensePC(
+        features=out_channels,
+        kernel_init=initializers.ones,
+        cfg=config,
+        infer_lr=1.,
+    )
+
+    variables = test_dense.init(rng1, data, rng2)
+    state, params = variables.pop("params")
+    out_d, state_out = test_dense.apply(
+        {"params": params, **state},
+        data,
+        rng3,
+        mutable=list(state.keys()),
     )
 
     state = unfreeze(state)
@@ -768,7 +838,6 @@ class UnitTests(parameterized.TestCase):
             "act_noise": 0.0,
             "err_inpt_noise": noise,
             "err_weight_nois": 0.0,
-            "infer_lr": 1,
         }
     )
 
@@ -780,7 +849,8 @@ class UnitTests(parameterized.TestCase):
     test_dense = DensePC(
         features=out_channels,
         kernel_init=initializers.ones,
-        config=config,
+        cfg=config,
+        infer_lr=1.,
     )
 
     variables = test_dense.init(rng1, data, rng2)
@@ -833,7 +903,6 @@ class UnitTests(parameterized.TestCase):
             "act_noise": 0.0,
             "err_inpt_noise": 0.0,
             "err_weight_noise": noise,
-            "infer_lr": 1,
         }
     )
 
@@ -845,7 +914,8 @@ class UnitTests(parameterized.TestCase):
     test_dense = DensePC(
         features=out_channels,
         kernel_init=initializers.ones,
-        config=config,
+        cfg=config,
+        infer_lr=1.,
     )
 
     variables = test_dense.init(rng1, data, rng2)

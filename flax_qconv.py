@@ -304,6 +304,7 @@ class QuantConv(Module):
 
     if is_single_input:
       y = jnp.squeeze(y, axis=0)
+
     # if self.use_bias:
     #   bias = self.param("bias", self.bias_init, (self.features,))
     #   bias = jnp.asarray(bias, self.dtype)
