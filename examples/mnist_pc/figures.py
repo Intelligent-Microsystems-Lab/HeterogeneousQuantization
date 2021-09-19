@@ -21,40 +21,40 @@ pc_err_weight_noise = (
 
 
 bp_weight_noise = (
-    "/afs/crc.nd.edu/user/c/cschaef6/mnist_noise_sweeps/weight_noise_bp"
+    "/afs/crc.nd.edu/user/c/cschaef6/cifar_noise_sweeps/weight_noise_bp"
 )
 bp_act_noise = (
-    "/afs/crc.nd.edu/user/c/cschaef6/mnist_noise_sweeps/act_noise_bp"
+    "/afs/crc.nd.edu/user/c/cschaef6/cifar_noise_sweeps/act_noise_bp"
 )
 bp_err_inpt_noise = (
-    "/afs/crc.nd.edu/user/c/cschaef6/mnist_noise_sweeps/err_inpt_noise_bp"
+    "/afs/crc.nd.edu/user/c/cschaef6/cifar_noise_sweeps/err_inpt_noise_bp"
 )
 bp_err_weight_noise = (
-    "/afs/crc.nd.edu/user/c/cschaef6/mnist_noise_sweeps/err_weight_noise_bp"
+    "/afs/crc.nd.edu/user/c/cschaef6/cifar_noise_sweeps/err_weight_noise_bp"
 )
 bp_weight_bwd_noise = (
-    "/afs/crc.nd.edu/user/c/cschaef6/mnist_noise_sweeps/weight_bwd_noise_bp"
+    "/afs/crc.nd.edu/user/c/cschaef6/cifar_noise_sweeps/weight_bwd_noise_bp"
 )
 bp_act_bwd_noise = (
-    "/afs/crc.nd.edu/user/c/cschaef6/mnist_noise_sweeps/act_bwd_noise_bp"
+    "/afs/crc.nd.edu/user/c/cschaef6/cifar_noise_sweeps/act_bwd_noise_bp"
 )
 
 
 bp_weight_bits = (
-    "/afs/crc.nd.edu/user/c/cschaef6/mnist_noise_sweeps/weight_bits_bp"
+    "/afs/crc.nd.edu/user/c/cschaef6/cifar_noise_sweeps/weight_bits_bp"
 )
-bp_act_bits = "/afs/crc.nd.edu/user/c/cschaef6/mnist_noise_sweeps/act_bits_bp"
+bp_act_bits = "/afs/crc.nd.edu/user/c/cschaef6/cifar_noise_sweeps/act_bits_bp"
 bp_err_inpt_bits = (
-    "/afs/crc.nd.edu/user/c/cschaef6/mnist_noise_sweeps/err_inpt_bits_bp"
+    "/afs/crc.nd.edu/user/c/cschaef6/cifar_noise_sweeps/err_inpt_bits_bp"
 )
 bp_err_weight_bits = (
-    "/afs/crc.nd.edu/user/c/cschaef6/mnist_noise_sweeps/err_weight_bits_bp"
+    "/afs/crc.nd.edu/user/c/cschaef6/cifar_noise_sweeps/err_weight_bits_bp"
 )
 bp_weight_bwd_bits = (
-    "/afs/crc.nd.edu/user/c/cschaef6/mnist_noise_sweeps/weight_bwd_bits_bp"
+    "/afs/crc.nd.edu/user/c/cschaef6/cifar_noise_sweeps/weight_bwd_bits_bp"
 )
 bp_act_bwd_bits = (
-    "/afs/crc.nd.edu/user/c/cschaef6/mnist_noise_sweeps/act_bwd_bits_bp"
+    "/afs/crc.nd.edu/user/c/cschaef6/cifar_noise_sweeps/act_bwd_bits_bp"
 )
 
 
