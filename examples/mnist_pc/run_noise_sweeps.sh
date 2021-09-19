@@ -23,20 +23,20 @@ mkdir $MAIN_DIR
 # python3 sweep.py  --result_dir $MAIN_DIR/err_weight_noise_pc --start $START --stop $STOP --step $STEP --user $USER --trials 5 --queue $GPU_Q --parameter err_weight_noise --network_type pc
 
 # Backpropagation Sweeps
-python3 sweep.py --result_dir $MAIN_DIR/weight_noise_bp --start $START --stop $STOP --step $STEP --user $USER --trials 5 --queue $GPU_Q --parameter weight_noise --network_type bp
-python3 sweep.py --result_dir $MAIN_DIR/act_noise_bp --start $START --stop $STOP --step $STEP --user $USER --trials 5 --queue $GPU_Q  --parameter act_noise --network_type bp
-python3 sweep.py --result_dir $MAIN_DIR/err_inpt_noise_bp --start $START --stop $STOP --step $STEP --user $USER --trials 5 --queue $GPU_Q --parameter err_inpt_noise --network_type bp
-python3 sweep.py  --result_dir $MAIN_DIR/err_weight_noise_bp --start $START --stop $STOP --step $STEP --user $USER --trials 5 --queue $GPU_Q --parameter err_weight_noise --network_type bp
+python3 sweep.py --result_dir $MAIN_DIR/weight_noise_bp --start $START --stop $STOP --step $STEP --user $USER --trials 5 --queue $GPU_Q --parameter quant.weight_noise --network_type bp
+python3 sweep.py --result_dir $MAIN_DIR/act_noise_bp --start $START --stop $STOP --step $STEP --user $USER --trials 5 --queue $GPU_Q  --parameter quant.act_noise --network_type bp
+python3 sweep.py --result_dir $MAIN_DIR/err_inpt_noise_bp --start $START --stop $STOP --step $STEP --user $USER --trials 5 --queue $GPU_Q --parameter quant.err_inpt_noise --network_type bp
+python3 sweep.py  --result_dir $MAIN_DIR/err_weight_noise_bp --start $START --stop $STOP --step $STEP --user $USER --trials 5 --queue $GPU_Q --parameter quant.err_weight_noise --network_type bp
 
-python3 sweep.py --result_dir $MAIN_DIR/weight_bwd_noise_bp --start $START --stop $STOP --step $STEP --user $USER --trials 5 --queue $GPU_Q --parameter weight_bwd_noise --network_type bp
-python3 sweep.py --result_dir $MAIN_DIR/act_bwd_noise_bp --start $START --stop $STOP --step $STEP --user $USER --trials 5 --queue $GPU_Q  --parameter act_bwd_noise --network_type bp
+python3 sweep.py --result_dir $MAIN_DIR/weight_bwd_noise_bp --start $START --stop $STOP --step $STEP --user $USER --trials 5 --queue $GPU_Q --parameter quant.weight_bwd_noise --network_type bp
+python3 sweep.py --result_dir $MAIN_DIR/act_bwd_noise_bp --start $START --stop $STOP --step $STEP --user $USER --trials 5 --queue $GPU_Q  --parameter quant.act_bwd_noise --network_type bp
 
 
-# Backpropagation Quant Sweeps
-python3 sweep.py --result_dir $MAIN_DIR/weight_bits_bp --list $LIST --user $USER --trials 5 --queue $GPU_Q --parameter quant.weight_bits --network_type bp
-python3 sweep.py --result_dir $MAIN_DIR/act_bits_bp --list $LIST --user $USER --trials 5 --queue $GPU_Q  --parameter quant.act_bits --network_type bp
-python3 sweep.py --result_dir $MAIN_DIR/err_inpt_bits_bp --list $LIST --user $USER --trials 5 --queue $GPU_Q --parameter quant.err_inpt_bits --network_type bp
-python3 sweep.py  --result_dir $MAIN_DIR/err_weight_bits_bp --list $LIST --user $USER --trials 5 --queue $GPU_Q --parameter quant.err_weight_bits --network_type bp
+# # Backpropagation Quant Sweeps
+# python3 sweep.py --result_dir $MAIN_DIR/weight_bits_bp --list $LIST --user $USER --trials 5 --queue $GPU_Q --parameter quant.weight_bits --network_type bp
+# python3 sweep.py --result_dir $MAIN_DIR/act_bits_bp --list $LIST --user $USER --trials 5 --queue $GPU_Q  --parameter quant.act_bits --network_type bp
+# python3 sweep.py --result_dir $MAIN_DIR/err_inpt_bits_bp --list $LIST --user $USER --trials 5 --queue $GPU_Q --parameter quant.err_inpt_bits --network_type bp
+# python3 sweep.py  --result_dir $MAIN_DIR/err_weight_bits_bp --list $LIST --user $USER --trials 5 --queue $GPU_Q --parameter quant.err_weight_bits --network_type bp
 
-python3 sweep.py --result_dir $MAIN_DIR/weight_bwd_bits_bp --list $LIST --user $USER --trials 5 --queue $GPU_Q --parameter quant.weight_bwd_bits --network_type bp
-python3 sweep.py --result_dir $MAIN_DIR/act_bwd_bits_bp --list $LIST --user $USER --trials 5 --queue $GPU_Q  --parameter quant.act_bwd_bits --network_type bp
+# python3 sweep.py --result_dir $MAIN_DIR/weight_bwd_bits_bp --list $LIST --user $USER --trials 5 --queue $GPU_Q --parameter quant.weight_bwd_bits --network_type bp
+# python3 sweep.py --result_dir $MAIN_DIR/act_bwd_bits_bp --list $LIST --user $USER --trials 5 --queue $GPU_Q  --parameter quant.act_bwd_bits --network_type bp
