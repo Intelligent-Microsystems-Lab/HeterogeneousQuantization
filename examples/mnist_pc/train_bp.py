@@ -63,53 +63,52 @@ class LeNet_BP(nn.Module):
   @nn.compact
   def __call__(self, x, rng):
 
-    # rng, subkey = jax.random.split(rng, 2)
-    # x = QuantConv(
-    #     features=6,
-    #     kernel_size=(5, 5),
-    #     padding="VALID",
-    #     use_bias=False,
-    #     config=self.config,
-    # )(x, subkey)
-    # x = nn.relu(x)
-    # # x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
-    # rng, subkey = jax.random.split(rng, 2)
-    # x = QuantConv(
-    #     features=16,
-    #     kernel_size=(5, 5),
-    #     padding="VALID",
-    #     use_bias=False,
-    #     config=self.config,
-    # )(x, subkey)
-    # x = nn.relu(x)
-    # x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
-    x = x.reshape((x.shape[0], -1))
-    # rng, subkey = jax.random.split(rng, 2)
-    # x = QuantDense(
-    #     features=512,
-    #     use_bias=False,
-    #     config=self.config,
-    # )(x, subkey)
-    # x = nn.relu(x)
+    rng, subkey = jax.random.split(rng, 2)
+    x = QuantConv(
+        features=32,
+        kernel_size=(3, 3),
+        padding="VALID",
+        config=self.config.quant,
+    )(x, subkey)
+    x = nn.relu(x)
+    x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
 
-    # rng, subkey = jax.random.split(rng, 2)
-    # x = dropout(x, .5, subkey)
 
     rng, subkey = jax.random.split(rng, 2)
-    x = QuantDense(
-        features=128,
-        use_bias=False,
+    x = QuantConv(
+        features=64,
+        kernel_size=(3, 3),
+        padding="VALID",
+        config=self.config.quant,
+    )(x, subkey)
+    x = nn.relu(x)
+    x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
+
+
+    rng, subkey = jax.random.split(rng, 2)
+    x = QuantConv(
+        features=64,
+        kernel_size=(3, 3),
+        padding="VALID",
         config=self.config.quant,
     )(x, subkey)
     x = nn.relu(x)
 
-    # rng, subkey = jax.random.split(rng, 2)
-    # x = dropout(x, .5, subkey)
+
+    x = x.reshape((x.shape[0], -1))
+
+
+    rng, subkey = jax.random.split(rng, 2)
+    x = QuantDense(
+        features=64,
+        config=self.config.quant,
+    )(x, subkey)
+    x = nn.relu(x)
+
 
     rng, subkey = jax.random.split(rng, 2)
     x = QuantDense(
         features=self.config.num_classes,
-        use_bias=False,
         config=self.config.quant,
     )(x, subkey)
     return x

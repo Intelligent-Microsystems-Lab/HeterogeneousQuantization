@@ -78,7 +78,7 @@ class QuantConv(Module):
   # dtype: Dtype = jnp.float32
   # precision: Any = None
   kernel_init: Callable[[PRNGKey, Shape, Dtype], Array] = default_kernel_init
-  bias_init: Callable[[PRNGKey, Shape, Dtype], Array] = zeros
+  # bias_init: Callable[[PRNGKey, Shape, Dtype], Array] = zeros
   config: dict = None
 
   @compact

@@ -39,10 +39,10 @@ def get_config():
   }
 
   # data set
-  config.ds = "fashion_mnist"
+  config.ds = "cifar10"
   config.num_classes = 10
-  config.ds_xdim = 28
-  config.ds_ydim = 28
-  config.ds_channels = 1
+  config.ds_xdim = 32
+  config.ds_ydim = 32
+  config.ds_channels = 3
 
   return config

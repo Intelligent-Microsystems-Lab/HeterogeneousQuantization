@@ -134,11 +134,11 @@ class QuantDense(Module):
   """
 
   features: int
-  use_bias: bool = True
+  #use_bias: bool = True
   dtype: Any = jnp.float32
   precision: Any = None
   kernel_init: Callable[[PRNGKey, Shape, Dtype], Array] = default_kernel_init
-  bias_init: Callable[[PRNGKey, Shape, Dtype], Array] = zeros
+  #bias_init: Callable[[PRNGKey, Shape, Dtype], Array] = zeros
   config: dict = ml_collections.FrozenConfigDict({})
 
   @compact
@@ -158,9 +158,9 @@ class QuantDense(Module):
 
     y = dot_general(inputs, kernel, rng, dict(self.config))
 
-    if self.use_bias:
-      assert False, "Bias for Dense layer not supported yet."
-      bias = self.param("bias", self.bias_init, (self.features,))
-      bias = jnp.asarray(bias, self.dtype)
-      y = y + bias
+    # if self.use_bias:
+    #   assert False, "Bias for Dense layer not supported yet."
+    #   bias = self.param("bias", self.bias_init, (self.features,))
+    #   bias = jnp.asarray(bias, self.dtype)
+    #   y = y + bias
     return y
