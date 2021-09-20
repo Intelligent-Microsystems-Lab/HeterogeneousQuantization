@@ -11,13 +11,13 @@ def get_config():
 
   config.seed = 203853699
 
-  config.batch_size = 32
-  config.num_epochs = 30
+  config.batch_size = 32.
+  config.num_epochs = 30.
   config.learning_rate = 0.001
 
   # PC parameters
   config.infer_lr = 0.2
-  config.infer_steps = 100
+  config.infer_steps = 100.
 
   config.quant = {
       # noise
