@@ -11,9 +11,9 @@ import matplotlib.pyplot as plt
 parser = argparse.ArgumentParser(
     description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
-parser.add_argument("--basedir", type=str, default="/afs/crc.nd.edu/user/c/cschaef6/cifar10_noise_sweeps_t1/",
+parser.add_argument("--basedir", type=str, default="/afs/crc.nd.edu/user/c/cschaef6/cifar10_noise_sweeps_t2/",
                     help="Base dir with sweep results.")
-parser.add_argument("--samples", type=int, default=1,
+parser.add_argument("--samples", type=int, default=3,
                     help="Number of samples from each trial.")
 args = parser.parse_args()
 
@@ -139,7 +139,7 @@ if __name__ == "__main__":
       'Error Weights': args.basedir+"/err_weight_noise_pc",
       'Weights BWD': args.basedir+"/weight_bwd_noise_pc",
       'Activations BWD': args.basedir+"/act_bwd_noise_pc",
-      'Value Node': args.basedir+"/val_noise_pc",
+      #'Value Node': args.basedir+"/val_noise_pc",
   }
 
   pc_bits = {
@@ -149,7 +149,7 @@ if __name__ == "__main__":
       'Error Weights': args.basedir+"/err_weight_bits_pc",
       'Weights BWD': args.basedir+"/weight_bwd_bits_pc",
       'Activations BWD': args.basedir+"/act_bwd_bits_pc",
-      'Value Node': args.basedir+"/val_bits_pc",
+      #'Value Node': args.basedir+"/val_bits_pc",
   }
 
   bp_noise = {
@@ -159,7 +159,7 @@ if __name__ == "__main__":
       'Error Weights': args.basedir+"/err_weight_noise_bp",
       'Weights BWD': args.basedir+"/weight_bwd_noise_bp",
       'Activations BWD': args.basedir+"/act_bwd_noise_bp",
-      'Value Node': args.basedir+"/val_noise_bp",
+      #'Value Node': args.basedir+"/val_noise_bp",
   }
 
   bp_bits = {
@@ -169,7 +169,7 @@ if __name__ == "__main__":
       'Error Weights': args.basedir+"/err_weight_bits_bp",
       'Weights BWD': args.basedir+"/weight_bwd_bits_bp",
       'Activations BWD': args.basedir+"/act_bwd_bits_bp",
-      'Value Node': args.basedir+"/val_bits_bp",
+      #'Value Node': args.basedir+"/val_bits_bp",
   }
 
   #plot_curves(pc_noise, "Predictive Coding Noise", 'pc_noise', 'Noise', args.samples)
