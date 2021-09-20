@@ -115,7 +115,6 @@ def plot_diff(curve1, curve2, title_str, png_fname, xaxis, samples):
       continue
 
     ax.plot(x1, mean1-mean2, label=key)
-    import pdb; pdb.set_trace()
     #ax.fill_between(
     #    x,
     #    mean - std,
