@@ -597,7 +597,7 @@ class PC_NN(nn.Module):
         scan_fn,
         (pred, err_init, rng),
         xs=None,
-        length=self.config.infer_steps,
+        length=int(self.config.infer_steps),
     )
 
     return err

@@ -180,7 +180,7 @@ def get_ds(split, cfg):
   )
   ds = ds.cache()
   ds = ds.shuffle(ds_info.splits[split].num_examples)
-  ds = ds.batch(cfg.batch_size)
+  ds = ds.batch(int(cfg.batch_size))
   return ds.prefetch(tf.data.experimental.AUTOTUNE)
 
 
@@ -210,7 +210,7 @@ def train_and_evaluate(cfg, workdir):
 
   variables = nn_cifar10.init(
       p_rng,
-      jnp.ones((cfg.batch_size, cfg.ds_xdim, cfg.ds_ydim, cfg.ds_channels)),
+      jnp.ones((int(cfg.batch_size), cfg.ds_xdim, cfg.ds_ydim, cfg.ds_channels)),
       subkey,
   )
   state, params = variables.pop("params")
@@ -218,7 +218,7 @@ def train_and_evaluate(cfg, workdir):
   optimizer = optim.Adam(learning_rate=cfg.learning_rate).create(params)
   learning_rate_fn = (None,)
 
-  for step in range(cfg.num_epochs):
+  for step in range(int(cfg.num_epochs)):
     # Do a batch of SGD.
     train_metrics = []
     for batch in tfds.as_numpy(ds_train):
