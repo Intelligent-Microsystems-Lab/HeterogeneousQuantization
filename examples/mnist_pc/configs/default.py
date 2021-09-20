@@ -29,13 +29,13 @@ def get_config():
       "err_inpt_noise": 0.0,
       "err_weight_noise": 0.0,
       # quant
-      "weight_bits": 16.0,
-      "act_bits": 16.0,
-      "weight_bwd_bits": 16.0,
-      "act_bwd_bits": 16.0,
-      "val_bits": 16.0,
-      "err_inpt_bits": 16.0,
-      "err_weight_bits": 16.0,
+      "weight_bits": 5.0,
+      "act_bits": 5.0,
+      "weight_bwd_bits": 5.0,
+      "act_bwd_bits": 5.0,
+      "val_bits": 5.0,
+      "err_inpt_bits": 5.0,
+      "err_weight_bits": 5.0,
   }
 
   # data set
