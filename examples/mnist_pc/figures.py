@@ -1,4 +1,5 @@
 from glob import glob
+import argparse
 
 from tensorflow.core.util import event_pb2
 import tensorflow as tf
@@ -6,56 +7,15 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-pc_weight_noise = (
-    "/afs/crc.nd.edu/user/c/cschaef6/mnist_noise_sweeps/weight_noise_pc"
-)
-pc_act_noise = (
-    "/afs/crc.nd.edu/user/c/cschaef6/mnist_noise_sweeps/act_noise_pc"
-)
-pc_err_inpt_noise = (
-    "/afs/crc.nd.edu/user/c/cschaef6/mnist_noise_sweeps/err_inpt_noise_pc"
-)
-pc_err_weight_noise = (
-    "/afs/crc.nd.edu/user/c/cschaef6/mnist_noise_sweeps/err_weight_noise_pc"
-)
 
-
-bp_weight_noise = (
-    "/afs/crc.nd.edu/user/c/cschaef6/cifar_noise_sweeps/weight_noise_bp"
+parser = argparse.ArgumentParser(
+    description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
-bp_act_noise = (
-    "/afs/crc.nd.edu/user/c/cschaef6/cifar_noise_sweeps/act_noise_bp"
-)
-bp_err_inpt_noise = (
-    "/afs/crc.nd.edu/user/c/cschaef6/cifar_noise_sweeps/err_inpt_noise_bp"
-)
-bp_err_weight_noise = (
-    "/afs/crc.nd.edu/user/c/cschaef6/cifar_noise_sweeps/err_weight_noise_bp"
-)
-bp_weight_bwd_noise = (
-    "/afs/crc.nd.edu/user/c/cschaef6/cifar_noise_sweeps/weight_bwd_noise_bp"
-)
-bp_act_bwd_noise = (
-    "/afs/crc.nd.edu/user/c/cschaef6/cifar_noise_sweeps/act_bwd_noise_bp"
-)
-
-
-bp_weight_bits = (
-    "/afs/crc.nd.edu/user/c/cschaef6/cifar_noise_sweeps/weight_bits_bp"
-)
-bp_act_bits = "/afs/crc.nd.edu/user/c/cschaef6/cifar_noise_sweeps/act_bits_bp"
-bp_err_inpt_bits = (
-    "/afs/crc.nd.edu/user/c/cschaef6/cifar_noise_sweeps/err_inpt_bits_bp"
-)
-bp_err_weight_bits = (
-    "/afs/crc.nd.edu/user/c/cschaef6/cifar_noise_sweeps/err_weight_bits_bp"
-)
-bp_weight_bwd_bits = (
-    "/afs/crc.nd.edu/user/c/cschaef6/cifar_noise_sweeps/weight_bwd_bits_bp"
-)
-bp_act_bwd_bits = (
-    "/afs/crc.nd.edu/user/c/cschaef6/cifar_noise_sweeps/act_bwd_bits_bp"
-)
+parser.add_argument("--basedir", type=str, default="/afs/crc.nd.edu/user/c/cschaef6/cifar10_noise_sweeps_t1/",
+                    help="Base dir with sweep results.")
+parser.add_argument("--sample", type=int, default=1,
+                    help="Number of samples from each trial.")
+args = parser.parse_args()
 
 
 def read_tfevents(path):
@@ -115,226 +75,74 @@ def mean_std_eval_acc(path, samples):
   )
 
 
-# samples = 1
-# mean_pc_weight, std_obs_weight, x_pc_weight = mean_std_eval_acc(
-#     pc_weight_noise, samples
-# )
-# mean_pc_act, std_obs_act, x_pc_act = mean_std_eval_acc(pc_act_noise, samples)
-# mean_pc_err_inpt, std_obs_err_inpt, x_pc_err_inpt = mean_std_eval_acc(
-#     pc_err_inpt_noise, samples
-# )
-# mean_pc_err_weight, std_obs_err_weight, x_pc_err_weight = mean_std_eval_acc(
-#     pc_err_weight_noise, samples
-# )
+def plot_curves(curve_fnames, title_str, png_fname, xaxis):
+  fig, ax = plt.subplots(figsize=(8, 5.5))
+  ax.spines["top"].set_visible(False)
+  ax.spines["right"].set_visible(False)
 
-# # Plot PC
+  for key, value in curve_fnames.items():
+    mean, std, x = mean_std_eval_acc(value, samples)
 
-# #def plot_figure()
-# fig, ax = plt.subplots(figsize=(8, 5.5))
-# ax.spines["top"].set_visible(False)
-# ax.spines["right"].set_visible(False)
+    ax.plot(x, mean, label=key)
+    ax.fill_between(
+        x,
+        mean - std,
+        mean + std,
+        alpha=0.1,
+    )
 
-# ax.plot(x_pc_weight, mean_pc_weight, label="Weight")
-# ax.fill_between(
-#     x_pc_weight,
-#     mean_pc_weight - std_obs_weight,
-#     mean_pc_weight + std_obs_weight,
-#     alpha=0.1,
-# )
-
-# ax.plot(x_pc_act, mean_pc_act, label="Activation")
-# ax.fill_between(
-#     x_pc_act, mean_pc_act - std_obs_act, mean_pc_act + std_obs_act, alpha=0.1
-# )
-
-# ax.plot(x_pc_err_inpt, mean_pc_err_inpt, label="Error Activation")
-# ax.fill_between(
-#     x_pc_err_inpt,
-#     mean_pc_err_inpt - std_obs_err_inpt,
-#     mean_pc_err_inpt + std_obs_err_inpt,
-#     alpha=0.1,
-# )
-
-# ax.plot(x_pc_err_weight, mean_pc_err_weight, label="Error Weight")
-# ax.fill_between(
-#     x_pc_err_weight,
-#     mean_pc_err_weight - std_obs_err_weight,
-#     mean_pc_err_weight + std_obs_err_weight,
-#     alpha=0.1,
-# )
-
-# plt.legend(
-#     bbox_to_anchor=(0.5, 1.2), loc="upper center", ncol=2, frameon=False
-# )
-# plt.tight_layout()
-# plt.savefig("figures/pc_noise_ablation.png")
-# # plt.show()
-# plt.close()
+  ax.set_xlabel(xaxis)
+  ax.set_ylabel("Eval Acc")
+  plt.legend(
+      bbox_to_anchor=(0.5, 1.2), loc="upper center", ncol=2, frameon=False
+  )
+  plt.tight_layout()
+  plt.savefig("figures/"+png_fname+".png")
+  plt.close()
 
 
-samples = 1
-mean_pc_weight, std_obs_weight, x_pc_weight = mean_std_eval_acc(
-    bp_weight_noise, samples
-)
-mean_pc_act, std_obs_act, x_pc_act = mean_std_eval_acc(bp_act_noise, samples)
-mean_pc_err_inpt, std_obs_err_inpt, x_pc_err_inpt = mean_std_eval_acc(
-    bp_err_inpt_noise, samples
-)
-mean_pc_err_weight, std_obs_err_weight, x_pc_err_weight = mean_std_eval_acc(
-    bp_err_weight_noise, samples
-)
+if __name__ == "__main__":
+  pc_noise = {
+      'Weights FWD': args.base_dir+"/weight_noise_pc",
+      'Activations FWD': args.base_dir+"/act_noise_pc",
+      'Error Activations': args.base_dir+"/err_inpt_noise_pc",
+      'Error Weights': args.base_dir+"/err_weight_noise_pc",
+      'Weights BWD': args.base_dir+"/weight_bwd_noise_pc",
+      'Activations BWD': args.base_dir+"/act_bwd_noise_pc",
+      'Value Node': args.base_dir+"/val_noise_pc",
+  }
 
-mean_pc_weight_bwd, std_obs_weight_bwd, x_pc_weight_bwd = mean_std_eval_acc(
-    bp_weight_bwd_noise, samples
-)
-mean_pc_act_bwd, std_obs_act_bwd, x_pc_act_bwd = mean_std_eval_acc(
-    bp_act_bwd_noise, samples
-)
+  pc_bits = {
+      'Weights FWD': args.base_dir+"/weight_bits_pc",
+      'Activations FWD': args.base_dir+"/act_bits_pc",
+      'Error Activations': args.base_dir+"/err_inpt_bits_pc",
+      'Error Weights': args.base_dir+"/err_weight_bits_pc",
+      'Weights BWD': args.base_dir+"/weight_bwd_bits_pc",
+      'Activations BWD': args.base_dir+"/act_bwd_bits_pc",
+      'Value Node': args.base_dir+"/val_bits_pc",
+  }
 
-# Plot PC
+  bp_noise = {
+      'Weights FWD': args.base_dir+"/weight_noise_bp",
+      'Activations FWD': args.base_dir+"/act_noise_bp",
+      'Error Activations': args.base_dir+"/err_inpt_noise_bp",
+      'Error Weights': args.base_dir+"/err_weight_noise_bp",
+      'Weights BWD': args.base_dir+"/weight_bwd_noise_bp",
+      'Activations BWD': args.base_dir+"/act_bwd_noise_bp",
+      'Value Node': args.base_dir+"/val_noise_bp",
+  }
 
-fig, ax = plt.subplots(figsize=(8, 5.5))
-ax.spines["top"].set_visible(False)
-ax.spines["right"].set_visible(False)
+  bp_bits = {
+      'Weights FWD': args.base_dir+"/weight_bits_bp",
+      'Activations FWD': args.base_dir+"/act_bits_bp",
+      'Error Activations': args.base_dir+"/err_inpt_bits_bp",
+      'Error Weights': args.base_dir+"/err_weight_bits_bp",
+      'Weights BWD': args.base_dir+"/weight_bwd_bits_bp",
+      'Activations BWD': args.base_dir+"/act_bwd_bits_bp",
+      'Value Node': args.base_dir+"/val_bits_bp",
+  }
 
-ax.plot(x_pc_weight, mean_pc_weight, label="Weight")
-ax.fill_between(
-    x_pc_weight,
-    mean_pc_weight - std_obs_weight,
-    mean_pc_weight + std_obs_weight,
-    alpha=0.1,
-)
-
-ax.plot(x_pc_act, mean_pc_act, label="Activation")
-ax.fill_between(
-    x_pc_act, mean_pc_act - std_obs_act, mean_pc_act + std_obs_act, alpha=0.1
-)
-
-ax.plot(x_pc_err_inpt, mean_pc_err_inpt, label="Error Activation")
-ax.fill_between(
-    x_pc_err_inpt,
-    mean_pc_err_inpt - std_obs_err_inpt,
-    mean_pc_err_inpt + std_obs_err_inpt,
-    alpha=0.1,
-)
-
-ax.plot(x_pc_err_weight, mean_pc_err_weight, label="Error Weight")
-ax.fill_between(
-    x_pc_err_weight,
-    mean_pc_err_weight - std_obs_err_weight,
-    mean_pc_err_weight + std_obs_err_weight,
-    alpha=0.1,
-)
-
-
-ax.plot(x_pc_weight_bwd, mean_pc_weight_bwd, label="Weight BWD")
-ax.fill_between(
-    x_pc_weight_bwd,
-    mean_pc_weight_bwd - std_obs_weight_bwd,
-    mean_pc_weight_bwd + std_obs_weight_bwd,
-    alpha=0.1,
-)
-
-ax.plot(x_pc_act_bwd, mean_pc_act_bwd, label="Activation BWD")
-ax.fill_between(
-    x_pc_act_bwd,
-    mean_pc_act_bwd - std_obs_act_bwd,
-    mean_pc_act_bwd + std_obs_act_bwd,
-    alpha=0.1,
-)
-
-
-# ax.set_xscale('log')
-# ax.set_yscale('log')
-plt.legend(
-    bbox_to_anchor=(0.5, 1.2), loc="upper center", ncol=2, frameon=False
-)
-plt.tight_layout()
-plt.savefig("figures/bp_noise_ablation.png")
-# plt.show()
-plt.close()
-
-
-samples = 1
-mean_pc_weight, std_obs_weight, x_pc_weight = mean_std_eval_acc(
-    bp_weight_bits, samples
-)
-mean_pc_act, std_obs_act, x_pc_act = mean_std_eval_acc(bp_act_bits, samples)
-mean_pc_err_inpt, std_obs_err_inpt, x_pc_err_inpt = mean_std_eval_acc(
-    bp_err_inpt_bits, samples
-)
-mean_pc_err_weight, std_obs_err_weight, x_pc_err_weight = mean_std_eval_acc(
-    bp_err_weight_bits, samples
-)
-
-mean_pc_weight_bwd, std_obs_weight_bwd, x_pc_weight_bwd = mean_std_eval_acc(
-    bp_weight_bwd_bits, samples
-)
-mean_pc_act_bwd, std_obs_act_bwd, x_pc_act_bwd = mean_std_eval_acc(
-    bp_act_bwd_bits, samples
-)
-
-# Plot PC
-
-fig, ax = plt.subplots(figsize=(8, 5.5))
-ax.spines["top"].set_visible(False)
-ax.spines["right"].set_visible(False)
-
-ax.plot(x_pc_weight, mean_pc_weight, label="Weight")
-ax.fill_between(
-    x_pc_weight,
-    mean_pc_weight - std_obs_weight,
-    mean_pc_weight + std_obs_weight,
-    alpha=0.1,
-)
-
-ax.plot(x_pc_act, mean_pc_act, label="Activation")
-ax.fill_between(
-    x_pc_act, mean_pc_act - std_obs_act, mean_pc_act + std_obs_act, alpha=0.1
-)
-
-ax.plot(x_pc_err_inpt, mean_pc_err_inpt, label="Error Activation")
-ax.fill_between(
-    x_pc_err_inpt,
-    mean_pc_err_inpt - std_obs_err_inpt,
-    mean_pc_err_inpt + std_obs_err_inpt,
-    alpha=0.1,
-)
-
-ax.plot(x_pc_err_weight, mean_pc_err_weight, label="Error Weight")
-ax.fill_between(
-    x_pc_err_weight,
-    mean_pc_err_weight - std_obs_err_weight,
-    mean_pc_err_weight + std_obs_err_weight,
-    alpha=0.1,
-)
-
-
-ax.plot(x_pc_weight_bwd, mean_pc_weight_bwd, label="Weight BWD")
-ax.fill_between(
-    x_pc_weight_bwd,
-    mean_pc_weight_bwd - std_obs_weight_bwd,
-    mean_pc_weight_bwd + std_obs_weight_bwd,
-    alpha=0.1,
-)
-
-ax.plot(x_pc_act_bwd, mean_pc_act_bwd, label="Activation BWD")
-ax.fill_between(
-    x_pc_act_bwd,
-    mean_pc_act_bwd - std_obs_act_bwd,
-    mean_pc_act_bwd + std_obs_act_bwd,
-    alpha=0.1,
-)
-
-ax.set_xlabel("Bits")
-ax.set_ylabel("Eval Acc")
-
-# ax.set_xscale('log')
-# ax.set_yscale('log')
-plt.legend(
-    bbox_to_anchor=(0.5, 1.2), loc="upper center", ncol=2, frameon=False
-)
-plt.tight_layout()
-plt.savefig("figures/bp_bits_ablation.png")
-# plt.show()
-plt.close()
+  plot_curves(pc_noise, "Predictive Coding Noise", 'pc_noise', 'Noise')
+  plot_curves(pc_bits, "Predictive Coding Quantization", 'pc_bits', 'Bits')
+  plot_curves(bp_noise, "Backpropagation Noise", 'bp_noise', 'Noise')
+  plot_curves(bp_bits, "Backpropagation Quantization", 'bp_bits', 'Bits')

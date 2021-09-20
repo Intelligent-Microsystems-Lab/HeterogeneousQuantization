@@ -54,7 +54,7 @@ class test_pc_nn(PC_NN):
         ConvolutionalPC(
             features=32,
             kernel_size=(3, 3),
-            strides=(2,2),
+            strides=(2, 2),
             padding="VALID",
             non_linearity=jax.nn.relu,
             infer_lr=self.config.infer_lr,
@@ -65,7 +65,7 @@ class test_pc_nn(PC_NN):
         ConvolutionalPC(
             features=64,
             kernel_size=(3, 3),
-            strides=(2,2),
+            strides=(2, 2),
             padding="VALID",
             non_linearity=jax.nn.relu,
             infer_lr=self.config.infer_lr,

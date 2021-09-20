@@ -484,7 +484,7 @@ class DensePC(nn.Module):
 
 class MaxPoolPC(nn.Module):
   window_shape: Iterable[int]
-  strides: Iterable[int] = (1,1)
+  strides: Iterable[int] = (1, 1)
   padding: Union[str, Iterable[Tuple[int, int]]] = "SAME"
   config: dict = ml_collections.FrozenConfigDict({})
 
@@ -501,7 +501,8 @@ class MaxPoolPC(nn.Module):
     val = self.get_variable("pc", "value")
 
     # do some kind of unpooling
-    import pdb; pdb.set_trace()
+    import pdb
+    pdb.set_trace()
     jax.grad(nn.max_pool)(val, self.window_shape, self.strides, self.padding)
 
     return err, _

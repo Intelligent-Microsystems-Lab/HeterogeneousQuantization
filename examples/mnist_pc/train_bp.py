@@ -67,7 +67,7 @@ class LeNet_BP(nn.Module):
     x = QuantConv(
         features=32,
         kernel_size=(3, 3),
-        strides=(2,2),
+        strides=(2, 2),
         padding="VALID",
         config=self.config.quant,
     )(x, subkey)
@@ -78,7 +78,7 @@ class LeNet_BP(nn.Module):
     x = QuantConv(
         features=64,
         kernel_size=(3, 3),
-        strides=(2,2),
+        strides=(2, 2),
         padding="VALID",
         config=self.config.quant,
     )(x, subkey)
