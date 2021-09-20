@@ -115,12 +115,12 @@ def plot_diff(curve1, curve2, title_str, png_fname, xaxis, samples):
       continue
 
     ax.plot(x1, mean2 -mean1, label=key)
-    #ax.fill_between(
+    # ax.fill_between(
     #    x,
-    #    mean - std,
+    #    - std,
     #    mean + std,
     #    alpha=0.1,
-    #)
+    # )
 
   ax.set_xlabel(xaxis)
   ax.set_ylabel("Eval Acc")
