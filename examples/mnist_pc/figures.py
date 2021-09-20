@@ -174,9 +174,9 @@ if __name__ == "__main__":
   }
 
   #plot_curves(pc_noise, "Predictive Coding Noise", 'pc_noise', 'Noise', args.samples)
-  #plot_curves(pc_bits, "Predictive Coding Quantization", 'pc_bits', 'Bits', args.samples)
+  plot_curves(pc_bits, "Predictive Coding Quantization", 'pc_bits', 'Bits', args.samples)
   #plot_curves(bp_noise, "Backpropagation Noise", 'bp_noise', 'Noise', args.samples)
-  #plot_curves(bp_bits, "Backpropagation Quantization", 'bp_bits', 'Bits', args.samples)
+  plot_curves(bp_bits, "Backpropagation Quantization", 'bp_bits', 'Bits', args.samples)
 
-  plot_diff(bp_noise, pc_noise, "Differences Noise", 'diff_noise', 'Noise', args.samples)
+  #plot_diff(bp_noise, pc_noise, "Differences Noise", 'diff_noise', 'Noise', args.samples)
   plot_diff(bp_bits, pc_bits, "Differences Quantization", 'diff_bits', 'Bits', args.samples)
