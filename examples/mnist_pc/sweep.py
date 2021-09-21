@@ -56,7 +56,7 @@ if __name__ == "__main__":
           + "{:.6f}".format(val)
           + "_"
           + args.network_type
-          + "_150_t"
+          + "_t"
           + str(i)
       )
 
@@ -84,7 +84,7 @@ if __name__ == "__main__":
         raise Exception("Unknown network type:" + args.network_type)
       job_script += ".py --workdir="
       job_script += work_dir
-      job_script += " --config=configs/default.py --config.infer_steps=150 "
+      job_script += " --config=configs/default.py "
       job_script += " --config." + args.parameter + "=" + str(val)
       job_script += " --config.seed=" + str(seed_list[i])
       job_script += "\n"
