@@ -84,7 +84,4 @@ jobs:
           python pc_modular_test.py
           python flax_qconv_test.py
           python flax_qdense.py
-          python rtrl_test.py
-          python pc_rtrl_test.py
-          python rtrl_test.py
           python quant_test.py
