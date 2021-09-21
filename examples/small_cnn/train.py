@@ -11,30 +11,25 @@ from ml_collections import config_flags, FrozenConfigDict
 
 import functools
 import time
-import datetime
 
 import jax
 import jax.numpy as jnp
 
 import sys
 
-from flax.metrics import tensorboard
 from flax.training import common_utils
 from flax import optim
-from flax.training.lr_schedule import create_cosine_learning_rate_schedule
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-
-from configs.default import get_config
 
 # from jax.config import config
 # config.update("jax_debug_nans", True)
 # config.update("jax_disable_jit", True)
 
 sys.path.append("../..")
-from pc_modular import ConvolutionalPC, DensePC, FlattenPC, MaxPoolPC, PC_NN  # noqa: E402
+from pc_modular import ConvolutionalPC, DensePC, FlattenPC, PC_NN  # noqa: E402
 
 
 FLAGS = flags.FLAGS
@@ -108,10 +103,6 @@ def cross_entropy_loss(logits, targt):
   logits = jax.nn.log_softmax(logits, axis=-1)
 
   return -jnp.mean(jnp.sum(targt * logits, axis=-1))
-
-
-def mse(logits, target):
-  return jnp.sum((logits - target) ** 2)
 
 
 def compute_metrics(logits, labels):
@@ -210,7 +201,8 @@ def train_and_evaluate(cfg, workdir):
 
   variables = nn_cifar10.init(
       p_rng,
-      jnp.ones((int(cfg.batch_size), cfg.ds_xdim, cfg.ds_ydim, cfg.ds_channels)),
+      jnp.ones((int(cfg.batch_size), cfg.ds_xdim,
+               cfg.ds_ydim, cfg.ds_channels)),
       subkey,
   )
   state, params = variables.pop("params")

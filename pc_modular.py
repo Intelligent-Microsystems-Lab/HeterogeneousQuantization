@@ -482,33 +482,31 @@ class DensePC(nn.Module):
     return {"kernel": jnp.dot(jnp.transpose(val), err)}
 
 
-class MaxPoolPC(nn.Module):
-  window_shape: Iterable[int]
-  strides: Iterable[int] = (1, 1)
-  padding: Union[str, Iterable[Tuple[int, int]]] = "SAME"
-  config: dict = ml_collections.FrozenConfigDict({})
+# class MaxPoolPC(nn.Module):
+#   window_shape: Iterable[int]
+#   strides: Iterable[int] = (1, 1)
+#   padding: Union[str, Iterable[Tuple[int, int]]] = "SAME"
+#   config: dict = ml_collections.FrozenConfigDict({})
 
-  @nn.module.compact
-  def __call__(self, inpt: Array, rng: PRNGKey):
-    val = self.variable("pc", "value", jnp.zeros, ())
-    val.value = inpt
+#   @nn.module.compact
+#   def __call__(self, inpt: Array, rng: PRNGKey):
+#     val = self.variable("pc", "value", jnp.zeros, ())
+#     val.value = inpt
 
-    y = nn.max_pool(inpt, self.window_shape, self.strides, self.padding)
+#     y = nn.max_pool(inpt, self.window_shape, self.strides, self.padding)
 
-    return y
+#     return y
 
-  def infer(self, err_prev, pred, rng):
-    val = self.get_variable("pc", "value")
+#   def infer(self, err_prev, pred, rng):
+#     val = self.get_variable("pc", "value")
 
-    # do some kind of unpooling
-    import pdb
-    pdb.set_trace()
-    jax.grad(nn.max_pool)(val, self.window_shape, self.strides, self.padding)
+#     # do some kind of unpooling
+#     jax.grad(nn.max_pool)(val, self.window_shape, self.strides, self.padding)
 
-    return err, _
+#     return err, _
 
-  def grads(self, err):
-    return {}
+#   def grads(self, err):
+#     return {}
 
 
 class FlattenPC(nn.Module):
