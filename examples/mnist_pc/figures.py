@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 parser = argparse.ArgumentParser(
     description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
-parser.add_argument("--basedir", type=str, default="/afs/crc.nd.edu/user/c/cschaef6/cifar10_noise_sweeps_t6/",
+parser.add_argument("--basedir", type=str, default="/afs/crc.nd.edu/user/c/cschaef6/cifar10_noise_sweeps_t7/",
                     help="Base dir with sweep results.")
 parser.add_argument("--samples", type=int, default=3,
                     help="Number of samples from each trial.")
@@ -178,7 +178,6 @@ if __name__ == "__main__":
   plot_curves(pc_bits, "Predictive Coding Quantization", 'pc_bits', 'Bits', args.samples)
   #plot_curves(bp_noise, "Backpropagation Noise", 'bp_noise', 'Noise', args.samples)
   plot_curves(bp_bits, "Backpropagation Quantization", 'bp_bits', 'Bits', args.samples)
-
   #plot_diff(bp_noise, pc_noise, "Differences Noise", 'diff_noise', 'Noise', args.samples)
   plot_diff(bp_bits, pc_bits, "Differences Quantization", 'diff_bits', 'Bits', args.samples)
 
@@ -210,14 +209,38 @@ def mean_std_eval_acc1(path, samples):
       np.array(x_obs)[idx],
   )
 
+
+
 mean_bp_in, std1, x1 = mean_std_eval_acc1(args.basedir+"/err_inpt_bits_bp", 1)
 mean_bp_w, std1, x1 = mean_std_eval_acc1(args.basedir+"/err_weight_bits_bp", 1)
 mean_pc_in, std1, x1 = mean_std_eval_acc1(args.basedir+"/err_inpt_bits_pc", 1)
 mean_pc_w, std1, x1 = mean_std_eval_acc1(args.basedir+"/err_weight_bits_pc", 1)
 
 
+fig, ax = plt.subplots(figsize=(8, 5.5))
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+
+ax.xaxis.set_tick_params(width=5, length=10)
+ax.yaxis.set_tick_params(width=5, length=10)
+
+for axis in ['top','bottom','left','right']:
+  ax.spines[axis].set_linewidth(5)
+
+ax.plot(x1[:-1], mean_pc_in[:-1,2,0]*100, color='red', label='Error (PC)', linewidth= 5 )
+ax.plot(x1[:-1], mean_bp_in[:-1,2,0]*100, color='red', ls='--', label='Error (BP)', linewidth= 5 )
+
+ax.plot(x1[:-1], mean_pc_w[:-1,2,0]*100, color='green', label='Gradients (PC)', linewidth= 5 )
+ax.plot(x1[:-1], mean_bp_w[:-1,2,0]*100, color='green', ls='--', label='Gradients (BP)', linewidth= 5)
 
 
-
+ax.set_xlabel("Bit Width")
+ax.set_ylabel("Eval Accuracy (%)")
+plt.legend(
+    bbox_to_anchor=(0.5, 1.2), loc="upper center", ncol=2, frameon=False, prop={'weight':'bold', 'size':22}
+)
+plt.tight_layout()
+plt.savefig("figures/clem.png")
+plt.close()
 
 #mean2, std2, x2 = mean_std_eval_acc(curve2[key], samples)
