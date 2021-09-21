@@ -1,10 +1,16 @@
 # CIFAR10 Training with Predicive Coding
 
 
-## Noise Sweeps
+<p align="center">
+<img src="figures/bit_sweep_errors.png" width="80%">
+</p>
+
+
+## Reproduce Results
 
 ```
-./run_noise_sweeps.sh
+./run_noise_sweeps.sh 
+python2 figures.py
 ```
 
 ## Requirements
