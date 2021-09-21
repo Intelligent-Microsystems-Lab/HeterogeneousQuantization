@@ -2,7 +2,7 @@
 module load python
 
 # Several noise sweeps on Notre Dame CRC cluster.
-MAIN_DIR="/afs/crc.nd.edu/user/c/cschaef6/cifar10_noise_sweeps_t6"
+MAIN_DIR="/afs/crc.nd.edu/user/c/cschaef6/cifar10_noise_sweeps_t7"
 USER="cschaef6"
 GPU_Q="gpu@@joshi"
 START="0."
