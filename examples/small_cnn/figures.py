@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument("--basedir",
                     type=str,
-                    default="~/cifar10_noise_sweeps_t7/",
+                    default="../../../cifar10_noise_sweeps_t7/",
                     help="Base dir with sweep results.")
 parser.add_argument("--samples", type=int, default=3,
                     help="Number of samples from each trial.")
