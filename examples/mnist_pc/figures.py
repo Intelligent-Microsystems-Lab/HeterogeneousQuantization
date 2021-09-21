@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 parser = argparse.ArgumentParser(
     description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
-parser.add_argument("--basedir", type=str, default="/afs/crc.nd.edu/user/c/cschaef6/cifar10_noise_sweeps_t2/",
+parser.add_argument("--basedir", type=str, default="/afs/crc.nd.edu/user/c/cschaef6/cifar10_noise_sweeps_t6/",
                     help="Base dir with sweep results.")
 parser.add_argument("--samples", type=int, default=3,
                     help="Number of samples from each trial.")
@@ -61,6 +61,8 @@ def mean_std_eval_acc(path, samples):
 
     sub_sample = []
     for sub_val in val:
+      if np.isnan(sub_val['loss']).any():
+        print(path)
       sub_sample.append(np.sort(sub_val["accuracy"])[-samples:])
 
     x_obs.append(i)
@@ -133,22 +135,22 @@ def plot_diff(curve1, curve2, title_str, png_fname, xaxis, samples):
 
 if __name__ == "__main__":
   pc_noise = {
-      'Weights FWD': args.basedir+"/weight_noise_pc",
-      'Activations FWD': args.basedir+"/act_noise_pc",
+      #'Weights FWD': args.basedir+"/weight_noise_pc",
+      #'Activations FWD': args.basedir+"/act_noise_pc",
       'Error Activations': args.basedir+"/err_inpt_noise_pc",
       'Error Weights': args.basedir+"/err_weight_noise_pc",
-      'Weights BWD': args.basedir+"/weight_bwd_noise_pc",
-      'Activations BWD': args.basedir+"/act_bwd_noise_pc",
+      #'Weights BWD': args.basedir+"/weight_bwd_noise_pc",
+      #'Activations BWD': args.basedir+"/act_bwd_noise_pc",
       #'Value Node': args.basedir+"/val_noise_pc",
   }
 
   pc_bits = {
-      'Weights FWD': args.basedir+"/weight_bits_pc",
-      'Activations FWD': args.basedir+"/act_bits_pc",
+      #'Weights FWD': args.basedir+"/weight_bits_pc",
+      #'Activations FWD': args.basedir+"/act_bits_pc",
       'Error Activations': args.basedir+"/err_inpt_bits_pc",
       'Error Weights': args.basedir+"/err_weight_bits_pc",
-      'Weights BWD': args.basedir+"/weight_bwd_bits_pc",
-      'Activations BWD': args.basedir+"/act_bwd_bits_pc",
+      #'Weights BWD': args.basedir+"/weight_bwd_bits_pc",
+      #'Activations BWD': args.basedir+"/act_bwd_bits_pc",
       #'Value Node': args.basedir+"/val_bits_pc",
   }
 
@@ -163,12 +165,12 @@ if __name__ == "__main__":
   }
 
   bp_bits = {
-      'Weights FWD': args.basedir+"/weight_bits_bp",
-      'Activations FWD': args.basedir+"/act_bits_bp",
+      #'Weights FWD': args.basedir+"/weight_bits_bp",
+      #'Activations FWD': args.basedir+"/act_bits_bp",
       'Error Activations': args.basedir+"/err_inpt_bits_bp",
       'Error Weights': args.basedir+"/err_weight_bits_bp",
-      'Weights BWD': args.basedir+"/weight_bwd_bits_bp",
-      'Activations BWD': args.basedir+"/act_bwd_bits_bp",
+      #'Weights BWD': args.basedir+"/weight_bwd_bits_bp",
+      #'Activations BWD': args.basedir+"/act_bwd_bits_bp",
       #'Value Node': args.basedir+"/val_bits_bp",
   }
 
@@ -179,3 +181,43 @@ if __name__ == "__main__":
 
   #plot_diff(bp_noise, pc_noise, "Differences Noise", 'diff_noise', 'Noise', args.samples)
   plot_diff(bp_bits, pc_bits, "Differences Quantization", 'diff_bits', 'Bits', args.samples)
+
+
+def mean_std_eval_acc1(path, samples):
+  data = read_data_from_dir(path)
+
+  mean_obs = []
+  std_obs = []
+  x_obs = []
+  for i, val in data.items():
+    if val == {}:
+      continue
+
+    sub_sample = []
+    for sub_val in val:
+      if np.isnan(sub_val['loss']).any():
+        print(path)
+      sub_sample.append(np.sort(sub_val["accuracy"])[-samples:])
+
+    x_obs.append(i)
+    mean_obs.append(sub_sample)
+    std_obs.append(np.std(sub_sample))
+
+  idx = np.argsort(x_obs)
+  return (
+      np.array(mean_obs)[idx],
+      np.array(std_obs)[idx],
+      np.array(x_obs)[idx],
+  )
+
+mean_bp_in, std1, x1 = mean_std_eval_acc1(args.basedir+"/err_inpt_bits_bp", 1)
+mean_bp_w, std1, x1 = mean_std_eval_acc1(args.basedir+"/err_weight_bits_bp", 1)
+mean_pc_in, std1, x1 = mean_std_eval_acc1(args.basedir+"/err_inpt_bits_pc", 1)
+mean_pc_w, std1, x1 = mean_std_eval_acc1(args.basedir+"/err_weight_bits_pc", 1)
+
+
+
+
+
+
+#mean2, std2, x2 = mean_std_eval_acc(curve2[key], samples)
