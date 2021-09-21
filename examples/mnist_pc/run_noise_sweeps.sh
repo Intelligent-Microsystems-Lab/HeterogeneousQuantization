@@ -2,20 +2,20 @@
 module load python
 
 # Several noise sweeps on Notre Dame CRC cluster.
-MAIN_DIR="/afs/crc.nd.edu/user/c/cschaef6/cifar10_noise_sweeps_t3"
+MAIN_DIR="/afs/crc.nd.edu/user/c/cschaef6/cifar10_noise_sweeps_t4"
 USER="cschaef6"
 GPU_Q="gpu@@joshi"
 START="0."
 STOP=".35"
 STEP="0.025"
-TRIALS="5"
+TRIALS="3"
 
 
-LIST="0.125000,0.055556,0.031250,0.020000,0.013889,0.010204,0.007812,0.006173,0.005000,0.004132,0.003472,0.002959,0.002551,0.002222,0.001953,0.000000"
+#LIST="0.125000,0.055556,0.031250,0.020000,0.013889,0.010204,0.007812,0.006173,0.005000,0.004132,0.003472,0.002959,0.002551,0.002222,0.001953,0.000000"
 
-LIST="12,10,8,7,6,5,4,3,2"
+#LIST="12,10,8,7,6,5,4,3,2"
 
-LIST="14,13,12,10,8,7,6,5"
+LIST="12,11,10,9,8,7,6,5"
 
 mkdir $MAIN_DIR
 
