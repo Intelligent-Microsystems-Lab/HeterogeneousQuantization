@@ -11,8 +11,8 @@ def get_config():
 
   config.seed = 203853699
 
-  config.batch_size = 16.
-  config.num_epochs = 30.
+  config.batch_size = 64.
+  config.num_epochs = 15.
   config.learning_rate = 0.0005
 
   # PC parameters
