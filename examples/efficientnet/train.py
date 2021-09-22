@@ -1,29 +1,24 @@
-# Copied from https://github.com/google/flax/tree/main/examples
-# Copyright 2021 The Flax Authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# IMSL Lab - University of Notre Dame
+# Author: Clemens JS Schaefer
+# Originally copied from https://github.com/google/flax/tree/main/examples
 
-"""ImageNet example.
+"""EfficientNet example.
 
-This script trains a ResNet-50 on the ImageNet dataset.
+This script trains a EfficientB0 on the ImageNet dataset.
 The data is loaded using tensorflow_datasets.
 """
+
+
+
 
 import functools
 import time
 from typing import Any
 
+from absl import app
+from absl import flags
 from absl import logging
+from clu import platform
 from clu import metric_writers
 from clu import periodic_actions
 
@@ -41,10 +36,12 @@ from flax.training import train_state
 import jax
 from jax import lax
 from jax import random
+import tensorflow as tf
 
 import jax.numpy as jnp
 
 import ml_collections
+from ml_collections import config_flags
 
 import optax
 
@@ -52,19 +49,19 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 
 
-NUM_CLASSES = 1000
+FLAGS = flags.FLAGS
+
+flags.DEFINE_string('workdir', None, 'Directory to store model data.')
+config_flags.DEFINE_config_file(
+    'config',
+    None,
+    'File path to the training hyperparameter configuration.',
+    lock_config=True)
 
 
-def create_model(*, model_cls, half_precision, **kwargs):
-  platform = jax.local_devices()[0].platform
-  if half_precision:
-    if platform == 'tpu':
-      model_dtype = jnp.bfloat16
-    else:
-      model_dtype = jnp.float16
-  else:
-    model_dtype = jnp.float32
-  return model_cls(num_classes=NUM_CLASSES, dtype=model_dtype, **kwargs)
+def create_model(*, model_cls, num_classes, **kwargs):
+  model_dtype = jnp.float32
+  return model_cls(num_classes=num_classes, dtype=model_dtype, **kwargs)
 
 
 def initialized(key, image_size, model):
@@ -77,14 +74,14 @@ def initialized(key, image_size, model):
   return variables['params'], variables['batch_stats']
 
 
-def cross_entropy_loss(logits, labels):
-  one_hot_labels = common_utils.onehot(labels, num_classes=NUM_CLASSES)
+def cross_entropy_loss(logits, labels, num_classes):
+  one_hot_labels = common_utils.onehot(labels, num_classes=num_classes)
   xentropy = optax.softmax_cross_entropy(logits=logits, labels=one_hot_labels)
   return jnp.mean(xentropy)
 
 
-def compute_metrics(logits, labels):
-  loss = cross_entropy_loss(logits, labels)
+def compute_metrics(logits, labels, num_classes):
+  loss = cross_entropy_loss(logits, labels, num_classes)
   accuracy = jnp.mean(jnp.argmax(logits, -1) == labels)
   metrics = {
       'loss': loss,
@@ -112,7 +109,7 @@ def create_learning_rate_fn(
   return schedule_fn
 
 
-def train_step(state, batch, learning_rate_fn):
+def train_step(state, batch, learning_rate_fn, num_classes):
   """Perform a single training step."""
   def loss_fn(params):
     """loss function used for training."""
@@ -120,7 +117,7 @@ def train_step(state, batch, learning_rate_fn):
         {'params': params, 'batch_stats': state.batch_stats},
         batch['image'],
         mutable=['batch_stats'])
-    loss = cross_entropy_loss(logits, batch['label'])
+    loss = cross_entropy_loss(logits, batch['label'], num_classes)
     weight_penalty_params = jax.tree_leaves(params)
     weight_decay = 0.0001
     weight_l2 = sum([jnp.sum(x ** 2)
@@ -131,77 +128,32 @@ def train_step(state, batch, learning_rate_fn):
     return loss, (new_model_state, logits)
 
   step = state.step
-  dynamic_scale = state.dynamic_scale
   lr = learning_rate_fn(step)
 
-  if dynamic_scale:
-    grad_fn = dynamic_scale.value_and_grad(
-        loss_fn, has_aux=True, axis_name='batch')
-    dynamic_scale, is_fin, aux, grads = grad_fn(state.params)
-    # dynamic loss takes care of averaging gradients across replicas
-  else:
-    grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
-    aux, grads = grad_fn(state.params)
-    # Re-use same axis_name as in the call to `pmap(...train_step...)` below.
-    grads = lax.pmean(grads, axis_name='batch')
+  grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
+  aux, grads = grad_fn(state.params)
+  # Re-use same axis_name as in the call to `pmap(...train_step...)` below.
+  grads = lax.pmean(grads, axis_name='batch')
+
   new_model_state, logits = aux[1]
-  metrics = compute_metrics(logits, batch['label'])
+  metrics = compute_metrics(logits, batch['label'], num_classes)
   metrics['learning_rate'] = lr
 
   new_state = state.apply_gradients(
       grads=grads, batch_stats=new_model_state['batch_stats'])
-  if dynamic_scale:
-    # if is_fin == False the gradients contain Inf/NaNs and optimizer state and
-    # params should be restored (= skip this step).
-    new_state = new_state.replace(
-        opt_state=jax.tree_multimap(
-            functools.partial(jnp.where, is_fin),
-            new_state.opt_state,
-            state.opt_state),
-        params=jax.tree_multimap(
-            functools.partial(jnp.where, is_fin),
-            new_state.params,
-            state.params))
-    metrics['scale'] = dynamic_scale.scale
 
   return new_state, metrics
 
 
-def eval_step(state, batch):
+def eval_step(state, batch, num_classes):
   variables = {'params': state.params, 'batch_stats': state.batch_stats}
   logits = state.apply_fn(
       variables, batch['image'], train=False, mutable=False)
-  return compute_metrics(logits, batch['label'])
-
-
-def prepare_tf_data(xs):
-  """Convert a input batch from tf Tensors to numpy arrays."""
-  local_device_count = jax.local_device_count()
-
-  def _prepare(x):
-    # Use _numpy() for zero-copy conversion between TF and NumPy.
-    x = x._numpy()  # pylint: disable=protected-access
-
-    # reshape (host_batch_size, height, width, 3) to
-    # (local_devices, device_batch_size, height, width, 3)
-    return x.reshape((local_device_count, -1) + x.shape[1:])
-
-  return jax.tree_map(_prepare, xs)
-
-
-def create_input_iter(dataset_builder, batch_size, image_size, dtype, train,
-                      cache):
-  ds = input_pipeline.create_split(
-      dataset_builder, batch_size, image_size=image_size, dtype=dtype,
-      train=train, cache=cache)
-  it = map(prepare_tf_data, ds)
-  it = jax_utils.prefetch_to_device(it, 2)
-  return it
-
+  return compute_metrics(logits, batch['label'], num_classes)
 
 class TrainState(train_state.TrainState):
   batch_stats: Any
-  dynamic_scale: flax.optim.DynamicScale
+  #dynamic_scale: flax.optim.DynamicScale
 
 
 def restore_checkpoint(state, workdir):
@@ -248,8 +200,7 @@ def create_train_state(rng, config: ml_collections.ConfigDict,
       apply_fn=model.apply,
       params=params,
       tx=tx,
-      batch_stats=batch_stats,
-      dynamic_scale=dynamic_scale)
+      batch_stats=batch_stats,)
   return state
 
 
@@ -264,35 +215,24 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   Returns:
     Final TrainState.
   """
+  writer_train = metric_writers.create_default_writer(
+      logdir=workdir+'/train', just_logging=jax.process_index() != 0)
+  writer_eval = metric_writers.create_default_writer(
+      logdir=workdir+'/eval', just_logging=jax.process_index() != 0)
 
-  writer = metric_writers.create_default_writer(
-      logdir=workdir, just_logging=jax.process_index() != 0)
-
-  rng = random.PRNGKey(0)
-
-  image_size = 224
+  rng = random.PRNGKey(config.seed)
 
   if config.batch_size % jax.device_count() > 0:
     raise ValueError('Batch size must be divisible by the number of devices')
   local_batch_size = config.batch_size // jax.process_count()
 
-  platform = jax.local_devices()[0].platform
-
-  if config.half_precision:
-    if platform == 'tpu':
-      input_dtype = tf.bfloat16
-    else:
-      input_dtype = tf.float16
-  else:
-    input_dtype = tf.float32
-
   dataset_builder = tfds.builder(config.dataset)
   dataset_builder.download_and_prepare()
-  train_iter = create_input_iter(
-      dataset_builder, local_batch_size, image_size, input_dtype, train=True,
+  train_iter =  input_pipeline.create_input_iter(
+      dataset_builder, local_batch_size, config.image_size, tf.float32, train=True,
       cache=config.cache)
-  eval_iter = create_input_iter(
-      dataset_builder, local_batch_size, image_size, input_dtype, train=False,
+  eval_iter = input_pipeline.create_input_iter(
+      dataset_builder, local_batch_size, config.image_size, tf.float32, train=False,
       cache=config.cache)
 
   steps_per_epoch = (
@@ -317,21 +257,21 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
   model_cls = getattr(models, config.model)
   model = create_model(
-      model_cls=model_cls, half_precision=config.half_precision)
+      model_cls=model_cls, num_classes=config.num_classes)
 
   learning_rate_fn = create_learning_rate_fn(
       config, base_learning_rate, steps_per_epoch)
 
-  state = create_train_state(rng, config, model, image_size, learning_rate_fn)
+  state = create_train_state(rng, config, model, config.image_size, learning_rate_fn)
   state = restore_checkpoint(state, workdir)
   # step_offset > 0 if restarting from checkpoint
   step_offset = int(state.step)
   state = jax_utils.replicate(state)
 
   p_train_step = jax.pmap(
-      functools.partial(train_step, learning_rate_fn=learning_rate_fn),
+      functools.partial(train_step, learning_rate_fn=learning_rate_fn, num_classes=config.num_classes),
       axis_name='batch')
-  p_eval_step = jax.pmap(eval_step, axis_name='batch')
+  p_eval_step = jax.pmap(functools.partial(eval_step, num_classes=config.num_classes), axis_name='batch')
 
   train_metrics = []
   hooks = []
@@ -356,7 +296,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         }
         summary['steps_per_second'] = config.log_every_steps / (
             time.time() - train_metrics_last_t)
-        writer.write_scalars(step + 1, summary)
+        writer_train.write_scalars(step + 1, summary)
+        writer_train.flush()
         train_metrics = []
         train_metrics_last_t = time.time()
 
@@ -374,9 +315,9 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
       logging.info('eval epoch: %d, loss: %.4f, accuracy: %.2f',
                    epoch, summary['loss'], summary['accuracy'] * 100)
-      writer.write_scalars(
+      writer_eval.write_scalars(
           step + 1, {f'eval_{key}': val for key, val in summary.items()})
-      writer.flush()
+      writer_eval.flush()
     if (step + 1) % steps_per_checkpoint == 0 or step + 1 == num_steps:
       state = sync_batch_stats(state)
       save_checkpoint(state, workdir)
@@ -385,3 +326,30 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   jax.random.normal(jax.random.PRNGKey(0), ()).block_until_ready()
 
   return state
+
+def main(argv):
+  if len(argv) > 1:
+    raise app.UsageError('Too many command-line arguments.')
+
+  # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
+  # it unavailable to JAX.
+  tf.config.experimental.set_visible_devices([], 'GPU')
+
+  logging.info('JAX process: %d / %d',
+               jax.process_index(), jax.process_count())
+  logging.info('JAX local devices: %r', jax.local_devices())
+
+  # Add a note so that we can tell which task is which JAX host.
+  # (Depending on the platform task 0 is not guaranteed to be host 0)
+  platform.work_unit().set_task_status(f'process_index: {jax.process_index()}, '
+                                       f'process_count: {jax.process_count()}')
+  platform.work_unit().create_artifact(platform.ArtifactType.DIRECTORY,
+                                       FLAGS.workdir, 'workdir')
+
+  train_and_evaluate(FLAGS.config, FLAGS.workdir)
+
+
+if __name__ == '__main__':
+  flags.mark_flags_as_required(['config', 'workdir'])
+  app.run(main)
+

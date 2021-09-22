@@ -1,17 +1,6 @@
-# Copied from https://github.com/google/flax/tree/main/examples
-# Copyright 2021 The Flax Authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# IMSL Lab - University of Notre Dame
+# Author: Clemens JS Schaefer
+# Originally copied from https://github.com/google/flax/tree/main/examples
 
 """ImageNet input pipeline.
 """
@@ -21,11 +10,37 @@ import jax
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
+from flax import jax_utils
+
 
 IMAGE_SIZE = 224
 CROP_PADDING = 32
 MEAN_RGB = [0.485 * 255, 0.456 * 255, 0.406 * 255]
 STDDEV_RGB = [0.229 * 255, 0.224 * 255, 0.225 * 255]
+
+
+def create_input_iter(dataset_builder, batch_size, image_size, dtype, train,
+                      cache):
+  ds = create_split(
+      dataset_builder, batch_size, image_size=image_size, dtype=dtype,
+      train=train, cache=cache)
+  it = map(prepare_tf_data, ds)
+  it = jax_utils.prefetch_to_device(it, 2)
+  return it
+
+def prepare_tf_data(xs):
+  """Convert a input batch from tf Tensors to numpy arrays."""
+  local_device_count = jax.local_device_count()
+
+  def _prepare(x):
+    # Use _numpy() for zero-copy conversion between TF and NumPy.
+    x = x._numpy()  # pylint: disable=protected-access
+
+    # reshape (host_batch_size, height, width, 3) to
+    # (local_devices, device_batch_size, height, width, 3)
+    return x.reshape((local_device_count, -1) + x.shape[1:])
+
+  return jax.tree_map(_prepare, xs)
 
 
 def distorted_bounding_box_crop(image_bytes,
