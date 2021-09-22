@@ -20,7 +20,7 @@ import models
 import train
 from configs import default as default_lib
 
-
+jax.config.update('jax_platform_name', 'cpu')
 jax.config.update('jax_disable_most_optimizations', True)
 
 
@@ -42,25 +42,30 @@ class TrainTest(absltest.TestCase):
     y = model.apply(variables, x, train=False)
     self.assertEqual(y.shape, (8, 1000))
 
-  def test_train_and_evaluate(self):
-    """Tests training and evaluation loop using mocked data."""
-    # Create a temporary directory where tensorboard metrics are written.
-    workdir = tempfile.mkdtemp()
 
-    # Go two directories up to the root of the flax directory.
-    flax_root_dir = pathlib.Path(__file__).parents[2]
-    data_dir = str(flax_root_dir) + '/.tfds/metadata'
+  # # with tfds.testing.mock_data(num_examples=1024, data_dir=data_dir):
+  # def test_train_and_evaluate(self):
+  #   """Tests training and evaluation loop using mocked data."""
+  #   # Create a temporary directory where tensorboard metrics are written.
+  #   workdir = tempfile.mkdtemp()
 
-    # Define training configuration
-    config = default_lib.get_config()
-    config.model = '_ResNet1'
-    config.batch_size = 1
-    config.num_epochs = 1
-    config.num_train_steps = 1
-    config.steps_per_eval = 1
+  #   # Go two directories up to the root of the flax directory.
+  #   flax_root_dir = pathlib.Path(__file__).parents[2]
 
-    with tfds.testing.mock_data(num_examples=1, data_dir=data_dir):
-      train.train_and_evaluate(workdir=workdir, config=config)
+  #   tfds.testing.DummyDataset()
+  #   import pdb; pdb.set_trace()
+  #   data_dir = './.tfds/metadata'# str(flax_root_dir) + '/.tfds/metadata'
+
+  #   # Define training configuration
+  #   config = default_lib.get_config()
+  #   config.model = '_ResNet1'
+  #   config.batch_size = 256
+  #   config.num_epochs = 1
+  #   config.num_train_steps = 1
+  #   config.steps_per_eval = 1
+
+  #   with tfds.testing.mock_data(num_examples=1, data_dir=data_dir):
+  #     train.train_and_evaluate(workdir=workdir, config=config)
 
 
 if __name__ == '__main__':

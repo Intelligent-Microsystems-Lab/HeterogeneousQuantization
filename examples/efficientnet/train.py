@@ -216,7 +216,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   rng = random.PRNGKey(config.seed)
 
   if config.batch_size % jax.device_count() > 0:
-    raise ValueError('Batch size must be divisible by the number of devices')
+    raise ValueError('Batch size ('+str(config.batch_size)+') must be divisible by the number of devices ('+str(jax.device_count())+').')
   local_batch_size = config.batch_size // jax.process_count()
 
   dataset_builder = tfds.builder(config.dataset)
