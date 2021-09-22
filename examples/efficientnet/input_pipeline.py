@@ -13,10 +13,10 @@ import tensorflow_datasets as tfds
 from flax import jax_utils
 
 
-IMAGE_SIZE = 224
-CROP_PADDING = 32
-MEAN_RGB = [0.485 * 255, 0.456 * 255, 0.406 * 255]
-STDDEV_RGB = [0.229 * 255, 0.224 * 255, 0.225 * 255]
+# IMAGE_SIZE = 224
+# CROP_PADDING = 32
+# MEAN_RGB = [0.485 * 255, 0.456 * 255, 0.406 * 255]
+# STDDEV_RGB = [0.229 * 255, 0.224 * 255, 0.225 * 255]
 
 
 def create_input_iter(dataset_builder, batch_size, image_size, dtype, train,
@@ -125,14 +125,14 @@ def _decode_and_random_crop(image_bytes, image_size):
   return image
 
 
-def _decode_and_center_crop(image_bytes, image_size):
+def _decode_and_center_crop(image_bytes, image_size, crop_padding):
   """Crops to center of image with padding then scales image_size."""
   shape = tf.io.extract_jpeg_shape(image_bytes)
   image_height = shape[0]
   image_width = shape[1]
 
   padded_center_crop_size = tf.cast(
-      ((image_size / (image_size + CROP_PADDING)) *
+      ((image_size / (image_size + crop_padding)) *
        tf.cast(tf.minimum(image_height, image_width), tf.float32)),
       tf.int32)
 
@@ -146,13 +146,13 @@ def _decode_and_center_crop(image_bytes, image_size):
   return image
 
 
-def normalize_image(image):
-  image -= tf.constant(MEAN_RGB, shape=[1, 1, 3], dtype=image.dtype)
-  image /= tf.constant(STDDEV_RGB, shape=[1, 1, 3], dtype=image.dtype)
+def normalize_image(image, mean_rgb, stddev_rgb):
+  image -= tf.constant(mean_rgb, shape=[1, 1, 3], dtype=image.dtype)
+  image /= tf.constant(stddev_rgb, shape=[1, 1, 3], dtype=image.dtype)
   return image
 
 
-def preprocess_for_train(image_bytes, dtype=tf.float32, image_size=IMAGE_SIZE):
+def preprocess_for_train(image_bytes, image_size, dtype=tf.float32):
   """Preprocesses the given image for training.
 
   Args:
@@ -171,7 +171,7 @@ def preprocess_for_train(image_bytes, dtype=tf.float32, image_size=IMAGE_SIZE):
   return image
 
 
-def preprocess_for_eval(image_bytes, dtype=tf.float32, image_size=IMAGE_SIZE):
+def preprocess_for_eval(image_bytes, image_size, dtype=tf.float32):
   """Preprocesses the given image for evaluation.
 
   Args:
@@ -189,8 +189,7 @@ def preprocess_for_eval(image_bytes, dtype=tf.float32, image_size=IMAGE_SIZE):
   return image
 
 
-def create_split(dataset_builder, batch_size, train, dtype=tf.float32,
-                 image_size=IMAGE_SIZE, cache=False):
+def create_split(dataset_builder, batch_size, train, image_size, dtype=tf.float32, cache=False):
   """Creates a split from the ImageNet dataset using TensorFlow Datasets.
 
   Args:
