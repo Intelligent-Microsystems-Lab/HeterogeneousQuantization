@@ -34,7 +34,8 @@ class TrainTest(absltest.TestCase):
   def test_create_model(self):
     """Tests creating model."""
     model = train.create_model(
-        model_cls=models._ResNet1, half_precision=False)  # pylint: disable=protected-access
+        model_cls=models._ResNet1,  # pylint: disable=protected-access
+        num_classes=1000)
     params, batch_stats = train.initialized(random.PRNGKey(0), 224, model)
     variables = {'params': params, 'batch_stats': batch_stats}
     x = random.normal(random.PRNGKey(1), (8, 224, 224, 3))

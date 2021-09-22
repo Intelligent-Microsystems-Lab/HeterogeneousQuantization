@@ -25,7 +25,6 @@ def get_config():
   config.stddev_rgb = [0.229 * 255, 0.224 * 255, 0.225 * 255]
   config.num_classes = 10
 
-
   config.learning_rate = 0.1
   config.warmup_epochs = 5.0
   config.momentum = 0.9
@@ -33,8 +32,6 @@ def get_config():
 
   config.num_epochs = 100.0
   config.log_every_steps = 100
-
-  
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.
@@ -51,7 +48,7 @@ def get_config():
   config.quant.val_noise = 0.0
   config.quant.err_inpt_noise = 0.0
   config.quant.err_weight_noise = 0.0
-  
+
   # quant
   config.quant.weight_bits = 5.0
   config.quant.act_bits = 5.0

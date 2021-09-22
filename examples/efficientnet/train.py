@@ -9,9 +9,8 @@ The data is loaded using tensorflow_datasets.
 """
 
 
-
-
 import functools
+import resource
 import time
 from typing import Any
 
@@ -22,9 +21,7 @@ from clu import platform
 from clu import metric_writers
 from clu import periodic_actions
 
-import flax
 from flax import jax_utils
-from flax import optim
 
 import input_pipeline
 import models
@@ -37,6 +34,7 @@ import jax
 from jax import lax
 from jax import random
 import tensorflow as tf
+import tensorflow_datasets as tfds
 
 import jax.numpy as jnp
 
@@ -45,8 +43,9 @@ from ml_collections import config_flags
 
 import optax
 
-import tensorflow as tf
-import tensorflow_datasets as tfds
+
+low, high = resource.getrlimit(resource.RLIMIT_NOFILE)
+resource.setrlimit(resource.RLIMIT_NOFILE, (high, high))
 
 
 FLAGS = flags.FLAGS
@@ -151,9 +150,9 @@ def eval_step(state, batch, num_classes):
       variables, batch['image'], train=False, mutable=False)
   return compute_metrics(logits, batch['label'], num_classes)
 
+
 class TrainState(train_state.TrainState):
   batch_stats: Any
-  #dynamic_scale: flax.optim.DynamicScale
 
 
 def restore_checkpoint(state, workdir):
@@ -183,12 +182,6 @@ def sync_batch_stats(state):
 def create_train_state(rng, config: ml_collections.ConfigDict,
                        model, image_size, learning_rate_fn):
   """Create initial training state."""
-  dynamic_scale = None
-  platform = jax.local_devices()[0].platform
-  if config.half_precision and platform == 'gpu':
-    dynamic_scale = optim.DynamicScale()
-  else:
-    dynamic_scale = None
 
   params, batch_stats = initialized(rng, image_size, model)
   tx = optax.sgd(
@@ -216,9 +209,9 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     Final TrainState.
   """
   writer_train = metric_writers.create_default_writer(
-      logdir=workdir+'/train', just_logging=jax.process_index() != 0)
+      logdir=workdir + '/train', just_logging=jax.process_index() != 0)
   writer_eval = metric_writers.create_default_writer(
-      logdir=workdir+'/eval', just_logging=jax.process_index() != 0)
+      logdir=workdir + '/eval', just_logging=jax.process_index() != 0)
 
   rng = random.PRNGKey(config.seed)
 
@@ -228,12 +221,10 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
   dataset_builder = tfds.builder(config.dataset)
   dataset_builder.download_and_prepare()
-  train_iter =  input_pipeline.create_input_iter(
-      dataset_builder, local_batch_size, config.image_size, tf.float32, train=True,
-      cache=config.cache)
+  train_iter = input_pipeline.create_input_iter(
+      dataset_builder, local_batch_size, train=True, config=config)
   eval_iter = input_pipeline.create_input_iter(
-      dataset_builder, local_batch_size, config.image_size, tf.float32, train=False,
-      cache=config.cache)
+      dataset_builder, local_batch_size, train=False, config=config)
 
   steps_per_epoch = (
       dataset_builder.info.splits['train'].num_examples // config.batch_size
@@ -262,16 +253,21 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   learning_rate_fn = create_learning_rate_fn(
       config, base_learning_rate, steps_per_epoch)
 
-  state = create_train_state(rng, config, model, config.image_size, learning_rate_fn)
+  state = create_train_state(
+      rng, config, model, config.image_size, learning_rate_fn)
   state = restore_checkpoint(state, workdir)
   # step_offset > 0 if restarting from checkpoint
   step_offset = int(state.step)
   state = jax_utils.replicate(state)
 
   p_train_step = jax.pmap(
-      functools.partial(train_step, learning_rate_fn=learning_rate_fn, num_classes=config.num_classes),
+      functools.partial(
+          train_step,
+          learning_rate_fn=learning_rate_fn,
+          num_classes=config.num_classes),
       axis_name='batch')
-  p_eval_step = jax.pmap(functools.partial(eval_step, num_classes=config.num_classes), axis_name='batch')
+  p_eval_step = jax.pmap(functools.partial(
+      eval_step, num_classes=config.num_classes), axis_name='batch')
 
   train_metrics = []
   hooks = []
@@ -316,7 +312,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       logging.info('eval epoch: %d, loss: %.4f, accuracy: %.2f',
                    epoch, summary['loss'], summary['accuracy'] * 100)
       writer_eval.write_scalars(
-          step + 1, {f'eval_{key}': val for key, val in summary.items()})
+          step + 1, summary)
       writer_eval.flush()
     if (step + 1) % steps_per_checkpoint == 0 or step + 1 == num_steps:
       state = sync_batch_stats(state)
@@ -326,6 +322,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   jax.random.normal(jax.random.PRNGKey(0), ()).block_until_ready()
 
   return state
+
 
 def main(argv):
   if len(argv) > 1:
@@ -341,8 +338,8 @@ def main(argv):
 
   # Add a note so that we can tell which task is which JAX host.
   # (Depending on the platform task 0 is not guaranteed to be host 0)
-  platform.work_unit().set_task_status(f'process_index: {jax.process_index()}, '
-                                       f'process_count: {jax.process_count()}')
+  platform.work_unit().set_task_status(f'proc_index: {jax.process_index()}, '
+                                       f'proc_count: {jax.process_count()}')
   platform.work_unit().create_artifact(platform.ArtifactType.DIRECTORY,
                                        FLAGS.workdir, 'workdir')
 
@@ -352,4 +349,3 @@ def main(argv):
 if __name__ == '__main__':
   flags.mark_flags_as_required(['config', 'workdir'])
   app.run(main)
-

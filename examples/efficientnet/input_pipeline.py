@@ -13,20 +13,13 @@ import tensorflow_datasets as tfds
 from flax import jax_utils
 
 
-# IMAGE_SIZE = 224
-# CROP_PADDING = 32
-# MEAN_RGB = [0.485 * 255, 0.456 * 255, 0.406 * 255]
-# STDDEV_RGB = [0.229 * 255, 0.224 * 255, 0.225 * 255]
-
-
-def create_input_iter(dataset_builder, batch_size, image_size, dtype, train,
-                      cache):
+def create_input_iter(dataset_builder, batch_size, train, config):
   ds = create_split(
-      dataset_builder, batch_size, image_size=image_size, dtype=dtype,
-      train=train, cache=cache)
+      dataset_builder, batch_size, train=train, config=config)
   it = map(prepare_tf_data, ds)
   it = jax_utils.prefetch_to_device(it, 2)
   return it
+
 
 def prepare_tf_data(xs):
   """Convert a input batch from tf Tensors to numpy arrays."""
@@ -104,7 +97,7 @@ def _at_least_x_are_equal(a, b, x):
   return tf.greater_equal(tf.reduce_sum(match), x)
 
 
-def _decode_and_random_crop(image_bytes, image_size):
+def _decode_and_random_crop(image_bytes, config):
   """Make a random crop of image_size."""
   bbox = tf.constant([0.0, 0.0, 1.0, 1.0], dtype=tf.float32, shape=[1, 1, 4])
   image = distorted_bounding_box_crop(
@@ -119,21 +112,21 @@ def _decode_and_random_crop(image_bytes, image_size):
 
   image = tf.cond(
       bad,
-      lambda: _decode_and_center_crop(image_bytes, image_size),
-      lambda: _resize(image, image_size))
+      lambda: _decode_and_center_crop(image_bytes, config),
+      lambda: _resize(image, config.image_size))
 
   return image
 
 
-def _decode_and_center_crop(image_bytes, image_size, crop_padding):
+def _decode_and_center_crop(image_bytes, config):
   """Crops to center of image with padding then scales image_size."""
   shape = tf.io.extract_jpeg_shape(image_bytes)
   image_height = shape[0]
   image_width = shape[1]
 
   padded_center_crop_size = tf.cast(
-      ((image_size / (image_size + crop_padding)) *
-       tf.cast(tf.minimum(image_height, image_width), tf.float32)),
+      ((config.image_size / (config.image_size + config.crop_padding))
+       * tf.cast(tf.minimum(image_height, image_width), tf.float32)),
       tf.int32)
 
   offset_height = ((image_height - padded_center_crop_size) + 1) // 2
@@ -141,18 +134,18 @@ def _decode_and_center_crop(image_bytes, image_size, crop_padding):
   crop_window = tf.stack([offset_height, offset_width,
                           padded_center_crop_size, padded_center_crop_size])
   image = tf.io.decode_and_crop_jpeg(image_bytes, crop_window, channels=3)
-  image = _resize(image, image_size)
+  image = _resize(image, config.image_size)
 
   return image
 
 
-def normalize_image(image, mean_rgb, stddev_rgb):
-  image -= tf.constant(mean_rgb, shape=[1, 1, 3], dtype=image.dtype)
-  image /= tf.constant(stddev_rgb, shape=[1, 1, 3], dtype=image.dtype)
+def normalize_image(image, config):
+  image -= tf.constant(config.mean_rgb, shape=[1, 1, 3], dtype=image.dtype)
+  image /= tf.constant(config.stddev_rgb, shape=[1, 1, 3], dtype=image.dtype)
   return image
 
 
-def preprocess_for_train(image_bytes, image_size, dtype=tf.float32):
+def preprocess_for_train(image_bytes, config):
   """Preprocesses the given image for training.
 
   Args:
@@ -163,15 +156,15 @@ def preprocess_for_train(image_bytes, image_size, dtype=tf.float32):
   Returns:
     A preprocessed image `Tensor`.
   """
-  image = _decode_and_random_crop(image_bytes, image_size)
-  image = tf.reshape(image, [image_size, image_size, 3])
+  image = _decode_and_random_crop(image_bytes, config)
+  image = tf.reshape(image, [config.image_size, config.image_size, 3])
   image = tf.image.random_flip_left_right(image)
-  image = normalize_image(image)
-  image = tf.image.convert_image_dtype(image, dtype=dtype)
+  image = normalize_image(image, config)
+  image = tf.image.convert_image_dtype(image, dtype=tf.float32)
   return image
 
 
-def preprocess_for_eval(image_bytes, image_size, dtype=tf.float32):
+def preprocess_for_eval(image_bytes, config):
   """Preprocesses the given image for evaluation.
 
   Args:
@@ -182,14 +175,14 @@ def preprocess_for_eval(image_bytes, image_size, dtype=tf.float32):
   Returns:
     A preprocessed image `Tensor`.
   """
-  image = _decode_and_center_crop(image_bytes, image_size)
-  image = tf.reshape(image, [image_size, image_size, 3])
-  image = normalize_image(image)
-  image = tf.image.convert_image_dtype(image, dtype=dtype)
+  image = _decode_and_center_crop(image_bytes, config)
+  image = tf.reshape(image, [config.image_size, config.image_size, 3])
+  image = normalize_image(image, config)
+  image = tf.image.convert_image_dtype(image, dtype=tf.float32)
   return image
 
 
-def create_split(dataset_builder, batch_size, train, image_size, dtype=tf.float32, cache=False):
+def create_split(dataset_builder, batch_size, train, config):
   """Creates a split from the ImageNet dataset using TensorFlow Datasets.
 
   Args:
@@ -215,9 +208,9 @@ def create_split(dataset_builder, batch_size, train, image_size, dtype=tf.float3
 
   def decode_example(example):
     if train:
-      image = preprocess_for_train(example['image'], dtype, image_size)
+      image = preprocess_for_train(example['image'], config)
     else:
-      image = preprocess_for_eval(example['image'], dtype, image_size)
+      image = preprocess_for_eval(example['image'], config)
     return {'image': image, 'label': example['label']}
 
   ds = dataset_builder.as_dataset(split=split, decoders={
@@ -227,7 +220,7 @@ def create_split(dataset_builder, batch_size, train, image_size, dtype=tf.float3
   options.experimental_threading.private_threadpool_size = 48
   ds = ds.with_options(options)
 
-  if cache:
+  if config.cache:
     ds = ds.cache()
 
   if train:

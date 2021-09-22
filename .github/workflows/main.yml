@@ -38,6 +38,8 @@ jobs:
       - name: Lint with flake8 
         run: |
           flake8 --ignore=W503,E111,E114 *.py
+          flake8 --ignore=W503,E111,E114 examples/efficientnet/*.py
+          flake8 --ignore=W503,E111,E114 examples/small_cnn*.py
   typecheck_pytype:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
@@ -81,6 +83,8 @@ jobs:
           pip install jax jaxlib scipy numpy flax tensorflow-datasets ml_collections clu torch torchvision
       - name: Run unit tests
         run: |
+          python examples/efficientnet/models_test.py
+          python examples/efficientnet/train_test.py
           python pc_modular_test.py
           python flax_qconv_test.py
           python flax_qdense.py
