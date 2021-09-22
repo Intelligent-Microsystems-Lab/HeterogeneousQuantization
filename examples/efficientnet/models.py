@@ -128,11 +128,11 @@ _ResNet1 = partial(ResNet, stage_sizes=[1], block_cls=ResNetBlock)
 class EfficientNet(nn.Module):
   """EfficientNet."""
 
-  width_coefficient: float 
+  width_coefficient: float
   depth_coefficient: float
   resolution: int
   dropout_rate: float
-  
+
   dtype: Any = jnp.float32
   act: Callable = nn.relu
 
@@ -140,16 +140,34 @@ class EfficientNet(nn.Module):
   def __call__(self, x, train: bool = True):
     return x
 
-# (width_coefficient, depth_coefficient, resolution, dropout_rate)
-efficientnet_b0 = partial(EfficientNet, width_coefficient = 1.0, depth_coefficient = 1.0, resolution = 224, dropout_rate = 0.2)
-efficientnet_b1 = partial(EfficientNet, width_coefficient = 1.0, depth_coefficient = 1.1, resolution = 240, dropout_rate = 0.2),
-efficientnet_b2 = partial(EfficientNet, width_coefficient = 1.1, depth_coefficient = 1.2, resolution = 260, dropout_rate = 0.3),
-efficientnet_b3 = partial(EfficientNet, width_coefficient = 1.2, depth_coefficient = 1.4, resolution = 300, dropout_rate = 0.3),
-efficientnet_b4 = partial(EfficientNet, width_coefficient = 1.4, depth_coefficient = 1.8, resolution = 380, dropout_rate = 0.4),
-efficientnet_b5 = partial(EfficientNet, width_coefficient = 1.6, depth_coefficient = 2.2, resolution = 456, dropout_rate = 0.4),
-efficientnet_b6 = partial(EfficientNet, width_coefficient = 1.8, depth_coefficient = 2.6, resolution = 528, dropout_rate = 0.5),
-efficientnet_b7 = partial(EfficientNet, width_coefficient = 2.0, depth_coefficient = 3.1, resolution = 600, dropout_rate = 0.5),
-efficientnet_b8 = partial(EfficientNet, width_coefficient = 2.2, depth_coefficient = 3.6, resolution = 672, dropout_rate = 0.5),
-efficientnet_l2 = partial(EfficientNet, width_coefficient = 4.3, depth_coefficient = 5.3, resolution = 800, dropout_rate = 0.5),
 
-
+efficientnet_b0 = partial(EfficientNet, width_coefficient=1.0,
+                          depth_coefficient=1.0, resolution=224,
+                          dropout_rate=0.2)
+efficientnet_b1 = partial(EfficientNet, width_coefficient=1.0,
+                          depth_coefficient=1.1, resolution=240,
+                          dropout_rate=0.2),
+efficientnet_b2 = partial(EfficientNet, width_coefficient=1.1,
+                          depth_coefficient=1.2, resolution=260,
+                          dropout_rate=0.3),
+efficientnet_b3 = partial(EfficientNet, width_coefficient=1.2,
+                          depth_coefficient=1.4, resolution=300,
+                          dropout_rate=0.3),
+efficientnet_b4 = partial(EfficientNet, width_coefficient=1.4,
+                          depth_coefficient=1.8, resolution=380,
+                          dropout_rate=0.4),
+efficientnet_b5 = partial(EfficientNet, width_coefficient=1.6,
+                          depth_coefficient=2.2, resolution=456,
+                          dropout_rate=0.4),
+efficientnet_b6 = partial(EfficientNet, width_coefficient=1.8,
+                          depth_coefficient=2.6, resolution=528,
+                          dropout_rate=0.5),
+efficientnet_b7 = partial(EfficientNet, width_coefficient=2.0,
+                          depth_coefficient=3.1, resolution=600,
+                          dropout_rate=0.5),
+efficientnet_b8 = partial(EfficientNet, width_coefficient=2.2,
+                          depth_coefficient=3.6, resolution=672,
+                          dropout_rate=0.5),
+efficientnet_l2 = partial(EfficientNet, width_coefficient=4.3,
+                          depth_coefficient=5.3, resolution=800,
+                          dropout_rate=0.5),

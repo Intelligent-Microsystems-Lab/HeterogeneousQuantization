@@ -4,8 +4,8 @@
 
 """Tests for flax.examples.imagenet.train."""
 
-import pathlib
-import tempfile
+# import pathlib
+# import tempfile
 
 from absl.testing import absltest
 
@@ -13,12 +13,12 @@ import jax
 from jax import random
 
 import tensorflow as tf
-import tensorflow_datasets as tfds
+# import tensorflow_datasets as tfds
 
 # Local imports.
 import models
 import train
-from configs import default as default_lib
+# from configs import default as default_lib
 
 jax.config.update('jax_platform_name', 'cpu')
 jax.config.update('jax_disable_most_optimizations', True)
@@ -41,7 +41,6 @@ class TrainTest(absltest.TestCase):
     x = random.normal(random.PRNGKey(1), (8, 224, 224, 3))
     y = model.apply(variables, x, train=False)
     self.assertEqual(y.shape, (8, 1000))
-
 
   # # with tfds.testing.mock_data(num_examples=1024, data_dir=data_dir):
   # def test_train_and_evaluate(self):
