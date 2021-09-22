@@ -10,7 +10,7 @@
 
 ```
 ./run_noise_sweeps.sh 
-python2 figures.py
+python figures.py
 ```
 
 ## Requirements
