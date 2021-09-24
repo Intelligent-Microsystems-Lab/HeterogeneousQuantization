@@ -1,6 +1,8 @@
 # IMSL Lab - University of Notre Dame
 # Author: Clemens JS Schaefer
 # Originally copied from https://github.com/google/flax/tree/main/examples
+# and https://github.com/tensorflow/tpu/blob/master/models/official/ \
+# efficientnet/efficientnet_model.py
 
 """Flax implementation of EfficientNet"""
 
@@ -8,166 +10,307 @@
 # pytype: disable=wrong-arg-count
 
 from functools import partial
-from typing import Any, Callable, Sequence, Tuple
+from typing import Any, Callable, Tuple
 
 from flax import linen as nn
 import jax.numpy as jnp
+import numpy as np
+import math
+from absl import logging
+
+from jax._src.nn.initializers import variance_scaling
+
+from efficientnet_utils import BlockDecoder, GlobalParams
 
 ModuleDef = Any
+Array = Any
 
 
-class ResNetBlock(nn.Module):
-  """ResNet block."""
-  filters: int
+_DEFAULT_BLOCKS_ARGS = [
+    'r1_k3_s11_e1_i32_o16_se0.25', 'r2_k3_s22_e6_i16_o24_se0.25',
+    'r2_k5_s22_e6_i24_o40_se0.25', 'r3_k3_s22_e6_i40_o80_se0.25',
+    'r3_k5_s11_e6_i80_o112_se0.25', 'r4_k5_s22_e6_i112_o192_se0.25',
+    'r1_k3_s11_e6_i192_o320_se0.25',
+]
+
+conv_kernel_initializer = partial(variance_scaling, 1.0, "fan_in", "normal")
+dense_kernel_initializer = partial(
+    variance_scaling, 1.0 / 3.0, "fan_out", "uniform")
+
+
+def round_filters(filters: int,
+                  width_coefficient: float,
+                  depth_divisor: float,
+                  min_depth: float,
+                  skip: bool = False) -> int:
+  """Round number of filters based on depth multiplier."""
+  orig_f = filters
+  multiplier = width_coefficient
+  divisor = depth_divisor
+  min_depth = min_depth
+  if skip or not multiplier:
+    return filters
+
+  filters *= multiplier
+  min_depth = min_depth or divisor
+  new_filters = max(min_depth, int(filters + divisor / 2) // divisor * divisor)
+  # Make sure that round down does not go down by more than 10%.
+  if new_filters < 0.9 * filters:
+    new_filters += divisor
+  logging.info('round_filter input=%s output=%s', orig_f, new_filters)
+  return int(new_filters)
+
+
+def round_repeats(repeats: int,
+                  depth_coefficient: float,
+                  skip: bool = False) -> int:
+  """Round number of filters based on depth multiplier."""
+  multiplier = depth_coefficient
+  if skip or not multiplier:
+    return repeats
+  return int(math.ceil(multiplier * repeats))
+
+
+class MBConvBlock(nn.Module):
+  """EfficientNet block."""
   conv: ModuleDef
   norm: ModuleDef
+  expand_ratio: float
+  input_filters: int
+  kernel_size: Tuple
+  strides: Tuple
+  output_filters: int
+  clip_projection_output: bool
+  id_skip: bool
   act: Callable
-  strides: Tuple[int, int] = (1, 1)
 
   @nn.compact
-  def __call__(self, x,):
-    residual = x
-    y = self.conv(self.filters, (3, 3), self.strides)(x)
-    y = self.norm()(y)
-    y = self.act(y)
-    y = self.conv(self.filters, (3, 3))(y)
-    y = self.norm(scale_init=nn.initializers.zeros)(y)
+  def __call__(self,
+               inputs: Array,
+               train: bool = True,
+               survival_prob: float = None) -> Array:
+    logging.info('Block %s input shape: %s', self.name, inputs.shape)
+    x = inputs
 
-    if residual.shape != y.shape:
-      residual = self.conv(self.filters, (1, 1),
-                           self.strides, name='conv_proj')(residual)
-      residual = self.norm(name='norm_proj')(residual)
+    # Otherwise, first apply expansion and then apply depthwise conv.
+    if self.expand_ratio != 1:
+      filters = self.input_filters * self.expand_ratio
+      kernel_size = self.kernel_size
 
-    return self.act(residual + y)
+      x = self.conv(features=filters,
+                    kernel_size=[1, 1],
+                    strides=[1, 1],
+                    kernel_init=conv_kernel_initializer(),
+                    padding='SAME',
+                    use_bias=False)(x)
+      x = self.norm()(x)
+      x = self.act(x)
+      logging.info('Expand shape: %s', x.shape)
 
+    # Depthwise convolution
+    kernel_size = self.kernel_size
+    feature_group_count = x.shape[-1]
+    features = int(1 * feature_group_count)
+    x = self.conv(
+        features=features,
+        kernel_size=[kernel_size, kernel_size],
+        strides=self.strides,
+        kernel_init=conv_kernel_initializer(),
+        padding='SAME',
+        feature_group_count=feature_group_count,
+        use_bias=False)(x)
+    x = self.norm()(x)
+    x = self.act(x)
+    logging.info('DWConv shape: %s', x.shape)
 
-class BottleneckResNetBlock(nn.Module):
-  """Bottleneck ResNet block."""
-  filters: int
-  conv: ModuleDef
-  norm: ModuleDef
-  act: Callable
-  strides: Tuple[int, int] = (1, 1)
+    filters = self.output_filters
+    x = self.conv(features=filters,
+                  kernel_size=[1, 1],
+                  strides=[1, 1],
+                  kernel_init=conv_kernel_initializer(),
+                  padding='SAME',
+                  use_bias=False)(x)
+    x = self.norm()(x)
 
-  @nn.compact
-  def __call__(self, x):
-    residual = x
-    y = self.conv(self.filters, (1, 1))(x)
-    y = self.norm()(y)
-    y = self.act(y)
-    y = self.conv(self.filters, (3, 3), self.strides)(y)
-    y = self.norm()(y)
-    y = self.act(y)
-    y = self.conv(self.filters * 4, (1, 1))(y)
-    y = self.norm(scale_init=nn.initializers.zeros)(y)
-
-    if residual.shape != y.shape:
-      residual = self.conv(self.filters * 4, (1, 1),
-                           self.strides, name='conv_proj')(residual)
-      residual = self.norm(name='norm_proj')(residual)
-
-    return self.act(residual + y)
-
-
-class ResNet(nn.Module):
-  """ResNetV1."""
-  stage_sizes: Sequence[int]
-  block_cls: ModuleDef
-  num_classes: int
-  num_filters: int = 64
-  dtype: Any = jnp.float32
-  act: Callable = nn.relu
-
-  @nn.compact
-  def __call__(self, x, train: bool = True):
-    conv = partial(nn.Conv, use_bias=False, dtype=self.dtype)
-    norm = partial(nn.BatchNorm,
-                   use_running_average=not train,
-                   momentum=0.9,
-                   epsilon=1e-5,
-                   dtype=self.dtype)
-
-    x = conv(self.num_filters, (7, 7), (2, 2),
-             padding=[(3, 3), (3, 3)],
-             name='conv_init')(x)
-    x = norm(name='bn_init')(x)
-    x = nn.relu(x)
-    x = nn.max_pool(x, (3, 3), strides=(2, 2), padding='SAME')
-    for i, block_size in enumerate(self.stage_sizes):
-      for j in range(block_size):
-        strides = (2, 2) if i > 0 and j == 0 else (1, 1)
-        x = self.block_cls(self.num_filters * 2 ** i,
-                           strides=strides,
-                           conv=conv,
-                           norm=norm,
-                           act=self.act)(x)
-    x = jnp.mean(x, axis=(1, 2))
-    x = nn.Dense(self.num_classes, dtype=self.dtype)(x)
-    x = jnp.asarray(x, self.dtype)
+    if self.clip_projection_output:
+      x = jnp.clip(x, a_min=-6, a_max=6)
+    if self.id_skip:
+      if all(
+          s == 1 for s in self.strides
+      ) and inputs.shape[-1] == x.shape[-1]:
+        # Apply only if skip connection presents.
+        if survival_prob:
+          x = nn.Dropout(survival_prob)(x, deterministic=not train)
+        x = x + inputs
+    logging.info('Project shape: %s', x.shape)
     return x
 
 
-ResNet18 = partial(ResNet, stage_sizes=[2, 2, 2, 2],
-                   block_cls=ResNetBlock)
-ResNet34 = partial(ResNet, stage_sizes=[3, 4, 6, 3],
-                   block_cls=ResNetBlock)
-ResNet50 = partial(ResNet, stage_sizes=[3, 4, 6, 3],
-                   block_cls=BottleneckResNetBlock)
-ResNet101 = partial(ResNet, stage_sizes=[3, 4, 23, 3],
-                    block_cls=BottleneckResNetBlock)
-ResNet152 = partial(ResNet, stage_sizes=[3, 8, 36, 3],
-                    block_cls=BottleneckResNetBlock)
-ResNet200 = partial(ResNet, stage_sizes=[3, 24, 36, 3],
-                    block_cls=BottleneckResNetBlock)
-
-
-# Used for testing only.
-_ResNet1 = partial(ResNet, stage_sizes=[1], block_cls=ResNetBlock)
+def get_survival_prob(survival_prob: float,
+                      idx: int,
+                      len_blocks: int) -> float:
+  if survival_prob:
+    drop_rate = 1.0 - survival_prob
+    survival_prob = 1.0 - drop_rate * float(idx) / len_blocks
+    logging.info('block_%s survival_prob: %s', idx, survival_prob)
+  return survival_prob
 
 
 class EfficientNet(nn.Module):
   """EfficientNet."""
-
   width_coefficient: float
   depth_coefficient: float
   resolution: int
   dropout_rate: float
-
+  num_classes: int
   dtype: Any = jnp.float32
   act: Callable = nn.relu
 
   @nn.compact
-  def __call__(self, x, train: bool = True):
+  def __call__(self, x: Array, train: bool = True) -> Array:
+    # Default parameters from efficientnet lite builder
+    global_params = GlobalParams(
+        blocks_args=_DEFAULT_BLOCKS_ARGS,
+        batch_norm_momentum=0.99,
+        batch_norm_epsilon=1e-3,
+        dropout_rate=self.dropout_rate,
+        survival_prob=.8,  # TODO: @clee1994
+        width_coefficient=self.width_coefficient,
+        depth_coefficient=self.depth_coefficient,
+        depth_divisor=8,
+        min_depth=None,
+        relu_fn=nn.relu,
+        clip_projection_output=False,
+        fix_head_stem=True,  # Don't scale stem and head.
+        local_pooling=True,  # special cases for tflite issues.
+        use_se=False)
+
+    _blocks_args = BlockDecoder().decode(global_params.blocks_args)
+
+    conv = partial(nn.Conv, dtype=self.dtype)
+    norm = partial(nn.BatchNorm,
+                   use_running_average=not train,
+                   momentum=global_params.batch_norm_momentum,
+                   epsilon=global_params.batch_norm_epsilon,
+                   dtype=self.dtype)
+    rfliters = partial(round_filters,
+                       width_coefficient=global_params.width_coefficient,
+                       depth_divisor=global_params.depth_divisor,
+                       min_depth=global_params.min_depth,)
+    MBConvBlock
+    conv_block = partial(
+        MBConvBlock,
+        clip_projection_output=global_params.clip_projection_output)
+
+    # Stem part.
+    x = conv(
+        features=rfliters(32, skip=global_params.fix_head_stem),
+        kernel_size=(3, 3),
+        strides=(2, 2),
+        padding='SAME',
+        kernel_init=conv_kernel_initializer(),
+        use_bias=False,
+        name='stem_conv')(x)
+
+    x = norm(name='stem_bn')(x)
+    x = nn.relu(x)
+    logging.info('Built stem layers with output shape: %s', x.shape)
+
+    # Builds blocks.
+    idx = 0
+    total_num_blocks = np.sum([x.num_repeat for x in _blocks_args])
+    for i, block_args in enumerate(_blocks_args):
+      assert block_args.num_repeat > 0
+      assert block_args.space2depth in [0, 1, 2]
+
+      # Update block input and output filters based on depth multiplier.
+      input_filters = rfliters(block_args.input_filters)
+      output_filters = rfliters(block_args.output_filters)
+
+      if (i == 0 or i == len(_blocks_args) - 1):
+        repeats = block_args.num_repeat
+      else:
+        repeats = round_repeats(block_args.num_repeat, self.depth_coefficient)
+
+      block_args = block_args._replace(
+          input_filters=input_filters,
+          output_filters=output_filters,
+          num_repeat=repeats)
+
+      if not block_args.space2depth:
+        survival_prob = get_survival_prob(
+            global_params.survival_prob, idx, total_num_blocks)
+        x = conv_block(conv=conv,
+                       norm=norm,
+                       expand_ratio=block_args.expand_ratio,
+                       input_filters=block_args.input_filters,
+                       kernel_size=block_args.kernel_size,
+                       strides=block_args.strides,
+                       output_filters=block_args.output_filters,
+                       id_skip=block_args.id_skip,
+                       act=self.act)(x, train=train,
+                                     survival_prob=survival_prob)
+        idx += 1
+      else:
+        assert False, 'Space2depth is not implemented.'
+
+      if block_args.num_repeat > 1:  # rest of blocks with the same block_arg
+        # pylint: disable=protected-access
+        block_args = block_args._replace(
+            input_filters=block_args.output_filters, strides=[1, 1])
+        # pylint: enable=protected-access
+      for _ in range(block_args.num_repeat - 1):
+        survival_prob = get_survival_prob(
+            global_params.survival_prob, idx, total_num_blocks)
+        x = conv_block(conv=conv,
+                       norm=norm,
+                       expand_ratio=block_args.expand_ratio,
+                       input_filters=block_args.input_filters,
+                       kernel_size=block_args.kernel_size,
+                       strides=block_args.strides,
+                       output_filters=block_args.output_filters,
+                       id_skip=block_args.id_skip,
+                       act=self.act)(x, train=train,
+                                     survival_prob=survival_prob)
+        idx += 1
+
+    # Head part.
+    x = conv(features=rfliters(1280, skip=global_params.fix_head_stem),
+             kernel_size=(1, 1),
+             strides=(1, 1),
+             padding='SAME',
+             kernel_init=conv_kernel_initializer(),
+             use_bias=False,
+             name='head_conv')(x)
+    x = norm(name='head_bn')(x)
+    x = nn.relu(x)
+
+    x = jnp.mean(x, axis=(1, 2))
+
+    # kernel_size = (1, x.shape[1], x.shape[2], 1)
+    # x = nn.avg_pool(x, kernel_size, strides=(1, 1, 1, 1), padding='VALID')
+    # x = x.reshape((x.shape[0], -1))
+
+    x = nn.Dropout(self.dropout_rate)(x, deterministic=not train)
+    x = nn.Dense(self.num_classes,
+                 kernel_init=dense_kernel_initializer(), dtype=self.dtype)(x)
+    x = jnp.asarray(x, self.dtype)
+
     return x
 
 
-efficientnet_b0 = partial(EfficientNet, width_coefficient=1.0,
-                          depth_coefficient=1.0, resolution=224,
-                          dropout_rate=0.2)
-efficientnet_b1 = partial(EfficientNet, width_coefficient=1.0,
-                          depth_coefficient=1.1, resolution=240,
-                          dropout_rate=0.2),
-efficientnet_b2 = partial(EfficientNet, width_coefficient=1.1,
-                          depth_coefficient=1.2, resolution=260,
-                          dropout_rate=0.3),
-efficientnet_b3 = partial(EfficientNet, width_coefficient=1.2,
-                          depth_coefficient=1.4, resolution=300,
-                          dropout_rate=0.3),
-efficientnet_b4 = partial(EfficientNet, width_coefficient=1.4,
-                          depth_coefficient=1.8, resolution=380,
-                          dropout_rate=0.4),
-efficientnet_b5 = partial(EfficientNet, width_coefficient=1.6,
-                          depth_coefficient=2.2, resolution=456,
-                          dropout_rate=0.4),
-efficientnet_b6 = partial(EfficientNet, width_coefficient=1.8,
-                          depth_coefficient=2.6, resolution=528,
-                          dropout_rate=0.5),
-efficientnet_b7 = partial(EfficientNet, width_coefficient=2.0,
-                          depth_coefficient=3.1, resolution=600,
-                          dropout_rate=0.5),
-efficientnet_b8 = partial(EfficientNet, width_coefficient=2.2,
-                          depth_coefficient=3.6, resolution=672,
-                          dropout_rate=0.5),
-efficientnet_l2 = partial(EfficientNet, width_coefficient=4.3,
-                          depth_coefficient=5.3, resolution=800,
-                          dropout_rate=0.5),
+EfficientNetB0 = partial(EfficientNet, width_coefficient=1.0,
+                         depth_coefficient=1.0, resolution=224,
+                         dropout_rate=0.2)
+EfficientNetB1 = partial(EfficientNet, width_coefficient=1.0,
+                         depth_coefficient=1.1, resolution=240,
+                         dropout_rate=0.2)
+EfficientNetB2 = partial(EfficientNet, width_coefficient=1.1,
+                         depth_coefficient=1.2, resolution=260,
+                         dropout_rate=0.3)
+EfficientNetB3 = partial(EfficientNet, width_coefficient=1.2,
+                         depth_coefficient=1.4, resolution=280,
+                         dropout_rate=0.3)
+EfficientNetB4 = partial(EfficientNet, width_coefficient=1.4,
+                         depth_coefficient=1.8, resolution=300,
+                         dropout_rate=0.3)

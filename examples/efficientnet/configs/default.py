@@ -14,16 +14,20 @@ def get_config():
   config.seed = 203853699
 
   # As defined in the `models` module.
-  config.model = 'ResNet18'
+  config.model = 'EfficientNetB0'
 
   # `name` argument of tensorflow_datasets.builder()
   config.cache = True
-  config.dataset = 'imagenette'
+  config.dataset = 'imagenet2012'
   config.image_size = 224
   config.crop_padding = 32
   config.mean_rgb = [0.485 * 255, 0.456 * 255, 0.406 * 255]
   config.stddev_rgb = [0.229 * 255, 0.224 * 255, 0.225 * 255]
   config.num_classes = 10
+
+
+  # Load pretrained weights.
+  config.pretrained = None #/afs/crc.nd.edu/user/c/cschaef6/pretrained_efficientnet/efficientnet-lite0
 
   config.learning_rate = 0.1
   config.warmup_epochs = 5.0
@@ -31,7 +35,7 @@ def get_config():
   config.batch_size = 128
 
   config.num_epochs = 100.0
-  config.log_every_steps = 100
+  config.log_every_steps = 1024
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.

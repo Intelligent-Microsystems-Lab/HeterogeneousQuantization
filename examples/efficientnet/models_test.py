@@ -2,35 +2,78 @@
 # Author: Clemens JS Schaefer
 # Originally copied from https://github.com/google/flax/tree/main/examples
 
-"""Tests for flax.examples.imagenet.models."""
+"""Tests for EfficientNet."""
 
 from absl.testing import absltest
 
 import jax
 from jax import numpy as jnp
+import numpy as np
 
 import models
 
 
 jax.config.update('jax_disable_most_optimizations', True)
+jax.config.update('jax_platform_name', 'cpu')
 
 
-class ResNetV1Test(absltest.TestCase):
+class EfficientNetTest(absltest.TestCase):
   """Test cases for ResNet v1 model definition."""
 
-  def test_resnet_v1_model(self):
+  def test_efficienteet_b0_model(self):
     """Tests ResNet V1 model definition and output (variables)."""
     rng = jax.random.PRNGKey(0)
-    model_def = models.ResNet50(num_classes=10, dtype=jnp.float32)
+    model_def = models.EfficientNetB0(num_classes=1000, dtype=jnp.float32)
     variables = model_def.init(
-        rng, jnp.ones((8, 224, 224, 3), jnp.float32))
+        rng, jnp.ones((8, 224, 224, 3), jnp.float32), train=False)
 
+    self.assertEqual(np.sum(jax.tree_util.tree_leaves(jax.tree_map(
+        lambda x: np.prod(x.shape), variables['params']))), 4652008)
     self.assertLen(variables, 2)
-    # Resnet50 model will create parameters for the following layers:
-    #   conv + batch_norm = 2
-    #   BottleneckResNetBlock in stages: [3, 4, 6, 3] = 16
-    #   Followed by a Dense layer = 1
-    self.assertLen(variables['params'], 19)
+
+  def test_efficienteet_b1_model(self):
+    """Tests ResNet V1 model definition and output (variables)."""
+    rng = jax.random.PRNGKey(0)
+    model_def = models.EfficientNetB1(num_classes=1000, dtype=jnp.float32)
+    variables = model_def.init(
+        rng, jnp.ones((8, 240, 240, 3), jnp.float32), train=False)
+
+    self.assertEqual(np.sum(jax.tree_util.tree_leaves(jax.tree_map(
+        lambda x: np.prod(x.shape), variables['params']))), 5416680)
+    self.assertLen(variables, 2)
+
+  def test_efficienteet_b2_model(self):
+    """Tests ResNet V1 model definition and output (variables)."""
+    rng = jax.random.PRNGKey(0)
+    model_def = models.EfficientNetB2(num_classes=1000, dtype=jnp.float32)
+    variables = model_def.init(
+        rng, jnp.ones((8, 260, 260, 3), jnp.float32), train=False)
+
+    self.assertEqual(np.sum(jax.tree_util.tree_leaves(jax.tree_map(
+        lambda x: np.prod(x.shape), variables['params']))), 6092072)
+    self.assertLen(variables, 2)
+
+  def test_efficienteet_b3_model(self):
+    """Tests ResNet V1 model definition and output (variables)."""
+    rng = jax.random.PRNGKey(0)
+    model_def = models.EfficientNetB3(num_classes=1000, dtype=jnp.float32)
+    variables = model_def.init(
+        rng, jnp.ones((8, 280, 280, 3), jnp.float32), train=False)
+
+    self.assertEqual(np.sum(jax.tree_util.tree_leaves(jax.tree_map(
+        lambda x: np.prod(x.shape), variables['params']))), 8197096)
+    self.assertLen(variables, 2)
+
+  def test_efficienteet_b4_model(self):
+    """Tests ResNet V1 model definition and output (variables)."""
+    rng = jax.random.PRNGKey(0)
+    model_def = models.EfficientNetB4(num_classes=1000, dtype=jnp.float32)
+    variables = model_def.init(
+        rng, jnp.ones((8, 300, 300, 3), jnp.float32), train=False)
+
+    self.assertEqual(np.sum(jax.tree_util.tree_leaves(jax.tree_map(
+        lambda x: np.prod(x.shape), variables['params']))), 13006568)
+    self.assertLen(variables, 2)
 
 
 if __name__ == '__main__':

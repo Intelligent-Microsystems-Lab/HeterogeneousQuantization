@@ -68,7 +68,7 @@ def initialized(key, image_size, model):
 
   @jax.jit
   def init(*args):
-    return model.init(*args)
+    return model.init(*args, train=False)
   variables = init({'params': key}, jnp.ones(input_shape, model.dtype))
   return variables['params'], variables['batch_stats']
 
@@ -108,14 +108,14 @@ def create_learning_rate_fn(
   return schedule_fn
 
 
-def train_step(state, batch, learning_rate_fn, num_classes):
+def train_step(state, batch, rng, learning_rate_fn, num_classes):
   """Perform a single training step."""
   def loss_fn(params):
     """loss function used for training."""
     logits, new_model_state = state.apply_fn(
         {'params': params, 'batch_stats': state.batch_stats},
         batch['image'],
-        mutable=['batch_stats'])
+        mutable=['batch_stats'], rngs={'dropout': rng})
     loss = cross_entropy_loss(logits, batch['label'], num_classes)
     weight_penalty_params = jax.tree_leaves(params)
     weight_decay = 0.0001
@@ -255,11 +255,18 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   learning_rate_fn = create_learning_rate_fn(
       config, base_learning_rate, steps_per_epoch)
 
+  rng, subkey = jax.random.split(rng, 2)
   state = create_train_state(
-      rng, config, model, config.image_size, learning_rate_fn)
+      subkey, config, model, config.image_size, learning_rate_fn)
   state = restore_checkpoint(state, workdir)
   # step_offset > 0 if restarting from checkpoint
   step_offset = int(state.step)
+
+  # Pre load weights.
+  # import pdb; pdb.set_trace()
+  # if config.pretrained and step_offset == 0:
+  #  tf_vars = tf.train.list_variables(tf_path)
+
   state = jax_utils.replicate(state)
 
   p_train_step = jax.pmap(
@@ -278,7 +285,9 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   train_metrics_last_t = time.time()
   logging.info('Initial compilation, this might take some minutes...')
   for step, batch in zip(range(step_offset, num_steps), train_iter):
-    state, metrics = p_train_step(state, batch)
+    rng_list = jax.random.split(rng, jax.device_count() + 1)
+    rng = rng_list[0]
+    state, metrics = p_train_step(state, batch, rng_list[1:])
     for h in hooks:
       h(step)
     if step == step_offset:
