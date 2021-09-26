@@ -14,7 +14,7 @@ def get_config():
   config.seed = 203853699
 
   # As defined in the `models` module.
-  config.model = 'EfficientNetB0'
+  config.model = 'EfficientNetB1'
 
   # `name` argument of tensorflow_datasets.builder()
   config.cache = True
@@ -26,7 +26,7 @@ def get_config():
   config.num_classes = 1000
 
   # Load pretrained weights.
-  config.pretrained = "/afs/crc.nd.edu/user/c/cschaef6/pretrained_efficientnet/efficientnet-lite0"
+  config.pretrained = "/afs/crc.nd.edu/user/c/cschaef6/pretrained_efficientnet/efficientnet-lite1"
 
   config.learning_rate = 0.1
   config.warmup_epochs = 5.0

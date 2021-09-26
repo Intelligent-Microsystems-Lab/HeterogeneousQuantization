@@ -18,6 +18,7 @@ import numpy as np
 import math
 from absl import logging
 
+import jax
 from jax._src.nn.initializers import variance_scaling
 
 from efficientnet_utils import BlockDecoder, GlobalParams
@@ -111,6 +112,7 @@ class MBConvBlock(nn.Module):
     kernel_size = self.kernel_size
     feature_group_count = x.shape[-1]
     features = int(1 * feature_group_count)
+
     x = self.conv(
         features=features,
         kernel_size=[kernel_size, kernel_size],
@@ -118,7 +120,8 @@ class MBConvBlock(nn.Module):
         kernel_init=conv_kernel_initializer(),
         padding='SAME',
         feature_group_count=feature_group_count,
-        use_bias=False)(x)
+        use_bias=False,
+        name='depthwise_conv2d')(x)
     x = self.norm()(x)
     x = self.act(x)
     logging.info('DWConv shape: %s', x.shape)
@@ -164,7 +167,7 @@ class EfficientNet(nn.Module):
   dropout_rate: float
   num_classes: int
   dtype: Any = jnp.float32
-  act: Callable = nn.relu
+  act: Callable = jax.nn.relu6
 
   @nn.compact
   def __call__(self, x: Array, train: bool = True) -> Array:
@@ -179,7 +182,7 @@ class EfficientNet(nn.Module):
         depth_coefficient=self.depth_coefficient,
         depth_divisor=8,
         min_depth=None,
-        relu_fn=nn.relu,
+        relu_fn=jax.nn.relu6,
         clip_projection_output=False,
         fix_head_stem=True,  # Don't scale stem and head.
         local_pooling=True,  # special cases for tflite issues.
@@ -192,7 +195,9 @@ class EfficientNet(nn.Module):
                    use_running_average=not train,
                    momentum=global_params.batch_norm_momentum,
                    epsilon=global_params.batch_norm_epsilon,
-                   dtype=self.dtype)
+                   dtype=self.dtype,
+                   use_bias=True,
+                   use_scale=True)
     rfliters = partial(round_filters,
                        width_coefficient=global_params.width_coefficient,
                        depth_divisor=global_params.depth_divisor,
@@ -213,7 +218,7 @@ class EfficientNet(nn.Module):
         name='stem_conv')(x)
 
     x = norm(name='stem_bn')(x)
-    x = nn.relu(x)
+    x = self.act(x)
     logging.info('Built stem layers with output shape: %s', x.shape)
 
     # Builds blocks.
@@ -283,7 +288,7 @@ class EfficientNet(nn.Module):
              use_bias=False,
              name='head_conv')(x)
     x = norm(name='head_bn')(x)
-    x = nn.relu(x)
+    x = self.act(x)
 
     x = jnp.mean(x, axis=(1, 2))
 
