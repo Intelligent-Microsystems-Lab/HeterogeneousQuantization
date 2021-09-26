@@ -26,7 +26,7 @@ def get_config():
   config.num_classes = 1000
 
   # Load pretrained weights.
-  config.pretrained = "/afs/crc.nd.edu/user/c/cschaef6/pretrained_efficientnet/efficientnet-lite0"
+  config.pretrained = None
 
   config.learning_rate = 0.1
   config.warmup_epochs = 5.0

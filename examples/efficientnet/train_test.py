@@ -18,6 +18,7 @@ import tensorflow_datasets as tfds
 # Local imports.
 import models
 import train
+import train_util
 from configs import default as default_lib
 
 jax.config.update('jax_platform_name', 'cpu')
@@ -33,10 +34,10 @@ class TrainTest(absltest.TestCase):
 
   def test_create_model(self):
     """Tests creating model."""
-    model = train.create_model(
+    model = train_util.create_model(
         model_cls=models.EfficientNetB0,  # pylint: disable=protected-access
         num_classes=1000)
-    params, batch_stats = train.initialized(random.PRNGKey(0), 224, model)
+    params, batch_stats = train_util.initialized(random.PRNGKey(0), 224, model)
     variables = {'params': params, 'batch_stats': batch_stats}
     x = random.normal(random.PRNGKey(1), (8, 224, 224, 3))
     y = model.apply(variables, x, train=False)
