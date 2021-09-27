@@ -9,7 +9,7 @@
 |efficientnet-lite3 [ckpt](https://storage.googleapis.com/cloud-tpu-checkpoints/efficientnet/lite/efficientnet-lite3.tar.gz) | 8.2M | 1.44B |  70.13% |  ?? | 16.9211±8.6157ms | ??  | ?? | ?? |
 |efficientnet-lite4 [ckpt](https://storage.googleapis.com/cloud-tpu-checkpoints/efficientnet/lite/efficientnet-lite4.tar.gz) |13.0M | 2.64B |  71.42% |  ?? | 20.6060±13.7772ms | ??  | ?? | ?? |
 
-Latency measured on 4x Quadro RTX 6000 with batch size 4.
+Latency and accuracy measured on 4x Quadro RTX 6000 with batch size 4.
 
 ## References
 
