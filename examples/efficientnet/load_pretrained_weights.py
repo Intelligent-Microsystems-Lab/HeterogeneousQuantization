@@ -32,10 +32,12 @@ def load_pretrained_weights(state, location):
       # Entry for step - ignored so far.
       continue
     if len(list_components) == 4:
-      net, layer, op, param = list_components
-    elif len(list_components) == 5:
-      # Exponential Moving Average - ignored so far.
+      # net, layer, op, param = list_components
       continue
+    elif len(list_components) == 5:
+      # Exponential Moving Average.
+      net, layer, op, param, _ = list_components
+      #continue
     else:
       raise Exception("Checkpoint corrupt: " + location)
 

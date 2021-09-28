@@ -21,8 +21,13 @@ def get_config():
   config.dataset = 'imagenet2012'
   config.image_size = 224
   config.crop_padding = 32
-  config.mean_rgb = [0.485 * 255, 0.456 * 255, 0.406 * 255]
-  config.stddev_rgb = [0.229 * 255, 0.224 * 255, 0.225 * 255]
+  #config.mean_rgb = [0.485 * 255, 0.456 * 255, 0.406 * 255]
+  #config.stddev_rgb = [0.229 * 255, 0.224 * 255, 0.225 * 255]
+
+
+  # Edge models use inception-style MEAN and STDDEV for better post-quantization.
+  config.mean_rgb = [127.0, 127.0, 127.0]
+  config.stddev_rgb = [128.0, 128.0, 128.0]
   config.num_classes = 1000
 
   # Load pretrained weights.

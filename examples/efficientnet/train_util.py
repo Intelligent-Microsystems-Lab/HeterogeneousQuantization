@@ -18,6 +18,7 @@ from flax.training import train_state
 import jax
 from jax import lax
 import jax.numpy as jnp
+import numpy as np
 
 import ml_collections
 
@@ -41,6 +42,11 @@ def initialized(key, image_size, model):
 
 def cross_entropy_loss(logits, labels, num_classes):
   one_hot_labels = common_utils.onehot(labels, num_classes=num_classes)
+
+  factor = .1
+  one_hot_labels *= (1 - factor)
+  one_hot_labels += (factor / one_hot_labels.shape[1])
+
   xentropy = optax.softmax_cross_entropy(logits=logits, labels=one_hot_labels)
   return jnp.mean(xentropy)
 
@@ -62,15 +68,22 @@ def create_learning_rate_fn(
         steps_per_epoch: int):
   """Create learning rate schedule."""
   warmup_fn = optax.linear_schedule(
-      init_value=0., end_value=base_learning_rate,
-      transition_steps=config.warmup_epochs * steps_per_epoch)
-  cosine_epochs = max(config.num_epochs - config.warmup_epochs, 1)
-  cosine_fn = optax.cosine_decay_schedule(
-      init_value=base_learning_rate,
-      decay_steps=cosine_epochs * steps_per_epoch)
+     init_value=0., end_value=base_learning_rate,
+     transition_steps=config.warmup_epochs * steps_per_epoch)
+  # cosine_epochs = max(config.num_epochs - config.warmup_epochs, 1)
+  # cosine_fn = optax.cosine_decay_schedule(
+  #    init_value=base_learning_rate,
+  #    decay_steps=cosine_epochs * steps_per_epoch)
+
+
+  boundaries_and_scales = {i:.97 for i in np.arange(0, config.num_epochs*steps_per_epoch, steps_per_epoch*2.4)}
+  lr_decay = optax.piecewise_constant_schedule(base_learning_rate, boundaries_and_scales)
+
+
   schedule_fn = optax.join_schedules(
-      schedules=[warmup_fn, cosine_fn],
+      schedules=[warmup_fn, lr_decay],
       boundaries=[config.warmup_epochs * steps_per_epoch])
+
   return schedule_fn
 
 
@@ -84,7 +97,7 @@ def train_step(state, batch, rng, learning_rate_fn, num_classes):
         mutable=['batch_stats'], rngs={'dropout': rng})
     loss = cross_entropy_loss(logits, batch['label'], num_classes)
     weight_penalty_params = jax.tree_leaves(params)
-    weight_decay = 0.0001
+    weight_decay = 1e-5
     weight_l2 = sum([jnp.sum(x ** 2)
                      for x in weight_penalty_params
                      if x.ndim > 1])
@@ -150,10 +163,13 @@ def create_train_state(rng, config: ml_collections.ConfigDict,
   """Create initial training state."""
 
   params, batch_stats = initialized(rng, image_size, model)
-  tx = optax.sgd(
+  tx = optax.rmsprop(
       learning_rate=learning_rate_fn,
-      momentum=config.momentum,
-      nesterov=True,
+      decay = .9,
+      momentum = .9,
+      eps = 0.001,
+      #momentum=config.momentum,
+      #nesterov=True,
   )
   state = TrainState.create(
       apply_fn=model.apply,

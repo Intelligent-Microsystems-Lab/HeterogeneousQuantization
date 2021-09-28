@@ -21,20 +21,28 @@ def get_config():
   config.dataset = 'imagenet2012'
   config.image_size = 224
   config.crop_padding = 32
-  config.mean_rgb = [0.485 * 255, 0.456 * 255, 0.406 * 255]
-  config.stddev_rgb = [0.229 * 255, 0.224 * 255, 0.225 * 255]
+
+  # Mean and std style for pre-processing.
+  #config.mean_rgb = [0.485 * 255, 0.456 * 255, 0.406 * 255]
+  #config.stddev_rgb = [0.229 * 255, 0.224 * 255, 0.225 * 255]
+
+
+  # Edge models use inception-style MEAN and STDDEV for better post-quantization.
+  config.mean_rgb = [127.0, 127.0, 127.0]
+  config.stddev_rgb = [128.0, 128.0, 128.0]
+
   config.num_classes = 1000
 
   # Load pretrained weights.
-  config.pretrained = "/afs/crc.nd.edu/user/c/cschaef6/pretrained_efficientnet/efficientnet-lite0"
+  config.pretrained = None #"/afs/crc.nd.edu/user/c/cschaef6/pretrained_efficientnet/efficientnet-lite0"
 
-  config.learning_rate = 0.1
+  config.learning_rate = 0.256
   config.warmup_epochs = 5.0
   config.momentum = 0.9
-  config.batch_size = 4  # 128
+  config.batch_size = 1024
 
-  config.num_epochs = 100.0
-  config.log_every_steps = 1024
+  config.num_epochs = 350
+  config.log_every_steps = 256
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.

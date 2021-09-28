@@ -292,10 +292,6 @@ class EfficientNet(nn.Module):
 
     x = jnp.mean(x, axis=(1, 2))
 
-    # kernel_size = (1, x.shape[1], x.shape[2], 1)
-    # x = nn.avg_pool(x, kernel_size, strides=(1, 1, 1, 1), padding='VALID')
-    # x = x.reshape((x.shape[0], -1))
-
     x = nn.Dropout(self.dropout_rate)(x, deterministic=not train)
     x = nn.Dense(self.num_classes,
                  kernel_init=dense_kernel_initializer(), dtype=self.dtype)(x)
