@@ -19,6 +19,7 @@ def get_config():
   # `name` argument of tensorflow_datasets.builder()
   config.cache = True
   config.dataset = 'imagenet2012'
+  config.tfds_data_dir = 'gs://imagenet_clemens/tensorflow_datasets'
   config.image_size = 224
   config.crop_padding = 32
 
@@ -36,10 +37,10 @@ def get_config():
   # Load pretrained weights.
   config.pretrained = None #"/afs/crc.nd.edu/user/c/cschaef6/pretrained_efficientnet/efficientnet-lite0"
 
-  config.learning_rate = 0.256
+  config.learning_rate = 0.016
   config.warmup_epochs = 5.0
   config.momentum = 0.9
-  config.batch_size = 1024
+  config.batch_size = 2048
 
   config.num_epochs = 350
   config.log_every_steps = 256

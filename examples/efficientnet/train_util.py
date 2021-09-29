@@ -76,7 +76,8 @@ def create_learning_rate_fn(
   #    decay_steps=cosine_epochs * steps_per_epoch)
 
 
-  boundaries_and_scales = {i:.97 for i in np.arange(0, config.num_epochs*steps_per_epoch, steps_per_epoch*2.4)}
+  warmup_offset = config.warmup_epochs * steps_per_epoch
+  boundaries_and_scales = {i:.97 for i in np.arange(warmup_offset, config.num_epochs*steps_per_epoch-warmup_offset, steps_per_epoch*2.4)}
   lr_decay = optax.piecewise_constant_schedule(base_learning_rate, boundaries_and_scales)
 
 
