@@ -89,7 +89,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
                      + str(jax.device_count()) + ').')
   local_batch_size = config.batch_size // jax.process_count()
 
-  dataset_builder = tfds.builder(config.dataset)
+  dataset_builder = tfds.builder(config.dataset, data_dir=config.tfds_data_dir)
   dataset_builder.download_and_prepare()
   train_iter = input_pipeline.create_input_iter(
       dataset_builder, local_batch_size, train=True, config=config)
@@ -114,7 +114,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
   steps_per_checkpoint = steps_per_epoch * 10
 
-  base_learning_rate = config.learning_rate * config.batch_size / 256.
+  base_learning_rate = config.learning_rate * local_batch_size / 256.
 
   model_cls = getattr(models, config.model)
   model = create_model(
@@ -165,7 +165,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       if (step + 1) % config.log_every_steps == 0:
         train_metrics = common_utils.get_metrics(train_metrics)
         summary = {
-            f'train_{k}': v
+            f'{k}': v
             for k, v in jax.tree_map(lambda x: x.mean(), train_metrics).items()
         }
         summary['steps_per_second'] = config.log_every_steps / (

@@ -37,7 +37,7 @@ def load_pretrained_weights(state, location):
     elif len(list_components) == 5:
       # Exponential Moving Average.
       net, layer, op, param, _ = list_components
-      #continue
+      # continue
     else:
       raise Exception("Checkpoint corrupt: " + location)
 

@@ -28,7 +28,6 @@ def get_config():
   config.mean_rgb = [127.0, 127.0, 127.0]
   config.stddev_rgb = [128.0, 128.0, 128.0]
 
-
   config.num_classes = 1000
 
   # Load pretrained weights.

@@ -5,75 +5,135 @@
 """Tests for EfficientNet."""
 
 from absl.testing import absltest
+from absl.testing import parameterized
 
+import importlib
+
+import tensorflow as tf
 import jax
 from jax import numpy as jnp
 import numpy as np
+import optax
 
 import models
+from input_pipeline import preprocess_for_eval
+from load_pretrained_weights import load_pretrained_weights
+from train_util import TrainState
 
 
 jax.config.update('jax_disable_most_optimizations', True)
 jax.config.update('jax_platform_name', 'cpu')
 
 
-class EfficientNetTest(absltest.TestCase):
+def net_size_data():
+  return (
+      dict(
+          testcase_name="EfficientNetB0",
+          name="EfficientNetB0",
+          param_count=4652008,
+          inpt_size=224,
+          rtol=1e-7,
+          atol=1e-4,
+      ),
+      dict(
+          testcase_name="EfficientNetB1",
+          name="EfficientNetB1",
+          param_count=5416680,
+          inpt_size=240,
+          rtol=1e-7,
+          atol=1e-4,
+      ),
+      dict(
+          testcase_name="EfficientNetB2",
+          name="EfficientNetB2",
+          param_count=6092072,
+          inpt_size=260,
+          rtol=1e-7,
+          atol=1e-4,
+      ),
+      dict(
+          testcase_name="EfficientNetB3",
+          name="EfficientNetB3",
+          param_count=8197096,
+          inpt_size=280,
+          rtol=1e-7,
+          atol=1e-4,
+      ),
+      dict(
+          testcase_name="EfficientNetB4",
+          name="EfficientNetB4",
+          param_count=13006568,
+          inpt_size=300,
+          rtol=1e-7,
+          atol=1e-4,
+      ),
+  )
+
+
+class EfficientNetTest(parameterized.TestCase):
   """Test cases for ResNet v1 model definition."""
 
-  def test_efficienteet_b0_model(self):
-    """Tests ResNet V1 model definition and output (variables)."""
+  @parameterized.named_parameters(*net_size_data())
+  def test_efficienteet_model(self, name, param_count, inpt_size, rtol, atol):
+    """Tests EfficientNet model definition and output (variables)."""
     rng = jax.random.PRNGKey(0)
-    model_def = models.EfficientNetB0(num_classes=1000, dtype=jnp.float32)
+    model_cls = getattr(models, name)
+    model_def = model_cls(num_classes=1000, dtype=jnp.float32)
     variables = model_def.init(
-        rng, jnp.ones((8, 224, 224, 3), jnp.float32), train=False)
+        rng, jnp.ones((8, inpt_size, inpt_size, 3), jnp.float32), train=False)
 
     self.assertEqual(np.sum(jax.tree_util.tree_leaves(jax.tree_map(
-        lambda x: np.prod(x.shape), variables['params']))), 4652008)
+        lambda x: np.prod(x.shape), variables['params']))), param_count)
     self.assertLen(variables, 2)
 
-  def test_efficienteet_b1_model(self):
-    """Tests ResNet V1 model definition and output (variables)."""
+  @parameterized.named_parameters(*net_size_data())
+  def test_efficienteet_inference(self, name, param_count, inpt_size,
+                                  rtol, atol):
+    # initialize network
     rng = jax.random.PRNGKey(0)
-    model_def = models.EfficientNetB1(num_classes=1000, dtype=jnp.float32)
+    model_cls = getattr(models, name)
+    model_def = model_cls(num_classes=1000, dtype=jnp.float32)
     variables = model_def.init(
-        rng, jnp.ones((8, 240, 240, 3), jnp.float32), train=False)
+        rng, jnp.ones((8, inpt_size, inpt_size, 3), jnp.float32), train=False)
 
-    self.assertEqual(np.sum(jax.tree_util.tree_leaves(jax.tree_map(
-        lambda x: np.prod(x.shape), variables['params']))), 5416680)
-    self.assertLen(variables, 2)
+    # get correct config
+    config_module = importlib.import_module(
+        'configs.efficientnet-lite' + str(name[-1]))
+    config = config_module.get_config()
 
-  def test_efficienteet_b2_model(self):
-    """Tests ResNet V1 model definition and output (variables)."""
-    rng = jax.random.PRNGKey(0)
-    model_def = models.EfficientNetB2(num_classes=1000, dtype=jnp.float32)
-    variables = model_def.init(
-        rng, jnp.ones((8, 260, 260, 3), jnp.float32), train=False)
+    # load pretrain weights
+    tx = optax.rmsprop(0.0)
+    state = TrainState.create(
+        apply_fn=model_def.apply, params=variables['params'], tx=tx,
+        batch_stats=variables['batch_stats'],)
+    state = load_pretrained_weights(state, config.pretrained)
 
-    self.assertEqual(np.sum(jax.tree_util.tree_leaves(jax.tree_map(
-        lambda x: np.prod(x.shape), variables['params']))), 6092072)
-    self.assertLen(variables, 2)
+    # load inpt
+    inpt_bytes = tf.io.read_file('../../unit_test/efficientnet/panda.jpg')
+    inpt = np.reshape(preprocess_for_eval(
+        inpt_bytes, config), (1, inpt_size, inpt_size, 3))
 
-  def test_efficienteet_b3_model(self):
-    """Tests ResNet V1 model definition and output (variables)."""
-    rng = jax.random.PRNGKey(0)
-    model_def = models.EfficientNetB3(num_classes=1000, dtype=jnp.float32)
-    variables = model_def.init(
-        rng, jnp.ones((8, 280, 280, 3), jnp.float32), train=False)
+    # run inference
+    _, state = model_def.apply({'params': state.params,
+                                'batch_stats': state.batch_stats}, inpt,
+                               mutable=['intermediates', 'batch_stats'],
+                               train=False)
 
-    self.assertEqual(np.sum(jax.tree_util.tree_leaves(jax.tree_map(
-        lambda x: np.prod(x.shape), variables['params']))), 8197096)
-    self.assertLen(variables, 2)
+    # testing for equality
+    np.testing.assert_allclose(inpt, np.load(
+        '../../unit_test/efficientnet/enet' + str(name[-1]) + '_inputs.npy'))
 
-  def test_efficienteet_b4_model(self):
-    """Tests ResNet V1 model definition and output (variables)."""
-    rng = jax.random.PRNGKey(0)
-    model_def = models.EfficientNetB4(num_classes=1000, dtype=jnp.float32)
-    variables = model_def.init(
-        rng, jnp.ones((8, 300, 300, 3), jnp.float32), train=False)
+    np.testing.assert_allclose(state['intermediates']['stem'][0], np.load(
+        '../../unit_test/efficientnet/enet' + str(name[-1]) + '_stem.npy'),
+        rtol=rtol, atol=atol)
 
-    self.assertEqual(np.sum(jax.tree_util.tree_leaves(jax.tree_map(
-        lambda x: np.prod(x.shape), variables['params']))), 13006568)
-    self.assertLen(variables, 2)
+    np.testing.assert_allclose(state['intermediates']['features0'][0], np.load(
+        '../../unit_test/efficientnet/enet' + str(name[-1])
+        + '_features0.npy'), rtol=rtol, atol=atol)
+
+    np.testing.assert_allclose(state['intermediates']['head'][0], np.load(
+        '../../unit_test/efficientnet/enet' + str(name[-1]) + '_head.npy'),
+        rtol=rtol, atol=atol)
 
 
 if __name__ == '__main__':

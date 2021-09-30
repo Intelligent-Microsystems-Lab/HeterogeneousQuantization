@@ -207,6 +207,7 @@ class EfficientNet(nn.Module):
         MBConvBlock,
         clip_projection_output=global_params.clip_projection_output)
 
+    self.sow('intermediates', 'inputs', x)
     # Stem part.
     x = conv(
         features=rfliters(32, skip=global_params.fix_head_stem),
@@ -219,6 +220,7 @@ class EfficientNet(nn.Module):
 
     x = norm(name='stem_bn')(x)
     x = self.act(x)
+    self.sow('intermediates', 'stem', x)
     logging.info('Built stem layers with output shape: %s', x.shape)
 
     # Builds blocks.
@@ -279,6 +281,9 @@ class EfficientNet(nn.Module):
                                      survival_prob=survival_prob)
         idx += 1
 
+      if i == 0 or i == 5:
+        self.sow('intermediates', 'features' + str(i), x)
+
     # Head part.
     x = conv(features=rfliters(1280, skip=global_params.fix_head_stem),
              kernel_size=(1, 1),
@@ -296,6 +301,7 @@ class EfficientNet(nn.Module):
     x = nn.Dense(self.num_classes,
                  kernel_init=dense_kernel_initializer(), dtype=self.dtype)(x)
     x = jnp.asarray(x, self.dtype)
+    self.sow('intermediates', 'head', x)
 
     return x
 

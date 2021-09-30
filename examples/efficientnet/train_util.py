@@ -68,17 +68,19 @@ def create_learning_rate_fn(
         steps_per_epoch: int):
   """Create learning rate schedule."""
   warmup_fn = optax.linear_schedule(
-     init_value=0., end_value=base_learning_rate,
-     transition_steps=config.warmup_epochs * steps_per_epoch)
+      init_value=0., end_value=base_learning_rate,
+      transition_steps=config.warmup_epochs * steps_per_epoch)
   # cosine_epochs = max(config.num_epochs - config.warmup_epochs, 1)
   # cosine_fn = optax.cosine_decay_schedule(
   #    init_value=base_learning_rate,
   #    decay_steps=cosine_epochs * steps_per_epoch)
 
-
-  boundaries_and_scales = {i:.97 for i in np.arange(0, config.num_epochs*steps_per_epoch, steps_per_epoch*2.4)}
-  lr_decay = optax.piecewise_constant_schedule(base_learning_rate, boundaries_and_scales)
-
+  warmup_offset = config.warmup_epochs * steps_per_epoch
+  boundaries_and_scales = {i: .97 for i in np.arange(
+      warmup_offset, config.num_epochs * steps_per_epoch - warmup_offset,
+      steps_per_epoch * 2.4)}
+  lr_decay = optax.piecewise_constant_schedule(
+      base_learning_rate, boundaries_and_scales)
 
   schedule_fn = optax.join_schedules(
       schedules=[warmup_fn, lr_decay],
@@ -165,11 +167,11 @@ def create_train_state(rng, config: ml_collections.ConfigDict,
   params, batch_stats = initialized(rng, image_size, model)
   tx = optax.rmsprop(
       learning_rate=learning_rate_fn,
-      decay = .9,
-      momentum = .9,
-      eps = 0.001,
-      #momentum=config.momentum,
-      #nesterov=True,
+      decay=.9,
+      momentum=.9,
+      eps=0.001,
+      # momentum=config.momentum,
+      # nesterov=True,
   )
   state = TrainState.create(
       apply_fn=model.apply,
