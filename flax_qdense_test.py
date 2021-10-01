@@ -64,10 +64,14 @@ class Dlinen(nn.Module):
         An array containing the result.
     """
     x = nn.Dense(
-        features=channels[0], kernel_init=initializers.lecun_normal()
+        features=channels[0],
+        kernel_init=initializers.lecun_normal(),
+        use_bias=False,
     )(x)
     x = nn.Dense(
-        features=channels[1], kernel_init=initializers.lecun_normal()
+        features=channels[1],
+        kernel_init=initializers.lecun_normal(),
+        use_bias=False,
     )(x)
     return x
 
@@ -125,7 +129,7 @@ def dense_test_data():
           inp_channels=100,
           channels=[20, 10],
           config=ml_collections.FrozenConfigDict({}),
-          numerical_tolerance=0,
+          numerical_tolerance=1e-8,
       ),
       dict(
           testcase_name="base_case_1024examples_1channel",
@@ -133,7 +137,7 @@ def dense_test_data():
           inp_channels=1,
           channels=[1, 1],
           config=ml_collections.FrozenConfigDict({}),
-          numerical_tolerance=0,
+          numerical_tolerance=1e-8,
       ),
       dict(
           testcase_name="base_case_200channels",
@@ -156,7 +160,7 @@ def dense_test_data():
                   "err_weight_noise": 0.0,
               }
           ),
-          numerical_tolerance=0,
+          numerical_tolerance=1e-8,
       ),
   )
 

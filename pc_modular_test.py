@@ -187,12 +187,12 @@ class UnitTests(parameterized.TestCase):
 
     rng = jax.random.PRNGKey(0)
 
-    x = np.load("unit_test/unit_test_fc/dataset_x.npy")
+    x = np.load("../unit_tests/pc_modular/unit_test_fc/dataset_x.npy")
 
-    l1w = np.load("unit_test/unit_test_fc/layer_0_weights.npy")
-    l2w = np.load("unit_test/unit_test_fc/layer_1_weights.npy")
+    l1w = np.load("../unit_tests/pc_modular/unit_test_fc/layer_0_weights.npy")
+    l2w = np.load("../unit_tests/pc_modular/unit_test_fc/layer_1_weights.npy")
 
-    out_ref = np.load("unit_test/unit_test_fc/out_train.npy")
+    out_ref = np.load("../unit_tests/pc_modular/unit_test_fc/out_train.npy")
 
     train_x = x[:128]
 
@@ -233,14 +233,14 @@ class UnitTests(parameterized.TestCase):
 
     rng = jax.random.PRNGKey(0)
 
-    x = np.load("unit_test/unit_test_fc/dataset_x.npy")
-    y = np.load("unit_test/unit_test_fc/dataset_y.npy")
+    x = np.load("../unit_tests/pc_modular/unit_test_fc/dataset_x.npy")
+    y = np.load("../unit_tests/pc_modular/unit_test_fc/dataset_y.npy")
 
-    l1w = np.load("unit_test/unit_test_fc/layer_0_weights.npy")
-    l2w = np.load("unit_test/unit_test_fc/layer_1_weights.npy")
+    l1w = np.load("../unit_tests/pc_modular/unit_test_fc/layer_0_weights.npy")
+    l2w = np.load("../unit_tests/pc_modular/unit_test_fc/layer_1_weights.npy")
 
-    err0_ref = np.load("unit_test/unit_test_fc/pred0_train.npy")
-    err1_ref = np.load("unit_test/unit_test_fc/pred1_train.npy")
+    err0_ref = np.load("../unit_tests/pc_modular/unit_test_fc/pred0_train.npy")
+    err1_ref = np.load("../unit_tests/pc_modular/unit_test_fc/pred1_train.npy")
 
     train_x = x[:128]
     train_y = y[:128]
@@ -340,14 +340,14 @@ class UnitTests(parameterized.TestCase):
 
     rng = jax.random.PRNGKey(0)
 
-    x = np.load("unit_test/unit_test_fc/dataset_x.npy")
-    y = np.load("unit_test/unit_test_fc/dataset_y.npy")
+    x = np.load("../unit_tests/pc_modular/unit_test_fc/dataset_x.npy")
+    y = np.load("../unit_tests/pc_modular/unit_test_fc/dataset_y.npy")
 
-    l1w = np.load("unit_test/unit_test_fc/layer_0_weights.npy")
-    l2w = np.load("unit_test/unit_test_fc/layer_1_weights.npy")
+    l1w = np.load("../unit_tests/pc_modular/unit_test_fc/layer_0_weights.npy")
+    l2w = np.load("../unit_tests/pc_modular/unit_test_fc/layer_1_weights.npy")
 
-    dw0_ref = np.load("unit_test/unit_test_fc/dw0_train.npy")
-    dw1_ref = np.load("unit_test/unit_test_fc/dw1_train.npy")
+    dw0_ref = np.load("../unit_tests/pc_modular/unit_test_fc/dw0_train.npy")
+    dw1_ref = np.load("../unit_tests/pc_modular/unit_test_fc/dw1_train.npy")
 
     train_x = x[:128]
     train_y = y[:128]
@@ -398,12 +398,14 @@ class UnitTests(parameterized.TestCase):
 
     rng = jax.random.PRNGKey(0)
 
-    x = np.load("unit_test/unit_test_conv/dataset_x.npy")
+    x = np.load("../unit_tests/pc_modular/unit_test_conv/dataset_x.npy")
 
-    l1w = np.load("unit_test/unit_test_conv/layer_0_weights.npy")
-    l2w = np.load("unit_test/unit_test_conv/layer_1_weights.npy")
+    l1w = np.load(
+        "../unit_tests/pc_modular/unit_test_conv/layer_0_weights.npy")
+    l2w = np.load(
+        "../unit_tests/pc_modular/unit_test_conv/layer_1_weights.npy")
 
-    out_ref = np.load("unit_test/unit_test_conv/out_train.npy")
+    out_ref = np.load("../unit_tests/pc_modular/unit_test_conv/out_train.npy")
 
     train_x = jnp.moveaxis(x[:128], (0, 1, 2, 3), (0, 3, 2, 1))
 
@@ -458,14 +460,18 @@ class UnitTests(parameterized.TestCase):
 
     rng = jax.random.PRNGKey(0)
 
-    x = np.load("unit_test/unit_test_conv/dataset_x.npy")
-    y = np.load("unit_test/unit_test_conv/dataset_y.npy")
+    x = np.load("../unit_tests/pc_modular/unit_test_conv/dataset_x.npy")
+    y = np.load("../unit_tests/pc_modular/unit_test_conv/dataset_y.npy")
 
-    l1w = np.load("unit_test/unit_test_conv/layer_0_weights.npy")
-    l2w = np.load("unit_test/unit_test_conv/layer_1_weights.npy")
+    l1w = np.load(
+        "../unit_tests/pc_modular/unit_test_conv/layer_0_weights.npy")
+    l2w = np.load(
+        "../unit_tests/pc_modular/unit_test_conv/layer_1_weights.npy")
 
-    err0_ref = np.load("unit_test/unit_test_conv/pred0_train.npy")
-    err1_ref = np.load("unit_test/unit_test_conv/pred1_train.npy")
+    err0_ref = np.load(
+        "../unit_tests/pc_modular/unit_test_conv/pred0_train.npy")
+    err1_ref = np.load(
+        "../unit_tests/pc_modular/unit_test_conv/pred1_train.npy")
 
     train_x = jnp.moveaxis(x[:128], (0, 1, 2, 3), (0, 3, 2, 1))
     train_y = jnp.moveaxis(y[:128], (0, 1, 2, 3), (0, 3, 2, 1)).astype(
@@ -540,14 +546,16 @@ class UnitTests(parameterized.TestCase):
 
     rng = jax.random.PRNGKey(0)
 
-    x = np.load("unit_test/unit_test_conv/dataset_x.npy")
-    y = np.load("unit_test/unit_test_conv/dataset_y.npy")
+    x = np.load("../unit_tests/pc_modular/unit_test_conv/dataset_x.npy")
+    y = np.load("../unit_tests/pc_modular/unit_test_conv/dataset_y.npy")
 
-    l1w = np.load("unit_test/unit_test_conv/layer_0_weights.npy")
-    l2w = np.load("unit_test/unit_test_conv/layer_1_weights.npy")
+    l1w = np.load(
+        "../unit_tests/pc_modular/unit_test_conv/layer_0_weights.npy")
+    l2w = np.load(
+        "../unit_tests/pc_modular/unit_test_conv/layer_1_weights.npy")
 
-    dw0_ref = np.load("unit_test/unit_test_conv/dw0_train.npy")
-    dw1_ref = np.load("unit_test/unit_test_conv/dw1_train.npy")
+    dw0_ref = np.load("../unit_tests/pc_modular/unit_test_conv/dw0_train.npy")
+    dw1_ref = np.load("../unit_tests/pc_modular/unit_test_conv/dw1_train.npy")
 
     train_x = jnp.moveaxis(x[:128], (0, 1, 2, 3), (0, 3, 2, 1))
     train_y = jnp.moveaxis(y[:128], (0, 1, 2, 3), (0, 3, 2, 1)).astype(

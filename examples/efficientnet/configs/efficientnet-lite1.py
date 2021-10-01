@@ -34,7 +34,7 @@ def get_config():
   config.num_classes = 1000
 
   # Load pretrained weights.
-  config.pretrained = "tf_checkpoints/efficientnet-lite1"
+  config.pretrained = "../../../pretrained_efficientnet/efficientnet-lite1"
 
   config.learning_rate = 0.016
   config.warmup_epochs = 5.0

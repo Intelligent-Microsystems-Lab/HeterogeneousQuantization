@@ -83,6 +83,7 @@ jobs:
           pip install jax jaxlib scipy numpy flax tensorflow-datasets ml_collections clu torch torchvision
       - name: Run unit tests
         run: |
+          ./unit_test/efficientnet_prep.sh
           python examples/efficientnet/models_test.py
           python examples/efficientnet/train_test.py
           python pc_modular_test.py
