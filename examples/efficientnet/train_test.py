@@ -4,7 +4,6 @@
 
 """Tests for flax.examples.imagenet.train."""
 
-import pathlib
 import tempfile
 import importlib
 
@@ -48,11 +47,7 @@ class TrainTest(absltest.TestCase):
     """Tests training and evaluation loop using mocked data."""
     # Create a temporary directory where tensorboard metrics are written.
     workdir = tempfile.mkdtemp()
-
-    # Go two directories up to the root of the flax directory.
-    flax_root_dir = pathlib.Path(__file__).parents[2]
-
-    data_dir = str(flax_root_dir) + '/unit_tests/tensorflow_datasets'
+    data_dir = '../../unit_tests/tensorflow_datasets'
 
     # Define training configuration
     config_module = importlib.import_module('configs.efficientnet-lite0')
