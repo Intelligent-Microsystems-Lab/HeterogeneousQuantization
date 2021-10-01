@@ -129,11 +129,11 @@ class EfficientNetTest(parameterized.TestCase):
         rtol=rtol, atol=atol)
 
     np.testing.assert_allclose(state['intermediates']['features0'][0], np.load(
-        '../../../unit_test/efficientnet/enet' + str(name[-1])
+        '../../../unit_tests/efficientnet/enet' + str(name[-1])
         + '_features0.npy'), rtol=rtol, atol=atol)
 
     np.testing.assert_allclose(state['intermediates']['head'][0], np.load(
-        '../../../unit_test/efficientnet/enet' + str(name[-1]) + '_head.npy'),
+        '../../../unit_tests/efficientnet/enet' + str(name[-1]) + '_head.npy'),
         rtol=rtol, atol=atol)
 
 
