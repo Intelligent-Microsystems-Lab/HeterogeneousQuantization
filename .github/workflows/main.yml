@@ -84,9 +84,10 @@ jobs:
       - name: Run unit tests
         run: |
           ./aux_data_download.sh
-          python examples/efficientnet/models_test.py
-          python examples/efficientnet/train_test.py
           python pc_modular_test.py
           python flax_qconv_test.py
           python flax_qdense.py
           python quant_test.py
+          cd examples/efficientnet/
+          python models_test.py
+          python train_test.py

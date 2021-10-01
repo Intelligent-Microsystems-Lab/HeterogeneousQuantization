@@ -24,3 +24,6 @@ unzip ../unit_tests/efficientnet.zip -d ../unit_tests
 
 wget https://notredame.box.com/shared/static/4idh6fkysgbj0nzd43ymxkirwttmc5pq.zip -O ../unit_tests/pc_modular.zip 
 unzip ../unit_tests/pc_modular.zip -d ../unit_tests
+
+
+wget https://upload.wikimedia.org/wikipedia/commons/f/fe/Giant_Panda_in_Beijing_Zoo_1.JPG -O ../unit_tests/efficientnet/panda.jpg
