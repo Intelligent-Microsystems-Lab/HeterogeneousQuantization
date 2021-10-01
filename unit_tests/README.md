@@ -1,27 +1,12 @@
-## Predictive Coding Unit Test
+## EfficientNet Unit Tests
 
-Code copied from https://github.com/BerenMillidge/PredictiveCodingBackprop and slightly modified to save gradients after one batch is processed with deterministic initial weights.
+Unit test against [this](https://github.com/tensorflow/tpu/tree/master/models/official/efficientnet/lite) code base, saved outputs and intermediate values to compare against. Outputs and intermediate values available [here](https://notredame.box.com/s/8whfsaisnjipyns49i2tv7jlqhnkb4vo) can be automatically downloaded with aux_data_download.sh script.
 
-To produce gradient files necessary for unit tests run:
+## Predictive Coding Unit Tests
 
-```
-python rnn.py
-```
+Unit test against [this](https://github.com/BerenMillidge/PredictiveCodingBackprop) code base, saved outputs and intermediate values to compare against. Outputs and intermediate values available [here](https://notredame.box.com/s/4idh6fkysgbj0nzd43ymxkirwttmc5pq) can be automatically downloaded with aux_data_download.sh script.
 
-The copied comes from:
-```
-@article{millidge2020predictive,
-  title={Predictive Coding Approximates Backprop along Arbitrary Computation Graphs},
-  author={Millidge, Beren and Tschantz, Alexander and Buckley, Christopher L},
-  journal={arXiv preprint arXiv:2006.04182},
-  year={2020}
-}
-```
+## References
 
-
-## Requirements
-The code is written in [Pyython 3.x] and uses the following packages:
-
-- [NumPY]
-- [PyTorch] version 1.3.1
-- [TensorFlow] version 1.x (only for downloading shakespeare dataset)
+- Tan, Mingxing, and Quoc Le. "Efficientnet: Rethinking model scaling for convolutional neural networks." International Conference on Machine Learning. PMLR, 2019.
+- Millidge, Beren, Alexander Tschantz, and Christopher L. Buckley. "Predictive coding approximates backprop along arbitrary computation graphs." arXiv preprint arXiv:2006.04182 (2020).
