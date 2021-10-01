@@ -6,6 +6,7 @@
 
 import pathlib
 import tempfile
+import importlib
 
 from absl.testing import absltest
 
@@ -19,7 +20,6 @@ import tensorflow_datasets as tfds
 import models
 import train
 import train_util
-from configs import default as default_lib
 
 jax.config.update('jax_platform_name', 'cpu')
 jax.config.update('jax_disable_most_optimizations', True)
@@ -52,10 +52,11 @@ class TrainTest(absltest.TestCase):
     # Go two directories up to the root of the flax directory.
     flax_root_dir = pathlib.Path(__file__).parents[2]
 
-    data_dir = str(flax_root_dir) + '/unit_test/tensorflow_datasets'
+    data_dir = str(flax_root_dir) + '/unit_tests/tensorflow_datasets'
 
     # Define training configuration
-    config = default_lib.get_config()
+    config_module = importlib.import_module('configs.efficientnet-lite0')
+    config = config_module.get_config()
     config.model = 'EfficientNetB0'
     config.dataset = 'imagenet2012'
     config.batch_size = 16
