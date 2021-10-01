@@ -121,7 +121,8 @@ class EfficientNetTest(parameterized.TestCase):
 
     # testing for equality
     np.testing.assert_allclose(inpt, np.load(
-        '../../../unit_tests/efficientnet/enet' + str(name[-1]) + '_inputs.npy'))
+        '../../../unit_tests/efficientnet/enet' + str(name[-1])
+        + '_inputs.npy'))
 
     np.testing.assert_allclose(state['intermediates']['stem'][0], np.load(
         '../../../unit_tests/efficientnet/enet' + str(name[-1]) + '_stem.npy'),
