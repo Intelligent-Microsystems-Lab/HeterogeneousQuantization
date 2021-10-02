@@ -25,19 +25,19 @@ def load_pretrained_weights(state, location):
   tf_vars = tf.train.list_variables(location)
   params = unfreeze(state.params)
   batch_stats = unfreeze(state.batch_stats)
+  nu_rmsscale = unfreeze(state.opt_state[0].nu) 
 
+  import pdb; pdb.set_trace()
   for name, shape in tf_vars:
     list_components = name.split("/")
     if len(list_components) == 1:
       # Entry for step - ignored so far.
       continue
     if len(list_components) == 4:
-      # net, layer, op, param = list_components
-      continue
+      net, layer, op, param = list_components
     elif len(list_components) == 5:
-      # Exponential Moving Average.
-      net, layer, op, param, _ = list_components
-      # continue
+      # Exponential Moving Average - for rmsprop loaded with weights.
+      continue
     else:
       raise Exception("Checkpoint corrupt: " + location)
 
@@ -57,6 +57,23 @@ def load_pretrained_weights(state, location):
             name,
         )
         params["MBConvBlock_" + layer.split("_")[-1]][
+            "depthwise_conv2d"
+        ]["kernel"] = loaded_transposed
+
+        # EMA load.
+        loaded_transposed = jnp.moveaxis(
+            jnp.array(tf.train.load_variable(location, name+'/ExponentialMovingAverage')),
+            (0, 1, 2, 3),
+            (0, 1, 3, 2),
+        )
+        test_shapes(
+            loaded_transposed.shape,
+            params["MBConvBlock_" + layer.split("_")[-1]][
+                "depthwise_conv2d"
+            ]["kernel"].shape,
+            name,
+        )
+        nu_rmsscale["MBConvBlock_" + layer.split("_")[-1]][
             "depthwise_conv2d"
         ]["kernel"] = loaded_transposed
         continue

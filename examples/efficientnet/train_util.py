@@ -149,11 +149,9 @@ def create_train_state(rng, config: ml_collections.ConfigDict,
   params, batch_stats = initialized(rng, image_size, model)
   tx = optax.rmsprop(
       learning_rate=learning_rate_fn,
-      decay=.9,
-      momentum=.9,
+      decay=0.9999,
+      momentum=config.momentum,
       eps=0.001,
-      # momentum=config.momentum,
-      # nesterov=True,
   )
   state = TrainState.create(
       apply_fn=model.apply,
