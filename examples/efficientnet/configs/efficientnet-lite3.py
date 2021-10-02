@@ -36,12 +36,14 @@ def get_config():
   # Load pretrained weights.
   config.pretrained = "../../../pretrained_efficientnet/efficientnet-lite3"
 
-  config.learning_rate = 0.016
-  config.warmup_epochs = 5.0
+  config.learning_rate = 0.001
+  config.lr_boundaries = [16, 32]
+  config.lr_scales = [1 / 10, 1 / 10]
+  config.weight_decay = 1e-5
   config.momentum = 0.9
-  config.batch_size = 2048
+  config.batch_size = 256
 
-  config.num_epochs = 350
+  config.num_epochs = 50
   config.log_every_steps = 256
 
   # If num_train_steps==-1 then the number of training steps is calculated from
@@ -51,22 +53,27 @@ def get_config():
 
   config.quant = ml_collections.ConfigDict()
 
-  # noise
-  config.quant.weight_noise = 0.0
-  config.quant.act_noise = 0.0
-  config.quant.weight_bwd_noise = 0.0
-  config.quant.act_bwd_noise = 0.0
-  config.quant.val_noise = 0.0
-  config.quant.err_inpt_noise = 0.0
-  config.quant.err_weight_noise = 0.0
+  # Conv for stem layer.
+  config.quant.stem = ml_collections.ConfigDict()
+  config.quant.stem.weight = lambda x: x
+  config.quant.stem.act = lambda x: x
 
-  # quant
-  config.quant.weight_bits = 5.0
-  config.quant.act_bits = 5.0
-  config.quant.weight_bwd_bits = 5.0
-  config.quant.act_bwd_bits = 5.0
-  config.quant.val_bits = 5.0
-  config.quant.err_inpt_bits = 5.0
-  config.quant.err_weight_bits = 5.0
+  # Conv in MBConv blocks.
+  config.quant.mbconv = ml_collections.ConfigDict()
+  config.quant.mbconv.weight = lambda x: x
+  config.quant.mbconv.act = lambda x: x
+
+  # Conv for head layer.
+  config.quant.head = ml_collections.ConfigDict()
+  config.quant.head.weight = lambda x: x
+  config.quant.head.act = lambda x: x
+
+  # Average quant.
+  config.quant.average = lambda x: x
+
+  # Final linear layer.
+  config.quant.dense = ml_collections.ConfigDict()
+  config.quant.dense.weight = lambda x: x
+  config.quant.dense.act = lambda x: x
 
   return config

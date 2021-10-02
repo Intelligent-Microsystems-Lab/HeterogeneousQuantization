@@ -114,14 +114,12 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
   steps_per_checkpoint = steps_per_epoch * 10
 
-  base_learning_rate = config.learning_rate * local_batch_size / 256.
-
   model_cls = getattr(models, config.model)
   model = create_model(
-      model_cls=model_cls, num_classes=config.num_classes)
+      model_cls=model_cls, num_classes=config.num_classes, config=config)
 
   learning_rate_fn = create_learning_rate_fn(
-      config, base_learning_rate, steps_per_epoch)
+      config, steps_per_epoch)  # , base_learning_rate, steps_per_epoch)
 
   rng, subkey = jax.random.split(rng, 2)
   state = create_train_state(
@@ -140,7 +138,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       functools.partial(
           train_step,
           learning_rate_fn=learning_rate_fn,
-          num_classes=config.num_classes),
+          num_classes=config.num_classes,
+          weight_decay=config.weight_decay),
       axis_name='batch')
   p_eval_step = jax.pmap(functools.partial(
       eval_step, num_classes=config.num_classes), axis_name='batch')

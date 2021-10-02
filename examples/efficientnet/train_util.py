@@ -18,7 +18,6 @@ from flax.training import train_state
 import jax
 from jax import lax
 import jax.numpy as jnp
-import numpy as np
 
 import ml_collections
 
@@ -62,34 +61,18 @@ def compute_metrics(logits, labels, num_classes):
   return metrics
 
 
-def create_learning_rate_fn(
-        config: ml_collections.ConfigDict,
-        base_learning_rate: float,
-        steps_per_epoch: int):
+def create_learning_rate_fn(config: ml_collections.ConfigDict,
+                            steps_per_epoch: int):
   """Create learning rate schedule."""
-  warmup_fn = optax.linear_schedule(
-      init_value=0., end_value=base_learning_rate,
-      transition_steps=config.warmup_epochs * steps_per_epoch)
-  # cosine_epochs = max(config.num_epochs - config.warmup_epochs, 1)
-  # cosine_fn = optax.cosine_decay_schedule(
-  #    init_value=base_learning_rate,
-  #    decay_steps=cosine_epochs * steps_per_epoch)
+  boundaries_and_scales = {x * steps_per_epoch: y for x,
+                           y in zip(config.lr_boundaries, config.lr_scales)}
+  lr_decay = optax.piecewise_constant_schedule(config.learning_rate,
+                                               boundaries_and_scales)
 
-  warmup_offset = config.warmup_epochs * steps_per_epoch
-  boundaries_and_scales = {i: .97 for i in np.arange(
-      warmup_offset, config.num_epochs * steps_per_epoch - warmup_offset,
-      steps_per_epoch * 2.4)}
-  lr_decay = optax.piecewise_constant_schedule(
-      base_learning_rate, boundaries_and_scales)
-
-  schedule_fn = optax.join_schedules(
-      schedules=[warmup_fn, lr_decay],
-      boundaries=[config.warmup_epochs * steps_per_epoch])
-
-  return schedule_fn
+  return lr_decay
 
 
-def train_step(state, batch, rng, learning_rate_fn, num_classes):
+def train_step(state, batch, rng, learning_rate_fn, num_classes, weight_decay):
   """Perform a single training step."""
   def loss_fn(params):
     """loss function used for training."""
@@ -99,7 +82,6 @@ def train_step(state, batch, rng, learning_rate_fn, num_classes):
         mutable=['batch_stats'], rngs={'dropout': rng})
     loss = cross_entropy_loss(logits, batch['label'], num_classes)
     weight_penalty_params = jax.tree_leaves(params)
-    weight_decay = 1e-5
     weight_l2 = sum([jnp.sum(x ** 2)
                      for x in weight_penalty_params
                      if x.ndim > 1])

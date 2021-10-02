@@ -20,6 +20,8 @@ from jax._src.lax.lax import (
     _conv_general_vjp_lhs_padding,
     rev,
     _conv_general_vjp_rhs_padding,
+    _reshape_axis_out_of,
+    _reshape_axis_into,
 )
 
 from flax.linen.module import Module, compact
@@ -33,7 +35,7 @@ from flax.linen.linear import (
     _conv_dimension_numbers,
 )
 
-from quant import get_noise, signed_uniform_max_scale_quant_ste
+from quant import get_noise
 
 
 class QuantConv(Module):
@@ -73,9 +75,9 @@ class QuantConv(Module):
   padding: Union[str, Iterable[Tuple[int, int]]] = "SAME"
   # input_dilation: Optional[Iterable[int]] = None
   # kernel_dilation: Optional[Iterable[int]] = None
-  # feature_group_count: int = 1
-  # use_bias: bool = True
-  # dtype: Dtype = jnp.float32
+  feature_group_count: int = 1
+  use_bias: bool = True
+  dtype: Dtype = jnp.float32
   # precision: Any = None
   kernel_init: Callable[[PRNGKey, Shape, Dtype], Array] = default_kernel_init
   # bias_init: Callable[[PRNGKey, Shape, Dtype], Array] = zeros
@@ -89,7 +91,7 @@ class QuantConv(Module):
     Returns:
       The convolved data.
     """
-
+    assert self.use_bias is False
     inputs = jnp.asarray(inputs, jnp.float32)
     cfg = self.config
 
@@ -106,9 +108,9 @@ class QuantConv(Module):
     strides = self.strides or (1,) * (inputs.ndim - 2)
 
     in_features = inputs.shape[-1]
-    assert in_features % 1 == 0
+    assert in_features % self.feature_group_count == 0
     kernel_shape = kernel_size + (
-        in_features // 1,
+        in_features // self.feature_group_count,
         self.features,
     )
     kernel = self.param("kernel", self.kernel_init, kernel_shape)
@@ -148,15 +150,11 @@ class QuantConv(Module):
         inpt = inpt + get_noise(inpt, cfg["act_noise"], prng)
 
       # Quantization
-      if "weight_bits" in cfg:
-        kernel = signed_uniform_max_scale_quant_ste(
-            kernel, cfg["weight_bits"]
-        )
+      if "weight" in cfg:
+        kernel = cfg.weight(kernel)
 
-      if "act_bits" in cfg:
-        inpt = signed_uniform_max_scale_quant_ste(
-            inpt, cfg["act_bits"]
-        )
+      if "act" in cfg:
+        inpt = cfg.act(inpt)
 
       return jax.lax.conv_general_dilated(
           inpt,
@@ -166,7 +164,7 @@ class QuantConv(Module):
           lhs_dilation=None,
           rhs_dilation=rhs_dilation,
           dimension_numbers=dimension_numbers,
-          feature_group_count=1,
+          feature_group_count=self.feature_group_count,
           batch_group_count=1,
           precision=None,
           preferred_element_type=None,
@@ -175,7 +173,10 @@ class QuantConv(Module):
     def conv_general_fwd(
         inpt: Array, kernel: Array, rng: PRNGKey
     ) -> Array:
-      rng, prng = jax.random.split(rng, 2)
+      if rng is not None:
+        rng, prng = jax.random.split(rng, 2)
+      else:
+        prng = None
       return conv_general(inpt, kernel, prng), (inpt, kernel, rng)
 
     def conv_general_bwd(res: tuple, g: Array) -> tuple:
@@ -206,25 +207,17 @@ class QuantConv(Module):
         )
 
       # Quantization
-      if "weight_bwd_bits" in cfg:
-        kernel = signed_uniform_max_scale_quant_ste(
-            kernel, cfg["weight_bwd_bits"]
-        )
+      if "weight_bwd" in cfg:
+        kernel = cfg.weight_bwd(kernel)
 
-      if "act_bwd_bits" in cfg:
-        inpt = signed_uniform_max_scale_quant_ste(
-            inpt, cfg["act_bwd_bits"]
-        )
+      if "act_bwd" in cfg:
+        inpt = cfg.act_bwd(inpt)
 
-      if "err_inpt_bits" in cfg:
-        g_inpt = signed_uniform_max_scale_quant_ste(
-            g_inpt, cfg["err_inpt_bits"]
-        )
+      if "err_inpt" in cfg:
+        g_inpt = cfg.err_inpt(g_inpt)
 
-      if "err_weight_bits" in cfg:
-        g_weight = signed_uniform_max_scale_quant_ste(
-            g_weight, cfg["err_weight_bits"]
-        )
+      if "err_weight" in cfg:
+        g_weight = cfg.err_weight(g_weight)
 
       lhs_sdims, rhs_sdims, out_sdims = map(
           _conv_sdims, dimension_numbers
@@ -241,6 +234,12 @@ class QuantConv(Module):
           lhs_dilation,
           rhs_dilation,
       )
+      if self.feature_group_count > 1:
+        rhs_conv_batch_group_count = self.feature_group_count
+        rhs_conv_feature_group_count = 1
+      else:
+        rhs_conv_batch_group_count = 1
+        rhs_conv_feature_group_count = 1
       trans_dimension_numbers = ConvDimensionNumbers(
           lhs_trans, out_trans, rhs_trans
       )
@@ -253,8 +252,8 @@ class QuantConv(Module):
           lhs_dilation=lhs_dilation,
           rhs_dilation=strides,
           dimension_numbers=trans_dimension_numbers,
-          feature_group_count=1,
-          batch_group_count=1,
+          feature_group_count=rhs_conv_feature_group_count,
+          batch_group_count=rhs_conv_batch_group_count,
           precision=None,
           preferred_element_type=None,
       )
@@ -264,6 +263,14 @@ class QuantConv(Module):
       )
       lhs_spec, rhs_spec, out_spec = dimension_numbers
       t_rhs_spec = _conv_spec_transpose(rhs_spec)
+
+      if self.feature_group_count > 1:
+        # in addition to switching the dims in the spec, need to move the
+        # feature group axis into the transposed rhs's output feature dim
+        kernel = _reshape_axis_out_of(
+            rhs_spec[0], self.feature_group_count, kernel)
+        kernel = _reshape_axis_into(rhs_spec[0], rhs_spec[1], kernel)
+
       trans_dimension_numbers = ConvDimensionNumbers(
           out_spec, t_rhs_spec, lhs_spec
       )
@@ -286,7 +293,7 @@ class QuantConv(Module):
           lhs_dilation=strides,
           rhs_dilation=rhs_dilation,
           dimension_numbers=trans_dimension_numbers,
-          feature_group_count=1,
+          feature_group_count=self.feature_group_count,
           batch_group_count=1,
           precision=None,
           preferred_element_type=None,

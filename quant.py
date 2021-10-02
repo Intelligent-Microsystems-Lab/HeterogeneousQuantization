@@ -12,7 +12,7 @@ def signed_uniform_max_scale_quant_ste(x: Array, bits: int) -> Array:
   if type(bits) == int:
     assert (
         bits > 1
-    ), "Bit widths below 2 bits are not supported but got: " + str(bits)
+    ), "Bit widths below 2 bits are not supported but got bits: " + str(bits)
 
   scale = jnp.max(jnp.abs(x))
 

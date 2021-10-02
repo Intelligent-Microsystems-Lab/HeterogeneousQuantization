@@ -9,7 +9,9 @@
 # See issue #620.
 # pytype: disable=wrong-arg-count
 
+import sys
 from functools import partial
+import ml_collections
 from typing import Any, Callable, Tuple
 
 from flax import linen as nn
@@ -22,6 +24,10 @@ import jax
 from jax._src.nn.initializers import variance_scaling
 
 from efficientnet_utils import BlockDecoder, GlobalParams
+
+sys.path.append("../..")
+from flax_qconv import QuantConv  # noqa: E402
+from flax_qdense import QuantDense  # noqa: E402
 
 ModuleDef = Any
 Array = Any
@@ -84,6 +90,7 @@ class MBConvBlock(nn.Module):
   clip_projection_output: bool
   id_skip: bool
   act: Callable
+  config: dict
 
   @nn.compact
   def __call__(self,
@@ -103,7 +110,8 @@ class MBConvBlock(nn.Module):
                     strides=[1, 1],
                     kernel_init=conv_kernel_initializer(),
                     padding='SAME',
-                    use_bias=False)(x)
+                    use_bias=False,
+                    config=self.config)(x)
       x = self.norm()(x)
       x = self.act(x)
       logging.info('Expand shape: %s', x.shape)
@@ -121,7 +129,8 @@ class MBConvBlock(nn.Module):
         padding='SAME',
         feature_group_count=feature_group_count,
         use_bias=False,
-        name='depthwise_conv2d')(x)
+        name='depthwise_conv2d',
+        config=self.config)(x)
     x = self.norm()(x)
     x = self.act(x)
     logging.info('DWConv shape: %s', x.shape)
@@ -132,7 +141,8 @@ class MBConvBlock(nn.Module):
                   strides=[1, 1],
                   kernel_init=conv_kernel_initializer(),
                   padding='SAME',
-                  use_bias=False)(x)
+                  use_bias=False,
+                  config=self.config)(x)
     x = self.norm()(x)
 
     if self.clip_projection_output:
@@ -168,6 +178,7 @@ class EfficientNet(nn.Module):
   num_classes: int
   dtype: Any = jnp.float32
   act: Callable = jax.nn.relu6
+  config: dict = ml_collections.FrozenConfigDict({})
 
   @nn.compact
   def __call__(self, x: Array, train: bool = True) -> Array:
@@ -177,7 +188,7 @@ class EfficientNet(nn.Module):
         batch_norm_momentum=0.99,
         batch_norm_epsilon=1e-3,
         dropout_rate=self.dropout_rate,
-        survival_prob=.8,  # TODO: @clee1994
+        survival_prob=.8,
         width_coefficient=self.width_coefficient,
         depth_coefficient=self.depth_coefficient,
         depth_divisor=8,
@@ -190,7 +201,7 @@ class EfficientNet(nn.Module):
 
     _blocks_args = BlockDecoder().decode(global_params.blocks_args)
 
-    conv = partial(nn.Conv, dtype=self.dtype)
+    conv = partial(QuantConv, dtype=self.dtype)
     norm = partial(nn.BatchNorm,
                    use_running_average=not train,
                    momentum=global_params.batch_norm_momentum,
@@ -205,7 +216,8 @@ class EfficientNet(nn.Module):
     MBConvBlock
     conv_block = partial(
         MBConvBlock,
-        clip_projection_output=global_params.clip_projection_output)
+        clip_projection_output=global_params.clip_projection_output,
+        config=self.config.quant.mbconv)
 
     self.sow('intermediates', 'inputs', x)
     # Stem part.
@@ -216,7 +228,8 @@ class EfficientNet(nn.Module):
         padding='SAME',
         kernel_init=conv_kernel_initializer(),
         use_bias=False,
-        name='stem_conv')(x)
+        name='stem_conv',
+        config=self.config.quant.stem)(x)
 
     x = norm(name='stem_bn')(x)
     x = self.act(x)
@@ -291,15 +304,19 @@ class EfficientNet(nn.Module):
              padding='SAME',
              kernel_init=conv_kernel_initializer(),
              use_bias=False,
-             name='head_conv')(x)
+             name='head_conv',
+             config=self.config.quant.head)(x)
     x = norm(name='head_bn')(x)
     x = self.act(x)
 
     x = jnp.mean(x, axis=(1, 2))
+    x = self.config.quant.average(x)
 
     x = nn.Dropout(self.dropout_rate)(x, deterministic=not train)
-    x = nn.Dense(self.num_classes,
-                 kernel_init=dense_kernel_initializer(), dtype=self.dtype)(x)
+    x = QuantDense(self.num_classes,
+                   kernel_init=dense_kernel_initializer(),
+                   dtype=self.dtype,
+                   config=self.config.quant.dense)(x)
     x = jnp.asarray(x, self.dtype)
     self.sow('intermediates', 'head', x)
 

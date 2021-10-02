@@ -12,14 +12,14 @@ from typing import (
 
 
 from flax.linen.module import Module, compact
-from flax.linen.initializers import lecun_normal  # , zeros
+from flax.linen.initializers import lecun_normal, zeros
 
 import ml_collections
 
 import jax
 import jax.numpy as jnp
 
-from quant import get_noise, signed_uniform_max_scale_quant_ste
+from quant import get_noise
 
 
 default_kernel_init = lecun_normal()
@@ -28,96 +28,6 @@ Array = Any
 Dtype = Any
 PRNGKey = Any
 Shape = Sequence[int]
-
-
-@jax.custom_vjp
-def dot_general(inpt: Array, kernel: Array, rng: PRNGKey, cfg: dict) -> Array:
-  # Nois
-  if "weight_noise" in cfg:
-    rng, prng = jax.random.split(rng, 2)
-    kernel = kernel + get_noise(kernel, cfg["weight_noise"], prng)
-
-  if "act_noise" in cfg:
-    rng, prng = jax.random.split(rng, 2)
-    inpt = inpt + get_noise(inpt, cfg["act_noise"], prng)
-
-  # Quantization
-  if "weight_bits" in cfg:
-    kernel = signed_uniform_max_scale_quant_ste(kernel, cfg["weight_bits"])
-
-  if "act_bits" in cfg:
-    inpt = signed_uniform_max_scale_quant_ste(inpt, cfg["act_bits"])
-
-  return jnp.dot(inpt, kernel)
-
-
-def dot_general_fwd(
-    inpt: Array, kernel: Array, rng: PRNGKey, cfg: dict
-) -> Array:
-  rng, prng = jax.random.split(rng, 2)
-  return dot_general(inpt, kernel, rng, cfg,), (
-      inpt,
-      kernel,
-      prng,
-      cfg,
-  )
-
-
-def dot_general_bwd(res: tuple, g: Array) -> tuple:
-  (
-      inpt,
-      kernel,
-      rng,
-      cfg,
-  ) = res
-  g_inpt = g_weight = g
-
-  # Noise
-  if "weight_bwd_noise" in cfg:
-    rng, prng = jax.random.split(rng, 2)
-    kernel = kernel + get_noise(kernel, cfg["weight_bwd_noise"], prng)
-
-  if "act_bwd_noise" in cfg:
-    rng, prng = jax.random.split(rng, 2)
-    inpt = inpt + get_noise(inpt, cfg["act_bwd_noise"], prng)
-
-  if "err_inpt_noise" in cfg:
-    rng, prng = jax.random.split(rng, 2)
-    g_inpt = g_inpt + get_noise(g_inpt, cfg["err_inpt_noise"], prng)
-
-  if "err_weight_noise" in cfg:
-    rng, prng = jax.random.split(rng, 2)
-    g_weight = g_weight + get_noise(
-        g_weight, cfg["err_weight_noise"], prng
-    )
-
-  # Quantization
-  if "weight_bwd_bits" in cfg:
-    kernel = signed_uniform_max_scale_quant_ste(
-        kernel, cfg["weight_bwd_bits"]
-    )
-
-  if "act_bwd_bits" in cfg:
-    inpt = signed_uniform_max_scale_quant_ste(inpt, cfg["act_bwd_bits"])
-
-  if "err_inpt_bits" in cfg:
-    g_inpt = signed_uniform_max_scale_quant_ste(
-        g_inpt, cfg["err_inpt_bits"]
-    )
-
-  if "err_weight_bits" in cfg:
-    g_weight = signed_uniform_max_scale_quant_ste(
-        g_weight, cfg["err_weight_bits"]
-    )
-
-  g_inpt_fwd = jnp.dot(g_inpt, jnp.transpose(kernel))
-
-  g_kernel_fwd = jnp.dot(jnp.transpose(inpt), g_weight)
-
-  return (g_inpt_fwd, g_kernel_fwd, None, None)
-
-
-dot_general.defvjp(dot_general_fwd, dot_general_bwd)
 
 
 class QuantDense(Module):
@@ -134,11 +44,11 @@ class QuantDense(Module):
   """
 
   features: int
-  # use_bias: bool = True
+  use_bias: bool = True
   dtype: Any = jnp.float32
   precision: Any = None
   kernel_init: Callable[[PRNGKey, Shape, Dtype], Array] = default_kernel_init
-  # bias_init: Callable[[PRNGKey, Shape, Dtype], Array] = zeros
+  bias_init: Callable[[PRNGKey, Shape, Dtype], Array] = zeros
   config: dict = ml_collections.FrozenConfigDict({})
 
   @compact
@@ -156,11 +66,94 @@ class QuantDense(Module):
     )
     kernel = jnp.asarray(kernel, self.dtype)
 
-    y = dot_general(inputs, kernel, rng, dict(self.config))
+    @jax.custom_vjp
+    def dot_general(inpt: Array, kernel: Array, rng: PRNGKey) -> Array:
+      # Nois
+      if "weight_noise" in self.config:
+        rng, prng = jax.random.split(rng, 2)
+        kernel = kernel + get_noise(kernel, self.config["weight_noise"], prng)
 
-    # if self.use_bias:
-    #   assert False, "Bias for Dense layer not supported yet."
-    #   bias = self.param("bias", self.bias_init, (self.features,))
-    #   bias = jnp.asarray(bias, self.dtype)
-    #   y = y + bias
+      if "act_noise" in self.config:
+        rng, prng = jax.random.split(rng, 2)
+        inpt = inpt + get_noise(inpt, self.config["act_noise"], prng)
+
+      # Quantization
+      if "weight" in self.config:
+        kernel = self.config.weight(kernel)
+
+      if "act" in self.config:
+        inpt = self.config.act(inpt)
+
+      return jnp.dot(inpt, kernel)
+
+    def dot_general_fwd(
+        inpt: Array, kernel: Array, rng: PRNGKey
+    ) -> Array:
+      if rng is not None:
+        rng, prng = jax.random.split(rng, 2)
+      else:
+        prng = None
+      return dot_general(inpt, kernel, rng), (
+          inpt,
+          kernel,
+          prng,
+      )
+
+    def dot_general_bwd(res: tuple, g: Array) -> tuple:
+      (
+          inpt,
+          kernel,
+          rng,
+      ) = res
+      g_inpt = g_weight = g
+
+      # Noise
+      if "weight_bwd_noise" in self.config:
+        rng, prng = jax.random.split(rng, 2)
+        kernel = kernel + \
+            get_noise(kernel, self.config["weight_bwd_noise"], prng)
+
+      if "act_bwd_noise" in self.config:
+        rng, prng = jax.random.split(rng, 2)
+        inpt = inpt + get_noise(inpt, self.config["act_bwd_noise"], prng)
+
+      if "err_inpt_noise" in self.config:
+        rng, prng = jax.random.split(rng, 2)
+        g_inpt = g_inpt + \
+            get_noise(g_inpt, self.config["err_inpt_noise"], prng)
+
+      if "err_weight_noise" in self.config:
+        rng, prng = jax.random.split(rng, 2)
+        g_weight = g_weight + get_noise(
+            g_weight, self.config["err_weight_noise"], prng
+        )
+
+      # Quantization
+      if "weight_bwd" in self.config:
+        kernel = self.config.weight_bwd(kernel)
+
+      if "act_bwd" in self.config:
+        inpt = self.config.act_bwd(inpt)
+
+      if "err_inpt" in self.config:
+        g_inpt = self.config.err_inpt(g_inpt)
+
+      if "err_weight" in self.config:
+        g_weight = self.config.err_weight(g_weight)
+
+      g_inpt_fwd = jnp.dot(g_inpt, jnp.transpose(kernel))
+
+      g_kernel_fwd = jnp.dot(jnp.transpose(inpt), g_weight)
+
+      return (g_inpt_fwd, g_kernel_fwd, None)
+
+    dot_general.defvjp(dot_general_fwd, dot_general_bwd)
+
+    y = dot_general(inputs, kernel, rng)
+
+    if self.use_bias:
+      # assert False, "Bias for Dense layer not supported yet."
+      bias = self.param("bias", self.bias_init, (self.features,))
+      bias = jnp.asarray(bias, self.dtype)
+      y = y + bias
     return y

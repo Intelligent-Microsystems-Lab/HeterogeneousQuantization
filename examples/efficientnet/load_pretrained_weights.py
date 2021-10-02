@@ -69,13 +69,13 @@ def load_pretrained_weights(state, location):
             shape,
             list(
                 params["MBConvBlock_" + layer.split("_")[-1]][
-                    "Conv_" + flax_op_num
+                    "QuantConv_" + flax_op_num
                 ]["kernel"].shape
             ),
             name,
         )
         params["MBConvBlock_" + layer.split("_")[-1]][
-            "Conv_" + flax_op_num
+            "QuantConv_" + flax_op_num
         ]["kernel"] = jnp.array(tf.train.load_variable(location, name))
         continue
 
@@ -148,8 +148,8 @@ def load_pretrained_weights(state, location):
 
     if ("stem" in layer) or ("head" in layer):
       if op == "dense":
-        test_shapes(shape, list(params["Dense_0"][param].shape), name)
-        params["Dense_0"][param] = jnp.array(
+        test_shapes(shape, list(params["QuantDense_0"][param].shape), name)
+        params["QuantDense_0"][param] = jnp.array(
             tf.train.load_variable(location, name)
         )
         continue

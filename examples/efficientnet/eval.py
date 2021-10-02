@@ -82,7 +82,7 @@ def evaluate(config: ml_collections.ConfigDict,
 
   model_cls = getattr(models, config.model)
   model = create_model(
-      model_cls=model_cls, num_classes=config.num_classes)
+      model_cls=model_cls, num_classes=config.num_classes, config=config)
 
   rng, subkey = jax.random.split(rng, 2)
   state = create_train_state(

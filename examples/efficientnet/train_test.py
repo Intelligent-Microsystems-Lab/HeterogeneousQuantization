@@ -33,16 +33,18 @@ class TrainTest(absltest.TestCase):
 
   def test_create_model(self):
     """Tests creating model."""
+    config_module = importlib.import_module('configs.efficientnet-lite0')
+    config = config_module.get_config()
     model = train_util.create_model(
         model_cls=models.EfficientNetB0,  # pylint: disable=protected-access
-        num_classes=1000)
+        num_classes=1000,
+        config=config)
     params, batch_stats = train_util.initialized(random.PRNGKey(0), 224, model)
     variables = {'params': params, 'batch_stats': batch_stats}
     x = random.normal(random.PRNGKey(1), (8, 224, 224, 3))
     y = model.apply(variables, x, train=False)
     self.assertEqual(y.shape, (8, 1000))
 
-  # # with tfds.testing.mock_data(num_examples=1024, data_dir=data_dir):
   def test_train_and_evaluate(self):
     """Tests training and evaluation loop using mocked data."""
     # Create a temporary directory where tensorboard metrics are written.

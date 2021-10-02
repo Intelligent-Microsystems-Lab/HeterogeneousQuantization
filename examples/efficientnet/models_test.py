@@ -78,7 +78,13 @@ class EfficientNetTest(parameterized.TestCase):
     """Tests EfficientNet model definition and output (variables)."""
     rng = jax.random.PRNGKey(0)
     model_cls = getattr(models, name)
-    model_def = model_cls(num_classes=1000, dtype=jnp.float32)
+
+    # get correct config
+    config_module = importlib.import_module(
+        'configs.efficientnet-lite' + str(name[-1]))
+    config = config_module.get_config()
+
+    model_def = model_cls(num_classes=1000, dtype=jnp.float32, config=config)
     variables = model_def.init(
         rng, jnp.ones((8, inpt_size, inpt_size, 3), jnp.float32), train=False)
 
@@ -89,17 +95,18 @@ class EfficientNetTest(parameterized.TestCase):
   @parameterized.named_parameters(*net_size_data())
   def test_efficienteet_inference(self, name, param_count, inpt_size,
                                   rtol, atol):
-    # initialize network
-    rng = jax.random.PRNGKey(0)
-    model_cls = getattr(models, name)
-    model_def = model_cls(num_classes=1000, dtype=jnp.float32)
-    variables = model_def.init(
-        rng, jnp.ones((8, inpt_size, inpt_size, 3), jnp.float32), train=False)
 
     # get correct config
     config_module = importlib.import_module(
         'configs.efficientnet-lite' + str(name[-1]))
     config = config_module.get_config()
+
+    # initialize network
+    rng = jax.random.PRNGKey(0)
+    model_cls = getattr(models, name)
+    model_def = model_cls(num_classes=1000, dtype=jnp.float32, config=config)
+    variables = model_def.init(
+        rng, jnp.ones((8, inpt_size, inpt_size, 3), jnp.float32), train=False)
 
     # load pretrain weights
     tx = optax.rmsprop(0.0)

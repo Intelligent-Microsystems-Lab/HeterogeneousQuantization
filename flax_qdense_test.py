@@ -41,12 +41,14 @@ class DQG(nn.Module):
         features=channels[0],
         kernel_init=initializers.lecun_normal(),
         config=config,
+        use_bias=False,
     )(x, subkey)
     rng, subkey = jax.random.split(rng, 2)
     x = QuantDense(
         features=channels[1],
         kernel_init=initializers.lecun_normal(),
         config=config,
+        use_bias=False,
     )(x, subkey)
     return x
 
