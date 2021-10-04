@@ -31,10 +31,11 @@ def create_model(*, model_cls, num_classes, **kwargs):
 
 def initialized(key, image_size, model):
   input_shape = (1, image_size, image_size, 3)
+  key, rng = jax.random.split(key, 2)
 
   @jax.jit
   def init(*args):
-    return model.init(*args, train=False)
+    return model.init(*args, rng=rng, train=False)
   variables = init({'params': key}, jnp.ones(input_shape, model.dtype))
   return variables['params'], variables['batch_stats']
 
@@ -64,21 +65,30 @@ def compute_metrics(logits, labels, num_classes):
 def create_learning_rate_fn(config: ml_collections.ConfigDict,
                             steps_per_epoch: int):
   """Create learning rate schedule."""
+
+  warmup_fn = optax.constant_schedule(0.)
+
   boundaries_and_scales = {x * steps_per_epoch: y for x,
                            y in zip(config.lr_boundaries, config.lr_scales)}
   lr_decay = optax.piecewise_constant_schedule(config.learning_rate,
                                                boundaries_and_scales)
 
-  return lr_decay
+  schedule_fn = optax.join_schedules(
+      schedules=[warmup_fn, lr_decay],
+      boundaries=[config.warmup_epochs * steps_per_epoch])
+
+  return schedule_fn
 
 
 def train_step(state, batch, rng, learning_rate_fn, num_classes, weight_decay):
   """Perform a single training step."""
+  rng, prng = jax.random.split(rng, 2)
+
   def loss_fn(params):
     """loss function used for training."""
     logits, new_model_state = state.apply_fn(
         {'params': params, 'batch_stats': state.batch_stats},
-        batch['image'],
+        batch['image'], rng=prng,
         mutable=['batch_stats'], rngs={'dropout': rng})
     loss = cross_entropy_loss(logits, batch['label'], num_classes)
     weight_penalty_params = jax.tree_leaves(params)
@@ -110,7 +120,11 @@ def train_step(state, batch, rng, learning_rate_fn, num_classes, weight_decay):
 def eval_step(state, batch, num_classes):
   variables = {'params': state.params, 'batch_stats': state.batch_stats}
   logits = state.apply_fn(
-      variables, batch['image'], train=False, mutable=False)
+      variables,
+      batch['image'],
+      rng=jax.random.PRNGKey(0),
+      train=False,
+      mutable=False)
   return compute_metrics(logits, batch['label'], num_classes)
 
 
@@ -149,10 +163,14 @@ def create_train_state(rng, config: ml_collections.ConfigDict,
   params, batch_stats = initialized(rng, image_size, model)
   tx = optax.rmsprop(
       learning_rate=learning_rate_fn,
-      decay=0.9999,
+      decay=0.9,
       momentum=config.momentum,
       eps=0.001,
   )
+  # tx = optax.sgd(
+  #     learning_rate=learning_rate_fn,
+  #     momentum=config.momentum,
+  # )
   state = TrainState.create(
       apply_fn=model.apply,
       params=params,

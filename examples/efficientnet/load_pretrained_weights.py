@@ -25,9 +25,7 @@ def load_pretrained_weights(state, location):
   tf_vars = tf.train.list_variables(location)
   params = unfreeze(state.params)
   batch_stats = unfreeze(state.batch_stats)
-  nu_rmsscale = unfreeze(state.opt_state[0].nu) 
 
-  import pdb; pdb.set_trace()
   for name, shape in tf_vars:
     list_components = name.split("/")
     if len(list_components) == 1:
@@ -60,22 +58,6 @@ def load_pretrained_weights(state, location):
             "depthwise_conv2d"
         ]["kernel"] = loaded_transposed
 
-        # EMA load.
-        loaded_transposed = jnp.moveaxis(
-            jnp.array(tf.train.load_variable(location, name+'/ExponentialMovingAverage')),
-            (0, 1, 2, 3),
-            (0, 1, 3, 2),
-        )
-        test_shapes(
-            loaded_transposed.shape,
-            params["MBConvBlock_" + layer.split("_")[-1]][
-                "depthwise_conv2d"
-            ]["kernel"].shape,
-            name,
-        )
-        nu_rmsscale["MBConvBlock_" + layer.split("_")[-1]][
-            "depthwise_conv2d"
-        ]["kernel"] = loaded_transposed
         continue
 
       if "conv2d" in op:
@@ -94,6 +76,7 @@ def load_pretrained_weights(state, location):
         params["MBConvBlock_" + layer.split("_")[-1]][
             "QuantConv_" + flax_op_num
         ]["kernel"] = jnp.array(tf.train.load_variable(location, name))
+
         continue
 
       if "tpu_batch_normalization" in op:
@@ -113,6 +96,7 @@ def load_pretrained_weights(state, location):
           ]["bias"] = jnp.array(
               tf.train.load_variable(location, name)
           )
+
           continue
         if param == "gamma":
           test_shapes(
@@ -129,6 +113,7 @@ def load_pretrained_weights(state, location):
           ]["scale"] = jnp.array(
               tf.train.load_variable(location, name)
           )
+
           continue
         if param == "moving_mean":
           test_shapes(
@@ -145,6 +130,7 @@ def load_pretrained_weights(state, location):
           ]["mean"] = jnp.array(
               tf.train.load_variable(location, name)
           )
+
           continue
         if param == "moving_variance":
           test_shapes(
@@ -161,6 +147,7 @@ def load_pretrained_weights(state, location):
           ]["var"] = jnp.array(
               tf.train.load_variable(location, name)
           )
+
           continue
 
     if ("stem" in layer) or ("head" in layer):
@@ -177,6 +164,7 @@ def load_pretrained_weights(state, location):
         params[layer + "_conv"]["kernel"] = jnp.array(
             tf.train.load_variable(location, name)
         )
+
         continue
       if op == "tpu_batch_normalization":
         if param == "beta":
@@ -186,6 +174,7 @@ def load_pretrained_weights(state, location):
           params[layer + "_bn"]["bias"] = jnp.array(
               tf.train.load_variable(location, name)
           )
+
           continue
         if param == "gamma":
           test_shapes(
@@ -194,6 +183,7 @@ def load_pretrained_weights(state, location):
           params[layer + "_bn"]["scale"] = jnp.array(
               tf.train.load_variable(location, name)
           )
+
           continue
         if param == "moving_mean":
           test_shapes(
@@ -204,6 +194,7 @@ def load_pretrained_weights(state, location):
           batch_stats[layer + "_bn"]["mean"] = jnp.array(
               tf.train.load_variable(location, name)
           )
+
           continue
         if param == "moving_variance":
           test_shapes(
@@ -214,6 +205,7 @@ def load_pretrained_weights(state, location):
           batch_stats[layer + "_bn"]["var"] = jnp.array(
               tf.train.load_variable(location, name)
           )
+
           continue
 
   return TrainState.create(

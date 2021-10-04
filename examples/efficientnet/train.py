@@ -51,6 +51,10 @@ from train_util import (
 )
 from load_pretrained_weights import load_pretrained_weights
 
+# from jax.config import config
+# config.update("jax_debug_nans", True)
+# config.update("jax_disable_jit", True)
+
 low, high = resource.getrlimit(resource.RLIMIT_NOFILE)
 resource.setrlimit(resource.RLIMIT_NOFILE, (high, high))
 
@@ -133,6 +137,10 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     state = load_pretrained_weights(state, config.pretrained)
 
   state = jax_utils.replicate(state)
+  # Debug note:
+  # 1. Make above line a comment "state = jax_utils.replicate(state)".
+  # 2. In train_util.py make all pmean commands comments.
+  # 3. Use debug train_step.
 
   p_train_step = jax.pmap(
       functools.partial(
@@ -144,6 +152,15 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   p_eval_step = jax.pmap(functools.partial(
       eval_step, num_classes=config.num_classes), axis_name='batch')
 
+  # Debug
+  # p_train_step = functools.partial(
+  #         train_step,
+  #         learning_rate_fn=learning_rate_fn,
+  #         num_classes=config.num_classes,
+  #         weight_decay=config.weight_decay)
+  # p_eval_step = functools.partial(
+  #     eval_step, num_classes=config.num_classes)
+
   train_metrics = []
   hooks = []
   if jax.process_index() == 0:
@@ -153,7 +170,13 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   for step, batch in zip(range(step_offset, num_steps), train_iter):
     rng_list = jax.random.split(rng, jax.device_count() + 1)
     rng = rng_list[0]
+
     state, metrics = p_train_step(state, batch, rng_list[1:])
+
+    # Debug
+    # state, metrics = p_train_step(
+    #     state, {'image': batch['image'][0, :, :, :],
+    #             'label': batch['label'][0]}, rng_list[2])
     for h in hooks:
       h(step)
     if step == step_offset:

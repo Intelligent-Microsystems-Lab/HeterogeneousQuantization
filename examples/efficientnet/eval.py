@@ -68,7 +68,7 @@ def evaluate(config: ml_collections.ConfigDict,
                      + str(jax.device_count()) + ').')
   local_batch_size = config.batch_size // jax.process_count()
 
-  dataset_builder = tfds.builder(config.dataset)
+  dataset_builder = tfds.builder(config.dataset, data_dir=config.tfds_data_dir)
   dataset_builder.download_and_prepare()
   eval_iter = input_pipeline.create_input_iter(
       dataset_builder, local_batch_size, train=False, config=config)

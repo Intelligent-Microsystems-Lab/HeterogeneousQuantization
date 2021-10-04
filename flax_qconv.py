@@ -124,13 +124,13 @@ class QuantConv(Module):
     lhs_dilation = (1,) * (inputs.ndim - 2)
     if isinstance(self.padding, str):
       lhs_perm, rhs_perm, _ = dnums
-      rhs_shape = np.take(kernel.shape, rhs_perm)[2:]  # type: ignore[index]
+      rhs_shape = np.take(kernel.shape, rhs_perm)[2:]
       effective_rhs_shape = [
           (k - 1) * r + 1 for k, r in zip(rhs_shape, rhs_dilation)
       ]
       padding = padtype_to_pads(
           np.take(inputs.shape, lhs_perm)[2:],
-          effective_rhs_shape,  # type: ignore[index]
+          effective_rhs_shape,
           strides,
           self.padding,
       )

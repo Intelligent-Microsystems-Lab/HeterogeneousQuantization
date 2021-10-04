@@ -78,6 +78,26 @@ def round_repeats(repeats: int,
   return int(math.ceil(multiplier * repeats))
 
 
+def drop_connect(inputs, is_training, survival_prob, rng):
+  """Drop the entire conv with given survival probability."""
+  # "Deep Networks with Stochastic Depth", https://arxiv.org/pdf/1603.09382.pdf
+  if not is_training:
+    return inputs
+
+  # Compute tensor.
+  batch_size = inputs.shape[0]
+  random_tensor = survival_prob
+  random_tensor += jax.random.uniform(rng,
+                                      [batch_size, 1, 1, 1],
+                                      dtype=inputs.dtype)
+  binary_tensor = jnp.floor(random_tensor)
+  # Unlike conventional way that multiply survival_prob at test time, here we
+  # divide survival_prob at training time, such that no addition compute is
+  # needed at test time.
+  output = inputs / survival_prob * binary_tensor
+  return output
+
+
 class MBConvBlock(nn.Module):
   """EfficientNet block."""
   conv: ModuleDef
@@ -95,6 +115,7 @@ class MBConvBlock(nn.Module):
   @nn.compact
   def __call__(self,
                inputs: Array,
+               rng: Any,
                train: bool = True,
                survival_prob: float = None) -> Array:
     logging.info('Block %s input shape: %s', self.name, inputs.shape)
@@ -153,7 +174,8 @@ class MBConvBlock(nn.Module):
       ) and inputs.shape[-1] == x.shape[-1]:
         # Apply only if skip connection presents.
         if survival_prob:
-          x = nn.Dropout(survival_prob)(x, deterministic=not train)
+          # this is supposed to be drop connect
+          x = drop_connect(x, train, survival_prob, rng)
         x = x + inputs
     logging.info('Project shape: %s', x.shape)
     return x
@@ -181,7 +203,7 @@ class EfficientNet(nn.Module):
   config: dict = ml_collections.FrozenConfigDict({})
 
   @nn.compact
-  def __call__(self, x: Array, train: bool = True) -> Array:
+  def __call__(self, x: Array, train: bool = True, rng: Any = None) -> Array:
     # Default parameters from efficientnet lite builder
     global_params = GlobalParams(
         blocks_args=_DEFAULT_BLOCKS_ARGS,
@@ -260,6 +282,7 @@ class EfficientNet(nn.Module):
       if not block_args.space2depth:
         survival_prob = get_survival_prob(
             global_params.survival_prob, idx, total_num_blocks)
+        rng, prng = jax.random.split(rng, 2)
         x = conv_block(conv=conv,
                        norm=norm,
                        expand_ratio=block_args.expand_ratio,
@@ -269,7 +292,7 @@ class EfficientNet(nn.Module):
                        output_filters=block_args.output_filters,
                        id_skip=block_args.id_skip,
                        act=self.act)(x, train=train,
-                                     survival_prob=survival_prob)
+                                     survival_prob=survival_prob, rng=prng)
         idx += 1
       else:
         assert False, 'Space2depth is not implemented.'
@@ -282,6 +305,7 @@ class EfficientNet(nn.Module):
       for _ in range(block_args.num_repeat - 1):
         survival_prob = get_survival_prob(
             global_params.survival_prob, idx, total_num_blocks)
+        rng, prng = jax.random.split(rng, 2)
         x = conv_block(conv=conv,
                        norm=norm,
                        expand_ratio=block_args.expand_ratio,
@@ -291,7 +315,7 @@ class EfficientNet(nn.Module):
                        output_filters=block_args.output_filters,
                        id_skip=block_args.id_skip,
                        act=self.act)(x, train=train,
-                                     survival_prob=survival_prob)
+                                     survival_prob=survival_prob, rng=prng)
         idx += 1
 
       if i == 0 or i == 5:

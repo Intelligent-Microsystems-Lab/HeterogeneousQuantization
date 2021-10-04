@@ -216,7 +216,7 @@ def train_and_evaluate(cfg, workdir):
   variables = nn_cifar10.init(
       p_rng,
       jnp.ones((int(cfg.batch_size), cfg.ds_xdim,
-               cfg.ds_ydim, cfg.ds_channels)),
+                cfg.ds_ydim, cfg.ds_channels)),
       subkey,
   )
   state, params = variables.pop("params")
