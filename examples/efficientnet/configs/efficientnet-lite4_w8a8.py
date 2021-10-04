@@ -5,6 +5,8 @@
 """Default Hyperparameter configuration."""
 
 import ml_collections
+from functools import partial
+from quant import signed_uniform_max_scale_quant_ste
 
 
 def get_config():
@@ -14,13 +16,13 @@ def get_config():
   config.seed = 203853699
 
   # As defined in the `models` module.
-  config.model = 'EfficientNetB1'
+  config.model = 'EfficientNetB4'
 
   # `name` argument of tensorflow_datasets.builder()
   config.cache = True
   config.dataset = 'imagenet2012'
   config.tfds_data_dir = 'gs://imagenet_clemens/tensorflow_datasets'
-  config.image_size = 240
+  config.image_size = 300
   config.crop_padding = 32
 
   # Mean and std style for pre-processing.
@@ -34,7 +36,7 @@ def get_config():
   config.num_classes = 1000
 
   # Load pretrained weights.
-  config.pretrained = "../../../pretrained_efficientnet/efficientnet-lite1"
+  config.pretrained = "../../../pretrained_efficientnet/efficientnet-lite4"
 
   config.learning_rate = 0.0001
   config.warmup_epochs = 2  # for optimizer to settle in
@@ -56,25 +58,29 @@ def get_config():
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
-  config.quant.stem.weight = lambda x: x
-  config.quant.stem.act = lambda x: x
+  config.quant.stem.weight = partial(
+      signed_uniform_max_scale_quant_ste, bits=8)
+  config.quant.stem.act = partial(signed_uniform_max_scale_quant_ste, bits=8)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
-  config.quant.mbconv.weight = lambda x: x
-  config.quant.mbconv.act = lambda x: x
+  config.quant.mbconv.weight = partial(
+      signed_uniform_max_scale_quant_ste, bits=8)
+  config.quant.mbconv.act = partial(signed_uniform_max_scale_quant_ste, bits=8)
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
-  config.quant.head.weight = lambda x: x
-  config.quant.head.act = lambda x: x
+  config.quant.head.weight = partial(
+      signed_uniform_max_scale_quant_ste, bits=8)
+  config.quant.head.act = partial(signed_uniform_max_scale_quant_ste, bits=8)
 
   # Average quant.
-  config.quant.average = lambda x: x
+  config.quant.average = partial(signed_uniform_max_scale_quant_ste, bits=8)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
-  config.quant.dense.weight = lambda x: x
-  config.quant.dense.act = lambda x: x
+  config.quant.dense.weight = partial(
+      signed_uniform_max_scale_quant_ste, bits=8)
+  config.quant.dense.act = partial(signed_uniform_max_scale_quant_ste, bits=8)
 
   return config

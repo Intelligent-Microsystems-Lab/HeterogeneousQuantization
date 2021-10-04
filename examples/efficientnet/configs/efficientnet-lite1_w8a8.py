@@ -5,6 +5,8 @@
 """Default Hyperparameter configuration."""
 
 import ml_collections
+from functools import partial
+from quant import signed_uniform_max_scale_quant_ste
 
 
 def get_config():
@@ -56,25 +58,29 @@ def get_config():
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
-  config.quant.stem.weight = lambda x: x
-  config.quant.stem.act = lambda x: x
+  config.quant.stem.weight = partial(
+      signed_uniform_max_scale_quant_ste, bits=8)
+  config.quant.stem.act = partial(signed_uniform_max_scale_quant_ste, bits=8)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
-  config.quant.mbconv.weight = lambda x: x
-  config.quant.mbconv.act = lambda x: x
+  config.quant.mbconv.weight = partial(
+      signed_uniform_max_scale_quant_ste, bits=8)
+  config.quant.mbconv.act = partial(signed_uniform_max_scale_quant_ste, bits=8)
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
-  config.quant.head.weight = lambda x: x
-  config.quant.head.act = lambda x: x
+  config.quant.head.weight = partial(
+      signed_uniform_max_scale_quant_ste, bits=8)
+  config.quant.head.act = partial(signed_uniform_max_scale_quant_ste, bits=8)
 
   # Average quant.
-  config.quant.average = lambda x: x
+  config.quant.average = partial(signed_uniform_max_scale_quant_ste, bits=8)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
-  config.quant.dense.weight = lambda x: x
-  config.quant.dense.act = lambda x: x
+  config.quant.dense.weight = partial(
+      signed_uniform_max_scale_quant_ste, bits=8)
+  config.quant.dense.act = partial(signed_uniform_max_scale_quant_ste, bits=8)
 
   return config

@@ -38,7 +38,8 @@ def get_config():
   # Load pretrained weights.
   config.pretrained = "../../../pretrained_efficientnet/efficientnet-lite0"
 
-  config.learning_rate = 1e-8
+  config.learning_rate = 0.0001
+  config.warmup_epochs = 2  # for optimizer to settle in
   config.lr_boundaries = [16, 32]
   config.lr_scales = [1 / 10, 1 / 10]
   config.weight_decay = 1e-5
