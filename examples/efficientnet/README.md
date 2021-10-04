@@ -2,7 +2,7 @@
 
 ## Performance with Pretrained Weights
 |**Model** | **params** | **size FP32** | **size INT8** | **MAdds** | **FP32 acc** | **FP32 acc finetuned** | **INT8 acc** | **INT8 acc finetuned** |
-|------|-----|-------|-------|-----|-------|-------|-------|-------|
+|------|-----|-------|-------|-----|-------|-------|------|------|
 |efficientnet-lite0 [ckpt](https://storage.googleapis.com/cloud-tpu-checkpoints/efficientnet/lite/efficientnet-lite0.tar.gz) | 4.7M | 18.61MB | 4.65MB | 407M |  74.94% | 75.40% | 74.22% | |
 |efficientnet-lite1 [ckpt](https://storage.googleapis.com/cloud-tpu-checkpoints/efficientnet/lite/efficientnet-lite1.tar.gz) | 5.4M | 21.67MB | 5.42MB | 631M |  76.67% | 76.94% | 76.31% | |
 |efficientnet-lite2 [ckpt](https://storage.googleapis.com/cloud-tpu-checkpoints/efficientnet/lite/efficientnet-lite2.tar.gz) | 6.1M | 24.37MB | 6.09MB | 899M |  77.43% | 77.84% | 76.91% | |
