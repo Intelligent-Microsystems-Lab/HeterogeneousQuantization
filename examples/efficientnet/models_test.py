@@ -77,6 +77,7 @@ class EfficientNetTest(parameterized.TestCase):
   def test_efficienteet_model(self, name, param_count, inpt_size, rtol, atol):
     """Tests EfficientNet model definition and output (variables)."""
     rng = jax.random.PRNGKey(0)
+    rng, prng = jax.random.split(rng, 2)
     model_cls = getattr(models, name)
 
     # get correct config
@@ -86,7 +87,8 @@ class EfficientNetTest(parameterized.TestCase):
 
     model_def = model_cls(num_classes=1000, dtype=jnp.float32, config=config)
     variables = model_def.init(
-        rng, jnp.ones((8, inpt_size, inpt_size, 3), jnp.float32), train=False)
+        rng, jnp.ones((8, inpt_size, inpt_size, 3), jnp.float32),
+        rng=prng, train=False)
 
     self.assertEqual(np.sum(jax.tree_util.tree_leaves(jax.tree_map(
         lambda x: np.prod(x.shape), variables['params']))), param_count)
@@ -103,10 +105,12 @@ class EfficientNetTest(parameterized.TestCase):
 
     # initialize network
     rng = jax.random.PRNGKey(0)
+    rng, prng1, prng2 = jax.random.split(rng, 3)
     model_cls = getattr(models, name)
     model_def = model_cls(num_classes=1000, dtype=jnp.float32, config=config)
     variables = model_def.init(
-        rng, jnp.ones((8, inpt_size, inpt_size, 3), jnp.float32), train=False)
+        prng1, jnp.ones((8, inpt_size, inpt_size, 3), jnp.float32),
+        rng=prng2, train=False)
 
     # load pretrain weights
     tx = optax.rmsprop(0.0)
@@ -121,9 +125,11 @@ class EfficientNetTest(parameterized.TestCase):
         inpt_bytes, config), (1, inpt_size, inpt_size, 3))
 
     # run inference
+    rng, prng = jax.random.split(rng, 2)
     _, state = model_def.apply({'params': state.params,
                                 'batch_stats': state.batch_stats}, inpt,
                                mutable=['intermediates', 'batch_stats'],
+                               rng=prng,
                                train=False)
 
     # testing for equality

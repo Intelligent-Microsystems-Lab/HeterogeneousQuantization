@@ -42,7 +42,7 @@ class TrainTest(absltest.TestCase):
     params, batch_stats = train_util.initialized(random.PRNGKey(0), 224, model)
     variables = {'params': params, 'batch_stats': batch_stats}
     x = random.normal(random.PRNGKey(1), (8, 224, 224, 3))
-    y = model.apply(variables, x, train=False)
+    y = model.apply(variables, x, rng=jax.random.PRNGKey(0), train=False)
     self.assertEqual(y.shape, (8, 1000))
 
   def test_train_and_evaluate(self):
