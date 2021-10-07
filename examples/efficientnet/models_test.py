@@ -114,8 +114,14 @@ class EfficientNetTest(parameterized.TestCase):
 
     # load pretrain weights
     tx = optax.rmsprop(0.0)
+    if 'quant_params' in variables:
+      quant_params = variables['quant_params']
+    else:
+      quant_params = {}
     state = TrainState.create(
-        apply_fn=model_def.apply, params=variables['params'], tx=tx,
+        apply_fn=model_def.apply, params={
+            'params': variables['params'],
+            'quant_params': quant_params}, tx=tx,
         batch_stats=variables['batch_stats'],)
     state = load_pretrained_weights(state, config.pretrained)
 
@@ -126,7 +132,8 @@ class EfficientNetTest(parameterized.TestCase):
 
     # run inference
     rng, prng = jax.random.split(rng, 2)
-    _, state = model_def.apply({'params': state.params,
+    _, state = model_def.apply({'params': state.params['params'],
+                                'quant_params': state.params['quant_params'],
                                 'batch_stats': state.batch_stats}, inpt,
                                mutable=['intermediates', 'batch_stats'],
                                rng=prng,

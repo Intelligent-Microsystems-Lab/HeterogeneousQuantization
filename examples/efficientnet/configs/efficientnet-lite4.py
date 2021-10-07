@@ -56,25 +56,14 @@ def get_config():
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
-  config.quant.stem.weight = lambda x: x
-  config.quant.stem.act = lambda x: x
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
-  config.quant.mbconv.weight = lambda x: x
-  config.quant.mbconv.act = lambda x: x
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
-  config.quant.head.weight = lambda x: x
-  config.quant.head.act = lambda x: x
-
-  # Average quant.
-  config.quant.average = lambda x: x
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
-  config.quant.dense.weight = lambda x: x
-  config.quant.dense.act = lambda x: x
 
   return config

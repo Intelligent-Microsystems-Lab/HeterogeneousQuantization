@@ -23,7 +23,8 @@ def test_shapes(shape1, shape2, name):
 
 def load_pretrained_weights(state, location):
   tf_vars = tf.train.list_variables(location)
-  params = unfreeze(state.params)
+  general_params = unfreeze(state.params)
+  params = unfreeze(state.params['params'])
   batch_stats = unfreeze(state.batch_stats)
 
   for name, shape in tf_vars:
@@ -208,9 +209,10 @@ def load_pretrained_weights(state, location):
 
           continue
 
+  general_params['params'] = freeze(params)
   return TrainState.create(
       apply_fn=state.apply_fn,
-      params=freeze(params),
+      params=freeze(general_params),
       tx=state.tx,
       batch_stats=freeze(batch_stats),
   )

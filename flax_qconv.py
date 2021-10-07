@@ -82,6 +82,7 @@ class QuantConv(Module):
   kernel_init: Callable[[PRNGKey, Shape, Dtype], Array] = default_kernel_init
   # bias_init: Callable[[PRNGKey, Shape, Dtype], Array] = zeros
   config: dict = None
+  quant_act_sign: bool = True
 
   @compact
   def __call__(self, inputs: Array, rng: Any = None) -> Array:
@@ -137,28 +138,42 @@ class QuantConv(Module):
     else:
       padding = self.padding
 
+    # Quantization has to be done here to use Flax convenience functions for
+    # parameters.
+    if "weight" in cfg:
+      kernel_fwd = cfg.weight()(kernel)
+    else:
+      kernel_fwd = kernel
+
+    if "act" in cfg:
+      inpt_fwd = cfg.act()(inputs, sign=self.quant_act_sign)
+    else:
+      inpt_fwd = inputs
+
     @jax.custom_vjp
-    def conv_general(inpt: Array, kernel: Array, rng: PRNGKey) -> Array:
+    def conv_general(inpt_fwd: Array, kernel_fwd: Array, inpt: Array,
+                     kernel: Array, rng: PRNGKey) -> Array:
 
       # Nois
       if "weight_noise" in cfg:
         rng, prng = jax.random.split(rng, 2)
-        kernel = kernel + get_noise(kernel, cfg["weight_noise"], prng)
+        kernel_fwd = kernel_fwd + \
+            get_noise(kernel_fwd, cfg["weight_noise"], prng)
 
       if "act_noise" in cfg:
         rng, prng = jax.random.split(rng, 2)
-        inpt = inpt + get_noise(inpt, cfg["act_noise"], prng)
+        inpt_fwd = inpt_fwd + get_noise(inpt_fwd, cfg["act_noise"], prng)
 
-      # Quantization
-      if "weight" in cfg:
-        kernel = cfg.weight(kernel)
+      # # Quantization
+      # if "weight" in cfg:
+      #   kernel = cfg.weight()(kernel)
 
-      if "act" in cfg:
-        inpt = cfg.act(inpt)
+      # if "act" in cfg:
+      #   inpt = cfg.act()(inpt, sign=self.quant_act_sign)
 
       return jax.lax.conv_general_dilated(
-          inpt,
-          kernel,
+          inpt_fwd,
+          kernel_fwd,
           strides,
           padding,
           lhs_dilation=None,
@@ -171,13 +186,15 @@ class QuantConv(Module):
       )
 
     def conv_general_fwd(
-        inpt: Array, kernel: Array, rng: PRNGKey
+        inpt_fwd: Array, kernel_fwd: Array, inpt_bwd: Array,
+        kernel_bwd: Array, rng: PRNGKey
     ) -> Array:
       if rng is not None:
         rng, prng = jax.random.split(rng, 2)
       else:
         prng = None
-      return conv_general(inpt, kernel, prng), (inpt, kernel, rng)
+      return conv_general(inpt_fwd, kernel_fwd, inpt_bwd, kernel_bwd,
+                          prng), (inpt_bwd, kernel_bwd, rng)
 
     def conv_general_bwd(res: tuple, g: Array) -> tuple:
       (inpt, kernel, rng) = res
@@ -208,16 +225,16 @@ class QuantConv(Module):
 
       # Quantization
       if "weight_bwd" in cfg:
-        kernel = cfg.weight_bwd(kernel)
+        kernel = cfg.weight_bwd()(kernel)
 
       if "act_bwd" in cfg:
-        inpt = cfg.act_bwd(inpt)
+        inpt = cfg.act_bwd()(inpt, sign=self.quant_act_sign)
 
       if "err_inpt" in cfg:
-        g_inpt = cfg.err_inpt(g_inpt)
+        g_inpt = cfg.err_inpt()(g_inpt)
 
       if "err_weight" in cfg:
-        g_weight = cfg.err_weight(g_weight)
+        g_weight = cfg.err_weight()(g_weight)
 
       lhs_sdims, rhs_sdims, out_sdims = map(
           _conv_sdims, dimension_numbers
@@ -299,11 +316,13 @@ class QuantConv(Module):
           preferred_element_type=None,
       )
 
-      return (g_inpt_fwd, g_kernel_fwd, None)
+      return (g_inpt_fwd, g_kernel_fwd, None, None, None)
 
     conv_general.defvjp(conv_general_fwd, conv_general_bwd)
 
     y = conv_general(
+        inpt_fwd,
+        kernel_fwd,
         inputs,
         kernel,
         rng,

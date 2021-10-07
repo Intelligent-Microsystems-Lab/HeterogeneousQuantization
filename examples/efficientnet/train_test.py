@@ -39,8 +39,10 @@ class TrainTest(absltest.TestCase):
         model_cls=models.EfficientNetB0,  # pylint: disable=protected-access
         num_classes=1000,
         config=config)
-    params, batch_stats = train_util.initialized(random.PRNGKey(0), 224, model)
-    variables = {'params': params, 'batch_stats': batch_stats}
+    params, quant_params, batch_stats = train_util.initialized(
+        random.PRNGKey(0), 224, model)
+    variables = {'params': params,
+                 'quant_params': quant_params, 'batch_stats': batch_stats}
     x = random.normal(random.PRNGKey(1), (8, 224, 224, 3))
     y = model.apply(variables, x, rng=jax.random.PRNGKey(0), train=False)
     self.assertEqual(y.shape, (8, 1000))

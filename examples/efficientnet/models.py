@@ -111,6 +111,7 @@ class MBConvBlock(nn.Module):
   id_skip: bool
   act: Callable
   config: dict
+  block_num: int
 
   @nn.compact
   def __call__(self,
@@ -132,10 +133,17 @@ class MBConvBlock(nn.Module):
                     kernel_init=conv_kernel_initializer(),
                     padding='SAME',
                     use_bias=False,
-                    config=self.config)(x)
+                    config=self.config,
+                    quant_act_sign=(self.block_num == 0))(x)
       x = self.norm()(x)
       x = self.act(x)
+      expand_bool = True
       logging.info('Expand shape: %s', x.shape)
+    else:
+      if self.block_num == 0:
+        expand_bool = True
+      else:
+        expand_bool = False
 
     # Depthwise convolution
     kernel_size = self.kernel_size
@@ -151,7 +159,8 @@ class MBConvBlock(nn.Module):
         feature_group_count=feature_group_count,
         use_bias=False,
         name='depthwise_conv2d',
-        config=self.config)(x)
+        config=self.config,
+        quant_act_sign=not expand_bool)(x)
     x = self.norm()(x)
     x = self.act(x)
     logging.info('DWConv shape: %s', x.shape)
@@ -163,7 +172,8 @@ class MBConvBlock(nn.Module):
                   kernel_init=conv_kernel_initializer(),
                   padding='SAME',
                   use_bias=False,
-                  config=self.config)(x)
+                  config=self.config,
+                  quant_act_sign=False)(x)
     x = self.norm()(x)
 
     if self.clip_projection_output:
@@ -251,7 +261,8 @@ class EfficientNet(nn.Module):
         kernel_init=conv_kernel_initializer(),
         use_bias=False,
         name='stem_conv',
-        config=self.config.quant.stem)(x)
+        config=self.config.quant.stem,
+        quant_act_sign=False)(x)
 
     x = norm(name='stem_bn')(x)
     x = self.act(x)
@@ -291,8 +302,9 @@ class EfficientNet(nn.Module):
                        strides=block_args.strides,
                        output_filters=block_args.output_filters,
                        id_skip=block_args.id_skip,
-                       act=self.act)(x, train=train,
-                                     survival_prob=survival_prob, rng=prng)
+                       act=self.act,
+                       block_num=idx)(x, train=train,
+                                      survival_prob=survival_prob, rng=prng)
         idx += 1
       else:
         assert False, 'Space2depth is not implemented.'
@@ -314,8 +326,9 @@ class EfficientNet(nn.Module):
                        strides=block_args.strides,
                        output_filters=block_args.output_filters,
                        id_skip=block_args.id_skip,
-                       act=self.act)(x, train=train,
-                                     survival_prob=survival_prob, rng=prng)
+                       act=self.act,
+                       block_num=idx)(x, train=train,
+                                      survival_prob=survival_prob, rng=prng)
         idx += 1
 
       if i == 0 or i == 5:
@@ -334,13 +347,15 @@ class EfficientNet(nn.Module):
     x = self.act(x)
 
     x = jnp.mean(x, axis=(1, 2))
-    x = self.config.quant.average(x)
+    if 'average' in self.config.quant:
+      x = self.config.quant.average()(x, sign=False)
 
     x = nn.Dropout(self.dropout_rate)(x, deterministic=not train)
     x = QuantDense(self.num_classes,
                    kernel_init=dense_kernel_initializer(),
                    dtype=self.dtype,
-                   config=self.config.quant.dense)(x)
+                   config=self.config.quant.dense,
+                   quant_act_sign=False)(x)
     x = jnp.asarray(x, self.dtype)
     self.sow('intermediates', 'head', x)
 

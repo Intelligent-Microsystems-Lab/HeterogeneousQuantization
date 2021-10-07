@@ -5,6 +5,8 @@
 """Default Hyperparameter configuration."""
 
 import ml_collections
+from functools import partial
+from quant import parametric_d
 
 
 def get_config():
@@ -14,13 +16,13 @@ def get_config():
   config.seed = 203853699
 
   # As defined in the `models` module.
-  config.model = 'EfficientNetB3'
+  config.model = 'EfficientNetB0'
 
   # `name` argument of tensorflow_datasets.builder()
   config.cache = True
   config.dataset = 'imagenet2012'
   config.tfds_data_dir = 'gs://imagenet_clemens/tensorflow_datasets'
-  config.image_size = 280
+  config.image_size = 224
   config.crop_padding = 32
 
   # Mean and std style for pre-processing.
@@ -34,7 +36,7 @@ def get_config():
   config.num_classes = 1000
 
   # Load pretrained weights.
-  config.pretrained = "../../../pretrained_efficientnet/efficientnet-lite3"
+  config.pretrained = "../../../pretrained_efficientnet/efficientnet-lite0"
 
   config.learning_rate = 0.0001
   config.warmup_epochs = 2  # for optimizer to settle in
@@ -56,14 +58,25 @@ def get_config():
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
+  config.quant.stem.weight = partial(parametric_d, bits=4)
+  config.quant.stem.act = partial(parametric_d, bits=4)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
+  config.quant.mbconv.weight = partial(parametric_d, bits=4)
+  config.quant.mbconv.act = partial(parametric_d, bits=4)
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
+  config.quant.head.weight = partial(parametric_d, bits=4)
+  config.quant.head.act = partial(parametric_d, bits=4)
+
+  # Average quant.
+  config.quant.average = partial(parametric_d, bits=4)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
+  config.quant.dense.weight = partial(parametric_d, bits=4)
+  config.quant.dense.act = partial(parametric_d, bits=4)
 
   return config

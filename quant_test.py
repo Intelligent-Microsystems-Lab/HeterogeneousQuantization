@@ -5,6 +5,7 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
+from flax.core import freeze, unfreeze
 
 
 from jax import random
@@ -16,19 +17,20 @@ import numpy as np
 import re
 
 
-from quant import signed_uniform_max_scale_quant_ste
+from quant import signed_uniform_max_scale_quant_ste, parametric_d
+
+jax.config.update('jax_platform_name', 'cpu')
+jax.config.update('jax_disable_most_optimizations', True)
 
 
 def signed_uniform_max_scale_quant_ste_equality_data():
   return (
       dict(
-          testcase_name="int8",
           x_dim=100,
           y_dim=30,
           dtype=jnp.int8,
       ),
       dict(
-          testcase_name="int16",
           x_dim=100,
           y_dim=30,
           dtype=jnp.int16,
@@ -39,98 +41,84 @@ def signed_uniform_max_scale_quant_ste_equality_data():
 def signed_uniform_max_scale_quant_ste_unique_data():
   return (
       dict(
-          testcase_name="2_bits",
           x_dim=100,
           y_dim=30,
           bits=2,
           scale=23,
       ),
       dict(
-          testcase_name="3_bits",
           x_dim=100,
           y_dim=30,
           bits=3,
           scale=3231,
       ),
       dict(
-          testcase_name="4_bits",
           x_dim=100,
           y_dim=30,
           bits=4,
           scale=39,
       ),
       dict(
-          testcase_name="5_bits",
           x_dim=100,
           y_dim=30,
           bits=5,
           scale=913,
       ),
       dict(
-          testcase_name="6_bits",
           x_dim=100,
           y_dim=30,
           bits=6,
           scale=4319,
       ),
       dict(
-          testcase_name="7_bits",
           x_dim=100,
           y_dim=30,
           bits=7,
           scale=0.124,
       ),
       dict(
-          testcase_name="8_bits",
           x_dim=100,
           y_dim=30,
           bits=8,
           scale=3,
       ),
       dict(
-          testcase_name="9_bits",
           x_dim=100,
           y_dim=30,
           bits=9,
           scale=780,
       ),
       dict(
-          testcase_name="10_bits",
           x_dim=100,
           y_dim=30,
           bits=10,
           scale=0.01324,
       ),
       dict(
-          testcase_name="11_bits",
           x_dim=100,
           y_dim=30,
           bits=11,
           scale=781,
       ),
       dict(
-          testcase_name="12_bits",
           x_dim=100,
           y_dim=30,
           bits=12,
           scale=4561,
       ),
       dict(
-          testcase_name="13_bits",
           x_dim=100,
           y_dim=30,
           bits=13,
           scale=813,
       ),
       dict(
-          testcase_name="14_bits",
           x_dim=100,
           y_dim=30,
           bits=14,
           scale=9013,
       ),
       dict(
-          testcase_name="15_bits",
           x_dim=100,
           y_dim=30,
           bits=15,
@@ -140,11 +128,12 @@ def signed_uniform_max_scale_quant_ste_unique_data():
 
 
 class QuantOpsTest(parameterized.TestCase):
-  @parameterized.named_parameters(
-      *signed_uniform_max_scale_quant_ste_equality_data()
+  @parameterized.product(
+      signed_uniform_max_scale_quant_ste_equality_data(),
+      quantizer=(signed_uniform_max_scale_quant_ste, parametric_d)
   )
-  def test_signed_uniform_max_scale_quant_ste_equality(
-      self, x_dim, y_dim, dtype
+  def test_equality_native_dtypes(
+      self, x_dim, y_dim, dtype, quantizer,
   ):
     key = random.PRNGKey(8627169)
 
@@ -161,17 +150,26 @@ class QuantOpsTest(parameterized.TestCase):
     )
     data = jnp.array(data, jnp.float64)
 
-    dataq = signed_uniform_max_scale_quant_ste(
-        data, int(re.split("(\d+)", dtype.__name__)[1])  # noqa: W605
-    )
+    bits = int(re.split("(\d+)", dtype.__name__)[1])  # noqa: W605
 
-    np.testing.assert_array_equal(data, dataq)
+    key, subkey = jax.random.split(key)
+    variables = quantizer(bits).init(subkey, data)
 
-  @parameterized.named_parameters(
-      *signed_uniform_max_scale_quant_ste_unique_data()
+    scale = 1
+    if 'quant_params' in variables:
+      if 'step_size' in variables['quant_params']:
+        scale = variables['quant_params']['step_size']
+
+    dataq = quantizer(bits).apply(variables, data * scale)
+
+    np.testing.assert_allclose(data, dataq / scale)
+
+  @parameterized.product(
+      signed_uniform_max_scale_quant_ste_unique_data(),
+      quantizer=(signed_uniform_max_scale_quant_ste, parametric_d)
   )
-  def test_signed_uniform_max_scale_quant_ste_unique(
-      self, x_dim, y_dim, bits, scale
+  def test_unique_values(
+      self, x_dim, y_dim, bits, scale, quantizer
   ):
     key = random.PRNGKey(8627169)
 
@@ -182,7 +180,16 @@ class QuantOpsTest(parameterized.TestCase):
     )
     data = data.at[0, 0].set(scale)
 
-    dataq = signed_uniform_max_scale_quant_ste(data, bits)
+    key, subkey = jax.random.split(key)
+    variables = quantizer(bits).init(subkey, data)
+
+    if 'quant_params' in variables:
+      if 'step_size' in variables['quant_params']:
+        variables = unfreeze(variables)
+        variables['quant_params']['step_size'] = scale / (2 ** (bits - 1) - 1)
+        variables = freeze(variables)
+
+    dataq = quantizer(bits).apply(variables, data)
 
     self.assertEqual(
         len(np.unique(dataq)), ((2 ** (bits - 1) - 1) * 2) + 1

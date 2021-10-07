@@ -50,6 +50,7 @@ class QuantDense(Module):
   kernel_init: Callable[[PRNGKey, Shape, Dtype], Array] = default_kernel_init
   bias_init: Callable[[PRNGKey, Shape, Dtype], Array] = zeros
   config: dict = ml_collections.FrozenConfigDict({})
+  quant_act_sign: bool = True
 
   @compact
   def __call__(self, inputs: Array, rng: Any = None) -> Array:
@@ -66,36 +67,45 @@ class QuantDense(Module):
     )
     kernel = jnp.asarray(kernel, self.dtype)
 
+    # Quantization has to be done here to use Flax convenience functions for
+    # parameters.
+    if "weight" in self.config:
+      kernel_fwd = self.config.weight()(kernel)
+    else:
+      kernel_fwd = kernel
+
+    if "act" in self.config:
+      inpt_fwd = self.config.act()(inputs, sign=self.quant_act_sign)
+    else:
+      inpt_fwd = inputs
+
     @jax.custom_vjp
-    def dot_general(inpt: Array, kernel: Array, rng: PRNGKey) -> Array:
+    def dot_general(inpt_fwd: Array, kernel_fwd: Array, inpt_bwd: Array,
+                    kernel_bwd: Array, rng: PRNGKey) -> Array:
       # Nois
       if "weight_noise" in self.config:
         rng, prng = jax.random.split(rng, 2)
-        kernel = kernel + get_noise(kernel, self.config["weight_noise"], prng)
+        kernel_fwd = kernel_fwd + \
+            get_noise(kernel_fwd, self.config["weight_noise"], prng)
 
       if "act_noise" in self.config:
         rng, prng = jax.random.split(rng, 2)
-        inpt = inpt + get_noise(inpt, self.config["act_noise"], prng)
+        inpt_fwd = inpt_fwd + \
+            get_noise(inpt_fwd, self.config["act_noise"], prng)
 
-      # Quantization
-      if "weight" in self.config:
-        kernel = self.config.weight(kernel)
-
-      if "act" in self.config:
-        inpt = self.config.act(inpt)
-
-      return jnp.dot(inpt, kernel)
+      return jnp.dot(inpt_fwd, kernel_fwd)
 
     def dot_general_fwd(
-        inpt: Array, kernel: Array, rng: PRNGKey
+        inpt_fwd: Array, kernel_fwd: Array, inpt_bwd: Array, kernel_bwd: Array,
+        rng: PRNGKey
     ) -> Array:
       if rng is not None:
         rng, prng = jax.random.split(rng, 2)
       else:
         prng = None
-      return dot_general(inpt, kernel, rng), (
-          inpt,
-          kernel,
+      return dot_general(inpt_fwd, kernel_fwd, inpt_bwd, kernel_bwd, rng), (
+          inpt_bwd,
+          kernel_bwd,
           prng,
       )
 
@@ -130,26 +140,26 @@ class QuantDense(Module):
 
       # Quantization
       if "weight_bwd" in self.config:
-        kernel = self.config.weight_bwd(kernel)
+        kernel = self.config.weight_bwd()(kernel)
 
       if "act_bwd" in self.config:
-        inpt = self.config.act_bwd(inpt)
+        inpt = self.config.act_bwd()(inpt, sign=self.quant_act_sign)
 
       if "err_inpt" in self.config:
-        g_inpt = self.config.err_inpt(g_inpt)
+        g_inpt = self.config.err_inpt()(g_inpt)
 
       if "err_weight" in self.config:
-        g_weight = self.config.err_weight(g_weight)
+        g_weight = self.config.err_weight()(g_weight)
 
       g_inpt_fwd = jnp.dot(g_inpt, jnp.transpose(kernel))
 
       g_kernel_fwd = jnp.dot(jnp.transpose(inpt), g_weight)
 
-      return (g_inpt_fwd, g_kernel_fwd, None)
+      return (g_inpt_fwd, g_kernel_fwd, None, None, None)
 
     dot_general.defvjp(dot_general_fwd, dot_general_bwd)
 
-    y = dot_general(inputs, kernel, rng)
+    y = dot_general(inpt_fwd, kernel_fwd, inputs, kernel, rng)
 
     if self.use_bias:
       # assert False, "Bias for Dense layer not supported yet."

@@ -14,6 +14,7 @@ from typing import Any
 from flax.training import checkpoints
 from flax.training import common_utils
 from flax.training import train_state
+from flax.core import freeze, unfreeze
 
 import jax
 from jax import lax
@@ -37,7 +38,11 @@ def initialized(key, image_size, model):
   def init(*args):
     return model.init(*args, rng=rng, train=False)
   variables = init({'params': key}, jnp.ones(input_shape, model.dtype))
-  return variables['params'], variables['batch_stats']
+  if 'quant_params' in variables:
+    return variables['params'], variables['quant_params'],\
+        variables['batch_stats']
+  else:
+    return variables['params'], {}, variables['batch_stats']
 
 
 def cross_entropy_loss(logits, labels, num_classes):
@@ -84,10 +89,11 @@ def train_step(state, batch, rng, learning_rate_fn, num_classes, weight_decay):
   """Perform a single training step."""
   rng, prng = jax.random.split(rng, 2)
 
-  def loss_fn(params):
+  def loss_fn(params, quant_params):
     """loss function used for training."""
     logits, new_model_state = state.apply_fn(
-        {'params': params, 'batch_stats': state.batch_stats},
+        {'params': params, 'quant_params': quant_params,
+         'batch_stats': state.batch_stats},
         batch['image'], rng=prng,
         mutable=['batch_stats'], rngs={'dropout': rng})
     loss = cross_entropy_loss(logits, batch['label'], num_classes)
@@ -102,8 +108,8 @@ def train_step(state, batch, rng, learning_rate_fn, num_classes, weight_decay):
   step = state.step
   lr = learning_rate_fn(step)
 
-  grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
-  aux, grads = grad_fn(state.params)
+  grad_fn = jax.value_and_grad(loss_fn, argnums=[0, 1], has_aux=True)
+  aux, grads = grad_fn(state.params['params'], state.params['quant_params'])
   # Re-use same axis_name as in the call to `pmap(...train_step...)` below.
   grads = lax.pmean(grads, axis_name='batch')
 
@@ -112,13 +118,16 @@ def train_step(state, batch, rng, learning_rate_fn, num_classes, weight_decay):
   metrics['learning_rate'] = lr
 
   new_state = state.apply_gradients(
-      grads=grads, batch_stats=new_model_state['batch_stats'])
+      grads={'params': grads[0], 'quant_params': grads[1]},
+      batch_stats=new_model_state['batch_stats'])
 
   return new_state, metrics
 
 
 def eval_step(state, batch, num_classes):
-  variables = {'params': state.params, 'batch_stats': state.batch_stats}
+  variables = {'params': state.params['params'],
+               'quant_params': state.params['quant_params'],
+               'batch_stats': state.batch_stats}
   logits = state.apply_fn(
       variables,
       batch['image'],
@@ -160,20 +169,25 @@ def create_train_state(rng, config: ml_collections.ConfigDict,
                        model, image_size, learning_rate_fn):
   """Create initial training state."""
 
-  params, batch_stats = initialized(rng, image_size, model)
+  params, quant_params, batch_stats = initialized(rng, image_size, model)
   tx = optax.rmsprop(
       learning_rate=learning_rate_fn,
       decay=0.9,
       momentum=config.momentum,
       eps=0.001,
   )
+  quant_params = unfreeze(quant_params)
+  quant_params['placeholder'] = 0.
+  quant_params = freeze(quant_params)
+
   # tx = optax.sgd(
   #     learning_rate=learning_rate_fn,
   #     momentum=config.momentum,
   # )
+
   state = TrainState.create(
       apply_fn=model.apply,
-      params=params,
+      params={'params': params, 'quant_params': quant_params},
       tx=tx,
       batch_stats=batch_stats,)
   return state
