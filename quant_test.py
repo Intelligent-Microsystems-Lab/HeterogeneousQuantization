@@ -17,7 +17,7 @@ import numpy as np
 import re
 
 
-from quant import signed_uniform_max_scale_quant_ste, parametric_d
+from quant import signed_uniform_max_scale_quant_ste, parametric_d, parametric_quant_d_xmax
 
 jax.config.update('jax_platform_name', 'cpu')
 jax.config.update('jax_disable_most_optimizations', True)
@@ -130,7 +130,7 @@ def signed_uniform_max_scale_quant_ste_unique_data():
 class QuantOpsTest(parameterized.TestCase):
   @parameterized.product(
       signed_uniform_max_scale_quant_ste_equality_data(),
-      quantizer=(signed_uniform_max_scale_quant_ste, parametric_d)
+      quantizer=(signed_uniform_max_scale_quant_ste, parametric_d, parametric_quant_d_xmax)
   )
   def test_equality_native_dtypes(
       self, x_dim, y_dim, dtype, quantizer,
@@ -166,7 +166,7 @@ class QuantOpsTest(parameterized.TestCase):
 
   @parameterized.product(
       signed_uniform_max_scale_quant_ste_unique_data(),
-      quantizer=(signed_uniform_max_scale_quant_ste, parametric_d)
+      quantizer=(signed_uniform_max_scale_quant_ste, parametric_d, parametric_quant_d_xmax)
   )
   def test_unique_values(
       self, x_dim, y_dim, bits, scale, quantizer

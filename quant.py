@@ -11,17 +11,6 @@ PRNGKey = Any
 Shape = Iterable[int]
 
 
-def lsq_init(q_pos: int, data: Array) -> Callable:
-  """
-  Initializes step size for LSQ.
-  """
-  def init(key: PRNGKey, shape: Shape) -> float:
-    step_size = jnp.ones(shape, dtype=jnp.float32)
-
-    return step_size * 2 * jnp.max(jnp.abs(data)) / jnp.sqrt(q_pos)
-  return init
-
-
 def get_noise(x: Array, percentage: float, rng: PRNGKey) -> Array:
   return (
       jnp.max(jnp.abs(x))
@@ -68,6 +57,7 @@ class parametric_d(nn.Module):
   # https://arxiv.org/abs/1902.08153.
   @nn.compact
   def __call__(self, inputs: Array, sign: bool = True) -> Array:
+
     if sign:
       q_pos = 2 ** (self.bits - 1) - 1
       q_neg = -q_pos
@@ -79,7 +69,9 @@ class parametric_d(nn.Module):
     # with mutable = ['quant_params'].
     step_size = self.variable('quant_params', 'step_size', jnp.ones, (1,))
     if self.is_mutable_collection('quant_params'):
-      step_size.value *= 2 * jnp.max(jnp.abs(inputs)) / jnp.sqrt(q_pos)
+      step_size.value = jnp.ones((1,))
+      #step_size.value *= 2 * jnp.mean(jnp.abs(inputs)) / jnp.sqrt(q_pos) # questionable choice
+      step_size.value *= jnp.max(jnp.abs(inputs)) / jnp.sqrt(q_pos)
 
     @jax.custom_vjp
     def lsq(x, s):
@@ -106,16 +98,62 @@ class parametric_d(nn.Module):
 
     return lsq(inputs, step_size.value)
 
+def total_weight_mb(state):
+  layer_sizes = jax.tree_util.tree_multimap(lambda x,y: jnp.prod(x.shape) * to_bits(y['step_size'], y['dynamic_range']) , state.params['params'], state.params['quant_params'])
+  return jnp.sum(jax.tree_util.flatten(layer_size)[0])
+
+def total_act_mb(state):
+  pass
+  #return jax.tree_util.
 
 class parametric_quant_d_xmax(nn.Module):
-  sign: bool = True
+  bits: int = 8 # here its just init bits
 
   # parametric heterogenous quantization
   # Based on MIXED PRECISION DNNS
   # https://openreview.net/pdf?id=Hyx0slrFvH
   @nn.compact
-  def __call__(self, inputs: Array,) -> Array:
-    pass
+  def __call__(self, inputs: Array, sign: bool = True) -> Array:
+
+    if sign:
+      q_pos = 2 ** (self.bits - 1) - 1
+    else:
+      q_pos = 2 ** (self.bits) - 1
+      inputs = jnp.where(inputs < 0, 0, inputs)
+
+    # Intialize step size. Step size only changes when init is called or apply
+    # with mutable = ['quant_params'].
+    step_size = self.variable('quant_params', 'step_size', jnp.ones, (1,))
+    dynamic_range = self.variable('quant_params', 'dynamic_range', jnp.ones, (1,))
+    size_mb = self.variable('aux', 'size_mb', jnp.ones, (1,))
+    if self.is_mutable_collection('quant_params'):
+      #dynamic_range.value = 2 * jnp.mean(jnp.abs(inputs)) # questionable choice
+      dynamic_range.value = jnp.max(jnp.abs(inputs))
+      step_size.value = dynamic_range.value / q_pos
+    if self.is_mutable_collection('aux'):
+      size_mb.value = jnp.prod(inputs.shape) * jnp.ceil(jnp.log2(dynamic_range.value/step_size.value))+1 / 8000
+
+    @jax.custom_vjp
+    def quant_d_xmax(x, d, xmax):
+      return jnp.round(jnp.clip(x, -xmax, xmax)/d) * d
+
+    def quant_d_xmax_fwd(x, d, xmax):
+      return quant_d_xmax(x, d, xmax), (x, d, xmax)
+
+    def quant_d_xmax_bwd(res, g):
+      x, d, xmax = res
+
+      g_d = jnp.where(jnp.abs(x) <= xmax, 1/d * (quant_d_xmax(x, d, xmax) - x) ,0)
+      g_xmax = jnp.where(jnp.abs(x) <= xmax, 0, jnp.sign(x))
+
+      gx_mask = jnp.where(jnp.abs(x)  <= xmax, 1., 0.)
+
+      return gx_mask * g, jnp.sum(g_d * g), jnp.sum(g_xmax * g)
+
+    quant_d_xmax.defvjp(quant_d_xmax_fwd, quant_d_xmax_bwd)
+
+    return quant_d_xmax(inputs, step_size.value, dynamic_range.value)
+
 
 
 def differentiable_quant(x: Array, bits: int, sign: bool = True) -> Array:
