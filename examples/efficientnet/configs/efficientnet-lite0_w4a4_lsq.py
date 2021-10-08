@@ -78,5 +78,6 @@ def get_config():
   config.quant.dense = ml_collections.ConfigDict()
   config.quant.dense.weight = partial(parametric_d, bits=4)
   config.quant.dense.act = partial(parametric_d, bits=4)
+  config.quant.dense.bias = partial(parametric_d, bits=4)
 
   return config

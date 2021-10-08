@@ -82,5 +82,6 @@ def get_config():
   config.quant.dense.weight = partial(
       signed_uniform_max_scale_quant_ste, bits=6)
   config.quant.dense.act = partial(signed_uniform_max_scale_quant_ste, bits=6)
+  config.quant.dense.bias = partial(signed_uniform_max_scale_quant_ste, bits=6)
 
   return config
