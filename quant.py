@@ -31,7 +31,7 @@ class signed_uniform_max_scale_quant_ste(nn.Module):
           + str(self.bits)
 
     if sign:
-      scale = jnp.max(jnp.abs(x))
+      scale = jnp.max(jnp.abs(x)) + jnp.finfo(x.dtype).eps
       int_range = 2 ** (self.bits - 1) - 1
     else:
       scale = jnp.max(x)

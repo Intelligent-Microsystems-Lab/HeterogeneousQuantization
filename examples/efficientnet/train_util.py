@@ -63,7 +63,7 @@ def compute_metrics(logits, labels, num_classes):
       'loss': loss,
       'accuracy': accuracy,
   }
-  metrics = lax.pmean(metrics, axis_name='batch')
+  # metrics = lax.pmean(metrics, axis_name='batch')
   return metrics
 
 
@@ -111,7 +111,7 @@ def train_step(state, batch, rng, learning_rate_fn, num_classes, weight_decay):
   grad_fn = jax.value_and_grad(loss_fn, argnums=[0, 1], has_aux=True)
   aux, grads = grad_fn(state.params['params'], state.params['quant_params'])
   # Re-use same axis_name as in the call to `pmap(...train_step...)` below.
-  grads = lax.pmean(grads, axis_name='batch')
+  # grads = lax.pmean(grads, axis_name='batch')
 
   new_model_state, logits = aux[1]
   metrics = compute_metrics(logits, batch['label'], num_classes)
