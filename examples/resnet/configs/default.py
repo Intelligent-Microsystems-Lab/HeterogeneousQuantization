@@ -27,6 +27,8 @@ def get_config():
   config.cache = True
   config.half_precision = False
 
+  config.pretrained = '../..'
+
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.
   config.num_train_steps = -1
