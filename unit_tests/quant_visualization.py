@@ -1,4 +1,4 @@
-from quant import parametric_d
+from quant import parametric_d, parametric_quant_d_xmax
 import sys
 
 import jax
@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 sys.path.append("..")
 
 
-quant_fn = parametric_d(bits=2)
+quant_fn = parametric_quant_d_xmax(bits=2)
 
 rng = jax.random.PRNGKey(0)
 rng, init_rng, data_rng = jax.random.split(rng, 3)

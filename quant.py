@@ -49,6 +49,22 @@ class signed_uniform_max_scale_quant_ste(nn.Module):
     return x - jax.lax.stop_gradient(x - xq)
 
 
+@jax.custom_vjp
+def roundpass(x):
+  return jnp.round(x)
+
+
+def roundpass_fwd(x):
+  return roundpass(x), (None,)
+
+
+def roundpass_bwd(res, g):
+  return (g,)
+
+
+roundpass.defvjp(roundpass_fwd, roundpass_bwd)
+
+
 class parametric_d(nn.Module):
   bits: int = 8
   act: bool = False
@@ -95,17 +111,6 @@ class parametric_d(nn.Module):
       return g * scale, None
     gradscale.defvjp(gradscale_fwd, gradscale_bwd)
 
-    @jax.custom_vjp
-    def roundpass(x):
-      return jnp.round(x)
-
-    def roundpass_fwd(x):
-      return roundpass(x), (None,)
-
-    def roundpass_bwd(res, g):
-      return (g,)
-    roundpass.defvjp(roundpass_fwd, roundpass_bwd)
-
     s = gradscale(step_size.value, gradScaleFactor)
     v = v / s
     v = jnp.clip(v, q_neg, q_pos)
@@ -125,57 +130,61 @@ class parametric_d(nn.Module):
 #   pass
 
 
-# class parametric_quant_d_xmax(nn.Module):
-#   bits: int = 8  # here its just init bits
+class parametric_quant_d_xmax(nn.Module):
+  bits: int = 8  # here its just init bits
+  act: bool = False
+  xmax_min: float = 0.001
+  xmax_max: float = 10
+  d_min: float = 2**-8
+  d_max: float = 2**+8
 
-#   # parametric heterogenous quantization
-#   # Based on MIXED PRECISION DNNS
-#   # https://openreview.net/pdf?id=Hyx0slrFvH
-#   @nn.compact
-#   def __call__(self, inputs: Array, sign: bool = True) -> Array:
+  # parametric heterogenous quantization
+  # Based on MIXED PRECISION DNNS
+  # https://openreview.net/pdf?id=Hyx0slrFvH
+  @nn.compact
+  def __call__(self, inputs: Array, sign: bool = True) -> Array:
 
-#     if sign:
-#       q_pos = 2 ** (self.bits - 1) - 1
-#     else:
-#       q_pos = 2 ** (self.bits) - 1
-#       inputs = jnp.where(inputs < 0, 0, inputs)
+    x = inputs
 
-#     #Intialize step size. Step size only changes when init is called or apply
-#     # with mutable = ['quant_params'].
-#     step_size = self.variable('quant_params', 'step_size', jnp.ones, (1,))
-#     dynamic_range = self.variable(
-#         'quant_params', 'dynamic_range', jnp.ones, (1,))
-#     size_mb = self.variable('aux', 'size_mb', jnp.ones, (1,))
-#     if self.is_mutable_collection('quant_params'):
-#       # dynamic_range.value = 2 * jnp.mean(jnp.abs(inputs))
-#       dynamic_range.value = jnp.max(jnp.abs(inputs))
-#       step_size.value = dynamic_range.value / q_pos
-#     if self.is_mutable_collection('aux'):
-#       size_mb.value = jnp.prod(
-#           inputs.shape) * jnp.ceil(jnp.log2(dynamic_range.value/
-# step_size.value))+1 / 8000
+    def quantize_pow2(v):
+      return 2 ** jnp.round(jnp.log2(v))
 
-#     @jax.custom_vjp
-#     def quant_d_xmax(x, d, xmax):
-#       return jnp.round(jnp.clip(x, -xmax, xmax)/d) * d
+    if sign:
+      num_levels = 2 ** (self.bits - 1) - 1
+    else:
+      num_levels = 2 ** (self.bits) - 1
 
-#     def quant_d_xmax_fwd(x, d, xmax):
-#       return quant_d_xmax(x, d, xmax), (x, d, xmax)
+    # Intialize step size. Step size only changes when init is called or apply
+    # with mutable = ['quant_params'].
+    d = self.variable('quant_params', 'step_size', jnp.ones, (1,))
+    xmax = self.variable(
+        'quant_params', 'dynamic_range', jnp.ones, (1,))
 
-#     def quant_d_xmax_bwd(res, g):
-#       x, d, xmax = res
+    size_mb = self.variable('aux', 'size_mb', jnp.ones, (1,))
+    if self.is_mutable_collection('quant_params'):
+      xmax.value = jnp.max(jnp.abs(inputs)) * .8
+      d.value = xmax.value / num_levels
+    # Aux scope to compute network size on the fly.
+    if self.is_mutable_collection('aux'):
+      if self.act:
+        n_wf = inputs.shape[1:]
+      else:
+        n_wf = inputs.shape
 
-#       g_d = jnp.where(jnp.abs(x) <= xmax, 1/d *
-#                       (quant_d_xmax(x, d, xmax) - x), 0)
-#       g_xmax = jnp.where(jnp.abs(x) <= xmax, 0, jnp.sign(x))
+      size_mb.value = np.prod(
+          n_wf) * (jnp.ceil(jnp.log2(xmax.value / d.value + 1)) + 1) / 8000
 
-#       gx_mask = jnp.where(jnp.abs(x) <= xmax, 1., 0.)
+    # ensure that stepsize is in specified range and a power of two
+    d = quantize_pow2(jnp.clip(d, self.d_min, self.d_max))
+    # ensure that dynamic range is in specified range
+    xmax = jnp.clip(xmax, self.xmax_min, self.xmax_max)
 
-#       return gx_mask * g, jnp.sum(g_d * g), jnp.sum(g_xmax * g)
+    if sign:
+      xmin = -xmax
+    else:
+      xmin = 0.
 
-#     quant_d_xmax.defvjp(quant_d_xmax_fwd, quant_d_xmax_bwd)
-
-#     return quant_d_xmax(inputs, step_size.value, dynamic_range.value)
+    return d * roundpass(jnp.clip(x, xmin, xmax) / d)
 
 
 # def differentiable_quant(x: Array, bits: int, sign: bool = True) -> Array:
