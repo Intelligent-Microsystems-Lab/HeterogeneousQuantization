@@ -39,6 +39,7 @@ jobs:
         run: |
           flake8 --ignore=W503,E111,E114 *.py
           flake8 --ignore=W503,E111,E114 examples/efficientnet/*.py
+          flake8 --ignore=W503,E111,E114 examples/resnet/*.py
           flake8 --ignore=W503,E111,E114 examples/small_cnn/*.py
   typecheck_pytype:
     # The type of runner that the job will run on
@@ -89,5 +90,8 @@ jobs:
           python flax_qdense.py
           python quant_test.py
           cd examples/efficientnet/
+          python models_test.py
+          python train_test.py
+          cd ../resnet/
           python models_test.py
           python train_test.py

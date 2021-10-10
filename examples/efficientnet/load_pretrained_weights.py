@@ -1,3 +1,6 @@
+# IMSL Lab - University of Notre Dame
+# Author: Clemens JS Schaefer
+
 import tensorflow as tf
 from flax.core import freeze, unfreeze
 from flax.training import train_state
