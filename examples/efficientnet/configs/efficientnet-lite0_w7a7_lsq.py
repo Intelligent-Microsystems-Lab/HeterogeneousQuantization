@@ -59,25 +59,25 @@ def get_config():
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
   config.quant.stem.weight = partial(parametric_d, bits=7)
-  config.quant.stem.act = partial(parametric_d, bits=7)
+  config.quant.stem.act = partial(parametric_d, bits=7, act=True)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
   config.quant.mbconv.weight = partial(parametric_d, bits=7)
-  config.quant.mbconv.act = partial(parametric_d, bits=7)
+  config.quant.mbconv.act = partial(parametric_d, bits=7, act=True)
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
   config.quant.head.weight = partial(parametric_d, bits=7)
-  config.quant.head.act = partial(parametric_d, bits=7)
+  config.quant.head.act = partial(parametric_d, bits=7, act=True)
 
   # Average quant.
-  config.quant.average = partial(parametric_d, bits=7)
+  config.quant.average = partial(parametric_d, bits=7, act=True)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
   config.quant.dense.weight = partial(parametric_d, bits=7)
-  config.quant.dense.act = partial(parametric_d, bits=7)
+  config.quant.dense.act = partial(parametric_d, bits=7, act=True)
   config.quant.dense.bias = partial(parametric_d, bits=7)
 
   return config

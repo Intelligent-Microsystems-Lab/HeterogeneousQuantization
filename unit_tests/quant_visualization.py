@@ -8,16 +8,17 @@ import matplotlib.pyplot as plt
 
 sys.path.append("..")
 
-quant_fn = parametric_d(bits=2, sign=False)
+
+quant_fn = parametric_d(bits=2)
 
 rng = jax.random.PRNGKey(0)
 rng, init_rng, data_rng = jax.random.split(rng, 3)
 
-params = quant_fn.init(init_rng, .25)
+params = quant_fn.init(init_rng, jnp.ones((1, 2))*.25, sign=True)
 
 
 def loss_fn(x, params):
-  logits = quant_fn.apply(params, x)
+  logits = quant_fn.apply(params, x, sign=True)
   return jnp.sum(logits)
 
 
@@ -27,7 +28,7 @@ gs_list = []
 x_list = jnp.arange(-1, +1, .001)
 for i in x_list:
   g = grad_fn(i, params)
-  gs_list.append(g['params']['step_size'])
+  gs_list.append(g['quant_params']['step_size'])
 
 grad_fn = jax.grad(loss_fn, argnums=0)
 

@@ -17,7 +17,7 @@ import numpy as np
 import re
 
 
-from quant import signed_uniform_max_scale_quant_ste, parametric_d, parametric_quant_d_xmax
+from quant import signed_uniform_max_scale_quant_ste, parametric_d
 
 jax.config.update('jax_platform_name', 'cpu')
 jax.config.update('jax_disable_most_optimizations', True)
@@ -40,12 +40,6 @@ def signed_uniform_max_scale_quant_ste_equality_data():
 
 def signed_uniform_max_scale_quant_ste_unique_data():
   return (
-      dict(
-          x_dim=100,
-          y_dim=30,
-          bits=2,
-          scale=23,
-      ),
       dict(
           x_dim=100,
           y_dim=30,
@@ -106,6 +100,17 @@ def signed_uniform_max_scale_quant_ste_unique_data():
           bits=12,
           scale=4561,
       ),
+  )
+
+
+def signed_uniform_max_scale_quant_ste_unique_data_ext():
+  return (
+      dict(
+          x_dim=100,
+          y_dim=30,
+          bits=2,
+          scale=23,
+      ),
       dict(
           x_dim=100,
           y_dim=30,
@@ -130,7 +135,7 @@ def signed_uniform_max_scale_quant_ste_unique_data():
 class QuantOpsTest(parameterized.TestCase):
   @parameterized.product(
       signed_uniform_max_scale_quant_ste_equality_data(),
-      quantizer=(signed_uniform_max_scale_quant_ste, parametric_d, parametric_quant_d_xmax)
+      quantizer=(signed_uniform_max_scale_quant_ste, parametric_d)
   )
   def test_equality_native_dtypes(
       self, x_dim, y_dim, dtype, quantizer,
@@ -165,8 +170,9 @@ class QuantOpsTest(parameterized.TestCase):
     np.testing.assert_allclose(data, dataq / scale)
 
   @parameterized.product(
-      signed_uniform_max_scale_quant_ste_unique_data(),
-      quantizer=(signed_uniform_max_scale_quant_ste, parametric_d, parametric_quant_d_xmax)
+      signed_uniform_max_scale_quant_ste_unique_data(
+      ) + signed_uniform_max_scale_quant_ste_unique_data_ext(),
+      quantizer=(signed_uniform_max_scale_quant_ste, parametric_d)
   )
   def test_unique_values(
       self, x_dim, y_dim, bits, scale, quantizer
@@ -194,6 +200,53 @@ class QuantOpsTest(parameterized.TestCase):
     self.assertEqual(
         len(np.unique(dataq)), ((2 ** (bits - 1) - 1) * 2) + 1
     )
+
+  @parameterized.product(signed_uniform_max_scale_quant_ste_unique_data())
+  def test_parametric_d(self, x_dim, y_dim, bits, scale):
+
+    rng = random.PRNGKey(8627169)
+
+    rng, init_rng, data_rng = jax.random.split(rng, 3)
+    data = (
+        jax.random.uniform(data_rng, (1024, 1024), minval=-1, maxval=1)
+        * scale
+    )
+
+    quant_fn = parametric_d(bits=bits)
+
+    def loss_fn(x, params):
+      logits = quant_fn.apply(params, x)
+      return jnp.sum(logits)
+
+    params = quant_fn.init(init_rng, data)
+    grad_fn = jax.grad(loss_fn, argnums=1)
+
+    num_levels = 2 ** (bits - 1) - 1
+    grad_scale = 1 / jnp.sqrt(num_levels * np.prod(data.shape))
+    params_step_size = params['quant_params']['step_size']
+
+    # all outside upper
+    g = grad_fn(jnp.abs(data) + num_levels * params_step_size, params)
+    self.assertEqual(g['quant_params']['step_size'] / (
+        num_levels * grad_scale), 1024 * 1024)
+
+    # all inside on point
+    g = grad_fn(jnp.ones((1024, 1024)) * params_step_size, params)
+    # numerical tol.
+    self.assertLessEqual(g['quant_params']['step_size'], 5e-5)
+
+    # all inside full off point
+    g = grad_fn(jnp.ones((1024, 1024)) * params_step_size * .5, params)
+    self.assertLessEqual(g['quant_params']['step_size'] / (
+        1024 * 1024), .5 * grad_scale)
+
+    # all outside lower
+    g = grad_fn(-jnp.abs(data) - num_levels * params_step_size, params)
+    self.assertEqual(g['quant_params']['step_size'] / (
+        num_levels * grad_scale), -1024 * 1024)
+
+  def test_grad_d_scale(self):
+    pass
 
 
 if __name__ == "__main__":
