@@ -97,7 +97,7 @@ class parametric_d(nn.Module):
       step_size.value = jnp.ones((1,))
       step_size.value *= 2 * jnp.mean(jnp.abs(inputs)) / jnp.sqrt(q_pos)
 
-    gradScaleFactor = 1 / jnp.sqrt(q_pos * np.prod(n_wf))
+    gradScaleFactor = 1 / jnp.sqrt(q_pos * np.prod(n_wf) + 1e-6)
 
     @jax.custom_vjp
     def gradscale(x, scale):
@@ -130,24 +130,43 @@ class parametric_d(nn.Module):
 #   pass
 
 
-class parametric_quant_d_xmax(nn.Module):
+@jax.custom_vjp
+def ceilpass(x):
+  return jnp.ceil(x)
+
+
+def ceilpass_fwd(x):
+  return ceilpass(x), (None,)
+
+
+def ceilpass_bwd(res, g):
+  return (g,)
+
+
+ceilpass.defvjp(ceilpass_fwd, ceilpass_bwd)
+
+
+class parametric_d_xmax(nn.Module):
   bits: int = 8  # here its just init bits
   act: bool = False
   xmax_min: float = 0.001
-  xmax_max: float = 10
+  xmax_max: float = 100
   d_min: float = 2**-8
   d_max: float = 2**+8
 
-  # parametric heterogenous quantization
-  # Based on MIXED PRECISION DNNS
+  # Parametric heterogenous quantization.
+  # Based on MIXED PRECISION DNNS.
   # https://openreview.net/pdf?id=Hyx0slrFvH
   @nn.compact
   def __call__(self, inputs: Array, sign: bool = True) -> Array:
 
     x = inputs
 
+    #
+    # DISCLAIMER: not using quantize_pow2.
+    #
     def quantize_pow2(v):
-      return 2 ** jnp.round(jnp.log2(v))
+      return 2 ** roundpass(jnp.log2(v))
 
     if sign:
       num_levels = 2 ** (self.bits - 1) - 1
@@ -160,31 +179,64 @@ class parametric_quant_d_xmax(nn.Module):
     xmax = self.variable(
         'quant_params', 'dynamic_range', jnp.ones, (1,))
 
-    size_mb = self.variable('aux', 'size_mb', jnp.ones, (1,))
+    act_mb = self.variable('aux', 'act_mb', jnp.ones, (1,))
+    weight_mb = self.variable('aux', 'weight_mb', jnp.ones, (1,))
     if self.is_mutable_collection('quant_params'):
-      xmax.value = jnp.max(jnp.abs(inputs)) * .8
-      d.value = xmax.value / num_levels
+      xmax.value = jnp.clip(jnp.max(jnp.abs(inputs)),
+                            self.xmax_min, self.xmax_max)
+      d.value = jnp.clip(xmax.value / num_levels, self.d_min, self.d_max)
     # Aux scope to compute network size on the fly.
     if self.is_mutable_collection('aux'):
       if self.act:
         n_wf = inputs.shape[1:]
+        act_mb.value = np.prod(
+            n_wf) * (ceilpass(jnp.log2(xmax.value / d.value + 1)) + 1) / 8000
+        weight_mb = 0.
       else:
         n_wf = inputs.shape
+        weight_mb.value = np.prod(
+            n_wf) * (ceilpass(jnp.log2(xmax.value / d.value + 1)) + 1) / 8000
+        act_mb = 0.
 
-      size_mb.value = np.prod(
-          n_wf) * (jnp.ceil(jnp.log2(xmax.value / d.value + 1)) + 1) / 8000
+    @jax.custom_vjp
+    def quant(x, d, xmax):
+      if sign:
+        xmin = -xmax
+      else:
+        xmin = 0.
 
-    # ensure that stepsize is in specified range and a power of two
-    d = quantize_pow2(jnp.clip(d, self.d_min, self.d_max))
-    # ensure that dynamic range is in specified range
-    xmax = jnp.clip(xmax, self.xmax_min, self.xmax_max)
+      return d * jnp.round(jnp.clip(x, xmin, xmax) / d)
 
-    if sign:
-      xmin = -xmax
-    else:
-      xmin = 0.
+    def quant_fwd(x, d, xmax):
+      return quant(x, d, xmax), (x, d, xmax)
 
-    return d * roundpass(jnp.clip(x, xmin, xmax) / d)
+    def quant_bwd(res, g):
+      (x, d, xmax) = res
+
+      if sign:
+        xmin = -xmax
+      else:
+        xmin = 0.
+
+      mask = jnp.where(jnp.logical_and((x < xmax), (x > xmin)), 1, 0)
+
+      g_d = 1 / d * (quant(x, d, xmax) - x)
+
+      if sign:
+        g_xmax = jnp.where(x > xmax, 1, 0)
+        g_xmax = jnp.where(x < xmin, -1, g_xmax)
+      else:
+        g_xmax = jnp.where(x > xmax, 1, 0)
+
+      return g * mask, jnp.sum(g * g_d * mask), jnp.sum(g * g_xmax)
+    quant.defvjp(quant_fwd, quant_bwd)
+
+    # Ensure that stepsize is in specified range and a power of two.
+    d = jnp.clip(d.value, self.d_min, self.d_max)
+    # Ensure that dynamic range is in specified range.
+    xmax = jnp.clip(xmax.value, self.xmax_min, self.xmax_max)
+
+    return quant(x, d, xmax)
 
 
 # def differentiable_quant(x: Array, bits: int, sign: bool = True) -> Array:

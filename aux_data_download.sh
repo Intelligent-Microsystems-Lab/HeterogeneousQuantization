@@ -1,6 +1,6 @@
 # IMSL Lab - University of Notre Dame
 # Author: Clemens JS Schaefer
-# Download data for unit tests
+# Download data for unit tests and pretrained networks.
 
 mkdir ../pretrained_efficientnet
 
@@ -27,3 +27,7 @@ unzip ../unit_tests/pc_modular.zip -d ../unit_tests
 
 
 wget https://upload.wikimedia.org/wikipedia/commons/f/fe/Giant_Panda_in_Beijing_Zoo_1.JPG -O ../unit_tests/efficientnet/panda.jpg
+
+mkdir ../pretrained_resnet
+wget https://notredame.box.com/shared/static/5m485mqpskw5lwop1z3yfi4wsvvdjsx3.zip -O ../pretrained_resnet/resnet18.zip
+unzip ../pretrained_resnet/resnet18.zip -d ../pretrained_resnet
