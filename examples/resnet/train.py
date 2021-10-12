@@ -145,13 +145,32 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   if config.pretrained and step_offset == 0:
     state = load_pretrained_weights(state, config.pretrained)
 
+  # Reinitialize quant params.
+  init_batch = next(train_iter)['image'][0, :, :, :, :]
+  _, new_state = state.apply_fn({'params': state.params['params'],
+                                 'quant_params': state.params['quant_params'],
+                                 'batch_stats': state.batch_stats}, init_batch,
+                                mutable=['batch_stats', 'quant_params'],)
+  state = TrainState.create(apply_fn=state.apply_fn,
+                            params={'params': state.params['params'],
+                                    'quant_params': new_state['quant_params']},
+                            tx=state.tx, batch_stats=state.batch_stats,)
+
   state = jax_utils.replicate(state)
 
   p_train_step = jax.pmap(
-      functools.partial(train_step, learning_rate_fn=learning_rate_fn,
+      functools.partial(train_step,
+                        learning_rate_fn=learning_rate_fn,
                         weight_decay=config.weight_decay),
       axis_name='batch')
   p_eval_step = jax.pmap(eval_step, axis_name='batch')
+
+  # # Debug
+  # p_train_step = functools.partial(
+  #     train_step,
+  #     learning_rate_fn=learning_rate_fn,
+  #     weight_decay=config.weight_decay)
+  # p_eval_step = functools.partial(eval_step)
 
   train_metrics = []
   hooks = []
@@ -161,6 +180,12 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   logging.info('Initial compilation, this might take some minutes...')
   for step, batch in zip(range(step_offset, num_steps), train_iter):
     state, metrics = p_train_step(state, batch)
+
+    # # Debug
+    # state, metrics = p_train_step(
+    #     state, {'image': batch['image'][0, :, :, :],
+    #             'label': batch['label'][0]})
+
     for h in hooks:
       h(step)
     if step == step_offset:

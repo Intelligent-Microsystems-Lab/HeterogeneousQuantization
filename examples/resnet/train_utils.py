@@ -4,12 +4,9 @@
 
 from typing import Any
 
-import flax
-from flax import jax_utils
-from flax import optim
-
 import input_pipeline
 
+from flax import jax_utils
 from flax.training import checkpoints
 from flax.training import common_utils
 from flax.training import train_state
@@ -158,7 +155,6 @@ def create_input_iter(dataset_builder, batch_size, image_size, dtype, train,
 
 class TrainState(train_state.TrainState):
   batch_stats: Any
-  dynamic_scale: flax.optim.DynamicScale
 
 
 def restore_checkpoint(state, workdir):
@@ -188,12 +184,6 @@ def sync_batch_stats(state):
 def create_train_state(rng, config: ml_collections.ConfigDict,
                        model, image_size, learning_rate_fn):
   """Create initial training state."""
-  dynamic_scale = None
-  platform = jax.local_devices()[0].platform
-  if config.half_precision and platform == 'gpu':
-    dynamic_scale = optim.DynamicScale()
-  else:
-    dynamic_scale = None
 
   params, quant_params, batch_stats = initialized(rng, image_size, model)
   tx = optax.sgd(
@@ -210,5 +200,5 @@ def create_train_state(rng, config: ml_collections.ConfigDict,
       params={'params': params, 'quant_params': quant_params},
       tx=tx,
       batch_stats=batch_stats,
-      dynamic_scale=dynamic_scale)
+  )
   return state
