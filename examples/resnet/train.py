@@ -78,10 +78,12 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     Final TrainState.
   """
 
-  writer = metric_writers.create_default_writer(
-      logdir=workdir, just_logging=jax.process_index() != 0)
+  writer_train = metric_writers.create_default_writer(
+      logdir=workdir + '/train', just_logging=jax.process_index() != 0)
+  writer_eval = metric_writers.create_default_writer(
+      logdir=workdir + '/eval', just_logging=jax.process_index() != 0)
 
-  rng = random.PRNGKey(0)
+  rng = random.PRNGKey(config.seed)
 
   image_size = 224
 
@@ -129,7 +131,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
   model_cls = getattr(models, config.model)
   model = create_model(
-      model_cls=model_cls, half_precision=config.half_precision)
+      model_cls=model_cls, config=config)
 
   learning_rate_fn = create_learning_rate_fn(
       config, base_learning_rate, steps_per_epoch)
@@ -146,7 +148,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   state = jax_utils.replicate(state)
 
   p_train_step = jax.pmap(
-      functools.partial(train_step, learning_rate_fn=learning_rate_fn),
+      functools.partial(train_step, learning_rate_fn=learning_rate_fn,
+                        weight_decay=config.weight_decay),
       axis_name='batch')
   p_eval_step = jax.pmap(eval_step, axis_name='batch')
 
@@ -173,12 +176,11 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         }
         summary['steps_per_second'] = config.log_every_steps / (
             time.time() - train_metrics_last_t)
-        writer.write_scalars(step + 1, summary)
+        writer_train.write_scalars(step + 1, summary)
         train_metrics = []
         train_metrics_last_t = time.time()
 
     if (step + 1) % steps_per_epoch == 0:
-      epoch = step // steps_per_epoch
       eval_metrics = []
 
       # sync batch statistics across replicas
@@ -189,11 +191,10 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         eval_metrics.append(metrics)
       eval_metrics = common_utils.get_metrics(eval_metrics)
       summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
-      logging.info('eval epoch: %d, loss: %.4f, accuracy: %.2f',
-                   epoch, summary['loss'], summary['accuracy'] * 100)
-      writer.write_scalars(
+      writer_eval.write_scalars(
           step + 1, {f'eval_{key}': val for key, val in summary.items()})
-      writer.flush()
+      writer_eval.flush()
+      writer_train.flush()
     if (step + 1) % steps_per_checkpoint == 0 or step + 1 == num_steps:
       state = sync_batch_stats(state)
       save_checkpoint(state, workdir)

@@ -28,7 +28,7 @@ import tensorflow_datasets as tfds
 import models
 import train
 import train_utils
-from configs import default as default_lib
+from configs import resnet18_fp32 as default_lib
 
 jax.config.update('jax_platform_name', 'cpu')
 jax.config.update('jax_disable_most_optimizations', True)
@@ -43,10 +43,11 @@ class TrainTest(absltest.TestCase):
 
   def test_create_model(self):
     """Tests creating model."""
+    config = default_lib.get_config()
     model = train_utils.create_model(
         model_cls=models._ResNet1,
-        half_precision=False)  # pylint: disable=protected-access
-    params, batch_stats = train_utils.initialized(
+        config=config)  # pylint: disable=protected-access
+    params, quant_params, batch_stats = train_utils.initialized(
         random.PRNGKey(0), 224, model)
     variables = {'params': params, 'batch_stats': batch_stats}
     x = random.normal(random.PRNGKey(1), (8, 224, 224, 3))
@@ -61,7 +62,7 @@ class TrainTest(absltest.TestCase):
 
     # Define training configuration
     config = default_lib.get_config()
-    config.model = '_ResNet1'
+    config.model = 'ResNet18'
     config.batch_size = 1
     config.num_epochs = 1
     config.num_train_steps = 1

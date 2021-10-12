@@ -2,7 +2,6 @@
 # Author: Clemens JS Schaefer
 # Originally copied from https://github.com/google/flax/tree/main/examples
 
-import functools
 from typing import Any
 
 import flax
@@ -14,6 +13,7 @@ import input_pipeline
 from flax.training import checkpoints
 from flax.training import common_utils
 from flax.training import train_state
+from flax.core import freeze, unfreeze
 
 import jax
 from jax import lax
@@ -28,26 +28,24 @@ import optax
 NUM_CLASSES = 1000
 
 
-def create_model(*, model_cls, half_precision, **kwargs):
-  platform = jax.local_devices()[0].platform
-  if half_precision:
-    if platform == 'tpu':
-      model_dtype = jnp.bfloat16
-    else:
-      model_dtype = jnp.float16
-  else:
-    model_dtype = jnp.float32
+def create_model(*, model_cls, **kwargs):
+  model_dtype = jnp.float32
   return model_cls(num_classes=NUM_CLASSES, dtype=model_dtype, **kwargs)
 
 
 def initialized(key, image_size, model):
   input_shape = (1, image_size, image_size, 3)
+  key, rng = jax.random.split(key, 2)
 
   @jax.jit
   def init(*args):
-    return model.init(*args)
+    return model.init(*args, train=False)
   variables = init({'params': key}, jnp.ones(input_shape, model.dtype))
-  return variables['params'], variables['batch_stats']
+  if 'quant_params' in variables:
+    return variables['params'], variables['quant_params'],\
+        variables['batch_stats']
+  else:
+    return variables['params'], {}, variables['batch_stats']
 
 
 def cross_entropy_loss(logits, labels):
@@ -85,17 +83,16 @@ def create_learning_rate_fn(
   return schedule_fn
 
 
-def train_step(state, batch, learning_rate_fn):
+def train_step(state, batch, learning_rate_fn, weight_decay):
   """Perform a single training step."""
-  def loss_fn(params):
+  def loss_fn(params, quant_params):
     """loss function used for training."""
     logits, new_model_state = state.apply_fn(
-        {'params': params, 'batch_stats': state.batch_stats},
-        batch['image'],
-        mutable=['batch_stats'])
+        {'params': params, 'quant_params': quant_params,
+         'batch_stats': state.batch_stats},
+        batch['image'], mutable=['batch_stats'])
     loss = cross_entropy_loss(logits, batch['label'])
     weight_penalty_params = jax.tree_leaves(params)
-    weight_decay = 0.0001
     weight_l2 = sum([jnp.sum(x ** 2)
                      for x in weight_penalty_params
                      if x.ndim > 1])
@@ -104,46 +101,33 @@ def train_step(state, batch, learning_rate_fn):
     return loss, (new_model_state, logits)
 
   step = state.step
-  dynamic_scale = state.dynamic_scale
   lr = learning_rate_fn(step)
 
-  if dynamic_scale:
-    grad_fn = dynamic_scale.value_and_grad(
-        loss_fn, has_aux=True, axis_name='batch')
-    dynamic_scale, is_fin, aux, grads = grad_fn(state.params)
-    # dynamic loss takes care of averaging gradients across replicas
-  else:
-    grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
-    aux, grads = grad_fn(state.params)
-    # Re-use same axis_name as in the call to `pmap(...train_step...)` below.
-    grads = lax.pmean(grads, axis_name='batch')
+  grad_fn = jax.value_and_grad(loss_fn, argnums=[0, 1], has_aux=True)
+  aux, grads = grad_fn(state.params['params'], state.params['quant_params'])
+  # Re-use same axis_name as in the call to `pmap(...train_step...)` below.
+  grads = lax.pmean(grads, axis_name='batch')
+
   new_model_state, logits = aux[1]
   metrics = compute_metrics(logits, batch['label'])
   metrics['learning_rate'] = lr
 
   new_state = state.apply_gradients(
-      grads=grads, batch_stats=new_model_state['batch_stats'])
-  if dynamic_scale:
-    # if is_fin == False the gradients contain Inf/NaNs and optimizer state and
-    # params should be restored (= skip this step).
-    new_state = new_state.replace(
-        opt_state=jax.tree_multimap(
-            functools.partial(jnp.where, is_fin),
-            new_state.opt_state,
-            state.opt_state),
-        params=jax.tree_multimap(
-            functools.partial(jnp.where, is_fin),
-            new_state.params,
-            state.params))
-    metrics['scale'] = dynamic_scale.scale
+      grads={'params': grads[0], 'quant_params': grads[1]},
+      batch_stats=new_model_state['batch_stats'])
 
   return new_state, metrics
 
 
-def eval_step(state, batch):
-  variables = {'params': state.params, 'batch_stats': state.batch_stats}
+def eval_step(state, batch, num_classes=NUM_CLASSES):
+  variables = {'params': state.params['params'],
+               'quant_params': state.params['quant_params'],
+               'batch_stats': state.batch_stats}
   logits = state.apply_fn(
-      variables, batch['image'], train=False, mutable=False)
+      variables,
+      batch['image'],
+      train=False,
+      mutable=False)
   return compute_metrics(logits, batch['label'])
 
 
@@ -211,15 +195,19 @@ def create_train_state(rng, config: ml_collections.ConfigDict,
   else:
     dynamic_scale = None
 
-  params, batch_stats = initialized(rng, image_size, model)
+  params, quant_params, batch_stats = initialized(rng, image_size, model)
   tx = optax.sgd(
       learning_rate=learning_rate_fn,
       momentum=config.momentum,
       nesterov=True,
   )
+  quant_params = unfreeze(quant_params)
+  quant_params['placeholder'] = 0.
+  quant_params = freeze(quant_params)
+
   state = TrainState.create(
       apply_fn=model.apply,
-      params=params,
+      params={'params': params, 'quant_params': quant_params},
       tx=tx,
       batch_stats=batch_stats,
       dynamic_scale=dynamic_scale)

@@ -18,7 +18,6 @@ from clu import platform
 
 from flax import jax_utils
 
-import input_pipeline
 import models
 
 from flax.training import common_utils
@@ -35,12 +34,13 @@ from ml_collections import config_flags
 
 
 from load_pretrained_weights import load_pretrained_weights
-from train_util import (
+from train_utils import (
     TrainState,
     create_model,
     create_train_state,
     restore_checkpoint,
-    eval_step
+    eval_step,
+    create_input_iter
 )
 
 low, high = resource.getrlimit(resource.RLIMIT_NOFILE)
@@ -62,6 +62,9 @@ def evaluate(config: ml_collections.ConfigDict,
 
   rng = random.PRNGKey(config.seed)
 
+  image_size = 224
+  input_dtype = tf.float32
+
   if config.batch_size % jax.device_count() > 0:
     raise ValueError('Batch size (' + str(config.batch_size)
                      + ') must be divisible by the number of devices ('
@@ -70,8 +73,9 @@ def evaluate(config: ml_collections.ConfigDict,
 
   dataset_builder = tfds.builder(config.dataset, data_dir=config.tfds_data_dir)
   dataset_builder.download_and_prepare()
-  eval_iter = input_pipeline.create_input_iter(
-      dataset_builder, local_batch_size, train=False, config=config)
+  eval_iter = create_input_iter(
+      dataset_builder, local_batch_size, image_size, input_dtype, train=False,
+      cache=config.cache)
 
   if config.steps_per_eval == -1:
     num_validation_examples = dataset_builder.info.splits[
@@ -82,11 +86,11 @@ def evaluate(config: ml_collections.ConfigDict,
 
   model_cls = getattr(models, config.model)
   model = create_model(
-      model_cls=model_cls, num_classes=config.num_classes, config=config)
+      model_cls=model_cls, config=config)
 
   rng, subkey = jax.random.split(rng, 2)
   state = create_train_state(
-      subkey, config, model, config.image_size, 0.0)
+      subkey, config, model, image_size, 0.0)
   state = restore_checkpoint(state, workdir)
 
   # Pre load weights.
@@ -96,7 +100,7 @@ def evaluate(config: ml_collections.ConfigDict,
   state = jax_utils.replicate(state)
 
   p_eval_step = jax.pmap(functools.partial(
-      eval_step, num_classes=config.num_classes), axis_name='batch')
+      eval_step), axis_name='batch')
 
   logging.info('Initial compilation, this might take some minutes...')
   eval_metrics = []

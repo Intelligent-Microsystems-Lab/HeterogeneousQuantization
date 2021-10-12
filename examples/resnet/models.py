@@ -6,12 +6,19 @@
 
 # See issue #620.
 # pytype: disable=wrong-arg-count
+import sys
 
 from functools import partial
+import ml_collections
 from typing import Any, Callable, Sequence, Tuple
 
 from flax import linen as nn
 import jax.numpy as jnp
+
+
+sys.path.append("../..")
+from flax_qconv import QuantConv  # noqa: E402
+from flax_qdense import QuantDense  # noqa: E402
 
 ModuleDef = Any
 
@@ -23,19 +30,23 @@ class ResNetBlock(nn.Module):
   norm: ModuleDef
   act: Callable
   strides: Tuple[int, int] = (1, 1)
+  config: dict = ml_collections.FrozenConfigDict({})
 
   @nn.compact
   def __call__(self, x,):
     residual = x
-    y = self.conv(self.filters, (3, 3), self.strides)(x)
+    y = self.conv(self.filters, (3, 3), self.strides, config=self.config,
+                  quant_act_sign=False)(x)
     y = self.norm()(y)
     y = self.act(y)
-    y = self.conv(self.filters, (3, 3))(y)
+    y = self.conv(self.filters, (3, 3), config=self.config,
+                  quant_act_sign=False)(y)
     y = self.norm(scale_init=nn.initializers.zeros)(y)
 
     if residual.shape != y.shape:
       residual = self.conv(self.filters, (1, 1),
-                           self.strides, name='conv_proj')(residual)
+                           self.strides, name='conv_proj', config=self.config,
+                           quant_act_sign=False)(residual)
       residual = self.norm(name='norm_proj')(residual)
 
     return self.act(residual + y)
@@ -48,22 +59,27 @@ class BottleneckResNetBlock(nn.Module):
   norm: ModuleDef
   act: Callable
   strides: Tuple[int, int] = (1, 1)
+  config: dict = ml_collections.FrozenConfigDict({})
 
   @nn.compact
   def __call__(self, x):
     residual = x
-    y = self.conv(self.filters, (1, 1))(x)
+    y = self.conv(self.filters, (1, 1), config=self.config,
+                  quant_act_sign=False)(x)
     y = self.norm()(y)
     y = self.act(y)
-    y = self.conv(self.filters, (3, 3), self.strides)(y)
+    y = self.conv(self.filters, (3, 3), self.strides, config=self.config,
+                  quant_act_sign=False)(y)
     y = self.norm()(y)
     y = self.act(y)
-    y = self.conv(self.filters * 4, (1, 1))(y)
+    y = self.conv(self.filters * 4, (1, 1), config=self.config,
+                  quant_act_sign=False)(y)
     y = self.norm(scale_init=nn.initializers.zeros)(y)
 
     if residual.shape != y.shape:
       residual = self.conv(self.filters * 4, (1, 1),
-                           self.strides, name='conv_proj')(residual)
+                           self.strides, name='conv_proj', config=self.config,
+                           quant_act_sign=False)(residual)
       residual = self.norm(name='norm_proj')(residual)
 
     return self.act(residual + y)
@@ -77,10 +93,11 @@ class ResNet(nn.Module):
   num_filters: int = 64
   dtype: Any = jnp.float32
   act: Callable = nn.relu
+  config: dict = ml_collections.FrozenConfigDict({})
 
   @nn.compact
   def __call__(self, x, train: bool = True):
-    conv = partial(nn.Conv, use_bias=False, dtype=self.dtype)
+    conv = partial(QuantConv, use_bias=False, dtype=self.dtype)
     norm = partial(nn.BatchNorm,
                    use_running_average=not train,
                    momentum=0.9,
@@ -89,7 +106,9 @@ class ResNet(nn.Module):
 
     x = conv(self.num_filters, (7, 7), (2, 2),
              padding=[(3, 3), (3, 3)],
-             name='conv_init')(x)
+             name='conv_init',
+             config=self.config.quant.stem,
+             quant_act_sign=False)(x)
     x = norm(name='bn_init')(x)
     x = nn.relu(x)
     x = nn.max_pool(x, (3, 3), strides=(2, 2), padding='SAME')
@@ -100,9 +119,14 @@ class ResNet(nn.Module):
                            strides=strides,
                            conv=conv,
                            norm=norm,
-                           act=self.act)(x)
+                           act=self.act,
+                           config=self.config.quant.mbconv)(x)
+
     x = jnp.mean(x, axis=(1, 2))
-    x = nn.Dense(self.num_classes, dtype=self.dtype)(x)
+    if 'average' in self.config.quant:
+      x = self.config.quant.average()(x, sign=False)
+    x = QuantDense(self.num_classes, dtype=self.dtype,
+                   config=self.config.quant.dense, quant_act_sign=False)(x)
     x = jnp.asarray(x, self.dtype)
     return x
 

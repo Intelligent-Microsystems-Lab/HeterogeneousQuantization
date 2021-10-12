@@ -19,6 +19,8 @@ from absl.testing import absltest
 import jax
 from jax import numpy as jnp
 
+from configs import resnet18_fp32 as default_lib
+
 import models
 
 jax.config.update('jax_platform_name', 'cpu')
@@ -31,7 +33,9 @@ class ResNetV1Test(absltest.TestCase):
   def test_resnet_v1_model(self):
     """Tests ResNet V1 model definition and output (variables)."""
     rng = jax.random.PRNGKey(0)
-    model_def = models.ResNet50(num_classes=10, dtype=jnp.float32)
+    config = default_lib.get_config()
+    model_def = models.ResNet50(
+        num_classes=10, dtype=jnp.float32, config=config)
     variables = model_def.init(
         rng, jnp.ones((8, 224, 224, 3), jnp.float32))
 
