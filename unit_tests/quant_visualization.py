@@ -1,4 +1,9 @@
-from quant import parametric_d, parametric_d_xmax, signed_uniform_max_scale_quant_ste, roundsurrogate
+from quant import (
+    parametric_d,
+    parametric_d_xmax,
+    uniform_dynamic,
+    roundsurrogate,
+)
 import sys
 
 import jax
@@ -46,7 +51,7 @@ def plot_lines(x, x_list, name_list, color_list, fname):
 
 
 # Ordinary visualization
-quant_fn = signed_uniform_max_scale_quant_ste(bits=3)
+quant_fn = uniform_dynamic(bits=3)
 
 rng = jax.random.PRNGKey(0)
 rng, init_rng, data_rng = jax.random.split(rng, 3)
@@ -69,7 +74,7 @@ plot_lines(x_list, [g], ['Derivative Inputs'], ['blue', ],
 
 
 # Ordinary visualization -- Surrogate
-quant_fn = signed_uniform_max_scale_quant_ste(bits=3, round_fn=roundsurrogate)
+quant_fn = uniform_dynamic(bits=3, round_fn=roundsurrogate)
 
 rng = jax.random.PRNGKey(0)
 rng, init_rng, data_rng = jax.random.split(rng, 3)
