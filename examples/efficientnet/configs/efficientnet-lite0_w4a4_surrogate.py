@@ -6,7 +6,7 @@
 
 import ml_collections
 from functools import partial
-from quant import signed_uniform_max_scale_quant_ste
+from quant import uniform_dynamic, roundsurrogate
 
 
 def get_config():
@@ -59,29 +59,29 @@ def get_config():
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
   config.quant.stem.weight = partial(
-      signed_uniform_max_scale_quant_ste, bits=4)
-  config.quant.stem.act = partial(signed_uniform_max_scale_quant_ste, bits=4)
+      uniform_dynamic, bits=4, round_fn=roundsurrogate)
+  config.quant.stem.act = partial(uniform_dynamic, bits=4, round_fn=roundsurrogate)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
   config.quant.mbconv.weight = partial(
-      signed_uniform_max_scale_quant_ste, bits=4)
-  config.quant.mbconv.act = partial(signed_uniform_max_scale_quant_ste, bits=4)
+      uniform_dynamic, bits=4, round_fn=roundsurrogate)
+  config.quant.mbconv.act = partial(uniform_dynamic, bits=4, round_fn=roundsurrogate)
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
   config.quant.head.weight = partial(
-      signed_uniform_max_scale_quant_ste, bits=4)
-  config.quant.head.act = partial(signed_uniform_max_scale_quant_ste, bits=4)
+      uniform_dynamic, bits=4, round_fn=roundsurrogate)
+  config.quant.head.act = partial(uniform_dynamic, bits=4, round_fn=roundsurrogate)
 
   # Average quant.
-  config.quant.average = partial(signed_uniform_max_scale_quant_ste, bits=4)
+  config.quant.average = partial(uniform_dynamic, bits=4, round_fn=roundsurrogate)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
   config.quant.dense.weight = partial(
-      signed_uniform_max_scale_quant_ste, bits=4)
-  config.quant.dense.act = partial(signed_uniform_max_scale_quant_ste, bits=4)
-  config.quant.dense.bias = partial(signed_uniform_max_scale_quant_ste, bits=4)
+      uniform_dynamic, bits=4, round_fn=roundsurrogate)
+  config.quant.dense.act = partial(uniform_dynamic, bits=4, round_fn=roundsurrogate)
+  config.quant.dense.bias = partial(uniform_dynamic, bits=4, round_fn=roundsurrogate)
 
   return config
