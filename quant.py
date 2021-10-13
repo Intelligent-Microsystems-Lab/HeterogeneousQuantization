@@ -98,11 +98,10 @@ class uniform_dynamic(nn.Module):
           + str(self.bits)
 
     if sign:
-      scale = jax.lax.stop_gradient(
-          jnp.max(jnp.abs(x)) + jnp.finfo(x.dtype).eps)
+      scale = init_fn(x)
       int_range = 2 ** (self.bits - 1) - 1
     else:
-      scale = jax.lax.stop_gradient(jnp.max(x))
+      scale = init_fn(x)
       int_range = 2 ** (self.bits) - 1
 
     xq = x / scale  # between -1 and 1
@@ -114,7 +113,7 @@ class uniform_dynamic(nn.Module):
     if sign:
       jnp.clip(xq, 0, scale)
 
-    return xq  # x - jax.lax.stop_gradient(x - xq)
+    return xq
 
 
 class uniform_static(nn.Module):
