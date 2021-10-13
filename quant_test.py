@@ -18,9 +18,10 @@ import re
 
 
 from quant import (
-    signed_uniform_max_scale_quant_ste,
+    uniform_dynamic,
+    uniform_static,
     parametric_d,
-    parametric_d_xmax
+    parametric_d_xmax,
 )
 
 jax.config.update('jax_platform_name', 'cpu')
@@ -101,8 +102,8 @@ def signed_uniform_max_scale_quant_ste_unique_data():
           scale=781,
       ),
       dict(
-          x_dim=3100,
-          y_dim=430,
+          x_dim=3300,
+          y_dim=632,
           bits=12,
           scale=153,
       ),
@@ -119,7 +120,7 @@ def signed_uniform_max_scale_quant_ste_unique_data_ext():
       ),
       dict(
           x_dim=1200,
-          y_dim=430,
+          y_dim=930,
           bits=13,
           scale=813,
       ),
@@ -130,8 +131,8 @@ def signed_uniform_max_scale_quant_ste_unique_data_ext():
           scale=4897,
       ),
       dict(
-          x_dim=2100,
-          y_dim=830,
+          x_dim=2700,
+          y_dim=930,
           bits=15,
           scale=561,
       ),
@@ -141,7 +142,7 @@ def signed_uniform_max_scale_quant_ste_unique_data_ext():
 class QuantOpsTest(parameterized.TestCase):
   @parameterized.product(
       signed_uniform_max_scale_quant_ste_equality_data(),
-      quantizer=(signed_uniform_max_scale_quant_ste,
+      quantizer=(uniform_dynamic,
                  parametric_d, parametric_d_xmax)
   )
   def test_equality_native_dtypes(
@@ -188,7 +189,7 @@ class QuantOpsTest(parameterized.TestCase):
   @parameterized.product(
       signed_uniform_max_scale_quant_ste_unique_data(
       ) + signed_uniform_max_scale_quant_ste_unique_data_ext(),
-      quantizer=(signed_uniform_max_scale_quant_ste,
+      quantizer=(uniform_dynamic,
                  parametric_d, parametric_d_xmax)
   )
   def test_unique_values(

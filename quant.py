@@ -3,7 +3,7 @@ import numpy as np
 import jax.numpy as jnp
 from flax import linen as nn
 
-from typing import Any, Iterable
+from typing import Any, Iterable, Callable
 
 
 Array = Any
@@ -17,36 +17,6 @@ def get_noise(x: Array, percentage: float, rng: PRNGKey) -> Array:
       * percentage
       * jax.random.uniform(rng, x.shape, minval=-1, maxval=1.0)
   )
-
-
-class signed_uniform_max_scale_quant_ste(nn.Module):
-  bits: int = 8
-
-  @nn.compact
-  def __call__(self, x: Array, sign: bool = True) -> Array:
-    if type(self.bits) == int:
-      assert (
-          self.bits > 1
-      ), "Bit widths below 2 bits are not supported but got bits: "\
-          + str(self.bits)
-
-    if sign:
-      scale = jnp.max(jnp.abs(x)) + jnp.finfo(x.dtype).eps
-      int_range = 2 ** (self.bits - 1) - 1
-    else:
-      scale = jnp.max(x)
-      int_range = 2 ** (self.bits) - 1
-
-    xq = x / scale  # between -1 and 1
-    xq = xq * int_range  # scale into valid quant range
-    xq = jnp.round(xq)
-    xq = xq / int_range
-    xq = xq * scale
-
-    if sign:
-      jnp.clip(xq, 0, scale)
-
-    return x - jax.lax.stop_gradient(x - xq)
 
 
 @jax.custom_vjp
@@ -65,9 +35,126 @@ def roundpass_bwd(res, g):
 roundpass.defvjp(roundpass_fwd, roundpass_bwd)
 
 
+
+@jax.custom_vjp
+def roundsurrogate(x):
+  return jnp.round(x)
+
+
+def roundsurrogate_fwd(x):
+  return roundsurrogate(x), (x,)
+
+
+def roundsurrogate_bwd(res, g):
+  (x,) = res
+  diff = jnp.round(x) - x
+  g_x = 1/(1 + jnp.abs(diff))**2
+  return (g*g_x,)
+
+
+roundsurrogate.defvjp(roundsurrogate_fwd, roundsurrogate_bwd)
+
+
+
+
+@jax.custom_vjp
+def ceilpass(x):
+  return jnp.ceil(x)
+
+
+def ceilpass_fwd(x):
+  return ceilpass(x), (None,)
+
+
+def ceilpass_bwd(res, g):
+  return (g,)
+
+
+ceilpass.defvjp(ceilpass_fwd, ceilpass_bwd)
+
+
+def max_init(x):
+  return jnp.max(jnp.abs(x))
+
+def double_mean_init(x):
+  return 2 * jnp.mean(jnp.abs(x))
+
+def gaussian_init(x):
+  mu = jnp.mean(x)
+  sigma = jnp.std(x)
+  return jnp.max(jnp.abs(mu - 3*sigma), jnp.abs(mu + 3*sigma)  )
+
+class uniform_dynamic(nn.Module):
+  bits: int = 8
+  round_fn: Callable = roundpass
+  init_fn: Callable = max_init
+
+  @nn.compact
+  def __call__(self, x: Array, sign: bool = True) -> Array:
+    if type(self.bits) == int:
+      assert (
+          self.bits > 1
+      ), "Bit widths below 2 bits are not supported but got bits: "\
+          + str(self.bits)
+
+    if sign:
+      scale = jax.lax.stop_gradient(jnp.max(jnp.abs(x)) + jnp.finfo(x.dtype).eps)
+      int_range = 2 ** (self.bits - 1) - 1
+    else:
+      scale = jax.lax.stop_gradient(jnp.max(x))
+      int_range = 2 ** (self.bits) - 1
+
+    xq = x / scale  # between -1 and 1
+    xq = xq * int_range  # scale into valid quant range
+    xq = self.round_fn(xq)
+    xq = xq / int_range
+    xq = xq * scale
+
+    if sign:
+      jnp.clip(xq, 0, scale)
+
+    return xq # x - jax.lax.stop_gradient(x - xq)
+
+
+
+class uniform_static(nn.Module):
+  bits: int = 8
+  round_fn: Callable = roundpass
+  init_fn: Callable = max_init
+
+  @nn.compact
+  def __call__(self, x: Array, sign: bool = True) -> Array:
+    if type(self.bits) == int:
+      assert (
+          self.bits > 1
+      ), "Bit widths below 2 bits are not supported but got bits: "\
+          + str(self.bits)
+
+    if sign:
+      num_levels = 2 ** (self.bits - 1) - 1
+    else:
+      num_levels = 2 ** (self.bits) - 1
+
+
+    xmax = self.variable('quant_params', 'dynamic_range', jnp.ones, (1,))
+    if self.is_mutable_collection('quant_params'):
+      xmax.value = self.init_fn(x) 
+
+    if sign:
+      xmin = -xmax
+    else:
+      xmin = 0.
+
+    scale = xmax/num_levels
+    return self.round_fn(jnp.clip(x, xmin, xmax)/scale) * scale
+
+
+
 class parametric_d(nn.Module):
   bits: int = 8
   act: bool = False
+  round_fn: Callable = roundpass
+  init_fn: Callable = double_mean_init
 
   # parametric homogenouse quantization
   # Based on LEARNED STEP SIZE QUANTIZATION
@@ -95,7 +182,7 @@ class parametric_d(nn.Module):
     step_size = self.variable('quant_params', 'step_size', jnp.ones, (1,))
     if self.is_mutable_collection('quant_params'):
       step_size.value = jnp.ones((1,))
-      step_size.value *= 2 * jnp.mean(jnp.abs(inputs)) / jnp.sqrt(q_pos)
+      step_size.value *= self.init_fn(inputs) / jnp.sqrt(q_pos)
 
     gradScaleFactor = 1 / jnp.sqrt(q_pos * np.prod(n_wf) + 1e-6)
 
@@ -114,7 +201,7 @@ class parametric_d(nn.Module):
     s = gradscale(step_size.value, gradScaleFactor)
     v = v / s
     v = jnp.clip(v, q_neg, q_pos)
-    vbar = roundpass(v)
+    vbar = self.round_fn(v)
     return vbar * s
 
 
@@ -130,22 +217,6 @@ class parametric_d(nn.Module):
 #   pass
 
 
-@jax.custom_vjp
-def ceilpass(x):
-  return jnp.ceil(x)
-
-
-def ceilpass_fwd(x):
-  return ceilpass(x), (None,)
-
-
-def ceilpass_bwd(res, g):
-  return (g,)
-
-
-ceilpass.defvjp(ceilpass_fwd, ceilpass_bwd)
-
-
 class parametric_d_xmax(nn.Module):
   bits: int = 8  # here its just init bits
   act: bool = False
@@ -153,6 +224,8 @@ class parametric_d_xmax(nn.Module):
   xmax_max: float = 100
   d_min: float = 2**-8
   d_max: float = 2**+8
+  round_fn: Callable = roundpass
+  init_fn: Callable = max_init
 
   # Parametric heterogenous quantization.
   # Based on MIXED PRECISION DNNS.
@@ -182,8 +255,10 @@ class parametric_d_xmax(nn.Module):
     act_mb = self.variable('aux', 'act_mb', jnp.ones, (1,))
     weight_mb = self.variable('aux', 'weight_mb', jnp.ones, (1,))
     if self.is_mutable_collection('quant_params'):
-      xmax.value = jnp.clip(jnp.max(jnp.abs(inputs)),
+      xmax.value = jnp.clip(self.init_fn(inputs),
                             self.xmax_min, self.xmax_max)
+      # xmax.value = jnp.clip(2 * jnp.mean(jnp.abs(inputs)),
+      #                       self.xmax_min, self.xmax_max)
       d.value = jnp.clip(xmax.value / num_levels, self.d_min, self.d_max)
     # Aux scope to compute network size on the fly.
     if self.is_mutable_collection('aux'):
@@ -220,7 +295,12 @@ class parametric_d_xmax(nn.Module):
 
       mask = jnp.where(jnp.logical_and((x < xmax), (x > xmin)), 1, 0)
 
-      g_d = 1 / d * (quant(x, d, xmax) - x)
+      g_d = 1 / d * (quant(x, d, xmax) - x) 
+
+      if self.round_fn.__name__ == 'roundsurrogate':
+        aux_x = jnp.clip(x, xmin, xmax) / d
+        diff = jnp.round(aux_x) - aux_x 
+        g *= 1/(1 + jnp.abs(diff))**2
 
       if sign:
         g_xmax = jnp.where(x > xmax, 1, 0)
@@ -237,30 +317,3 @@ class parametric_d_xmax(nn.Module):
     xmax = jnp.clip(xmax.value, self.xmax_min, self.xmax_max)
 
     return quant(x, d, xmax)
-
-
-# def differentiable_quant(x: Array, bits: int, sign: bool = True) -> Array:
-#   # differentiable quantization
-#   # Based on Differentiable Soft Quantization
-#   # https://arxiv.org/abs/1908.05033
-#   pass
-
-# # parametric homogenouse differentiable quantization
-
-
-# class parametric_differentiable_d(nn.Module):
-#   sign: bool = True
-
-#   @nn.compact
-#   def __call__(self, inputs: Array,) -> Array:
-#     pass
-
-# # parametric heterogenous differentiable quantization
-
-
-# class parametric_differentiable_d_xmax(nn.Module):
-#   sign: bool = True
-
-#   @nn.compact
-#   def __call__(self, inputs: Array,) -> Array:
-#     pass

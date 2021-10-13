@@ -196,7 +196,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       if (step + 1) % config.log_every_steps == 0:
         train_metrics = common_utils.get_metrics(train_metrics)
         summary = {
-            f'train_{k}': v
+            f'{k}': v
             for k, v in jax.tree_map(lambda x: x.mean(), train_metrics).items()
         }
         summary['steps_per_second'] = config.log_every_steps / (
@@ -217,7 +217,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       eval_metrics = common_utils.get_metrics(eval_metrics)
       summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
       writer_eval.write_scalars(
-          step + 1, {f'eval_{key}': val for key, val in summary.items()})
+          step + 1, {f'{key}': val for key, val in summary.items()})
       writer_eval.flush()
       writer_train.flush()
     if (step + 1) % steps_per_checkpoint == 0 or step + 1 == num_steps:
