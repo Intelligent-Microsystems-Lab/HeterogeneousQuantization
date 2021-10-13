@@ -142,7 +142,7 @@ def signed_uniform_max_scale_quant_ste_unique_data_ext():
 class QuantOpsTest(parameterized.TestCase):
   @parameterized.product(
       signed_uniform_max_scale_quant_ste_equality_data(),
-      quantizer=(uniform_dynamic,
+      quantizer=(uniform_dynamic, uniform_static,
                  parametric_d, parametric_d_xmax)
   )
   def test_equality_native_dtypes(
@@ -189,7 +189,7 @@ class QuantOpsTest(parameterized.TestCase):
   @parameterized.product(
       signed_uniform_max_scale_quant_ste_unique_data(
       ) + signed_uniform_max_scale_quant_ste_unique_data_ext(),
-      quantizer=(uniform_dynamic,
+      quantizer=(uniform_dynamic, uniform_static,
                  parametric_d, parametric_d_xmax)
   )
   def test_unique_values(

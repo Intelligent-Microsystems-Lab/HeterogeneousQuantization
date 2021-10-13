@@ -1,3 +1,4 @@
+from quant import parametric_d, parametric_d_xmax, signed_uniform_max_scale_quant_ste, roundsurrogate
 import sys
 
 import jax
@@ -7,7 +8,6 @@ import matplotlib.pyplot as plt
 
 sys.path.append("..")
 
-from quant import parametric_d, parametric_d_xmax, signed_uniform_max_scale_quant_ste, roundsurrogate
 
 def plot_lines(x, x_list, name_list, color_list, fname):
   font_size = 22
@@ -64,7 +64,8 @@ grad_fn = jax.grad(loss_fn, argnums=0)
 
 g = grad_fn(x_list, params)
 
-plot_lines(x_list, [g], ['Derivative Inputs'], ['blue',], "../../figures/ordinary_gradients.png")
+plot_lines(x_list, [g], ['Derivative Inputs'], ['blue', ],
+           "../../figures/ordinary_gradients.png")
 
 
 # Ordinary visualization -- Surrogate
@@ -86,7 +87,8 @@ grad_fn = jax.grad(loss_fn, argnums=0)
 
 g = grad_fn(x_list, params)
 
-plot_lines(x_list, [g], ['Derivative Inputs'], ['blue',], "../../figures/ordinary_surrogate.png")
+plot_lines(x_list, [g], ['Derivative Inputs'], ['blue', ],
+           "../../figures/ordinary_surrogate.png")
 
 # LSQ visualization
 quant_fn = parametric_d(bits=3)
@@ -122,8 +124,6 @@ plot_lines(x_list, [gs_list, gx_list],
            ['blue', 'green'], "../../figures/lsq_gradients.png")
 
 
-
-
 # LSQ visualization -- Surrogate
 quant_fn = parametric_d(bits=3, round_fn=roundsurrogate)
 
@@ -156,7 +156,6 @@ for i in x_list:
 plot_lines(x_list, [gs_list, gx_list],
            ['Derivative Step Size', 'Derivative Inputs'],
            ['blue', 'green'], "../../figures/lsq_surrogate.png")
-
 
 
 # MixedPrecision DNN visualization

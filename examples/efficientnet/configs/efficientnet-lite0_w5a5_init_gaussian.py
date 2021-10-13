@@ -59,19 +59,19 @@ def get_config():
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
   config.quant.stem.weight = partial(
-      uniform_static, bits=5, init_fn = gaussian_init)
+      uniform_static, bits=5, init_fn=gaussian_init)
   config.quant.stem.act = partial(uniform_static, bits=5, init_fn=max_init)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
   config.quant.mbconv.weight = partial(
-      uniform_static, bits=5, init_fn = gaussian_init)
+      uniform_static, bits=5, init_fn=gaussian_init)
   config.quant.mbconv.act = partial(uniform_static, bits=5, init_fn=max_init)
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
   config.quant.head.weight = partial(
-      uniform_static, bits=5, init_fn = gaussian_init)
+      uniform_static, bits=5, init_fn=gaussian_init)
   config.quant.head.act = partial(uniform_static, bits=5, init_fn=max_init)
 
   # Average quant.
@@ -80,8 +80,9 @@ def get_config():
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
   config.quant.dense.weight = partial(
-      uniform_static, bits=5, init_fn = gaussian_init)
+      uniform_static, bits=5, init_fn=gaussian_init)
   config.quant.dense.act = partial(uniform_static, bits=5, init_fn=max_init)
-  config.quant.dense.bias = partial(uniform_static, bits=5, init_fn = gaussian_init)
+  config.quant.dense.bias = partial(
+      uniform_static, bits=5, init_fn=gaussian_init)
 
   return config

@@ -35,7 +35,6 @@ def roundpass_bwd(res, g):
 roundpass.defvjp(roundpass_fwd, roundpass_bwd)
 
 
-
 @jax.custom_vjp
 def roundsurrogate(x):
   return jnp.round(x)
@@ -48,13 +47,11 @@ def roundsurrogate_fwd(x):
 def roundsurrogate_bwd(res, g):
   (x,) = res
   diff = jnp.round(x) - x
-  g_x = 1/(1 + jnp.abs(diff))**2
-  return (g*g_x,)
+  g_x = 1 / (1 + jnp.abs(diff))**2
+  return (g * g_x,)
 
 
 roundsurrogate.defvjp(roundsurrogate_fwd, roundsurrogate_bwd)
-
-
 
 
 @jax.custom_vjp
@@ -76,13 +73,16 @@ ceilpass.defvjp(ceilpass_fwd, ceilpass_bwd)
 def max_init(x):
   return jnp.max(jnp.abs(x))
 
+
 def double_mean_init(x):
   return 2 * jnp.mean(jnp.abs(x))
+
 
 def gaussian_init(x):
   mu = jnp.mean(x)
   sigma = jnp.std(x)
-  return jnp.max(jnp.abs(mu - 3*sigma), jnp.abs(mu + 3*sigma)  )
+  return jnp.max(jnp.abs(mu - 3 * sigma), jnp.abs(mu + 3 * sigma))
+
 
 class uniform_dynamic(nn.Module):
   bits: int = 8
@@ -98,7 +98,8 @@ class uniform_dynamic(nn.Module):
           + str(self.bits)
 
     if sign:
-      scale = jax.lax.stop_gradient(jnp.max(jnp.abs(x)) + jnp.finfo(x.dtype).eps)
+      scale = jax.lax.stop_gradient(
+          jnp.max(jnp.abs(x)) + jnp.finfo(x.dtype).eps)
       int_range = 2 ** (self.bits - 1) - 1
     else:
       scale = jax.lax.stop_gradient(jnp.max(x))
@@ -113,8 +114,7 @@ class uniform_dynamic(nn.Module):
     if sign:
       jnp.clip(xq, 0, scale)
 
-    return xq # x - jax.lax.stop_gradient(x - xq)
-
+    return xq  # x - jax.lax.stop_gradient(x - xq)
 
 
 class uniform_static(nn.Module):
@@ -135,19 +135,17 @@ class uniform_static(nn.Module):
     else:
       num_levels = 2 ** (self.bits) - 1
 
-
     xmax = self.variable('quant_params', 'dynamic_range', jnp.ones, (1,))
     if self.is_mutable_collection('quant_params'):
-      xmax.value = self.init_fn(x) 
+      xmax.value = self.init_fn(x)
 
     if sign:
-      xmin = -xmax
+      xmin = -xmax.value
     else:
       xmin = 0.
 
-    scale = xmax/num_levels
-    return self.round_fn(jnp.clip(x, xmin, xmax)/scale) * scale
-
+    scale = xmax.value / num_levels
+    return self.round_fn(jnp.clip(x, xmin, xmax.value) / scale) * scale
 
 
 class parametric_d(nn.Module):
@@ -295,12 +293,12 @@ class parametric_d_xmax(nn.Module):
 
       mask = jnp.where(jnp.logical_and((x < xmax), (x > xmin)), 1, 0)
 
-      g_d = 1 / d * (quant(x, d, xmax) - x) 
+      g_d = 1 / d * (quant(x, d, xmax) - x)
 
       if self.round_fn.__name__ == 'roundsurrogate':
         aux_x = jnp.clip(x, xmin, xmax) / d
-        diff = jnp.round(aux_x) - aux_x 
-        g *= 1/(1 + jnp.abs(diff))**2
+        diff = jnp.round(aux_x) - aux_x
+        g *= 1 / (1 + jnp.abs(diff))**2
 
       if sign:
         g_xmax = jnp.where(x > xmax, 1, 0)

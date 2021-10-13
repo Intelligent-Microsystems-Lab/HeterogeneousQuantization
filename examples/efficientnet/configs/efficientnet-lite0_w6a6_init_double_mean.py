@@ -60,28 +60,34 @@ def get_config():
   config.quant.stem = ml_collections.ConfigDict()
   config.quant.stem.weight = partial(
       uniform_static, bits=6, init_fn=double_mean_init)
-  config.quant.stem.act = partial(uniform_static, bits=6, init_fn=double_mean_init)
+  config.quant.stem.act = partial(
+      uniform_static, bits=6, init_fn=double_mean_init)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
   config.quant.mbconv.weight = partial(
       uniform_static, bits=6, init_fn=double_mean_init)
-  config.quant.mbconv.act = partial(uniform_static, bits=6, init_fn=double_mean_init)
+  config.quant.mbconv.act = partial(
+      uniform_static, bits=6, init_fn=double_mean_init)
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
   config.quant.head.weight = partial(
       uniform_static, bits=6, init_fn=double_mean_init)
-  config.quant.head.act = partial(uniform_static, bits=6, init_fn=double_mean_init)
+  config.quant.head.act = partial(
+      uniform_static, bits=6, init_fn=double_mean_init)
 
   # Average quant.
-  config.quant.average = partial(uniform_static, bits=6, init_fn=double_mean_init)
+  config.quant.average = partial(
+      uniform_static, bits=6, init_fn=double_mean_init)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
   config.quant.dense.weight = partial(
       uniform_static, bits=6, init_fn=double_mean_init)
-  config.quant.dense.act = partial(uniform_static, bits=6, init_fn=double_mean_init)
-  config.quant.dense.bias = partial(uniform_static, bits=6, init_fn=double_mean_init)
+  config.quant.dense.act = partial(
+      uniform_static, bits=6, init_fn=double_mean_init)
+  config.quant.dense.bias = partial(
+      uniform_static, bits=6, init_fn=double_mean_init)
 
   return config
