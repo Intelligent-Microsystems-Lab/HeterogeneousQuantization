@@ -81,7 +81,7 @@ def double_mean_init(x):
 def gaussian_init(x):
   mu = jnp.mean(x)
   sigma = jnp.std(x)
-  return jnp.max(jnp.abs(mu - 3 * sigma), jnp.abs(mu + 3 * sigma))
+  return jnp.maximum(jnp.abs(mu - 3 * sigma), jnp.abs(mu + 3 * sigma))
 
 
 class uniform_dynamic(nn.Module):

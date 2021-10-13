@@ -30,7 +30,7 @@ from flax.linen.linear import (
     _conv_dimension_numbers,
 )
 
-from quant import get_noise, signed_uniform_max_scale_quant_ste
+from quant import get_noise, uniform_dynamic
 
 
 PRNGKey = Any
@@ -117,10 +117,10 @@ class ConvolutionalPC(nn.Module):
 
     # Quantization
     if "weight_bits" in cfg:
-      kernel = signed_uniform_max_scale_quant_ste(kernel, cfg["weight_bits"])
+      kernel = uniform_dynamic(kernel, cfg["weight_bits"])
 
     if "act_bits" in cfg:
-      inputs = signed_uniform_max_scale_quant_ste(inputs, cfg["act_bits"])
+      inputs = uniform_dynamic(inputs, cfg["act_bits"])
 
     y = jax.lax.conv_general_dilated(
         inputs,
@@ -162,12 +162,12 @@ class ConvolutionalPC(nn.Module):
 
     # Quantization
     if "weight_bwd_bits" in self.config:
-      kernel = signed_uniform_max_scale_quant_ste(
+      kernel = uniform_dynamic(
           kernel, self.config["weight_bwd_bits"]
       )
 
     if "val_bits" in self.config:
-      val = signed_uniform_max_scale_quant_ste(val, self.config["val_bits"])
+      val = uniform_dynamic(val, self.config["val_bits"])
 
     pred_err = pred - val
     if self.non_linearity is not None:
@@ -183,7 +183,7 @@ class ConvolutionalPC(nn.Module):
           get_noise(err_prev, self.config["err_inpt_noise"], prng)
 
     if "err_inpt_bits" in self.config:
-      err_prev = signed_uniform_max_scale_quant_ste(
+      err_prev = uniform_dynamic(
           err_prev, self.config["err_inpt_bits"]
       )
 
@@ -272,7 +272,7 @@ class ConvolutionalPC(nn.Module):
       val = val + get_noise(val, self.config["act_bwd_noise"], prng)
 
     if "act_bwd_bits" in self.config:
-      val = signed_uniform_max_scale_quant_ste(
+      val = uniform_dynamic(
           val, self.config["act_bwd_bits"])
 
     if self.non_linearity is not None:
@@ -287,7 +287,7 @@ class ConvolutionalPC(nn.Module):
       err = err + get_noise(err, self.config["err_weight_noise"], prng)
 
     if "err_weight_bits" in self.config:
-      err = signed_uniform_max_scale_quant_ste(
+      err = uniform_dynamic(
           err, self.config["err_weight_bits"]
       )
 
@@ -394,11 +394,11 @@ class DensePC(nn.Module):
 
     # Quantization
     if "weight_bits" in self.cfg:
-      kernel = signed_uniform_max_scale_quant_ste(
+      kernel = uniform_dynamic(
           kernel, self.cfg["weight_bits"])
 
     if "act_bits" in self.cfg:
-      inpt = signed_uniform_max_scale_quant_ste(inpt, self.cfg["act_bits"])
+      inpt = uniform_dynamic(inpt, self.cfg["act_bits"])
 
     y = jax.lax.dot_general(
         inpt,
@@ -428,12 +428,12 @@ class DensePC(nn.Module):
 
     # Quantization
     if "weight_bwd_bits" in self.cfg:
-      kernel = signed_uniform_max_scale_quant_ste(
+      kernel = uniform_dynamic(
           kernel, self.cfg["weight_bwd_bits"]
       )
 
     if "val_bits" in self.cfg:
-      val = signed_uniform_max_scale_quant_ste(val, self.cfg["val_bits"])
+      val = uniform_dynamic(val, self.cfg["val_bits"])
 
     pred_err = pred - val
     if self.non_linearity is not None:
@@ -447,7 +447,7 @@ class DensePC(nn.Module):
           get_noise(err_prev, self.cfg["err_inpt_noise"], prng)
 
     if "err_inpt_bits" in self.cfg:
-      err_prev = signed_uniform_max_scale_quant_ste(
+      err_prev = uniform_dynamic(
           err_prev, self.cfg["err_inpt_bits"]
       )
 
@@ -463,7 +463,7 @@ class DensePC(nn.Module):
       val = val + get_noise(val, self.cfg["act_bwd_noise"], prng)
 
     if "act_bwd_bits" in self.cfg:
-      val = signed_uniform_max_scale_quant_ste(val, self.cfg["act_bwd_bits"])
+      val = uniform_dynamic(val, self.cfg["act_bwd_bits"])
 
     if self.non_linearity is not None:
       out = self.get_variable("pc", "out")
@@ -475,7 +475,7 @@ class DensePC(nn.Module):
       err = err + get_noise(err, self.cfg["err_weight_noise"], prng)
 
     if "err_weight_bits" in self.cfg:
-      err = signed_uniform_max_scale_quant_ste(
+      err = uniform_dynamic(
           err, self.cfg["err_weight_bits"]
       )
 
