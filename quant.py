@@ -98,10 +98,10 @@ class uniform_dynamic(nn.Module):
           + str(self.bits)
 
     if sign:
-      scale = init_fn(x)
+      scale = self.init_fn(x)
       int_range = 2 ** (self.bits - 1) - 1
     else:
-      scale = init_fn(x)
+      scale = self.init_fn(x)
       int_range = 2 ** (self.bits) - 1
 
     xq = x / scale  # between -1 and 1
