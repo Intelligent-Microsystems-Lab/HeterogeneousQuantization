@@ -122,8 +122,9 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   model = create_model(
       model_cls=model_cls, num_classes=config.num_classes, config=config)
 
+  # base_learning_rate = config.learning_rate * config.batch_size / 256.
   learning_rate_fn = create_learning_rate_fn(
-      config, steps_per_epoch)  # , base_learning_rate, steps_per_epoch)
+      config, config.learning_rate, steps_per_epoch)
 
   rng, subkey = jax.random.split(rng, 2)
   state = create_train_state(

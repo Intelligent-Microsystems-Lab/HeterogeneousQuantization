@@ -68,20 +68,33 @@ def compute_metrics(logits, labels, num_classes):
 
 
 def create_learning_rate_fn(config: ml_collections.ConfigDict,
+                            base_learning_rate: float,
                             steps_per_epoch: int):
   """Create learning rate schedule."""
 
-  warmup_fn = optax.constant_schedule(0.)
+  # warmup_fn = optax.constant_schedule(0.)
 
-  boundaries_and_scales = {x * steps_per_epoch: y for x,
-                           y in zip(config.lr_boundaries, config.lr_scales)}
-  lr_decay = optax.piecewise_constant_schedule(config.learning_rate,
-                                               boundaries_and_scales)
+  # boundaries_and_scales = {x * steps_per_epoch: y for x,
+  #                          y in zip(config.lr_boundaries, config.lr_scales)}
+  # lr_decay = optax.piecewise_constant_schedule(config.learning_rate,
+  #                                              boundaries_and_scales)
 
+  # schedule_fn = optax.join_schedules(
+  #     schedules=[warmup_fn, lr_decay],
+  #     boundaries=[config.warmup_epochs * steps_per_epoch])
+
+  # return schedule_fn
+
+  warmup_fn = optax.linear_schedule(
+      init_value=0., end_value=base_learning_rate,
+      transition_steps=config.warmup_epochs * steps_per_epoch)
+  cosine_epochs = max(config.num_epochs - config.warmup_epochs, 1)
+  cosine_fn = optax.cosine_decay_schedule(
+      init_value=base_learning_rate,
+      decay_steps=cosine_epochs * steps_per_epoch)
   schedule_fn = optax.join_schedules(
-      schedules=[warmup_fn, lr_decay],
+      schedules=[warmup_fn, cosine_fn],
       boundaries=[config.warmup_epochs * steps_per_epoch])
-
   return schedule_fn
 
 
