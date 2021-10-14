@@ -6,7 +6,7 @@
 
 import ml_collections
 from functools import partial
-from quant import uniform_static, max_init
+from quant import uniform_dynamic, max_init
 
 
 def get_config():
@@ -59,29 +59,29 @@ def get_config():
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
   config.quant.stem.weight = partial(
-      uniform_static, bits=2, init_fn=max_init)
-  config.quant.stem.act = partial(uniform_static, bits=2, init_fn=max_init)
+      uniform_dynamic, bits=2, init_fn=max_init)
+  config.quant.stem.act = partial(uniform_dynamic, bits=2, init_fn=max_init)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
   config.quant.mbconv.weight = partial(
-      uniform_static, bits=2, init_fn=max_init)
-  config.quant.mbconv.act = partial(uniform_static, bits=2, init_fn=max_init)
+      uniform_dynamic, bits=2, init_fn=max_init)
+  config.quant.mbconv.act = partial(uniform_dynamic, bits=2, init_fn=max_init)
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
   config.quant.head.weight = partial(
-      uniform_static, bits=2, init_fn=max_init)
-  config.quant.head.act = partial(uniform_static, bits=2, init_fn=max_init)
+      uniform_dynamic, bits=2, init_fn=max_init)
+  config.quant.head.act = partial(uniform_dynamic, bits=2, init_fn=max_init)
 
   # Average quant.
-  config.quant.average = partial(uniform_static, bits=2, init_fn=max_init)
+  config.quant.average = partial(uniform_dynamic, bits=2, init_fn=max_init)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
   config.quant.dense.weight = partial(
-      uniform_static, bits=2, init_fn=max_init)
-  config.quant.dense.act = partial(uniform_static, bits=2, init_fn=max_init)
-  config.quant.dense.bias = partial(uniform_static, bits=2, init_fn=max_init)
+      uniform_dynamic, bits=2, init_fn=max_init)
+  config.quant.dense.act = partial(uniform_dynamic, bits=2, init_fn=max_init)
+  config.quant.dense.bias = partial(uniform_dynamic, bits=2, init_fn=max_init)
 
   return config

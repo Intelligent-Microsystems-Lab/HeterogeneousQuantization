@@ -6,7 +6,7 @@
 
 import ml_collections
 from functools import partial
-from quant import uniform_dynamic, roundsurrogate
+from quant import uniform_static, roundsurrogate
 
 
 def get_config():
@@ -59,35 +59,35 @@ def get_config():
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
   config.quant.stem.weight = partial(
-      uniform_dynamic, bits=2, round_fn=roundsurrogate)
+      uniform_static, bits=2, round_fn=roundsurrogate)
   config.quant.stem.act = partial(
-      uniform_dynamic, bits=2, round_fn=roundsurrogate)
+      uniform_static, bits=2, round_fn=roundsurrogate)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
   config.quant.mbconv.weight = partial(
-      uniform_dynamic, bits=2, round_fn=roundsurrogate)
+      uniform_static, bits=2, round_fn=roundsurrogate)
   config.quant.mbconv.act = partial(
-      uniform_dynamic, bits=2, round_fn=roundsurrogate)
+      uniform_static, bits=2, round_fn=roundsurrogate)
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
   config.quant.head.weight = partial(
-      uniform_dynamic, bits=2, round_fn=roundsurrogate)
+      uniform_static, bits=2, round_fn=roundsurrogate)
   config.quant.head.act = partial(
-      uniform_dynamic, bits=2, round_fn=roundsurrogate)
+      uniform_static, bits=2, round_fn=roundsurrogate)
 
   # Average quant.
   config.quant.average = partial(
-      uniform_dynamic, bits=2, round_fn=roundsurrogate)
+      uniform_static, bits=2, round_fn=roundsurrogate)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
   config.quant.dense.weight = partial(
-      uniform_dynamic, bits=2, round_fn=roundsurrogate)
+      uniform_static, bits=2, round_fn=roundsurrogate)
   config.quant.dense.act = partial(
-      uniform_dynamic, bits=2, round_fn=roundsurrogate)
+      uniform_static, bits=2, round_fn=roundsurrogate)
   config.quant.dense.bias = partial(
-      uniform_dynamic, bits=2, round_fn=roundsurrogate)
+      uniform_static, bits=2, round_fn=roundsurrogate)
 
   return config
