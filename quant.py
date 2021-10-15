@@ -54,6 +54,46 @@ def roundsurrogate_bwd(res, g):
 roundsurrogate.defvjp(roundsurrogate_fwd, roundsurrogate_bwd)
 
 
+# surrogate with psg
+@jax.custom_vjp
+def round_surrogate_psg(x):
+  return jnp.round(x)
+
+
+def round_surrogate_psg_fwd(x):
+  return round_surrogate_psg(x), (x,)
+
+
+def round_surrogate_psg_bwd(res, g):
+  (x,) = res
+  diff = jnp.abs(jnp.round(x) - x) - .5
+  g_x = 1 / (1 + jnp.abs(diff))**2
+
+  return (g * g_x,)
+
+
+round_surrogate_psg.defvjp(round_surrogate_psg_fwd, round_surrogate_psg_bwd)
+
+
+# ewgs https://arxiv.org/pdf/2104.00903.pdf
+@jax.custom_vjp
+def round_ewgs(x):
+  return jnp.round(x)
+
+
+def round_ewgs_fwd(x):
+  return round_ewgs(x), (x,)
+
+
+def round_ewgs_bwd(res, g):
+  (x,) = res
+
+  return (g * (1 + 1e-3 * jnp.sign(g) * (x - jnp.round(x))),)
+
+
+round_ewgs.defvjp(round_ewgs_fwd, round_ewgs_bwd)
+
+
 @jax.custom_vjp
 def ceilpass(x):
   return jnp.ceil(x)

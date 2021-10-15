@@ -131,13 +131,13 @@ enet0_static_init_max_surrogate = {
     'label': 'Static Init Max Surrogate',
     'color': 'c',
     'linestyle': 'dashed',
-    2: '',
-    3: '',
-    4: '',
-    5: '',
-    6: '',
-    7: '',
-    8: '',
+    2: '5J0nHgB6RdK8Fjq7iO9bHQ',
+    3: 'gdnekWMDQBqn7V0AaX8nUA',
+    4: 'iqD4VndTQOC1Uz1pF7SwTw',
+    5: 'eFPyu49dRAq9BaYJ3e15xQ',
+    6: 'K4R29vTvQwy6lfnW1IzEPA',
+    7: 'Z9lQvYF4TJmQ31UQH5OJ6A',
+    8: '6nHX19QbQsKszqNmalGjCg',
 }
 
 enet0_dynamic_init_max_surrogate = {
@@ -228,5 +228,5 @@ if __name__ == '__main__':
   plot_bits_vs_acc([enet0_static_init_max, enet0_static_init_double_mean,
                     enet0_static_init_gaussian], 'figures/static_init.png')
 
-  plot_bits_vs_acc([enet0_dynamic_init_max_surrogate, enet0_static_init_max,
-                    enet0_dynamic_init_max], 'figures/surrogate.png')
+  plot_bits_vs_acc([enet0_dynamic_init_max_surrogate, enet0_static_init_max_surrogate,
+                    enet0_dynamic_init_max, enet0_static_init_max], 'figures/surrogate.png')
