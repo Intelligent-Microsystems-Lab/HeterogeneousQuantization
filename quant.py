@@ -133,15 +133,21 @@ class uniform_dynamic(nn.Module):
   def __call__(self, x: Array, sign: bool = True) -> Array:
     if type(self.bits) == int:
       assert (
-          self.bits > 1
-      ), "Bit widths below 2 bits are not supported but got bits: "\
+          self.bits > 0
+      ), "Bit widths below 1 bits are not supported but got bits: "\
           + str(self.bits)
 
+    scale = self.init_fn(x)
+
+    if self.bits == 1:
+      # binary quant
+      xq = (x / scale)*.5+.5  # between 0 and 1
+      xq = self.round_fn(xq)
+      return (xq - .5) * scale / .5
+
     if sign:
-      scale = self.init_fn(x)
       int_range = 2 ** (self.bits - 1) - 1
     else:
-      scale = self.init_fn(x)
       int_range = 2 ** (self.bits) - 1
 
     xq = x / scale  # between -1 and 1

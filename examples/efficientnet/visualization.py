@@ -154,6 +154,60 @@ enet0_dynamic_init_max_surrogate = {
 }
 
 
+
+# Cosine Double Mean Dynamic
+
+
+enet0_dynamic_init_double_cos = {
+    'label': 'Base',
+    'color': 'b',
+    2: 'KlrLYaGKSLqOQhYQcJQdyg',
+    3: 'GHg5TYWXSDWBQnaTXh5yZw',
+    4: 'meOvRddLRVmVLRTNxK6VMA',
+    5: 'S7Add0bUR1yW5daWU4BQuQ',
+    6: 'HK1dXQyrQOiMEuJt0IbR4A',
+    7: 'r0rUmKvBSXGSduayO0p2tw',
+    8: 'yjztXeepRjS01h7MBLhXNg',
+}
+
+
+enet0_dynamic_init_double_cos_sur = {
+    'label': 'Surrogate',
+    'color': 'm',
+    2: 'WfgRIKlcQSGyBNnAY4k6ow',
+    3: 'z4LowapiQje4SXSmMPXJ5g',
+    4: 'KfnEL9xnRrKYMhg5gQ4aNQ',
+    5: 'QLBxcA2lQPWSJrEVqeeVSw',
+    6: '6w5HwOXlT42DPtmOeQEwEA',
+    7: 'mK4JHaK7QhyRR8vbI81azw',
+    8: '1uwvSE5UQXOOUbsDXi7m2Q',
+}
+
+enet0_dynamic_init_double_cos_psg = {
+    'label': 'Fake PSQ',
+    'color': 'g',
+    2: '6LzRQpniQ2Gaj8vJnHbfJA',
+    3: 'LmSvzYLKTmquk1YurDeljw',
+    4: 'azSo4fKZQA2MHWDpsK3Z8w',
+    5: 'lhmcp47kR6GHrwm6oRFoaw',
+    6: 'K40IdAk2REGnsVAkzY3JrQ',
+    7: 'GeZhDnZoSAi0ZdovhrL5IA',
+    8: 'yM6pybEsQse6xLPz8Zd1hg',
+}
+
+enet0_dynamic_init_double_cos_ewgs = {
+    'label': 'Static EWGS',
+    'color': 'r',
+    2: 'hZrloyqPTJKg6Y1xDhVBfQ',
+    3: 'psYA2BOFQ2mx17Zzwww28g',
+    4: 'Z1BoDnvKRMKpzbyDHeoxrA',
+    5: '5v62erxOQ5qAvkVyyw8Eig',
+    6: 'cg3B817URDidCj42IVXEmg',
+    7: '8H0Zx9r7QqG9FRFAp31HyQ',
+    8: 'DpHROXlLS8agaADI4xl8xw',
+}
+
+
 def get_best_eval(experiment_id):
   experiment = tb.data.experimental.ExperimentFromDev(experiment_id)
   df = experiment.get_scalars()
@@ -222,11 +276,15 @@ if __name__ == '__main__':
       "This notebook requires TensorBoard 2.3 or later."
   print("TensorBoard version: ", tb.__version__)
 
-  plot_bits_vs_acc([enet0_dynamic_init_max, enet0_dynamic_init_double_mean,
-                    enet0_dynamic_init_gaussian], 'figures/dynamic_init.png')
+  # plot_bits_vs_acc([enet0_dynamic_init_max, enet0_dynamic_init_double_mean,
+  #                   enet0_dynamic_init_gaussian], 'figures/dynamic_init.png')
 
-  plot_bits_vs_acc([enet0_static_init_max, enet0_static_init_double_mean,
-                    enet0_static_init_gaussian], 'figures/static_init.png')
+  # plot_bits_vs_acc([enet0_static_init_max, enet0_static_init_double_mean,
+  #                   enet0_static_init_gaussian], 'figures/static_init.png')
 
-  plot_bits_vs_acc([enet0_dynamic_init_max_surrogate, enet0_static_init_max_surrogate,
-                    enet0_dynamic_init_max, enet0_static_init_max], 'figures/surrogate.png')
+  # plot_bits_vs_acc([enet0_dynamic_init_max_surrogate, enet0_static_init_max_surrogate,
+  #                   enet0_dynamic_init_max, enet0_static_init_max], 'figures/surrogate.png')
+
+
+  plot_bits_vs_acc([enet0_dynamic_init_double_cos, enet0_dynamic_init_double_cos_sur,
+                    enet0_dynamic_init_double_cos_psg, enet0_dynamic_init_double_cos_ewgs], 'figures/psg_ewgs.png')
