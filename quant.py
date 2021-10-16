@@ -141,7 +141,7 @@ class uniform_dynamic(nn.Module):
 
     if self.bits == 1:
       # binary quant
-      xq = (x / scale)*.5+.5  # between 0 and 1
+      xq = (x / scale) * .5 + .5  # between 0 and 1
       xq = self.round_fn(xq)
       return (xq - .5) * scale / .5
 
