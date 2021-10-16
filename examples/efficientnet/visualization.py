@@ -154,7 +154,6 @@ enet0_dynamic_init_max_surrogate = {
 }
 
 
-
 # Cosine Double Mean Dynamic
 
 
@@ -282,9 +281,12 @@ if __name__ == '__main__':
   # plot_bits_vs_acc([enet0_static_init_max, enet0_static_init_double_mean,
   #                   enet0_static_init_gaussian], 'figures/static_init.png')
 
-  # plot_bits_vs_acc([enet0_dynamic_init_max_surrogate, enet0_static_init_max_surrogate,
-  #                   enet0_dynamic_init_max, enet0_static_init_max], 'figures/surrogate.png')
+  # plot_bits_vs_acc([enet0_dynamic_init_max_surrogate,
+  # enet0_static_init_max_surrogate, enet0_dynamic_init_max,
+  # enet0_static_init_max], 'figures/surrogate.png')
 
-
-  plot_bits_vs_acc([enet0_dynamic_init_double_cos, enet0_dynamic_init_double_cos_sur,
-                    enet0_dynamic_init_double_cos_psg, enet0_dynamic_init_double_cos_ewgs], 'figures/psg_ewgs.png')
+  plot_bits_vs_acc([enet0_dynamic_init_double_cos,
+                    enet0_dynamic_init_double_cos_sur,
+                    enet0_dynamic_init_double_cos_psg,
+                    enet0_dynamic_init_double_cos_ewgs],
+                   'figures/psg_ewgs.png')
