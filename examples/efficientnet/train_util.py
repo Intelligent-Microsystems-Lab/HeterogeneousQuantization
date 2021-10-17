@@ -98,11 +98,43 @@ def create_learning_rate_fn(config: ml_collections.ConfigDict,
   return schedule_fn
 
 
+def trace(model, params, grads, device, maxIter=50, tol=1e-3):
+  """
+  Trace 
+  compute the trace of hessian using Hutchinson's method
+  maxIter: maximum iterations used to compute trace
+  tol: the relative tolerance
+  """
+
+  trace_vhv = []
+  trace = 0.
+
+  for i in range(maxIter):
+    model.zero_grad()
+    v = [
+        torch.randint_like(p, high=2, device=device)
+        for p in params
+    ]
+    # generate Rademacher random variables
+    for v_i in v:
+        v_i[v_i == 0] = -1
+
+    
+    Hv = hessian_vector_product(grads, params, v)
+    trace_vhv.append(group_product(Hv, v).cpu().item())
+    if abs(np.mean(trace_vhv) - trace) / (trace + 1e-6) < tol:
+        return trace_vhv
+    else:
+        trace = np.mean(trace_vhv)
+
+  return trace_vhv
+
+
 def train_step(state, batch, rng, learning_rate_fn, num_classes, weight_decay):
   """Perform a single training step."""
   rng, prng = jax.random.split(rng, 2)
 
-  def loss_fn(params, quant_params):
+  def loss_fn(params, quant_params, batch):
     """loss function used for training."""
     logits, new_model_state = state.apply_fn(
         {'params': params, 'quant_params': quant_params,
@@ -122,9 +154,18 @@ def train_step(state, batch, rng, learning_rate_fn, num_classes, weight_decay):
   lr = learning_rate_fn(step)
 
   grad_fn = jax.value_and_grad(loss_fn, argnums=[0, 1], has_aux=True)
-  aux, grads = grad_fn(state.params['params'], state.params['quant_params'])
+  aux, grads = grad_fn(state.params['params'], state.params['quant_params'], batch)
   # Re-use same axis_name as in the call to `pmap(...train_step...)` below.
   grads = lax.pmean(grads, axis_name='batch')
+
+  # Update Hessian State - Sensitivty Factor
+  grad_fn = jax.value_and_grad(loss_fn, argnums=[0], has_aux=True)
+  weight_sensitivty = jax.tree_util.tree_map(lambda x: jnp.mean(jnp.trace(x)),  jax.jacfwd(jax.jacrev(grad_fn))(state.params['params'], state.params['quant_params'], batch))
+
+  act_grad_fn = jax.value_and_grad(loss_fn, argnums=[2], has_aux=True)
+  act_sensitivty = jax.tree_util.tree_map(lambda x: jnp.mean(jnp.trace(x)),  jax.jacfwd(jax.jacrev(act_grad_fn))(state.params['params'], state.params['quant_params'], batch))
+
+  import pdb; pdb.set_trace()
 
   new_model_state, logits = aux[1]
   metrics = compute_metrics(logits, batch['label'], num_classes)
@@ -152,6 +193,7 @@ def eval_step(state, batch, num_classes):
 
 class TrainState(train_state.TrainState):
   batch_stats: Any
+  hessian_stats: Any
 
 
 def restore_checkpoint(state, workdir):
