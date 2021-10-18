@@ -11,15 +11,19 @@ def rademacher_tree(rng, x):
   return jax.tree_util.tree_map(random_leaf, x)
 
 
-def hessian_trace(key, f, x, maxIter=50, tol=1e-3):
+def hessian_trace(key, params, grads, maxIter=50, tol=1e-3):
   """
   Trace 
   compute the trace of hessian using Hutchinson's method
   maxIter: maximum iterations used to compute trace
   tol: the relative tolerance
   """
+  v = jax.random.rademacher(rng, shape=params.shape, dtype=params.dtype)
 
+  Hv = hessian_vector_product(grads, params, v)
   tangents = rademacher_tree(key, x)
+
+
   (_, hessian_vector_prod) = jax.jvp(jax.grad(f, has_aux=True), x, tangents)
 
   hessian = jax.tree_util.multi_treemap(lambda x, y: x*y, tangents, hessian_vector_prod)
