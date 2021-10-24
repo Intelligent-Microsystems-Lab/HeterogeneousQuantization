@@ -6,7 +6,7 @@
 import ml_collections
 from functools import partial
 
-from quant import uniform_dynamic
+from quant import uniform_static
 
 
 def get_config():
@@ -21,7 +21,7 @@ def get_config():
   config.dataset = 'imagenet2012'
   config.tfds_data_dir = 'gs://imagenet_clemens/tensorflow_datasets'
 
-  config.learning_rate = 0.0001
+  config.learning_rate = 0.001
   config.warmup_epochs = 2.0
   config.momentum = 0.9
   config.batch_size = 1024
@@ -47,23 +47,23 @@ def get_config():
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
   config.quant.stem.weight = partial(
-      uniform_dynamic, bits=8)
-  config.quant.stem.act = partial(uniform_dynamic, bits=8)
+      uniform_static, bits=8)
+  config.quant.stem.act = partial(uniform_static, bits=8)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
   config.quant.mbconv.weight = partial(
-      uniform_dynamic, bits=8)
-  config.quant.mbconv.act = partial(uniform_dynamic, bits=8)
+      uniform_static, bits=8)
+  config.quant.mbconv.act = partial(uniform_static, bits=8)
 
   # Average quant.
-  config.quant.average = partial(uniform_dynamic, bits=8)
+  config.quant.average = partial(uniform_static, bits=8)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
   config.quant.dense.weight = partial(
-      uniform_dynamic, bits=8)
-  config.quant.dense.act = partial(uniform_dynamic, bits=8)
-  config.quant.dense.bias = partial(uniform_dynamic, bits=8)
+      uniform_static, bits=8)
+  config.quant.dense.act = partial(uniform_static, bits=8)
+  config.quant.dense.bias = partial(uniform_static, bits=8)
 
   return config

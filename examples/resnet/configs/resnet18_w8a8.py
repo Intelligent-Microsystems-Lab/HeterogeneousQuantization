@@ -21,7 +21,7 @@ def get_config():
   config.dataset = 'imagenet2012'
   config.tfds_data_dir = 'gs://imagenet_clemens/tensorflow_datasets'
 
-  config.learning_rate = 0.0001
+  config.learning_rate = 0.001
   config.warmup_epochs = 2.0
   config.momentum = 0.9
   config.batch_size = 1024
