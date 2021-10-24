@@ -126,6 +126,7 @@ def gaussian_init(x):
 
 class uniform_dynamic(nn.Module):
   bits: int = 8
+  act: bool = False
   round_fn: Callable = roundpass
   init_fn: Callable = max_init
 
@@ -137,33 +138,24 @@ class uniform_dynamic(nn.Module):
       ), "Bit widths below 1 bits are not supported but got bits: "\
           + str(self.bits)
 
-    scale = self.init_fn(x)
-
-    if self.bits == 1:
-      # binary quant
-      xq = (x / scale) * .5 + .5  # between 0 and 1
-      xq = self.round_fn(xq)
-      return (xq - .5) * scale / .5
+    xmax = self.init_fn(x)
+    xmax = jnp.where(xmax == 0, 1., xmax)
 
     if sign:
       int_range = 2 ** (self.bits - 1) - 1
+      xmin = -xmax
     else:
       int_range = 2 ** (self.bits) - 1
+      xmin = .0
 
-    xq = x / scale  # between -1 and 1
-    xq = xq * int_range  # scale into valid quant range
-    xq = self.round_fn(xq)
-    xq = xq / int_range
-    xq = xq * scale
+    scale = xmax / int_range
 
-    if sign:
-      jnp.clip(xq, 0, scale)
-
-    return xq
+    return self.round_fn(jnp.clip(x, xmin, xmax) / scale) * scale
 
 
 class uniform_static(nn.Module):
   bits: int = 8
+  act: bool = False
   round_fn: Callable = roundpass
   init_fn: Callable = max_init
 
@@ -248,18 +240,6 @@ class parametric_d(nn.Module):
     return vbar * s
 
 
-# def total_weight_mb(state):
-#   layer_sizes = jax.tree_util.tree_multimap(lambda x, y: jnp.prod(x.shape)
-# * to_bits(
-#       y['step_size'], y['dynamic_range']), state.params['params'],
-# state.params['quant_params'])
-#   return jnp.sum(jax.tree_util.flatten(layer_size)[0])
-
-
-# def total_act_mb(state):
-#   pass
-
-
 class parametric_d_xmax(nn.Module):
   bits: int = 8  # here its just init bits
   act: bool = False
@@ -278,9 +258,6 @@ class parametric_d_xmax(nn.Module):
 
     x = inputs
 
-    #
-    # DISCLAIMER: not using quantize_pow2.
-    #
     def quantize_pow2(v):
       return 2 ** roundpass(jnp.log2(v))
 
@@ -295,26 +272,47 @@ class parametric_d_xmax(nn.Module):
     xmax = self.variable(
         'quant_params', 'dynamic_range', jnp.ones, (1,))
 
-    act_mb = self.variable('aux', 'act_mb', jnp.ones, (1,))
-    weight_mb = self.variable('aux', 'weight_mb', jnp.ones, (1,))
+    act_mb = self.variable('act_size', 'act_mb', jnp.ones, (1,))
+    weight_mb = self.variable('weight_size', 'weight_mb', jnp.ones, (1,))
     if self.is_mutable_collection('quant_params'):
       xmax.value = jnp.clip(self.init_fn(inputs),
                             self.xmax_min, self.xmax_max)
-      # xmax.value = jnp.clip(2 * jnp.mean(jnp.abs(inputs)),
-      #                       self.xmax_min, self.xmax_max)
+      xmax.value = jnp.where(xmax.value == 0, 1., xmax.value)
       d.value = jnp.clip(xmax.value / num_levels, self.d_min, self.d_max)
+
+    # Ensure that stepsize is in specified range (and a power of two).
+    d = jnp.clip(d.value, self.d_min, self.d_max)
+    # Ensure that dynamic range is in specified range.
+    xmax = jnp.clip(xmax.value, self.xmax_min, self.xmax_max)
+
+    # Ensure xmax and d do not exceed each other
+    d = jnp.where(d > xmax, xmax, d)
+    xmax = jnp.where(xmax < d, d, xmax)
+
     # Aux scope to compute network size on the fly.
-    if self.is_mutable_collection('aux'):
+    if self.is_mutable_collection('act_size'):
       if self.act:
         n_wf = inputs.shape[1:]
-        act_mb.value = np.prod(
-            n_wf) * (ceilpass(jnp.log2(xmax.value / d.value + 1)) + 1) / 8000
-        weight_mb = 0.
+        if sign:
+          act_mb.value = np.prod(
+              n_wf) * (ceilpass(jnp.log2((xmax / d) + 1)) + 1) / 8_000_000
+        else:
+          act_mb.value = np.prod(
+              n_wf) * (ceilpass(jnp.log2((xmax / d) + 1))) / 8_000_000
+      else:
+        act_mb.value = 0.
+
+    if self.is_mutable_collection('weight_size'):
+      if self.act:
+        weight_mb.value = 0.
       else:
         n_wf = inputs.shape
-        weight_mb.value = np.prod(
-            n_wf) * (ceilpass(jnp.log2(xmax.value / d.value + 1)) + 1) / 8000
-        act_mb = 0.
+        if sign:
+          weight_mb.value = np.prod(
+              n_wf) * (ceilpass(jnp.log2((xmax / d) + 1)) + 1) / 8_000_000
+        else:
+          weight_mb.value = np.prod(
+              n_wf) * (ceilpass(jnp.log2((xmax / d) + 1))) / 8_000_000
 
     @jax.custom_vjp
     def quant(x, d, xmax):
@@ -338,12 +336,7 @@ class parametric_d_xmax(nn.Module):
 
       mask = jnp.where(jnp.logical_and((x < xmax), (x > xmin)), 1, 0)
 
-      g_d = 1 / d * (quant(x, d, xmax) - x)
-
-      if self.round_fn.__name__ == 'roundsurrogate':
-        aux_x = jnp.clip(x, xmin, xmax) / d
-        diff = jnp.round(aux_x) - aux_x
-        g *= 1 / (1 + jnp.abs(diff))**2
+      g_d = (1 / d) * (quant(x, d, xmax) - x)
 
       if sign:
         g_xmax = jnp.where(x > xmax, 1, 0)
@@ -354,9 +347,4 @@ class parametric_d_xmax(nn.Module):
       return g * mask, jnp.sum(g * g_d * mask), jnp.sum(g * g_xmax)
     quant.defvjp(quant_fwd, quant_bwd)
 
-    # Ensure that stepsize is in specified range and a power of two.
-    d = jnp.clip(d.value, self.d_min, self.d_max)
-    # Ensure that dynamic range is in specified range.
-    xmax = jnp.clip(xmax.value, self.xmax_min, self.xmax_max)
-
-    return quant(x, d, xmax)
+    return quant(x, quantize_pow2(d), xmax)

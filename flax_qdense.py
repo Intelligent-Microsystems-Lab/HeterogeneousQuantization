@@ -117,9 +117,6 @@ class QuantDense(Module):
       ) = res
       g_inpt = g_weight = g
 
-      
-      
-
       # Noise
       if "weight_bwd_noise" in self.config:
         rng, prng = jax.random.split(rng, 2)
@@ -157,15 +154,6 @@ class QuantDense(Module):
       g_inpt_fwd = jnp.dot(g_inpt, jnp.transpose(kernel))
 
       g_kernel_fwd = jnp.dot(jnp.transpose(inpt), g_weight)
-
-      import pdb; pdb.set_trace()
-
-      # forward-over-reverse
-      def hvp(f, primals, tangents):
-        return jvp(grad(f), primals, tangents)[1]
-      
-      jacfwd(jacrev(jnp.dot))(inpt, kernel)
-      jax.jvp(jax.grad(jnp.dot), (inpt, kernel), (g_inpt_fwd, g_kernel_fwd))
 
       return (g_inpt_fwd, g_kernel_fwd, None, None, None)
 

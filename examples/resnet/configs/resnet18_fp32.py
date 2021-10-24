@@ -17,7 +17,7 @@ def get_config():
   config.model = 'ResNet18'
   # `name` argument of tensorflow_datasets.builder()
   config.dataset = 'imagenet2012'
-  config.tfds_data_dir = None  # 'gs://imagenet_clemens/tensorflow_datasets'
+  config.tfds_data_dir = 'gs://imagenet_clemens/tensorflow_datasets'
 
   config.learning_rate = 0.1
   config.warmup_epochs = 5.0
@@ -37,6 +37,8 @@ def get_config():
   # num_epochs using the entire dataset. Similarly for steps_per_eval.
   config.num_train_steps = -1
   config.steps_per_eval = -1
+
+  config.quant_target = ml_collections.ConfigDict()
 
   config.quant = ml_collections.ConfigDict()
 

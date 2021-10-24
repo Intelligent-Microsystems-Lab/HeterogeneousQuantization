@@ -25,6 +25,7 @@ import ml_collections
 
 import optax
 
+
 def create_model(*, model_cls, num_classes, **kwargs):
   model_dtype = jnp.float32
   return model_cls(num_classes=num_classes, dtype=model_dtype, **kwargs)
@@ -122,10 +123,19 @@ def train_step(state, batch, rng, learning_rate_fn, num_classes, weight_decay):
   lr = learning_rate_fn(step)
 
   grad_fn = jax.value_and_grad(loss_fn, argnums=[0, 3], has_aux=True)
-  aux, grads = grad_fn(state.params['params'], batch['image'], batch['label'], state.params['quant_params'])
+  aux, grads = grad_fn(
+      state.params['params'], batch['image'], batch['label'], state.params['quant_params'])
   # Re-use same axis_name as in the call to `pmap(...train_step...)` below.
   grads = lax.pmean(grads, axis_name='batch')
 
+  hess_weight_fn = functools.partial(
+      loss_fn, quant_params=state.params['params'])
+  hessian_fn = jax.grad(jax.grad(hess_weight_fn, argnums=[
+                        0], has_aux=True), argnums=[0], has_aux=True)
+  hessian_weights = hessian_fn(
+      state.params['params'], state.params['quant_params'], batch)
+  import pdb
+  pdb.set_trace()
 
   new_model_state, logits = aux[1]
   metrics = compute_metrics(logits, batch['label'], num_classes)

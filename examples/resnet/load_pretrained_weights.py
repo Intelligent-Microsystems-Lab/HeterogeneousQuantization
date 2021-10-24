@@ -11,6 +11,8 @@ from typing import Any
 
 class TrainState(train_state.TrainState):
   batch_stats: Any
+  weight_size: Any
+  act_size: Any
 
 
 def load_pretrained_weights(state, location):
@@ -33,4 +35,6 @@ def load_pretrained_weights(state, location):
       params=general_params,
       tx=state.tx,
       batch_stats=freeze(batch_stats),
+      weight_size=state.weight_size,
+      act_size=state.act_size,
   )

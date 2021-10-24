@@ -38,11 +38,18 @@ def initialized(key, image_size, model):
   def init(*args):
     return model.init(*args, train=False)
   variables = init({'params': key}, jnp.ones(input_shape, model.dtype))
-  if 'quant_params' in variables:
-    return variables['params'], variables['quant_params'],\
-        variables['batch_stats']
-  else:
-    return variables['params'], {}, variables['batch_stats']
+
+  variables = unfreeze(variables)
+  if 'quant_params' not in variables:
+    variables['quant_params'] = {}
+  if 'weight_size' not in variables:
+    variables['weight_size'] = {}
+  if 'act_size' not in variables:
+    variables['act_size'] = {}
+  variables = freeze(variables)
+
+  return variables['params'], variables['quant_params'],\
+      variables['batch_stats'], variables['weight_size'], variables['act_size']
 
 
 def cross_entropy_loss(logits, labels):
@@ -51,13 +58,24 @@ def cross_entropy_loss(logits, labels):
   return jnp.mean(xentropy)
 
 
-def compute_metrics(logits, labels):
+def compute_metrics(logits, labels, state):
   loss = cross_entropy_loss(logits, labels)
   accuracy = jnp.mean(jnp.argmax(logits, -1) == labels)
   metrics = {
       'loss': loss,
       'accuracy': accuracy,
   }
+  if 'weight_size' in state:
+    if state['weight_size'] != {}:
+      metrics['weight_size'] = jnp.sum(
+          jnp.array(jax.tree_util.tree_flatten(state['weight_size'])[0]))
+  if 'act_size' in state:
+    if state['act_size'] != {}:
+      metrics['act_size_sum'] = jnp.sum(
+          jnp.array(jax.tree_util.tree_flatten(state['act_size'])[0]))
+      metrics['act_size_max'] = jnp.max(
+          jnp.array(jax.tree_util.tree_flatten(state['act_size'])[0]))
+
   metrics = lax.pmean(metrics, axis_name='batch')
   return metrics
 
@@ -80,21 +98,46 @@ def create_learning_rate_fn(
   return schedule_fn
 
 
-def train_step(state, batch, learning_rate_fn, weight_decay):
+def train_step(state, batch, learning_rate_fn, weight_decay, quant_target):
   """Perform a single training step."""
   def loss_fn(params, quant_params):
     """loss function used for training."""
     logits, new_model_state = state.apply_fn(
         {'params': params, 'quant_params': quant_params,
-         'batch_stats': state.batch_stats},
-        batch['image'], mutable=['batch_stats'])
+         'batch_stats': state.batch_stats, 'weight_size': state.weight_size,
+         'act_size': state.act_size},
+        batch['image'], mutable=['batch_stats', 'weight_size', 'act_size'])
     loss = cross_entropy_loss(logits, batch['label'])
     weight_penalty_params = jax.tree_leaves(params)
     weight_l2 = sum([jnp.sum(x ** 2)
                      for x in weight_penalty_params
                      if x.ndim > 1])
     weight_penalty = weight_decay * 0.5 * weight_l2
-    loss = loss + weight_penalty
+
+    # size penalty
+    size_penalty = 0.
+    if hasattr(quant_target, 'weight_mb'):
+      size_penalty += quant_target.weight_penalty * jax.nn.relu(jnp.sum(
+          jnp.array(jax.tree_util.tree_flatten(new_model_state['weight_size']
+                                               )[0])) - quant_target.weight_mb
+      ) ** 2
+    if hasattr(quant_target, 'act_size'):
+      if quant_target.act_mode == 'sum':
+        size_penalty += quant_target.act_penalty * jax.nn.relu(jnp.sum(
+            jnp.array(jax.tree_util.tree_flatten(new_model_state['act_size']
+                                                 )[0])) - quant_target.act_mb
+        ) ** 2
+      elif quant_target.act_mode == 'max':
+        size_penalty += quant_target.act_penalty * jax.nn.relu(jnp.max(
+            jnp.array(jax.tree_util.tree_flatten(new_model_state['act_size']
+                                                 )[0])) - quant_target.act_mb
+        ) ** 2
+      else:
+        raise Exception(
+            'Unrecongized quant act mode, either sum or max but got: '
+            + quant_target.act_mode)
+
+    loss = loss + weight_penalty + size_penalty
     return loss, (new_model_state, logits)
 
   step = state.step
@@ -106,12 +149,14 @@ def train_step(state, batch, learning_rate_fn, weight_decay):
   grads = lax.pmean(grads, axis_name='batch')
 
   new_model_state, logits = aux[1]
-  metrics = compute_metrics(logits, batch['label'])
+  metrics = compute_metrics(logits, batch['label'], new_model_state)
   metrics['learning_rate'] = lr
 
   new_state = state.apply_gradients(
       grads={'params': grads[0], 'quant_params': grads[1]},
-      batch_stats=new_model_state['batch_stats'])
+      batch_stats=new_model_state['batch_stats'],
+      weight_size=new_model_state['weight_size'],
+      act_size=new_model_state['act_size'])
 
   return new_state, metrics
 
@@ -119,13 +164,14 @@ def train_step(state, batch, learning_rate_fn, weight_decay):
 def eval_step(state, batch, num_classes=NUM_CLASSES):
   variables = {'params': state.params['params'],
                'quant_params': state.params['quant_params'],
-               'batch_stats': state.batch_stats}
-  logits = state.apply_fn(
+               'batch_stats': state.batch_stats,
+               'weight_size': state.weight_size, 'act_size': state.act_size, }
+  logits, new_state = state.apply_fn(
       variables,
       batch['image'],
       train=False,
-      mutable=False)
-  return compute_metrics(logits, batch['label'])
+      mutable=['weight_size', 'act_size'])
+  return compute_metrics(logits, batch['label'], new_state)
 
 
 def prepare_tf_data(xs):
@@ -155,6 +201,8 @@ def create_input_iter(dataset_builder, batch_size, image_size, dtype, train,
 
 class TrainState(train_state.TrainState):
   batch_stats: Any
+  weight_size: Any
+  act_size: Any
 
 
 def restore_checkpoint(state, workdir):
@@ -185,7 +233,8 @@ def create_train_state(rng, config: ml_collections.ConfigDict,
                        model, image_size, learning_rate_fn):
   """Create initial training state."""
 
-  params, quant_params, batch_stats = initialized(rng, image_size, model)
+  params, quant_params, batch_stats, weight_size, act_size = initialized(
+      rng, image_size, model)
   tx = optax.sgd(
       learning_rate=learning_rate_fn,
       momentum=config.momentum,
@@ -200,5 +249,7 @@ def create_train_state(rng, config: ml_collections.ConfigDict,
       params={'params': params, 'quant_params': quant_params},
       tx=tx,
       batch_stats=batch_stats,
+      weight_size=weight_size,
+      act_size=act_size,
   )
   return state

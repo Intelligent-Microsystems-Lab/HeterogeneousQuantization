@@ -207,6 +207,84 @@ enet0_dynamic_init_double_cos_ewgs = {
 }
 
 
+# Competitor Performance.
+
+pact_resnet18 = {
+    # https://arxiv.org/pdf/1805.06085.pdf
+    'eval_err': [1-0.644, 1-0.681, 1-0.692, 1-0.698],
+    'size_mb': np.array([2, 3, 4, 5]) * 11679912 / 8_000_000,
+    'name': 'PACT ResNet18',
+}
+
+pact_resnet50 = {
+    # https://arxiv.org/pdf/1805.06085.pdf
+    'eval_err': [1-0.722, 1-0.753, 1-0.765, 1-0.767],
+    'size_mb': np.array([2, 3, 4, 5]) * 25636712 / 8_000_000,
+    'name': 'PACT ResNet18',
+}
+
+
+pact_mobilev2 = {
+    # https://arxiv.org/pdf/1811.08886.pdf
+}
+
+dsq_resnet18 = {
+    # https://arxiv.org/abs/1908.05033
+}
+
+lsq_resnet18 = {
+    # https://arxiv.org/abs/1902.08153
+}
+
+lsqp_resnet18 = {
+    # https://arxiv.org/abs/2004.09576
+}
+
+lsqp_enet0 = {
+    # https://arxiv.org/abs/2004.09576
+}
+
+ewgs_resnet18 = {
+    # https://arxiv.org/abs/2104.00903
+}
+
+ewgs_resnet34 = {
+    # https://arxiv.org/abs/2104.00903
+}
+
+qil_resnet18 = {
+    # https://arxiv.org/abs/1808.05779
+}
+
+qil_resnet34 = {
+    # https://arxiv.org/abs/1808.05779
+}
+
+hawqv2_squeeze = {
+    # https://arxiv.org/abs/1911.03852
+}
+
+hawqv2_inceptionv3 = {
+    # https://arxiv.org/abs/1911.03852
+}
+
+mixed_resnet18 = {
+    # https://arxiv.org/abs/1905.11452
+}
+
+mixed_mobilev2 = {
+    # https://arxiv.org/abs/1905.11452
+}
+
+haq_mobilev2 = {
+    # https://arxiv.org/pdf/1811.08886.pdf
+}
+
+haq_resnet50 = {
+    # https://arxiv.org/pdf/1811.08886.pdf
+}
+
+
 def get_best_eval(experiment_id):
   experiment = tb.data.experimental.ExperimentFromDev(experiment_id)
   df = experiment.get_scalars()
@@ -230,8 +308,49 @@ def plot_line(ax, res_dict):
       y.append(get_best_eval(value))
       x.append(key)
 
+  print(label)
+  print(x)
+  print(y)
   ax.plot(x, y, color=color, marker='x', label=label,
           linestyle=linestyle, ms=20, markeredgewidth=5, linewidth=5)
+
+
+def plot_comparison(name)
+
+
+font_size = 26
+
+fig, ax = plt.subplots(figsize=(13, 9.8))
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+
+ax.xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
+ax.yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
+
+ for axis in ['top', 'bottom', 'left', 'right']:
+    ax.spines[axis].set_linewidth(5)
+
+  for tick in ax.xaxis.get_major_ticks():
+    tick.label1.set_fontweight('bold')
+  for tick in ax.yaxis.get_major_ticks():
+    tick.label1.set_fontweight('bold')
+
+  # Competitors.
+
+  # Our own.
+
+  ax.set_xlabel("Size", fontsize=font_size, fontweight='bold')
+  ax.set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
+  plt.legend(
+      bbox_to_anchor=(0.5, 1.2),
+      loc="upper center",
+      ncol=2,
+      frameon=False,
+      prop={'weight': 'bold', 'size': font_size}
+  )
+  plt.tight_layout()
+  plt.savefig(name)
+  plt.close()
 
 
 def plot_bits_vs_acc(list_of_dicts, name):
@@ -285,8 +404,8 @@ if __name__ == '__main__':
   # enet0_static_init_max_surrogate, enet0_dynamic_init_max,
   # enet0_static_init_max], 'figures/surrogate.png')
 
-  plot_bits_vs_acc([enet0_dynamic_init_double_cos,
-                    enet0_dynamic_init_double_cos_sur,
-                    enet0_dynamic_init_double_cos_psg,
-                    enet0_dynamic_init_double_cos_ewgs],
-                   'figures/psg_ewgs.png')
+  # plot_bits_vs_acc([enet0_dynamic_init_double_cos,
+  #                   #enet0_dynamic_init_double_cos_sur,
+  #                   #enet0_dynamic_init_double_cos_psg,
+  #                   enet0_dynamic_init_double_cos_ewgs],
+  #                  'figures/psg_ewgs.png')

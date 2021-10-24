@@ -21,7 +21,7 @@ def get_config():
   # `name` argument of tensorflow_datasets.builder()
   config.cache = True
   config.dataset = 'imagenet2012'
-  config.tfds_data_dir = None#'gs://imagenet_clemens/tensorflow_datasets'
+  config.tfds_data_dir = 'gs://imagenet_clemens/tensorflow_datasets'
   config.image_size = 224
   config.crop_padding = 32
 

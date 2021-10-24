@@ -150,18 +150,28 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   _, new_state = state.apply_fn({'params': state.params['params'],
                                  'quant_params': state.params['quant_params'],
                                  'batch_stats': state.batch_stats}, init_batch,
-                                mutable=['batch_stats', 'quant_params'],)
+                                mutable=['batch_stats', 'quant_params',
+                                         'weight_size', 'act_size'],)
   state = TrainState.create(apply_fn=state.apply_fn,
                             params={'params': state.params['params'],
                                     'quant_params': new_state['quant_params']},
-                            tx=state.tx, batch_stats=state.batch_stats,)
+                            tx=state.tx, batch_stats=state.batch_stats,
+                            weight_size=state.weight_size,
+                            act_size=state.act_size)
 
   state = jax_utils.replicate(state)
+  # Debug note:
+  # 1. Make above line a comment "state = jax_utils.replicate(state)".
+  # 2. In train_util.py make all pmean commands comments.
+  # 3. Use debug train_step.
+  # 4. Swtich train and eval metrics lines.
+  # 5. Uncomment JIT configs at the top.
 
   p_train_step = jax.pmap(
       functools.partial(train_step,
                         learning_rate_fn=learning_rate_fn,
-                        weight_decay=config.weight_decay),
+                        weight_decay=config.weight_decay,
+                        quant_target=config.quant_target),
       axis_name='batch')
   p_eval_step = jax.pmap(eval_step, axis_name='batch')
 
@@ -169,7 +179,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   # p_train_step = functools.partial(
   #     train_step,
   #     learning_rate_fn=learning_rate_fn,
-  #     weight_decay=config.weight_decay)
+  #     weight_decay=config.weight_decay,
+  #     quant_target=config.quant_target)
   # p_eval_step = functools.partial(eval_step)
 
   train_metrics = []
@@ -195,6 +206,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       train_metrics.append(metrics)
       if (step + 1) % config.log_every_steps == 0:
         train_metrics = common_utils.get_metrics(train_metrics)
+        # # Debug
+        # train_metrics = common_utils.stack_forest(train_metrics)
         summary = {
             f'{k}': v
             for k, v in jax.tree_map(lambda x: x.mean(), train_metrics).items()
@@ -215,6 +228,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         metrics = p_eval_step(state, eval_batch)
         eval_metrics.append(metrics)
       eval_metrics = common_utils.get_metrics(eval_metrics)
+      # # Debug
+      # eval_metrics = common_utils.stack_forest(eval_metrics)
       summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
       writer_eval.write_scalars(
           step + 1, {f'{key}': val for key, val in summary.items()})
