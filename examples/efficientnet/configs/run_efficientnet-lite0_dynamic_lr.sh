@@ -5,6 +5,6 @@ do
   do
     rm -rf ../../../efficientnet-lite0_int${BITS}_lr${LR}
     mkdir ../../../efficientnet-lite0_int${BITS}_lr${LR}
-    python3 train.py --workdir=../../../efficientnet-lite0_int${BITS}_lr${LR} --config=configs/efficientnet-lite0_w8a8_dynamic.py  --config.quant.bits=${BITS} --config.learning_rate=${LR} --config.num_epochs=1
+    python3 train.py --workdir=../../../efficientnet-lite0_int${BITS}_lr${LR} --config=configs/efficientnet-lite0_w8a8_dynamic.py  --config.quant.bits=${BITS} --config.learning_rate=${LR}
   done
 done
