@@ -122,7 +122,8 @@ class EfficientNetTest(parameterized.TestCase):
         apply_fn=model_def.apply, params={
             'params': variables['params'],
             'quant_params': quant_params}, tx=tx,
-        batch_stats=variables['batch_stats'],)
+        batch_stats=variables['batch_stats'],
+        weight_size={}, act_size={})
     state = load_pretrained_weights(state, config.pretrained)
 
     # load inpt
@@ -134,8 +135,8 @@ class EfficientNetTest(parameterized.TestCase):
     rng, prng = jax.random.split(rng, 2)
     _, state = model_def.apply({'params': state.params['params'],
                                 'quant_params': state.params['quant_params'],
-                                'batch_stats': state.batch_stats}, inpt,
-                               mutable=['intermediates', 'batch_stats'],
+                                'batch_stats': state.batch_stats, 'weight_size': state.weight_size, 'act_size': state.act_size}, inpt,
+                               mutable=['intermediates', 'batch_stats', 'weight_size', 'act_size'],
                                rng=prng,
                                train=False)
 

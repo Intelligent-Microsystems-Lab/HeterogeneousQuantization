@@ -38,11 +38,9 @@ def get_config():
 
   config.learning_rate = 0.0001
   config.warmup_epochs = 2  # for optimizer to settle in
-  config.lr_boundaries = [16, 32]
-  config.lr_scales = [1 / 10, 1 / 10]
   config.weight_decay = 1e-5
   config.momentum = 0.9
-  config.batch_size = 2048
+  config.batch_size = 1024
 
   config.num_epochs = 50
   config.log_every_steps = 256
