@@ -38,8 +38,6 @@ def get_config():
 
   config.learning_rate = 0.0001
   config.warmup_epochs = 2  # for optimizer to settle in
-  config.lr_boundaries = [16, 32]
-  config.lr_scales = [1 / 10, 1 / 10]
   config.weight_decay = 1e-5
   config.momentum = 0.9
   config.batch_size = 2048
@@ -52,7 +50,11 @@ def get_config():
   config.num_train_steps = -1
   config.steps_per_eval = -1
 
+  config.quant_target = ml_collections.ConfigDict()
+
   config.quant = ml_collections.ConfigDict()
+
+  config.quant.bits = None
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()

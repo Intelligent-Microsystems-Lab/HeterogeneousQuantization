@@ -1,3 +1,9 @@
+from quant import (
+    parametric_d,
+    parametric_d_xmax,
+    uniform_dynamic,
+    roundsurrogate,
+)
 import sys
 
 import jax
@@ -6,12 +12,7 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 
 sys.path.append("..")
-from quant import (
-    parametric_d,
-    parametric_d_xmax,
-    uniform_dynamic,
-    roundsurrogate,
-)
+
 
 def plot_lines(x, x_list, name_list, color_list, fname):
   font_size = 22

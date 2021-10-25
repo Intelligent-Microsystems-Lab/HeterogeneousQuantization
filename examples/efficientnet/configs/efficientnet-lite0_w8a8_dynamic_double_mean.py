@@ -5,6 +5,8 @@
 """Default Hyperparameter configuration."""
 
 import ml_collections
+from functools import partial
+from quant import uniform_dynamic, double_mean_init
 
 
 def get_config():
@@ -14,13 +16,13 @@ def get_config():
   config.seed = 203853699
 
   # As defined in the `models` module.
-  config.model = 'EfficientNetB2'
+  config.model = 'EfficientNetB0'
 
   # `name` argument of tensorflow_datasets.builder()
   config.cache = True
   config.dataset = 'imagenet2012'
   config.tfds_data_dir = 'gs://imagenet_clemens/tensorflow_datasets'
-  config.image_size = 260
+  config.image_size = 224
   config.crop_padding = 32
 
   # Mean and std style for pre-processing.
@@ -34,12 +36,10 @@ def get_config():
   config.num_classes = 1000
 
   # Load pretrained weights.
-  config.pretrained = "../../../pretrained_efficientnet/efficientnet-lite2"
+  config.pretrained = "../../../pretrained_efficientnet/efficientnet-lite0"
 
   config.learning_rate = 0.0001
   config.warmup_epochs = 2  # for optimizer to settle in
-  config.lr_boundaries = [16, 32]
-  config.lr_scales = [1 / 10, 1 / 10]
   config.weight_decay = 1e-5
   config.momentum = 0.9
   config.batch_size = 2048
@@ -56,18 +56,34 @@ def get_config():
 
   config.quant = ml_collections.ConfigDict()
 
-  config.quant.bits = None
+  config.quant.bits = 8
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
+  config.quant.stem.weight = partial(
+      uniform_dynamic, init_fn=double_mean_init)
+  config.quant.stem.act = partial(uniform_dynamic, init_fn=double_mean_init)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
+  config.quant.mbconv.weight = partial(
+      uniform_dynamic, init_fn=double_mean_init)
+  config.quant.mbconv.act = partial(uniform_dynamic, init_fn=double_mean_init)
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
+  config.quant.head.weight = partial(
+      uniform_dynamic, init_fn=double_mean_init)
+  config.quant.head.act = partial(uniform_dynamic, init_fn=double_mean_init)
+
+  # Average quant.
+  config.quant.average = partial(uniform_dynamic, init_fn=double_mean_init)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
+  config.quant.dense.weight = partial(
+      uniform_dynamic, init_fn=double_mean_init)
+  config.quant.dense.act = partial(uniform_dynamic, init_fn=double_mean_init)
+  config.quant.dense.bias = partial(uniform_dynamic, init_fn=double_mean_init)
 
   return config

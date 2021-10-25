@@ -175,6 +175,7 @@ class uniform_static(nn.Module):
     xmax = self.variable('quant_params', 'dynamic_range', jnp.ones, (1,))
     if self.is_mutable_collection('quant_params'):
       xmax.value = self.init_fn(x)
+      xmax.value = jnp.where(xmax.value == 0, 1., xmax.value)
 
     if sign:
       xmin = -xmax.value
@@ -189,7 +190,7 @@ class parametric_d(nn.Module):
   bits: int = 8
   act: bool = False
   round_fn: Callable = roundpass
-  init_fn: Callable = double_mean_init
+  init_fn: Callable = max_init
 
   # parametric homogenouse quantization
   # Based on LEARNED STEP SIZE QUANTIZATION
@@ -347,4 +348,4 @@ class parametric_d_xmax(nn.Module):
       return g * mask, jnp.sum(g * g_d * mask), jnp.sum(g * g_xmax)
     quant.defvjp(quant_fwd, quant_bwd)
 
-    return quant(x, quantize_pow2(d), xmax)
+    return quant(x, d, xmax)  # quantize_pow2

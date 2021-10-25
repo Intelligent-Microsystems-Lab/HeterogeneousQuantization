@@ -80,6 +80,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   Returns:
     Final TrainState.
   """
+  logging.info(config)
   writer_train = metric_writers.create_default_writer(
       logdir=workdir + '/train', just_logging=jax.process_index() != 0)
   writer_eval = metric_writers.create_default_writer(
@@ -144,12 +145,15 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
                                  'quant_params': state.params['quant_params'],
                                  'batch_stats': state.batch_stats}, init_batch,
                                 rng=rng1,
-                                mutable=['batch_stats', 'quant_params'],
+                                mutable=['batch_stats', 'quant_params',
+                                         'weight_size', 'act_size'],
                                 rngs={'dropout': rng2})
   state = TrainState.create(apply_fn=state.apply_fn,
                             params={'params': state.params['params'],
                                     'quant_params': new_state['quant_params']},
-                            tx=state.tx, batch_stats=state.batch_stats,)
+                            tx=state.tx, batch_stats=state.batch_stats,
+                            weight_size=state.weight_size,
+                            act_size=state.act_size)
 
   state = jax_utils.replicate(state)
   # Debug note:
@@ -162,7 +166,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
           train_step,
           learning_rate_fn=learning_rate_fn,
           num_classes=config.num_classes,
-          weight_decay=config.weight_decay),
+          weight_decay=config.weight_decay,
+          quant_target=config.quant_target),
       axis_name='batch')
   p_eval_step = jax.pmap(functools.partial(
       eval_step, num_classes=config.num_classes), axis_name='batch')
@@ -172,7 +177,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   #     train_step,
   #     learning_rate_fn=learning_rate_fn,
   #     num_classes=config.num_classes,
-  #     weight_decay=config.weight_decay)
+  #     weight_decay=config.weight_decay,
+  #     quant_target=config.quant_target)
   # p_eval_step = functools.partial(
   #     eval_step, num_classes=config.num_classes)
 
@@ -247,6 +253,8 @@ def main(argv):
   # it unavailable to JAX.
   tf.config.experimental.set_visible_devices([], 'GPU')
   tf.config.experimental.set_visible_devices([], 'TPU')
+
+  logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
 
   logging.info('JAX process: %d / %d',
                jax.process_index(), jax.process_count())

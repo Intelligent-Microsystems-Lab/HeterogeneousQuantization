@@ -52,7 +52,11 @@ def get_config():
   config.num_train_steps = -1
   config.steps_per_eval = -1
 
+  config.quant_target = ml_collections.ConfigDict()
+
   config.quant = ml_collections.ConfigDict()
+
+  config.quant.bits = None
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()

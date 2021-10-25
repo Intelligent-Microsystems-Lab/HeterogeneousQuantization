@@ -9,9 +9,7 @@ The data is loaded using tensorflow_datasets.
 """
 
 from typing import Any
-import sys
 
-import functools
 from flax.training import checkpoints
 from flax.training import common_utils
 from flax.training import train_state
@@ -39,11 +37,18 @@ def initialized(key, image_size, model):
   def init(*args):
     return model.init(*args, rng=rng, train=False)
   variables = init({'params': key}, jnp.ones(input_shape, model.dtype))
-  if 'quant_params' in variables:
-    return variables['params'], variables['quant_params'],\
-        variables['batch_stats']
-  else:
-    return variables['params'], {}, variables['batch_stats']
+
+  variables = unfreeze(variables)
+  if 'quant_params' not in variables:
+    variables['quant_params'] = {}
+  if 'weight_size' not in variables:
+    variables['weight_size'] = {}
+  if 'act_size' not in variables:
+    variables['act_size'] = {}
+  variables = freeze(variables)
+
+  return variables['params'], variables['quant_params'],\
+      variables['batch_stats'], variables['weight_size'], variables['act_size']
 
 
 def cross_entropy_loss(logits, labels, num_classes):
@@ -57,13 +62,24 @@ def cross_entropy_loss(logits, labels, num_classes):
   return jnp.mean(xentropy)
 
 
-def compute_metrics(logits, labels, num_classes):
+def compute_metrics(logits, labels, num_classes, state):
   loss = cross_entropy_loss(logits, labels, num_classes)
   accuracy = jnp.mean(jnp.argmax(logits, -1) == labels)
   metrics = {
       'loss': loss,
       'accuracy': accuracy,
   }
+  if 'weight_size' in state:
+    if state['weight_size'] != {}:
+      metrics['weight_size'] = jnp.sum(
+          jnp.array(jax.tree_util.tree_flatten(state['weight_size'])[0]))
+  if 'act_size' in state:
+    if state['act_size'] != {}:
+      metrics['act_size_sum'] = jnp.sum(
+          jnp.array(jax.tree_util.tree_flatten(state['act_size'])[0]))
+      metrics['act_size_max'] = jnp.max(
+          jnp.array(jax.tree_util.tree_flatten(state['act_size'])[0]))
+
   metrics = lax.pmean(metrics, axis_name='batch')
   return metrics
 
@@ -72,19 +88,6 @@ def create_learning_rate_fn(config: ml_collections.ConfigDict,
                             base_learning_rate: float,
                             steps_per_epoch: int):
   """Create learning rate schedule."""
-
-  # warmup_fn = optax.constant_schedule(0.)
-
-  # boundaries_and_scales = {x * steps_per_epoch: y for x,
-  #                          y in zip(config.lr_boundaries, config.lr_scales)}
-  # lr_decay = optax.piecewise_constant_schedule(config.learning_rate,
-  #                                              boundaries_and_scales)
-
-  # schedule_fn = optax.join_schedules(
-  #     schedules=[warmup_fn, lr_decay],
-  #     boundaries=[config.warmup_epochs * steps_per_epoch])
-
-  # return schedule_fn
 
   warmup_fn = optax.linear_schedule(
       init_value=0., end_value=base_learning_rate,
@@ -99,51 +102,71 @@ def create_learning_rate_fn(config: ml_collections.ConfigDict,
   return schedule_fn
 
 
-def train_step(state, batch, rng, learning_rate_fn, num_classes, weight_decay):
+def train_step(state, batch, rng, learning_rate_fn, num_classes, weight_decay,
+               quant_target):
   """Perform a single training step."""
   rng, prng = jax.random.split(rng, 2)
 
-  def loss_fn(params, inputs, target, quant_params):
+  def loss_fn(params, quant_params):
     """loss function used for training."""
     logits, new_model_state = state.apply_fn(
         {'params': params, 'quant_params': quant_params,
-         'batch_stats': state.batch_stats},
-        inputs, rng=prng,
-        mutable=['batch_stats'], rngs={'dropout': rng})
-    loss = cross_entropy_loss(logits, target, num_classes)
+         'batch_stats': state.batch_stats, 'weight_size': state.weight_size,
+         'act_size': state.act_size},
+        batch['image'], rng=prng, mutable=['batch_stats', 'weight_size',
+                                           'act_size'], rngs={'dropout': rng})
+    loss = cross_entropy_loss(logits, batch['label'], num_classes)
     weight_penalty_params = jax.tree_leaves(params)
     weight_l2 = sum([jnp.sum(x ** 2)
                      for x in weight_penalty_params
                      if x.ndim > 1])
     weight_penalty = weight_decay * 0.5 * weight_l2
-    loss = loss + weight_penalty
+
+    # size penalty
+    size_penalty = 0.
+    if hasattr(quant_target, 'weight_mb'):
+      size_penalty += quant_target.weight_penalty * jax.nn.relu(jnp.sum(
+          jnp.array(jax.tree_util.tree_flatten(new_model_state['weight_size']
+                                               )[0])) - quant_target.weight_mb
+      ) ** 2
+    if hasattr(quant_target, 'act_size'):
+      if quant_target.act_mode == 'sum':
+        size_penalty += quant_target.act_penalty * jax.nn.relu(jnp.sum(
+            jnp.array(jax.tree_util.tree_flatten(new_model_state['act_size']
+                                                 )[0])) - quant_target.act_mb
+        ) ** 2
+      elif quant_target.act_mode == 'max':
+        size_penalty += quant_target.act_penalty * jax.nn.relu(jnp.max(
+            jnp.array(jax.tree_util.tree_flatten(new_model_state['act_size']
+                                                 )[0])) - quant_target.act_mb
+        ) ** 2
+      else:
+        raise Exception(
+            'Unrecongized quant act mode, either sum or max but got: '
+            + quant_target.act_mode)
+
+    loss = loss + weight_penalty + size_penalty
     return loss, (new_model_state, logits)
 
   step = state.step
   lr = learning_rate_fn(step)
 
-  grad_fn = jax.value_and_grad(loss_fn, argnums=[0, 3], has_aux=True)
+  grad_fn = jax.value_and_grad(loss_fn, argnums=[0, 1], has_aux=True)
   aux, grads = grad_fn(
-      state.params['params'], batch['image'], batch['label'], state.params['quant_params'])
+      state.params['params'], state.params['quant_params'])
   # Re-use same axis_name as in the call to `pmap(...train_step...)` below.
   grads = lax.pmean(grads, axis_name='batch')
 
-  hess_weight_fn = functools.partial(
-      loss_fn, quant_params=state.params['params'])
-  hessian_fn = jax.grad(jax.grad(hess_weight_fn, argnums=[
-                        0], has_aux=True), argnums=[0], has_aux=True)
-  hessian_weights = hessian_fn(
-      state.params['params'], state.params['quant_params'], batch)
-  import pdb
-  pdb.set_trace()
-
   new_model_state, logits = aux[1]
-  metrics = compute_metrics(logits, batch['label'], num_classes)
+  metrics = compute_metrics(
+      logits, batch['label'], num_classes, new_model_state)
   metrics['learning_rate'] = lr
 
   new_state = state.apply_gradients(
       grads={'params': grads[0], 'quant_params': grads[1]},
-      batch_stats=new_model_state['batch_stats'])
+      batch_stats=new_model_state['batch_stats'],
+      weight_size=new_model_state['weight_size'],
+      act_size=new_model_state['act_size'])
 
   return new_state, metrics
 
@@ -151,19 +174,21 @@ def train_step(state, batch, rng, learning_rate_fn, num_classes, weight_decay):
 def eval_step(state, batch, num_classes):
   variables = {'params': state.params['params'],
                'quant_params': state.params['quant_params'],
-               'batch_stats': state.batch_stats}
-  logits = state.apply_fn(
+               'batch_stats': state.batch_stats,
+               'weight_size': state.weight_size, 'act_size': state.act_size, }
+  logits, new_state = state.apply_fn(
       variables,
       batch['image'],
       rng=jax.random.PRNGKey(0),
       train=False,
-      mutable=False)
-  return compute_metrics(logits, batch['label'], num_classes)
+      mutable=['weight_size', 'act_size'])
+  return compute_metrics(logits, batch['label'], num_classes, new_state)
 
 
 class TrainState(train_state.TrainState):
   batch_stats: Any
-  #hessian_stats: Any
+  weight_size: Any
+  act_size: Any
 
 
 def restore_checkpoint(state, workdir):
@@ -194,7 +219,8 @@ def create_train_state(rng, config: ml_collections.ConfigDict,
                        model, image_size, learning_rate_fn):
   """Create initial training state."""
 
-  params, quant_params, batch_stats = initialized(rng, image_size, model)
+  params, quant_params, batch_stats, weight_size, act_size = initialized(
+      rng, image_size, model)
   tx = optax.rmsprop(
       learning_rate=learning_rate_fn,
       decay=0.9,
@@ -205,14 +231,12 @@ def create_train_state(rng, config: ml_collections.ConfigDict,
   quant_params['placeholder'] = 0.
   quant_params = freeze(quant_params)
 
-  # tx = optax.sgd(
-  #     learning_rate=learning_rate_fn,
-  #     momentum=config.momentum,
-  # )
-
   state = TrainState.create(
       apply_fn=model.apply,
       params={'params': params, 'quant_params': quant_params},
       tx=tx,
-      batch_stats=batch_stats,)
+      batch_stats=batch_stats,
+      weight_size=weight_size,
+      act_size=act_size,
+  )
   return state

@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import tensorboard as tb
 from packaging import version
 
+import numpy as np
 
 # Validation Runs.
 
@@ -211,14 +212,14 @@ enet0_dynamic_init_double_cos_ewgs = {
 
 pact_resnet18 = {
     # https://arxiv.org/pdf/1805.06085.pdf
-    'eval_err': [1-0.644, 1-0.681, 1-0.692, 1-0.698],
+    'eval_err': [1 - 0.644, 1 - 0.681, 1 - 0.692, 1 - 0.698],
     'size_mb': np.array([2, 3, 4, 5]) * 11679912 / 8_000_000,
     'name': 'PACT ResNet18',
 }
 
 pact_resnet50 = {
     # https://arxiv.org/pdf/1805.06085.pdf
-    'eval_err': [1-0.722, 1-0.753, 1-0.765, 1-0.767],
+    'eval_err': [1 - 0.722, 1 - 0.753, 1 - 0.765, 1 - 0.767],
     'size_mb': np.array([2, 3, 4, 5]) * 25636712 / 8_000_000,
     'name': 'PACT ResNet18',
 }
@@ -315,42 +316,43 @@ def plot_line(ax, res_dict):
           linestyle=linestyle, ms=20, markeredgewidth=5, linewidth=5)
 
 
-def plot_comparison(name)
+# def plot_comparison(name):
+#   pass
 
 
-font_size = 26
+# font_size = 26
 
-fig, ax = plt.subplots(figsize=(13, 9.8))
-ax.spines["top"].set_visible(False)
-ax.spines["right"].set_visible(False)
+# fig, ax = plt.subplots(figsize=(13, 9.8))
+# ax.spines["top"].set_visible(False)
+# ax.spines["right"].set_visible(False)
 
-ax.xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
-ax.yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
+# ax.xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
+# ax.yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
 
- for axis in ['top', 'bottom', 'left', 'right']:
-    ax.spines[axis].set_linewidth(5)
+#  for axis in ['top', 'bottom', 'left', 'right']:
+#     ax.spines[axis].set_linewidth(5)
 
-  for tick in ax.xaxis.get_major_ticks():
-    tick.label1.set_fontweight('bold')
-  for tick in ax.yaxis.get_major_ticks():
-    tick.label1.set_fontweight('bold')
+#   for tick in ax.xaxis.get_major_ticks():
+#     tick.label1.set_fontweight('bold')
+#   for tick in ax.yaxis.get_major_ticks():
+#     tick.label1.set_fontweight('bold')
 
-  # Competitors.
+#   # Competitors.
 
-  # Our own.
+#   # Our own.
 
-  ax.set_xlabel("Size", fontsize=font_size, fontweight='bold')
-  ax.set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
-  plt.legend(
-      bbox_to_anchor=(0.5, 1.2),
-      loc="upper center",
-      ncol=2,
-      frameon=False,
-      prop={'weight': 'bold', 'size': font_size}
-  )
-  plt.tight_layout()
-  plt.savefig(name)
-  plt.close()
+#   ax.set_xlabel("Size", fontsize=font_size, fontweight='bold')
+#   ax.set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
+#   plt.legend(
+#       bbox_to_anchor=(0.5, 1.2),
+#       loc="upper center",
+#       ncol=2,
+#       frameon=False,
+#       prop={'weight': 'bold', 'size': font_size}
+#   )
+#   plt.tight_layout()
+#   plt.savefig(name)
+#   plt.close()
 
 
 def plot_bits_vs_acc(list_of_dicts, name):

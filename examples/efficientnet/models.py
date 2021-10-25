@@ -111,6 +111,7 @@ class MBConvBlock(nn.Module):
   id_skip: bool
   act: Callable
   config: dict
+  bits: int
   block_num: int
 
   @nn.compact
@@ -134,6 +135,7 @@ class MBConvBlock(nn.Module):
                     padding='SAME',
                     use_bias=False,
                     config=self.config,
+                    bits=self.bits,
                     quant_act_sign=(self.block_num == 0))(x)
       x = self.norm()(x)
       x = self.act(x)
@@ -160,6 +162,7 @@ class MBConvBlock(nn.Module):
         use_bias=False,
         name='depthwise_conv2d',
         config=self.config,
+        bits=self.bits,
         quant_act_sign=not expand_bool)(x)
     x = self.norm()(x)
     x = self.act(x)
@@ -173,6 +176,7 @@ class MBConvBlock(nn.Module):
                   padding='SAME',
                   use_bias=False,
                   config=self.config,
+                  bits=self.bits,
                   quant_act_sign=False)(x)
     x = self.norm()(x)
 
@@ -245,11 +249,10 @@ class EfficientNet(nn.Module):
                        width_coefficient=global_params.width_coefficient,
                        depth_divisor=global_params.depth_divisor,
                        min_depth=global_params.min_depth,)
-    MBConvBlock
     conv_block = partial(
         MBConvBlock,
         clip_projection_output=global_params.clip_projection_output,
-        config=self.config.quant.mbconv)
+        config=self.config.quant.mbconv, bits=self.config.quant.bits)
 
     self.sow('intermediates', 'inputs', x)
     # Stem part.
@@ -262,6 +265,7 @@ class EfficientNet(nn.Module):
         use_bias=False,
         name='stem_conv',
         config=self.config.quant.stem,
+        bits=self.config.quant.bits,
         quant_act_sign=False)(x)
 
     x = norm(name='stem_bn')(x)
@@ -342,7 +346,8 @@ class EfficientNet(nn.Module):
              kernel_init=conv_kernel_initializer(),
              use_bias=False,
              name='head_conv',
-             config=self.config.quant.head)(x)
+             config=self.config.quant.head,
+             bits=self.config.quant.bits,)(x)
     x = norm(name='head_bn')(x)
     x = self.act(x)
 
@@ -355,6 +360,7 @@ class EfficientNet(nn.Module):
                    kernel_init=dense_kernel_initializer(),
                    dtype=self.dtype,
                    config=self.config.quant.dense,
+                   bits=self.config.quant.bits,
                    quant_act_sign=False)(x)
     x = jnp.asarray(x, self.dtype)
     self.sow('intermediates', 'head', x)

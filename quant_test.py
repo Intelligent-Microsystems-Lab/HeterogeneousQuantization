@@ -189,8 +189,8 @@ class QuantOpsTest(parameterized.TestCase):
   @parameterized.product(
       signed_uniform_max_scale_quant_ste_unique_data(
       ) + signed_uniform_max_scale_quant_ste_unique_data_ext(),
-      quantizer=(uniform_dynamic, uniform_static,
-                 parametric_d, parametric_d_xmax)
+      quantizer=(parametric_d_xmax, uniform_dynamic, uniform_static,
+                 parametric_d),
   )
   def test_unique_values(
       self, x_dim, y_dim, bits, scale, quantizer

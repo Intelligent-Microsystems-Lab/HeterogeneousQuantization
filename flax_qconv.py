@@ -82,6 +82,7 @@ class QuantConv(Module):
   kernel_init: Callable[[PRNGKey, Shape, Dtype], Array] = default_kernel_init
   # bias_init: Callable[[PRNGKey, Shape, Dtype], Array] = zeros
   config: dict = None
+  bits: int = 8
   quant_act_sign: bool = True
 
   @compact
@@ -141,12 +142,12 @@ class QuantConv(Module):
     # Quantization has to be done here to use Flax convenience functions for
     # parameters.
     if "weight" in cfg:
-      kernel_fwd = cfg.weight()(kernel)
+      kernel_fwd = cfg.weight(bits=self.bits)(kernel)
     else:
       kernel_fwd = kernel
 
     if "act" in cfg:
-      inpt_fwd = cfg.act()(inputs, sign=self.quant_act_sign)
+      inpt_fwd = cfg.act(bits=self.bits)(inputs, sign=self.quant_act_sign)
     else:
       inpt_fwd = inputs
 
@@ -166,10 +167,10 @@ class QuantConv(Module):
 
       # # Quantization
       # if "weight" in cfg:
-      #   kernel = cfg.weight()(kernel)
+      #   kernel = cfg.weight(bits=self.bits)(kernel)
 
       # if "act" in cfg:
-      #   inpt = cfg.act()(inpt, sign=self.quant_act_sign)
+      #   inpt = cfg.act(bits=self.bits)(inpt, sign=self.quant_act_sign)
 
       return jax.lax.conv_general_dilated(
           inpt_fwd,

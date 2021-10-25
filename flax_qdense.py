@@ -50,6 +50,7 @@ class QuantDense(Module):
   kernel_init: Callable[[PRNGKey, Shape, Dtype], Array] = default_kernel_init
   bias_init: Callable[[PRNGKey, Shape, Dtype], Array] = zeros
   config: dict = ml_collections.FrozenConfigDict({})
+  bits: int = 8
   quant_act_sign: bool = True
 
   @compact
@@ -70,12 +71,13 @@ class QuantDense(Module):
     # Quantization has to be done here to use Flax convenience functions for
     # parameters.
     if "weight" in self.config:
-      kernel_fwd = self.config.weight()(kernel)
+      kernel_fwd = self.config.weight(bits=self.bits)(kernel)
     else:
       kernel_fwd = kernel
 
     if "act" in self.config:
-      inpt_fwd = self.config.act()(inputs, sign=self.quant_act_sign)
+      inpt_fwd = self.config.act(bits=self.bits)(
+          inputs, sign=self.quant_act_sign)
     else:
       inpt_fwd = inputs
 
@@ -167,7 +169,7 @@ class QuantDense(Module):
       bias = jnp.asarray(bias, self.dtype)
 
       if "bias" in self.config:
-        bias = self.config.act()(bias)
+        bias = self.config.weight(bits=self.bits)(bias)
 
       y = y + bias
     return y
