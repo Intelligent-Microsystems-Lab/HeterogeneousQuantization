@@ -459,7 +459,7 @@ def plot_mixed(ax, res_dict):
       label = value
     else:
       acc_t, size_t = get_best_eval_and_size(value)
-      y.append(acc_t)
+      y.append(1-acc_t)
       x.append(size_t)
 
   ax.plot(x, y, marker='x', label=label, ms=20, markeredgewidth=5, linewidth=5)
