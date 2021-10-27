@@ -11,6 +11,7 @@ The data is loaded using tensorflow_datasets.
 
 import functools
 import resource
+import subprocess
 import time
 
 from absl import app
@@ -80,11 +81,15 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   Returns:
     Final TrainState.
   """
-  logging.info(config)
+  
   writer_train = metric_writers.create_default_writer(
       logdir=workdir + '/train', just_logging=jax.process_index() != 0)
   writer_eval = metric_writers.create_default_writer(
       logdir=workdir + '/eval', just_logging=jax.process_index() != 0)
+
+  logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
+  logging.info('Git commit: ' + subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
+  logging.info(config)
 
   rng = random.PRNGKey(config.seed)
 
@@ -253,8 +258,6 @@ def main(argv):
   # it unavailable to JAX.
   tf.config.experimental.set_visible_devices([], 'GPU')
   tf.config.experimental.set_visible_devices([], 'TPU')
-
-  logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
 
   logging.info('JAX process: %d / %d',
                jax.process_index(), jax.process_count())

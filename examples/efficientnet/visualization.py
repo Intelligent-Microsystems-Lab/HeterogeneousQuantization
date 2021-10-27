@@ -208,83 +208,205 @@ enet0_dynamic_init_double_cos_ewgs = {
 }
 
 
+#
+# New Sweeps after dynamic correction
+#
+
+enet0_dynamic_init_double_mean_t2 = {
+  2: 'GHq9K5XuQNyxqD6GGlcPQg',
+  3: 'brXMuvyRS1W22FR24KaCXA',
+  4: '8gGvrbG6RC2YqiRfQzXANw',
+  5: 'v6hkFRfbQA6Tbw3aTPRmAA',
+  6: 'DvKtwOR6Tl6ONeN879JQbQ',
+  7: 'mPkKzrxrR2yWf9koRDCaUw',
+  8: '21cNoDLSQ9GTwvSw0da43g',
+  'params': 4652008,
+  'label': 'EfficientNet-Lite0 Dynamic Quant Init Double Mean',
+}
+
+enet0_static_init_double_mean_t2 = {
+  2: 'J4NdnC9XRzOQnkymDBAjxA',
+  3: 'Xo9GWJ1BQbqjF6x3WJjvMg',
+  4: 'f9clPhE3QHeAJH8nvrSJqQ',
+  5: 'LVXphdloRXSR0FmhZLwDxg',
+  6: 'asOKaXvkTzKBuQhk89E0CQ',
+  7: 'xqQR8WZsQBGJTGXc42qgtA',
+  8: 'bG0YRHwQSOKpYyNroDiYRA',
+  'params': 4652008,
+  'label': 'EfficientNet-Lite0 Static Quant Init Double Mean',
+}
+
+enet0_dynamic_init_gaussian_t2 = {
+  2: 'NbEovMSJRpmWQUN7kxAN9Q',
+  3: '0VHp8egmSXGcEMrJwHJUrQ',
+  4: 'RJldVC0UQim8fYoJJj9rUg',
+  5: 'OCj3BknTRyWvAGVT6d2PLA',
+  6: 'mZkrNxWRSo6jazfdJQjxOg',
+  7: 'pP5neKFJRa6LQWYeGigR2w',
+  8: 'rXW4RcMxQpOE64YKknZsDQ',
+  'params': 4652008,
+  'label': 'EfficientNet-Lite0 Dynamic Quant Init Gaussian',
+}
+
+enet0_static_init_gaussian_t2 = {
+  2: 'XnQ2t7qxR9yFrLtlkbWONQ',
+  3: 'Sv5NEXHGQ5qG21llbjUa0g',
+  4: 'cWEEkRk2T2uxEsRtdPUPyA',
+  5: '8sY3PAc7Qo6WMKaWg4qzyw',
+  6: '6RkmMxdeRGO6BPED6jljAw',
+  7: 'Vslt1nD5S9i0eCz18rOuVA',
+  8: '4xIj338JT92W5kxZ9f4MGQ',
+  'params': 4652008,
+  'label': 'EfficientNet-Lite0 Static Quant Init Gaussian',
+}
+
+enet0_mixed = {
+  0: (1-0.644287109375, 2.8103692531585693)
+}
+
 # Competitor Performance.
 
-pact_resnet18 = {
-    # https://arxiv.org/pdf/1805.06085.pdf
-    'eval_err': [1 - 0.644, 1 - 0.681, 1 - 0.692, 1 - 0.698],
-    'size_mb': np.array([2, 3, 4, 5]) * 11679912 / 8_000_000,
-    'name': 'PACT ResNet18',
+competitors = {
+  'pact_resnet18' : {
+      # https://arxiv.org/pdf/1805.06085.pdf
+      'eval_err': [1 - 0.644, 1 - 0.681, 1 - 0.692, 1 - 0.698],
+      'size_mb': np.array([2, 3, 4, 5]) * 11679912 / 8_000_000,
+      'name': 'PACT ResNet18',
+      'alpha':.15,
+      # no first and last layer quant
+  },
+
+  'pact_resnet50' : {
+      # https://arxiv.org/pdf/1805.06085.pdf
+      'eval_err': [1 - 0.722, 1 - 0.753, 1 - 0.765, 1 - 0.767],
+      'size_mb': np.array([2, 3, 4, 5]) * 25636712 / 8_000_000,
+      'name': 'PACT ResNet50',
+      'alpha':1.,
+      # no first and last layer quant
+  },
+
+  'pact_mobilev2' : {
+      # https://arxiv.org/pdf/1811.08886.pdf
+      'eval_err': [1 - 0.6139, 1 - 0.6884, 1 - 0.7125],
+      'size_mb': np.array([4, 5, 6]) * 3300000  / 8_000_000,
+      'name': 'PACT MobileNetV2',
+      'alpha':.15,
+  },
+
+  'dsq_resnet18' : {
+      # https://arxiv.org/abs/1908.05033
+      'eval_err': [1 - 0.6517, 1 - 0.6866, 1 - 0.6956],
+      'size_mb': np.array([2, 3, 4]) * 11679912  / 8_000_000,
+      'name': 'DSQ ResNet18',
+      'alpha':.15,
+  },
+
+  'lsq_resnet18' : {
+      # https://arxiv.org/abs/1902.08153
+      'eval_err': [1 - 0.676, 1 - 0.702, 1 - 0.711, 1 - 0.711],
+      'size_mb': np.array([2, 3, 4, 8]) * 11679912  / 8_000_000,
+      'name': 'LSQ ResNet18',
+      'alpha':.15,
+  },
+
+  'lsqp_resnet18' : {
+      # https://arxiv.org/abs/2004.09576
+      'eval_err': [1 - 0.668, 1 - 0.694, 1 - 0.708],
+      'size_mb': np.array([2, 3, 4]) * 11679912  / 8_000_000,
+      'name': 'LSQ+ ResNet18',
+      'alpha':.15,
+  },
+
+  'lsqp_enet0' : {
+      # https://arxiv.org/abs/2004.09576
+      'eval_err': [1 - 0.491, 1 - 0.699, 1 - 0.738],
+      'size_mb': np.array([2, 3, 4]) * 5330571  / 8_000_000, # number might be incorrect
+      'name': 'LSQ+ EfficientNet-B0',
+      'alpha':1.,
+  },
+
+  'ewgs_resnet18' : {
+      # https://arxiv.org/abs/2104.00903
+      'eval_err': [1 - 0.553, 1 - 0.67, 1 - 0.697, 1 - 0.706],
+      'size_mb': np.array([1, 2, 3, 4]) * 11679912  / 8_000_000,
+      'name': 'EWGS ResNet18',
+      'alpha':.15,
+  },
+
+  'ewgs_resnet34' : {
+      # https://arxiv.org/abs/2104.00903
+      'eval_err': [1 - 0.615, 1 - 0.714, 1 - 0.733, 1 - 0.739],
+      'size_mb': np.array([1, 2, 3, 4]) *  25557032 / 8_000_000,
+      'name': 'EWGS ResNet34',
+      'alpha':.15,
+  },
+
+  'qil_resnet18' : {
+      # https://arxiv.org/abs/1808.05779
+      'eval_err': [1 - 0.704, 1 - 0.701, 1 - 0.692, 1 - 0.657],
+      'size_mb': np.array([5, 4, 3, 1]) *  11679912 / 8_000_000,
+      'name': 'QIL ResNet18',
+      'alpha':.15,
+      # no first and last layer quant
+  },
+
+  'qil_resnet34' : {
+      # https://arxiv.org/abs/1808.05779
+      'eval_err': [1 - 0.737, 1 - 0.737, 1 - 0.731, 1 - 0.706],
+      'size_mb': np.array([5, 4, 3, 1]) * 25557032  / 8_000_000,
+      'name': 'QIL ResNet34',
+      'alpha':.15,
+      # no first and last layer quant
+  },
+
+  'hawqv2_squeeze' : {
+      # https://arxiv.org/abs/1911.03852
+      'eval_err': [1 - 0.6838],
+      'size_mb': np.array([1.07]),
+      'name': 'HAWQ-V2 SqueezeNext',
+      'alpha':1.,
+  },
+
+  'hawqv2_inceptionv3' : {
+      # https://arxiv.org/abs/1911.03852
+      'eval_err': [1 - 0.7568],
+      'size_mb': np.array([7.57]),
+      'name': 'HAWQ-V2 Inception-V3',
+      'alpha':1.,
+  },
+
+  'mixed_resnet18' : {
+      # https://arxiv.org/abs/1905.11452
+      'eval_err': [0.2992],
+      'size_mb': np.array([5.4]),
+      'name': 'Mixed Precision DNNs ResNet18',
+      'alpha':.15,
+  },
+
+  'mixed_mobilev2' : {
+      # https://arxiv.org/abs/1905.11452
+      'eval_err': [0.3026],
+      'size_mb': np.array([1.55]),
+      'name': 'Mixed Precision DNNs MobileNetV2',
+      'alpha':.15,
+  },
+
+  'haq_mobilev2' : {
+      # https://arxiv.org/pdf/1811.08886.pdf
+      'eval_err': [1 - 0.6675, 1 - 0.7090, 1 - 0.7147],
+      'size_mb': np.array([.95, 1.38, 1.79]),
+      'name': 'HAQ MobileNetV2',
+      'alpha':1.,
+  },
+
+  'haq_resnet50' : {
+      # https://arxiv.org/pdf/1811.08886.pdf
+      'eval_err': [1 - 0.7063, 1 - 0.7530, 1 - 0.7614],
+      'size_mb': np.array([6.30, 9.22, 12.14]),
+      'name': 'HAQ ResNet50',
+      'alpha':1.,
+  },
 }
-
-pact_resnet50 = {
-    # https://arxiv.org/pdf/1805.06085.pdf
-    'eval_err': [1 - 0.722, 1 - 0.753, 1 - 0.765, 1 - 0.767],
-    'size_mb': np.array([2, 3, 4, 5]) * 25636712 / 8_000_000,
-    'name': 'PACT ResNet18',
-}
-
-
-pact_mobilev2 = {
-    # https://arxiv.org/pdf/1811.08886.pdf
-}
-
-dsq_resnet18 = {
-    # https://arxiv.org/abs/1908.05033
-}
-
-lsq_resnet18 = {
-    # https://arxiv.org/abs/1902.08153
-}
-
-lsqp_resnet18 = {
-    # https://arxiv.org/abs/2004.09576
-}
-
-lsqp_enet0 = {
-    # https://arxiv.org/abs/2004.09576
-}
-
-ewgs_resnet18 = {
-    # https://arxiv.org/abs/2104.00903
-}
-
-ewgs_resnet34 = {
-    # https://arxiv.org/abs/2104.00903
-}
-
-qil_resnet18 = {
-    # https://arxiv.org/abs/1808.05779
-}
-
-qil_resnet34 = {
-    # https://arxiv.org/abs/1808.05779
-}
-
-hawqv2_squeeze = {
-    # https://arxiv.org/abs/1911.03852
-}
-
-hawqv2_inceptionv3 = {
-    # https://arxiv.org/abs/1911.03852
-}
-
-mixed_resnet18 = {
-    # https://arxiv.org/abs/1905.11452
-}
-
-mixed_mobilev2 = {
-    # https://arxiv.org/abs/1905.11452
-}
-
-haq_mobilev2 = {
-    # https://arxiv.org/pdf/1811.08886.pdf
-}
-
-haq_resnet50 = {
-    # https://arxiv.org/pdf/1811.08886.pdf
-}
-
 
 def get_best_eval(experiment_id):
   experiment = tb.data.experimental.ExperimentFromDev(experiment_id)
@@ -305,54 +427,59 @@ def plot_line(ax, res_dict):
       color = value
     elif key == 'linestyle':
       linestyle = value
+    elif key == 'params':
+      num_params = value
     else:
       y.append(get_best_eval(value))
-      x.append(key)
+      x.append(key * res_dict['params'] / 8_000_000)
 
   print(label)
   print(x)
   print(y)
-  ax.plot(x, y, color=color, marker='x', label=label,
-          linestyle=linestyle, ms=20, markeredgewidth=5, linewidth=5)
+  ax.plot(x, y, marker='x', label=label, ms=20, markeredgewidth=5, linewidth=5)
 
 
-# def plot_comparison(name):
-#   pass
+def plot_comparison(name):
+  font_size = 26
+
+  fig, ax = plt.subplots(figsize=(22, 9.8))
+  ax.spines["top"].set_visible(False)
+  ax.spines["right"].set_visible(False)
+
+  ax.xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
+  ax.yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
+
+  for axis in ['top', 'bottom', 'left', 'right']:
+    ax.spines[axis].set_linewidth(5)
+
+  for tick in ax.xaxis.get_major_ticks():
+    tick.label1.set_fontweight('bold')
+  for tick in ax.yaxis.get_major_ticks():
+    tick.label1.set_fontweight('bold')
+
+  # Competitors.
+  for competitor_name, competitor_data in competitors.items():
+    ax.plot(competitor_data['size_mb'], competitor_data['eval_err'], label = competitor_data['name'], marker='x', ms=20, markeredgewidth=5, linewidth=5, alpha=competitor_data['alpha'], linestyle='--')
+
+  # Our own.
+  plot_line(ax, enet0_dynamic_init_double_mean_t2)
+  plot_line(ax, enet0_static_init_double_mean_t2)
+  plot_line(ax, enet0_dynamic_init_gaussian_t2)
+  plot_line(ax, enet0_static_init_gaussian_t2)
 
 
-# font_size = 26
-
-# fig, ax = plt.subplots(figsize=(13, 9.8))
-# ax.spines["top"].set_visible(False)
-# ax.spines["right"].set_visible(False)
-
-# ax.xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
-# ax.yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
-
-#  for axis in ['top', 'bottom', 'left', 'right']:
-#     ax.spines[axis].set_linewidth(5)
-
-#   for tick in ax.xaxis.get_major_ticks():
-#     tick.label1.set_fontweight('bold')
-#   for tick in ax.yaxis.get_major_ticks():
-#     tick.label1.set_fontweight('bold')
-
-#   # Competitors.
-
-#   # Our own.
-
-#   ax.set_xlabel("Size", fontsize=font_size, fontweight='bold')
-#   ax.set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
-#   plt.legend(
-#       bbox_to_anchor=(0.5, 1.2),
-#       loc="upper center",
-#       ncol=2,
-#       frameon=False,
-#       prop={'weight': 'bold', 'size': font_size}
-#   )
-#   plt.tight_layout()
-#   plt.savefig(name)
-#   plt.close()
+  ax.set_xlabel("Network Size (MB)", fontsize=font_size, fontweight='bold')
+  ax.set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
+  plt.legend(
+      bbox_to_anchor=(1., 1.),
+      loc="upper left",
+      ncol=1,
+      frameon=False,
+      prop={'weight': 'bold', 'size': font_size}
+  )
+  plt.tight_layout()
+  plt.savefig(name)
+  plt.close()
 
 
 def plot_bits_vs_acc(list_of_dicts, name):
@@ -395,6 +522,8 @@ if __name__ == '__main__':
   assert major_ver >= 2 and minor_ver >= 3, \
       "This notebook requires TensorBoard 2.3 or later."
   print("TensorBoard version: ", tb.__version__)
+
+  plot_comparison('overview.png')
 
   # plot_bits_vs_acc([enet0_dynamic_init_max, enet0_dynamic_init_double_mean,
   #                   enet0_dynamic_init_gaussian], 'figures/dynamic_init.png')
