@@ -261,7 +261,8 @@ enet0_static_init_gaussian_t2 = {
 }
 
 enet0_mixed = {
-  0: (1-0.644287109375, 2.8103692531585693)
+  0: 's8XTz88OSw6Fg8YJtq2yog',
+  'label': 'EfficientNet-Lite0 Mixed Precision',
 }
 
 # Competitor Performance.
@@ -416,6 +417,17 @@ def get_best_eval(experiment_id):
   return data[data['tag'] == 'accuracy']['value'].max()
 
 
+def get_best_eval_and_size(experiment_id):
+  experiment = tb.data.experimental.ExperimentFromDev(experiment_id)
+  df = experiment.get_scalars()
+
+  data = df[df['run'] == 'eval']
+  max_eval = data[data['tag'] == 'accuracy']['value'].max()
+  vals_at_step = data[data['step'] ==  int(data[data['value'] == max_eval]['step'])]
+  size_mb = float(vals_at_step[vals_at_step['tag'] == 'weight_size']['value'])
+  return max_eval, size_mb
+
+
 def plot_line(ax, res_dict):
   linestyle = 'solid'
   x = []
@@ -433,16 +445,29 @@ def plot_line(ax, res_dict):
       y.append(1-get_best_eval(value))
       x.append(key * res_dict['params'] / 8_000_000)
 
-  print(label)
-  print(x)
-  print(y)
+  #print(label)
+  #print(x)
+  #print(y)
   ax.plot(x, y, marker='x', label=label, ms=20, markeredgewidth=5, linewidth=5)
 
+
+def plot_mixed(ax, res_dict):
+  x = []
+  y = []
+  for key, value in res_dict.items():
+    if key == 'label':
+      label = value
+    else:
+      acc_t, size_t = get_best_eval_and_size(value)
+      y.append(acc_t)
+      x.append(size_t)
+
+  ax.plot(x, y, marker='x', label=label, ms=20, markeredgewidth=5, linewidth=5)
 
 def plot_comparison(name):
   font_size = 26
 
-  fig, ax = plt.subplots(figsize=(24, 9.8))
+  fig, ax = plt.subplots(figsize=(32, 9.8))
   ax.spines["top"].set_visible(False)
   ax.spines["right"].set_visible(False)
 
@@ -466,6 +491,7 @@ def plot_comparison(name):
   plot_line(ax, enet0_static_init_double_mean_t2)
   plot_line(ax, enet0_dynamic_init_gaussian_t2)
   plot_line(ax, enet0_static_init_gaussian_t2)
+  plot_mixed(ax, enet0_mixed)
 
 
   ax.set_xlabel("Network Size (MB)", fontsize=font_size, fontweight='bold')
