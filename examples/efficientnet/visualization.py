@@ -442,7 +442,7 @@ def plot_line(ax, res_dict):
 def plot_comparison(name):
   font_size = 26
 
-  fig, ax = plt.subplots(figsize=(22, 9.8))
+  fig, ax = plt.subplots(figsize=(24, 9.8))
   ax.spines["top"].set_visible(False)
   ax.spines["right"].set_visible(False)
 
@@ -473,7 +473,7 @@ def plot_comparison(name):
   plt.legend(
       bbox_to_anchor=(1., 1.),
       loc="upper left",
-      ncol=1,
+      ncol=2,
       frameon=False,
       prop={'weight': 'bold', 'size': font_size}
   )
