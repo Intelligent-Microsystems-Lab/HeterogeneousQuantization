@@ -511,7 +511,7 @@ def plot_comparison(name):
     ax.plot(competitor_data['size_mb'], competitor_data['eval_err'], label = competitor_data['name'], marker='x', ms=20, markeredgewidth=5, linewidth=5, alpha=competitor_data['alpha'], linestyle='--')
 
   # Our own.
-  plot_line(ax, enets_fp32_t2)
+  # plot_line(ax, enets_fp32_t2)
   plot_line(ax, enets_int8_t2)
 
 
