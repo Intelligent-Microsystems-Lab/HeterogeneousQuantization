@@ -212,6 +212,30 @@ enet0_dynamic_init_double_cos_ewgs = {
 # New Sweeps after dynamic correction
 #
 
+
+enets_fp32_t2 = {
+  4652008: 'oIBswEoqTme2oLlkkhx4Xw',
+  5416680: 'lHDJHMe2RamzzWwF4DF1hQ',
+  6092072: 'RiESL4q5QGuzCO66fYZ70Q',
+  8197096: 'LvwDTyJbRwKlvE77mBtWhw',
+  13006568: 'rdXGZbqPTyuOem2n2s7K0Q',
+  'params': 32,
+  'label': 'EfficientNet-Lites (FP32)',
+}
+
+
+enets_int8_t2 = {
+  4652008: 'NAxjD6ydQDq25NdJ7RQauA',
+  5416680: 'b1kq2yDsRrSoQORKAoiwHQ',
+  6092072: 'PpcD8wrzRga4S5Qg3RxKfg',
+  8197096: 'EyXpX0NbTnqvQt88F9JdSg',
+  13006568: 'ZjKyJ1nlSqqtGivBytyVdg',
+  'params': 8,
+  'label': 'EfficientNet-Lites (INT8)',
+}
+
+
+
 enet0_dynamic_init_double_mean_t2 = {
   2: 'GHq9K5XuQNyxqD6GGlcPQg',
   3: 'brXMuvyRS1W22FR24KaCXA',
@@ -487,6 +511,10 @@ def plot_comparison(name):
     ax.plot(competitor_data['size_mb'], competitor_data['eval_err'], label = competitor_data['name'], marker='x', ms=20, markeredgewidth=5, linewidth=5, alpha=competitor_data['alpha'], linestyle='--')
 
   # Our own.
+  plot_line(ax, enets_fp32_t2)
+  plot_line(ax, enets_int8_t2)
+
+
   plot_line(ax, enet0_dynamic_init_double_mean_t2)
   plot_line(ax, enet0_static_init_double_mean_t2)
   plot_line(ax, enet0_dynamic_init_gaussian_t2)
