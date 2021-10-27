@@ -430,7 +430,7 @@ def plot_line(ax, res_dict):
     elif key == 'params':
       num_params = value
     else:
-      y.append(get_best_eval(value))
+      y.append(1-get_best_eval(value))
       x.append(key * res_dict['params'] / 8_000_000)
 
   print(label)
@@ -523,7 +523,7 @@ if __name__ == '__main__':
       "This notebook requires TensorBoard 2.3 or later."
   print("TensorBoard version: ", tb.__version__)
 
-  plot_comparison('overview.png')
+  plot_comparison('figures/overview.png')
 
   # plot_bits_vs_acc([enet0_dynamic_init_max, enet0_dynamic_init_double_mean,
   #                   enet0_dynamic_init_gaussian], 'figures/dynamic_init.png')
