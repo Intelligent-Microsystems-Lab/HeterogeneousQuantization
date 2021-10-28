@@ -135,8 +135,11 @@ class EfficientNetTest(parameterized.TestCase):
     rng, prng = jax.random.split(rng, 2)
     _, state = model_def.apply({'params': state.params['params'],
                                 'quant_params': state.params['quant_params'],
-                                'batch_stats': state.batch_stats, 'weight_size': state.weight_size, 'act_size': state.act_size}, inpt,
-                               mutable=['intermediates', 'batch_stats', 'weight_size', 'act_size'],
+                                'batch_stats': state.batch_stats,
+                                'weight_size': state.weight_size,
+                                'act_size': state.act_size}, inpt,
+                               mutable=['intermediates', 'batch_stats',
+                                        'weight_size', 'act_size'],
                                rng=prng,
                                train=False)
 

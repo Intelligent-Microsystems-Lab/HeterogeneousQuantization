@@ -136,16 +136,10 @@ class MBConvBlock(nn.Module):
                     use_bias=False,
                     config=self.config,
                     bits=self.bits,
-                    quant_act_sign=(self.block_num == 0))(x)
+                    quant_act_sign=True)(x)
       x = self.norm()(x)
       x = self.act(x)
-      expand_bool = True
       logging.info('Expand shape: %s', x.shape)
-    else:
-      if self.block_num == 0:
-        expand_bool = True
-      else:
-        expand_bool = False
 
     # Depthwise convolution
     kernel_size = self.kernel_size
@@ -163,7 +157,7 @@ class MBConvBlock(nn.Module):
         name='depthwise_conv2d',
         config=self.config,
         bits=self.bits,
-        quant_act_sign=not expand_bool)(x)
+        quant_act_sign=True)(x)
     x = self.norm()(x)
     x = self.act(x)
     logging.info('DWConv shape: %s', x.shape)
@@ -265,8 +259,7 @@ class EfficientNet(nn.Module):
         use_bias=False,
         name='stem_conv',
         config=self.config.quant.stem,
-        bits=self.config.quant.bits,
-        quant_act_sign=False)(x)
+        bits=self.config.quant.bits)(x)
 
     x = norm(name='stem_bn')(x)
     x = self.act(x)
