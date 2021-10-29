@@ -39,7 +39,7 @@ class TrainTest(absltest.TestCase):
         model_cls=models.EfficientNetB0,  # pylint: disable=protected-access
         num_classes=1000,
         config=config)
-    params, quant_params, batch_stats = train_util.initialized(
+    params, quant_params, batch_stats, _, _ = train_util.initialized(
         random.PRNGKey(0), 224, model)
     variables = {'params': params,
                  'quant_params': quant_params, 'batch_stats': batch_stats}
