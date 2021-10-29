@@ -47,7 +47,7 @@ class TrainTest(absltest.TestCase):
     model = train_utils.create_model(
         model_cls=models._ResNet1,
         config=config)  # pylint: disable=protected-access
-    params, quant_params, batch_stats = train_utils.initialized(
+    params, quant_params, batch_stats, _, _ = train_utils.initialized(
         random.PRNGKey(0), 224, model)
     variables = {'params': params, 'batch_stats': batch_stats}
     x = random.normal(random.PRNGKey(1), (8, 224, 224, 3))
