@@ -133,7 +133,7 @@ def entropy_init(x, bits, sign):
   return compute_amax_entropy(calib_hist, calib_bin_edges, bits, sign, stride=1, start_bin=128)
 
 
-def percentile_init(x, bits, perc):
+def percentile_init(x, bits, sign, perc):
   return jnp.percentile(x, perc)
 
 class uniform_dynamic(nn.Module):
