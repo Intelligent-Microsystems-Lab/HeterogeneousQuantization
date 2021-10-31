@@ -5,6 +5,8 @@ from flax import linen as nn
 
 from typing import Any, Iterable, Callable
 
+from utils import compute_amax_entropy
+
 
 Array = Any
 PRNGKey = Any
@@ -110,19 +112,27 @@ def ceilpass_bwd(res, g):
 ceilpass.defvjp(ceilpass_fwd, ceilpass_bwd)
 
 
-def max_init(x):
+def max_init(x, sign):
   return jnp.max(jnp.abs(x))
 
 
-def double_mean_init(x):
+def double_mean_init(x, sign):
   return 2 * jnp.mean(jnp.abs(x))
 
 
-def gaussian_init(x):
+def gaussian_init(x, sign):
   mu = jnp.mean(x)
   sigma = jnp.std(x)
   return jnp.maximum(jnp.abs(mu - 3 * sigma), jnp.abs(mu + 3 * sigma))
 
+
+def entropy_init(x, bits, sign):
+  calib_hist, calib_bin_edges = jnp.histogram(x, bins=2048)
+  return compute_amax_entropy(calib_hist, calib_bin_edges, bits, sign, stride=1, start_bin=128)
+
+
+def percentile_init(x, perc):
+  return jnp.percentile(x, perc)
 
 class uniform_dynamic(nn.Module):
   bits: int = 8
@@ -138,7 +148,7 @@ class uniform_dynamic(nn.Module):
       ), "Bit widths below 1 bits are not supported but got bits: "\
           + str(self.bits)
 
-    xmax = self.init_fn(x)
+    xmax = self.init_fn(x, sign)
     xmax = jnp.where(xmax == 0, 1., xmax)
 
     if sign:
@@ -174,7 +184,7 @@ class uniform_static(nn.Module):
 
     xmax = self.variable('quant_params', 'dynamic_range', jnp.ones, (1,))
     if self.is_mutable_collection('quant_params'):
-      xmax.value = self.init_fn(x)
+      xmax.value = self.init_fn(x, sign)
       xmax.value = jnp.where(xmax.value == 0, 1., xmax.value)
 
     if sign:
@@ -218,7 +228,7 @@ class parametric_d(nn.Module):
     step_size = self.variable('quant_params', 'step_size', jnp.ones, (1,))
     if self.is_mutable_collection('quant_params'):
       step_size.value = jnp.ones((1,))
-      step_size.value *= self.init_fn(inputs) / jnp.sqrt(q_pos)
+      step_size.value *= self.init_fn(inputs, sign) / jnp.sqrt(q_pos)
 
     gradScaleFactor = 1 / jnp.sqrt(q_pos * np.prod(n_wf) + 1e-6)
 
@@ -276,7 +286,7 @@ class parametric_d_xmax(nn.Module):
     act_mb = self.variable('act_size', 'act_mb', jnp.ones, (1,))
     weight_mb = self.variable('weight_size', 'weight_mb', jnp.ones, (1,))
     if self.is_mutable_collection('quant_params'):
-      xmax.value = jnp.clip(self.init_fn(inputs),
+      xmax.value = jnp.clip(self.init_fn(inputs, sign),
                             self.xmax_min, self.xmax_max)
       xmax.value = jnp.where(xmax.value == 0, 1., xmax.value)
       d.value = jnp.clip(xmax.value / num_levels, self.d_min, self.d_max)

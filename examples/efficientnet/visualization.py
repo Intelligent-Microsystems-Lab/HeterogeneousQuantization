@@ -291,53 +291,53 @@ enet0_mixed = {
 }
 
 
-enet0_dynamic_lr = {
-    '2_0.0001': 'UZOSDddESQyHddq4Pd5h5g',
-    '2_0.001': '4Vca3zP4Q1ehmybBmYOnjA',
-    '2_0.01': 'LdnrLmPOTli4ARoPko2vng',
-    '3_0.0001': '7aMxGAdFQjijeY72PAHJug',
-    '3_0.001': 'IvVuZwtDRk6j6K8Y9wyAQQ',
-    '3_0.01': 'ridDAAXrSM20JgYKt1In2A',
-    '4_0.0001': 'CaVrGLq5S4CA8D4Eo0Xt8w',
-    '4_0.001': '1wEV3pr9TKmekCe5GzIGaw',
-    '4_0.01': '1Rv0OgSNRoqFBXhZMLS6yQ',
-    '5_0.0001': 'EmQmTDLxRzKpjV0h6mnc2Q',
-    '5_0.001': 'rSR6fDBLSYyGQXvrfXiowA',
-    '5_0.01': 'FpErwWBURQWjhLbzvN9WEw',
-    '6_0.0001': 'oOVM6d6BTGqdyz9ZcnBDmQ',
-    '6_0.001': 'ZwUPJar0S82sYgKzYU7p8w',
-    '6_0.01': 'KcBTvFXdRaGXsvHJgP3EmQ',
-    '7_0.0001': 'Rh7ED2lVRO2Dxo4S82tkRQ',
-    '7_0.001': 'ge0gpVljTaqFekClKnbNxw',
-    '7_0.01': 'KTXEibNrR9GbbBRdLqnwBw',
-    '8_0.0001': '',
-    '8_0.001': '',
-    '8_0.01': '',
-}
+# enet0_dynamic_lr = {
+#     '2_0.0001': 'eevmuBORRTeBhZjmBYhLQQ',
+#     '2_0.001': 'uMlodEdaSVu4mv3Yk09rLg',
+#     '2_0.01': 'OLiyl8SYSrK8UlYBJeja5A',
+#     '3_0.0001': '',
+#     '3_0.001': '',
+#     '3_0.01': '',
+#     '4_0.0001': '',
+#     '4_0.001': '',
+#     '4_0.01': '',
+#     '5_0.0001': '',
+#     '5_0.001': '',
+#     '5_0.01': '',
+#     '6_0.0001': '',
+#     '6_0.001': '',
+#     '6_0.01': '',
+#     '7_0.0001': '',
+#     '7_0.001': '',
+#     '7_0.01': '',
+#     '8_0.0001': 'y3zEwUjCQgKqoUMgZpvWHg',
+#     '8_0.001': 'BTjBh51DRHyagO6sWO0lLQ',
+#     '8_0.01': 'aaJRWLwsRGKC5UxxdgUO9Q',
+# }
 
 
 enet0_static_lr = {
-    '2_0.0001': 'N2B02OFrQxG5FdBnQlPV4w',
-    '2_0.001': '1FPHpwNtR1WyeOAERB7VSw',
-    '2_0.01': 'Ou4bT5RhQ1K7UjGhGLMCRA',
-    '3_0.0001': 'HKO2RO3zT0upPQbhaiVkcw',
-    '3_0.001': 'GxhbeLQnRbaWCMm6XFJ4Mw',
-    '3_0.01': 'xNuwHACwQSWj3yc98K9kSw',
-    '4_0.0001': 'nsP3bqOFQT65WGGx5KuRDg',
-    '4_0.001': 'pdv9vTnLSruAZLhOH1mD0A',
-    '4_0.01': 'saCgSw2YQlWJUrPlvUDQGw',
-    '5_0.0001': 'pXAa3dUwR8yMTGRaWorlxA',
-    '5_0.001': 'HnAmfQxQSySbgwPg6t8WHw',
-    '5_0.01': 'jxho21EyQ1e7Lpxf73ZfDg',
-    '6_0.0001': 'YR48o7ZtRX2N7KxOOV6HDw',
-    '6_0.001': 'yABDLx4tQcq6Cqh49rQoow',
-    '6_0.01': 'bEdgxp4WTKeQdzkcZuq6ZA',
-    '7_0.0001': 'xjmoVj4SQjyd4dhv8zN6lQ',
-    '7_0.001': 'BdwmgzNLQQWjHmbsntbWZw',
-    '7_0.01': 'Mou0mCwMTB6v67lZv2reJw',
-    '8_0.0001': '',
-    '8_0.001': '',
-    '8_0.01': '',
+    '2_0.0001': 'xB6ZxuYlSWmmWymUJVCReQ',
+    '2_0.001': 'V1ILWkzJRvOkwlbllHDAgw',
+    '2_0.01': 'fPJvBqfDRNK5mmWyFgPxqg',
+    '3_0.0001': 'rKTXZqHGSdGAluOKeSOevQ',
+    '3_0.001': 'li5gkK6rQImofqLw7UP5IQ',
+    '3_0.01': '9nwVcMdPRRGJtjDjrZpCeg',
+    '4_0.0001': 'tOPfgpDtQg6zi2vfAOQ17w',
+    '4_0.001': 'ows8qJCqRnCLDszcZv3vUw',
+    '4_0.01': 'kX80UjhnQxWdwEdzQDTNzQ',
+    '5_0.0001': 'jCzBs6x0TwSLUB2rTorgDg',
+    '5_0.001': '4iXpp7wgTY6LPW13XjdLgQ',
+    '5_0.01': 'KMwHB3liQM2WR7jSzE7nNQ',
+    '6_0.0001': '6JgDoSdLTAySwTORfQU2SQ',
+    '6_0.001': 'uQTvwYikToqD5Oq8xnBBNg',
+    '6_0.01': 'mx3Gs5p4T0S9KSBXeFqAvg',
+    '7_0.0001': 'T61M9TAmTBqyTlrxsGZE9Q',
+    '7_0.001': 'yZQjrnLBS9iG3DFeUzoaPg',
+    '7_0.01': 'LGQBdb6qTLCK91Lzjg8O9g',
+    '8_0.0001': 'RoRByyMeSZKlmOjqY19PZQ',
+    '8_0.001': 'vq1yDQlLSgSbNH0he3QE5A',
+    '8_0.01': 'cya49VDMTYSnQbLFEp8CmQ',
 }
 
 
@@ -646,11 +646,13 @@ if __name__ == '__main__':
       "This notebook requires TensorBoard 2.3 or later."
   print("TensorBoard version: ", tb.__version__)
 
-  plot_comparison('figures/overview.png')
+  # plot_comparison('figures/overview.png')
 
-  df_dynamic_lr = table(enet0_dynamic_lr)
+  #df_dynamic_lr = table(enet0_dynamic_lr)
   df_static_lr = table(enet0_static_lr)
-  print(df_dynamic_lr.to_csv())
+  #print("Dynamic Quant")
+  #print(df_dynamic_lr.to_csv())
+  print("Static Quant")
   print(df_static_lr.to_csv())
 
   # plot_bits_vs_acc([enet0_dynamic_init_max, enet0_dynamic_init_double_mean,
