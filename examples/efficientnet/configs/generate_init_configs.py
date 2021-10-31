@@ -2,9 +2,9 @@ import subprocess
 import re
 import numpy as np
 
-base_config_name = 'configs/efficientnet-lite0_w2a2.py'
+base_config_name = 'configs/efficientnet-lite0_w8a8.py'
 init_methods = ['partial(max_init)', 'partial(double_mean_init)', 'partial(gaussian_init)', 'partial(entropy_init)', 'partial(percentile_init,perc=99.9)', 'partial(percentile_init,perc=99.99)', 'partial(percentile_init,perc=99.999)', 'partial(percentile_init,perc=99.9999)']
-config_dir = 'configs/init_ablation_w2a2'
+config_dir = 'configs/init_ablation_w8a8'
 
 name_rm_chars = [',','=','.',')']
 num_run_scripts = 9
