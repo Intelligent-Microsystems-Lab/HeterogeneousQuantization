@@ -3,6 +3,7 @@
 
 import jax.numpy as jnp
 import numpy as np
+from scipy.stats import entropy
 
 
 def sse_loss(x, y):
@@ -23,8 +24,8 @@ def compute_amax_entropy(calib_hist, calib_bin_edges, num_bits, unsigned, stride
     if summ != 0:
       distr = distr / summ
 
-  bins = calib_hist[:]
-  bins[0] = bins[1]
+  bins = calib_hist#[:]
+  #bins[0] = bins[1]
 
   total_data = np.sum(bins)
 
