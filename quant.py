@@ -127,9 +127,8 @@ def gaussian_init(x, bits, sign):
 
 
 def entropy_init(x, bits, sign):
+  raise Exception("Entropy Calibration not implemented yet...")
   calib_hist, calib_bin_edges = jnp.histogram(x, bins=2048)
-  import pdb; pdb.set_trace()
-  jax.experimental.host_callback.call(lambda x: calib_hist)
   return compute_amax_entropy(calib_hist, calib_bin_edges, bits, sign, stride=1, start_bin=128)
 
 
