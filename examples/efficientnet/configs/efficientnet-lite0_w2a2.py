@@ -43,6 +43,7 @@ def get_config():
   config.weight_decay = 1e-5
   config.momentum = 0.9
   config.batch_size = 2048
+  config.batch_norm_epsilon = 1e-2
 
   config.num_epochs = 50
   config.log_every_steps = 256

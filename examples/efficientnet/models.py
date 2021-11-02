@@ -216,7 +216,8 @@ class EfficientNet(nn.Module):
     global_params = GlobalParams(
         blocks_args=_DEFAULT_BLOCKS_ARGS,
         batch_norm_momentum=0.99,
-        batch_norm_epsilon=1e-3,
+        batch_norm_epsilon=self.config.batch_norm_epsilon if hasattr(
+            self.config, 'batch_norm_epsilon') else 1e-3,
         dropout_rate=self.dropout_rate,
         survival_prob=.8,
         width_coefficient=self.width_coefficient,

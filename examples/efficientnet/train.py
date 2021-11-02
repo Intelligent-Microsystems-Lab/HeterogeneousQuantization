@@ -166,6 +166,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   # 1. Make above line a comment "state = jax_utils.replicate(state)".
   # 2. In train_util.py make all pmean commands comments.
   # 3. Use debug train_step.
+  # 4. Swtich train and eval metrics lines.
+  # 5. Uncomment JIT configs at the top.
 
   p_train_step = jax.pmap(
       functools.partial(
@@ -178,7 +180,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   p_eval_step = jax.pmap(functools.partial(
       eval_step, num_classes=config.num_classes), axis_name='batch')
 
-  # Debug
+  # # Debug
   # p_train_step = functools.partial(
   #     train_step,
   #     learning_rate_fn=learning_rate_fn,
@@ -200,7 +202,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
     state, metrics = p_train_step(state, batch, rng_list[1:])
 
-    # Debug
+    # # Debug
     # state, metrics = p_train_step(
     #     state, {'image': batch['image'][0, :, :, :],
     #             'label': batch['label'][0]}, rng_list[2])
@@ -213,6 +215,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       train_metrics.append(metrics)
       if (step + 1) % config.log_every_steps == 0:
         train_metrics = common_utils.get_metrics(train_metrics)
+        # # Debug
+        # train_metrics = common_utils.stack_forest(train_metrics)
         summary = {
             f'{k}': v
             for k, v in jax.tree_map(lambda x: x.mean(), train_metrics).items()
@@ -235,6 +239,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         metrics = p_eval_step(state, eval_batch)
         eval_metrics.append(metrics)
       eval_metrics = common_utils.get_metrics(eval_metrics)
+      # # Debug
+      # eval_metrics = common_utils.stack_forest(eval_metrics)
       summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
       logging.info('eval epoch: %d, loss: %.4f, accuracy: %.2f',
                    epoch, summary['loss'], summary['accuracy'] * 100)
