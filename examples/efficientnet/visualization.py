@@ -648,10 +648,10 @@ if __name__ == '__main__':
 
   # plot_comparison('figures/overview.png')
 
-  #df_dynamic_lr = table(enet0_dynamic_lr)
+  # df_dynamic_lr = table(enet0_dynamic_lr)
   df_static_lr = table(enet0_static_lr)
-  #print("Dynamic Quant")
-  #print(df_dynamic_lr.to_csv())
+  # print("Dynamic Quant")
+  # print(df_dynamic_lr.to_csv())
   print("Static Quant")
   print(df_static_lr.to_csv())
 

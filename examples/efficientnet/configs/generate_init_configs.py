@@ -3,10 +3,11 @@ import re
 import numpy as np
 
 base_config_name = 'configs/efficientnet-lite0_w4a4.py'
-init_methods = ['partial(max_init)', 'partial(double_mean_init)', 'partial(gaussian_init)', 'partial(entropy_init)', 'partial(percentile_init,perc=99.9)', 'partial(percentile_init,perc=99.99)', 'partial(percentile_init,perc=99.999)', 'partial(percentile_init,perc=99.9999)']
+init_methods = ['partial(max_init)', 'partial(double_mean_init)', 'partial(gaussian_init)', 'partial(entropy_init)', 'partial(percentile_init,perc=99.9)',
+                'partial(percentile_init,perc=99.99)', 'partial(percentile_init,perc=99.999)', 'partial(percentile_init,perc=99.9999)']
 config_dir = 'configs/init_ablation_w4a4'
 
-name_rm_chars = [',','=','.',')']
+name_rm_chars = [',', '=', '.', ')']
 num_run_scripts = 9
 
 with open(base_config_name) as f:
@@ -24,7 +25,8 @@ config_list = []
 for w_init in init_methods:
   for a_init in init_methods:
 
-    new_conf_name = config_dir +  '/' +base_config_name.split('/')[1].split('.')[0] +  '_w_init_' + re.sub('[,=.)]', '', w_init.split('(')[1]) + '_a_init_' + re.sub('[,=.)]', '', a_init.split('(')[1]) + '.py'
+    new_conf_name = config_dir + '/' + base_config_name.split('/')[1].split('.')[0] + '_w_init_' + re.sub(
+        '[,=.)]', '', w_init.split('(')[1]) + '_a_init_' + re.sub('[,=.)]', '', a_init.split('(')[1]) + '.py'
 
     config_list.append(new_conf_name)
 
@@ -32,13 +34,15 @@ for w_init in init_methods:
       for line in base_config:
         if 'from quant import' in line:
           if w_init == a_init:
-            f.write(line[:-1]+ ', ' + w_init.split('(')[1].split(',')[0].split(')')[0] + '\n')
+            f.write(line[:-1] + ', ' + w_init.split('(')
+                    [1].split(',')[0].split(')')[0] + '\n')
           else:
-            f.write(line[:-1]+ ', ' + w_init.split('(')[1].split(',')[0].split(')')[0] + ', '  + a_init.split('(')[1].split(',')[0].split(')')[0]+ '\n')
+            f.write(line[:-1] + ', ' + w_init.split('(')[1].split(',')[0].split(')')
+                    [0] + ', ' + a_init.split('(')[1].split(',')[0].split(')')[0] + '\n')
         elif '.act =' in line or '.average =' in line:
-          f.write(line[:-2]+ ', init_fn = ' + a_init + ')\n')
+          f.write(line[:-2] + ', init_fn = ' + a_init + ')\n')
         elif '.weight =' in line or '.bias =' in line:
-          f.write(line[:-2]+ ', init_fn = ' + w_init + ')\n')
+          f.write(line[:-2] + ', init_fn = ' + w_init + ')\n')
         else:
           f.write(line)
 
@@ -51,4 +55,5 @@ for idx, conf in enumerate(config_list):
 
   with open(config_dir + '/run_init_ablation_'+str(i)+'.sh', 'a+') as f:
 
-    f.write('python3 train.py --workdir=../../../'+ conf.split('/')[2][:-3] +' --config='+ conf +'\n')
+    f.write('python3 train.py --workdir=../../../' +
+            conf.split('/')[2][:-3] + ' --config=' + conf + '\n')

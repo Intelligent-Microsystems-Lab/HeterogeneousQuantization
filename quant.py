@@ -5,7 +5,10 @@ from flax import linen as nn
 
 from typing import Any, Iterable, Callable
 
-from utils import compute_amax_entropy
+from utils import compute_amax_entropy_no_jax  # compute_amax_entropy
+
+
+import jax.experimental.host_callback as hcb
 
 
 Array = Any
@@ -127,13 +130,18 @@ def gaussian_init(x, bits, sign):
 
 
 def entropy_init(x, bits, sign):
-  raise Exception("Entropy Calibration not implemented yet...")
-  calib_hist, calib_bin_edges = jnp.histogram(x, bins=2048)
-  return compute_amax_entropy(calib_hist, calib_bin_edges, bits, sign, stride=1, start_bin=128)
+  def test_hcb(inpt):
+    inpt = np.random.choice(inpt.flatten(), size=4_000_000)
+    calib_hist, calib_bin_edges = jnp.histogram(jnp.abs(inpt), bins=2048)
+    return compute_amax_entropy_no_jax(calib_hist, calib_bin_edges, bits,
+                                       sign, stride=1, start_bin=128)
+  return hcb.call(test_hcb, x, result_shape=jax.ShapeDtypeStruct((1,),
+                                                                 x.dtype))
 
 
 def percentile_init(x, bits, sign, perc):
   return jnp.percentile(x, perc)
+
 
 class uniform_dynamic(nn.Module):
   bits: int = 8
@@ -149,7 +157,7 @@ class uniform_dynamic(nn.Module):
       ), "Bit widths below 1 bits are not supported but got bits: "\
           + str(self.bits)
 
-    xmax = self.init_fn(x, bits = self.bits, sign = sign)
+    xmax = self.init_fn(x, bits=self.bits, sign=sign)
     xmax = jnp.where(xmax == 0, 1., xmax)
 
     if sign:
@@ -185,7 +193,7 @@ class uniform_static(nn.Module):
 
     xmax = self.variable('quant_params', 'dynamic_range', jnp.ones, (1,))
     if self.is_mutable_collection('quant_params'):
-      xmax.value = self.init_fn(x, bits = self.bits, sign = sign)
+      xmax.value = self.init_fn(x, bits=self.bits, sign=sign)
       xmax.value = jnp.where(xmax.value == 0, 1., xmax.value)
 
     if sign:
@@ -229,7 +237,9 @@ class parametric_d(nn.Module):
     step_size = self.variable('quant_params', 'step_size', jnp.ones, (1,))
     if self.is_mutable_collection('quant_params'):
       step_size.value = jnp.ones((1,))
-      step_size.value *= self.init_fn(inputs,  bits = self.bits, sign = sign) / jnp.sqrt(q_pos)
+      step_size.value *= self.init_fn(inputs,
+                                      bits=self.bits,
+                                      sign=sign) / jnp.sqrt(q_pos)
 
     gradScaleFactor = 1 / jnp.sqrt(q_pos * np.prod(n_wf) + 1e-6)
 
@@ -287,7 +297,7 @@ class parametric_d_xmax(nn.Module):
     act_mb = self.variable('act_size', 'act_mb', jnp.ones, (1,))
     weight_mb = self.variable('weight_size', 'weight_mb', jnp.ones, (1,))
     if self.is_mutable_collection('quant_params'):
-      xmax.value = jnp.clip(self.init_fn(inputs, bits = self.bits, sign = sign),
+      xmax.value = jnp.clip(self.init_fn(inputs, bits=self.bits, sign=sign),
                             self.xmax_min, self.xmax_max)
       xmax.value = jnp.where(xmax.value == 0, 1., xmax.value)
       d.value = jnp.clip(xmax.value / num_levels, self.d_min, self.d_max)
