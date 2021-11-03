@@ -64,6 +64,8 @@ def get_config():
 
   config.quant.bits = 8
 
+  config.quant.g_scale = 0.
+
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
   config.quant.stem.weight = partial(

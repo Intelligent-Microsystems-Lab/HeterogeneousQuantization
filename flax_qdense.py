@@ -52,6 +52,7 @@ class QuantDense(Module):
   config: dict = ml_collections.FrozenConfigDict({})
   bits: int = 8
   quant_act_sign: bool = True
+  g_scale: float = 1e-3
 
   @compact
   def __call__(self, inputs: Array, rng: Any = None) -> Array:
@@ -71,12 +72,13 @@ class QuantDense(Module):
     # Quantization has to be done here to use Flax convenience functions for
     # parameters.
     if "weight" in self.config:
-      kernel_fwd = self.config.weight(bits=self.bits)(kernel)
+      kernel_fwd = self.config.weight(
+          bits=self.bits, g_scale=self.g_scale)(kernel)
     else:
       kernel_fwd = kernel
 
     if "act" in self.config:
-      inpt_fwd = self.config.act(bits=self.bits)(
+      inpt_fwd = self.config.act(bits=self.bits, g_scale=self.g_scale)(
           inputs, sign=self.quant_act_sign)
     else:
       inpt_fwd = inputs
@@ -169,7 +171,7 @@ class QuantDense(Module):
       bias = jnp.asarray(bias, self.dtype)
 
       if "bias" in self.config:
-        bias = self.config.weight(bits=self.bits)(bias)
+        bias = self.config.weight(bits=self.bits, g_scale=self.g_scale)(bias)
 
       y = y + bias
     return y

@@ -19,95 +19,51 @@ def get_noise(x: Array, percentage: float, rng: PRNGKey) -> Array:
   )
 
 
-@jax.custom_vjp
-def roundpass(x):
-  return jnp.round(x)
-
-
-def roundpass_fwd(x):
-  return roundpass(x), (None,)
-
-
-def roundpass_bwd(res, g):
-  return (g,)
-
-
-roundpass.defvjp(roundpass_fwd, roundpass_bwd)
+#
+# Rounding with different backward passes
+#
 
 
 @jax.custom_vjp
-def roundsurrogate(x):
+def roundsurrogate(x, scale):
   return jnp.round(x)
 
 
-def roundsurrogate_fwd(x):
-  return roundsurrogate(x), (x,)
+def roundsurrogate_fwd(x, scale):
+  return roundsurrogate(x, scale), (x, scale)
 
 
 def roundsurrogate_bwd(res, g):
-  (x,) = res
-  diff = jnp.round(x) - x
-  g_x = 1 / (1 + jnp.abs(diff))**2
-  return (g * g_x,)
+  (x, scale) = res
+
+  return (g * (1 - scale * jnp.sign(g) * jnp.abs((x - jnp.round(x)))), None)
 
 
 roundsurrogate.defvjp(roundsurrogate_fwd, roundsurrogate_bwd)
 
 
-# surrogate with psg
-@jax.custom_vjp
-def round_surrogate_psg(x):
-  return jnp.round(x)
-
-
-def round_surrogate_psg_fwd(x):
-  return round_surrogate_psg(x), (x,)
-
-
-def round_surrogate_psg_bwd(res, g):
-  (x,) = res
-  diff = jnp.abs(jnp.round(x) - x) - .5
-  g_x = 1 / (1 + jnp.abs(diff))**2
-
-  return (g * g_x,)
-
-
-round_surrogate_psg.defvjp(round_surrogate_psg_fwd, round_surrogate_psg_bwd)
-
-
 # ewgs https://arxiv.org/pdf/2104.00903.pdf
 @jax.custom_vjp
-def round_ewgs(x):
+def round_ewgs(x, scale):
   return jnp.round(x)
 
 
-def round_ewgs_fwd(x):
-  return round_ewgs(x), (x,)
+def round_ewgs_fwd(x, scale):
+  return round_ewgs(x, scale), (x, scale)
 
 
 def round_ewgs_bwd(res, g):
-  (x,) = res
+  (x, scale) = res
 
-  return (g * (1 + 1e-3 * jnp.sign(g) * (x - jnp.round(x))),)
+  return (g * (1 + scale * jnp.sign(g) * (x - jnp.round(x))), None)
 
 
 round_ewgs.defvjp(round_ewgs_fwd, round_ewgs_bwd)
 
 
-@jax.custom_vjp
-def ceilpass(x):
-  return jnp.ceil(x)
-
-
-def ceilpass_fwd(x):
-  return ceilpass(x), (None,)
-
-
-def ceilpass_bwd(res, g):
-  return (g,)
-
-
-ceilpass.defvjp(ceilpass_fwd, ceilpass_bwd)
+#
+# Calibration functions
+#
 
 
 def max_init(x, bits, sign):
@@ -128,40 +84,17 @@ def percentile_init(x, bits, sign, perc):
   return jnp.percentile(jnp.abs(x), perc)
 
 
-class uniform_dynamic(nn.Module):
-  bits: int = 8
-  act: bool = False
-  round_fn: Callable = roundpass
-  init_fn: Callable = max_init
-
-  @nn.compact
-  def __call__(self, x: Array, sign: bool = True) -> Array:
-    if type(self.bits) == int:
-      assert (
-          self.bits > 0
-      ), "Bit widths below 1 bits are not supported but got bits: "\
-          + str(self.bits)
-
-    xmax = self.init_fn(x, bits=self.bits, sign=sign)
-    xmax = jnp.where(xmax == 0, 1., xmax)
-
-    if sign:
-      int_range = 2 ** (self.bits - 1) - 1
-      xmin = -xmax
-    else:
-      int_range = 2 ** (self.bits) - 1
-      xmin = .0
-
-    scale = xmax / int_range
-
-    return self.round_fn(jnp.clip(x, xmin, xmax) / scale) * scale
+#
+# Quantizer
+#
 
 
 class uniform_static(nn.Module):
   bits: int = 8
   act: bool = False
-  round_fn: Callable = roundpass
+  round_fn: Callable = roundsurrogate
   init_fn: Callable = max_init
+  g_scale: float = 0.
 
   @nn.compact
   def __call__(self, x: Array, sign: bool = True) -> Array:
@@ -187,14 +120,16 @@ class uniform_static(nn.Module):
       xmin = 0.
 
     scale = xmax.value / num_levels
-    return self.round_fn(jnp.clip(x, xmin, xmax.value) / scale) * scale
+    return self.round_fn(jnp.clip(x, xmin, xmax.value) / scale,
+                         self.g_scale) * scale
 
 
 class parametric_d(nn.Module):
   bits: int = 8
   act: bool = False
-  round_fn: Callable = roundpass
+  round_fn: Callable = roundsurrogate
   init_fn: Callable = max_init
+  g_scale: float = 0.
 
   # parametric homogenouse quantization
   # Based on LEARNED STEP SIZE QUANTIZATION
@@ -243,7 +178,7 @@ class parametric_d(nn.Module):
     s = gradscale(step_size.value, gradScaleFactor)
     v = v / s
     v = jnp.clip(v, q_neg, q_pos)
-    vbar = self.round_fn(v)
+    vbar = self.round_fn(v, self.g_scale)
     return vbar * s
 
 
@@ -254,8 +189,9 @@ class parametric_d_xmax(nn.Module):
   xmax_max: float = 100
   d_min: float = 2**-8
   d_max: float = 2**+8
-  round_fn: Callable = roundpass
+  round_fn: Callable = roundsurrogate
   init_fn: Callable = max_init
+  g_scale: float = 0.
 
   # Parametric heterogenous quantization.
   # Based on MIXED PRECISION DNNS.
@@ -266,7 +202,19 @@ class parametric_d_xmax(nn.Module):
     x = inputs
 
     def quantize_pow2(v):
-      return 2 ** roundpass(jnp.log2(v))
+      return 2 ** roundsurrogate(jnp.log2(v), 0)
+
+    @jax.custom_vjp
+    def ceilpass(x):
+      return jnp.ceil(x)
+
+    def ceilpass_fwd(x):
+      return ceilpass(x), (None,)
+
+    def ceilpass_bwd(res, g):
+      return (g,)
+
+    ceilpass.defvjp(ceilpass_fwd, ceilpass_bwd)
 
     if sign:
       num_levels = 2 ** (self.bits - 1) - 1

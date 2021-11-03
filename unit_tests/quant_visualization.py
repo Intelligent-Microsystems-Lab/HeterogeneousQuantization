@@ -1,8 +1,15 @@
 from quant import (
+    uniform_static,
     parametric_d,
     parametric_d_xmax,
-    uniform_dynamic,
+
+    max_init,
+    gaussian_init,
+    percentile_init,
+    double_mean_init,
+
     roundsurrogate,
+    round_ewgs,
 )
 import sys
 
@@ -38,6 +45,7 @@ def plot_lines(x, x_list, name_list, color_list, fname):
 
   ax.set_xlabel("x", fontsize=font_size, fontweight='bold')
   ax.set_ylabel("dL/dx", fontsize=font_size, fontweight='bold')
+  ax.set_yscale('log')
   plt.legend(
       bbox_to_anchor=(0.5, 1.2),
       loc="upper center",
@@ -51,12 +59,14 @@ def plot_lines(x, x_list, name_list, color_list, fname):
 
 
 # Ordinary visualization
-quant_fn = uniform_dynamic(bits=3)
+quant_fn = uniform_static(
+    bits=3, init_fn=double_mean_init, round_fn=round_ewgs, g_scale=1e-3)
 
 rng = jax.random.PRNGKey(0)
 rng, init_rng, data_rng = jax.random.split(rng, 3)
 
-params = quant_fn.init(init_rng, jnp.ones((1, 2)) * .25, sign=True)
+params = quant_fn.init(init_rng, jax.random.normal(
+    data_rng, (100, 100)), sign=True)
 
 
 def loss_fn(x, params):
@@ -64,176 +74,177 @@ def loss_fn(x, params):
   return jnp.sum(logits)
 
 
-x_list = jnp.arange(-1, +1, .001)
+x_list = jnp.arange(-1.7, +1.7, .001)
 grad_fn = jax.grad(loss_fn, argnums=0)
 
 g = grad_fn(x_list, params)
 
 plot_lines(x_list, [g], ['Derivative Inputs'], ['blue', ],
-           "../../figures/ordinary_gradients.png")
+           "../../figures/quant_grad.png")
 
 
-# Ordinary visualization -- Surrogate
-quant_fn = uniform_dynamic(bits=3, round_fn=roundsurrogate)
+# # Ordinary visualization -- Surrogate
+# quant_fn = uniform_dynamic(bits=3, round_fn=roundsurrogate)
 
-rng = jax.random.PRNGKey(0)
-rng, init_rng, data_rng = jax.random.split(rng, 3)
+# rng = jax.random.PRNGKey(0)
+# rng, init_rng, data_rng = jax.random.split(rng, 3)
 
-params = quant_fn.init(init_rng, jnp.ones((1, 2)) * .25, sign=True)
-
-
-def loss_fn(x, params):
-  logits = quant_fn.apply(params, x, sign=True)
-  return jnp.sum(logits)
+# params = quant_fn.init(init_rng, jnp.ones((1, 2)) * .25, sign=True)
 
 
-x_list = jnp.arange(-1, +1, .001)
-grad_fn = jax.grad(loss_fn, argnums=0)
-
-g = grad_fn(x_list, params)
-
-plot_lines(x_list, [g], ['Derivative Inputs'], ['blue', ],
-           "../../figures/ordinary_surrogate.png")
-
-# LSQ visualization
-quant_fn = parametric_d(bits=3)
-
-rng = jax.random.PRNGKey(0)
-rng, init_rng, data_rng = jax.random.split(rng, 3)
-
-params = quant_fn.init(init_rng, jnp.ones((1, 2)) * .25, sign=True)
+# def loss_fn(x, params):
+#   logits = quant_fn.apply(params, x, sign=True)
+#   return jnp.sum(logits)
 
 
-def loss_fn(x, params):
-  logits = quant_fn.apply(params, x, sign=True)
-  return jnp.sum(logits)
+# x_list = jnp.arange(-1, +1, .001)
+# grad_fn = jax.grad(loss_fn, argnums=0)
+
+# g = grad_fn(x_list, params)
+
+# plot_lines(x_list, [g], ['Derivative Inputs'], ['blue', ],
+#            "../../figures/ordinary_surrogate.png")
 
 
-grad_fn = jax.grad(loss_fn, argnums=1)
+# # LSQ visualization
+# quant_fn = parametric_d(bits=3)
 
-gs_list = []
-x_list = jnp.arange(-1, +1, .001)
-for i in x_list:
-  g = grad_fn(i, params)
-  gs_list.append(g['quant_params']['step_size'])
+# rng = jax.random.PRNGKey(0)
+# rng, init_rng, data_rng = jax.random.split(rng, 3)
 
-grad_fn = jax.grad(loss_fn, argnums=0)
-
-gx_list = []
-for i in x_list:
-  g = grad_fn(i, params)
-  gx_list.append(g)
-
-plot_lines(x_list, [gs_list, gx_list],
-           ['Derivative Step Size', 'Derivative Inputs'],
-           ['blue', 'green'], "../../figures/lsq_gradients.png")
+# params = quant_fn.init(init_rng, jnp.ones((1, 2)) * .25, sign=True)
 
 
-# LSQ visualization -- Surrogate
-quant_fn = parametric_d(bits=3, round_fn=roundsurrogate)
-
-rng = jax.random.PRNGKey(0)
-rng, init_rng, data_rng = jax.random.split(rng, 3)
-
-params = quant_fn.init(init_rng, jnp.ones((1, 2)) * .25, sign=True)
+# def loss_fn(x, params):
+#   logits = quant_fn.apply(params, x, sign=True)
+#   return jnp.sum(logits)
 
 
-def loss_fn(x, params):
-  logits = quant_fn.apply(params, x, sign=True)
-  return jnp.sum(logits)
+# grad_fn = jax.grad(loss_fn, argnums=1)
+
+# gs_list = []
+# x_list = jnp.arange(-1, +1, .001)
+# for i in x_list:
+#   g = grad_fn(i, params)
+#   gs_list.append(g['quant_params']['step_size'])
+
+# grad_fn = jax.grad(loss_fn, argnums=0)
+
+# gx_list = []
+# for i in x_list:
+#   g = grad_fn(i, params)
+#   gx_list.append(g)
+
+# plot_lines(x_list, [gs_list, gx_list],
+#            ['Derivative Step Size', 'Derivative Inputs'],
+#            ['blue', 'green'], "../../figures/lsq_gradients.png")
 
 
-grad_fn = jax.grad(loss_fn, argnums=1)
+# # LSQ visualization -- Surrogate
+# quant_fn = parametric_d(bits=3, round_fn=roundsurrogate)
 
-gs_list = []
-x_list = jnp.arange(-1, +1, .001)
-for i in x_list:
-  g = grad_fn(i, params)
-  gs_list.append(g['quant_params']['step_size'])
+# rng = jax.random.PRNGKey(0)
+# rng, init_rng, data_rng = jax.random.split(rng, 3)
 
-grad_fn = jax.grad(loss_fn, argnums=0)
-
-gx_list = []
-for i in x_list:
-  g = grad_fn(i, params)
-  gx_list.append(g)
-
-plot_lines(x_list, [gs_list, gx_list],
-           ['Derivative Step Size', 'Derivative Inputs'],
-           ['blue', 'green'], "../../figures/lsq_surrogate.png")
+# params = quant_fn.init(init_rng, jnp.ones((1, 2)) * .25, sign=True)
 
 
-# MixedPrecision DNN visualization
-quant_fn = parametric_d_xmax(bits=3)
-
-rng = jax.random.PRNGKey(0)
-rng, init_rng, data_rng = jax.random.split(rng, 3)
-
-params = quant_fn.init(init_rng, jnp.ones((1, 2)) * .5, sign=True)
+# def loss_fn(x, params):
+#   logits = quant_fn.apply(params, x, sign=True)
+#   return jnp.sum(logits)
 
 
-def loss_fn(x, params):
-  logits = quant_fn.apply(params, x, sign=True)
-  return jnp.sum(logits)
+# grad_fn = jax.grad(loss_fn, argnums=1)
+
+# gs_list = []
+# x_list = jnp.arange(-1, +1, .001)
+# for i in x_list:
+#   g = grad_fn(i, params)
+#   gs_list.append(g['quant_params']['step_size'])
+
+# grad_fn = jax.grad(loss_fn, argnums=0)
+
+# gx_list = []
+# for i in x_list:
+#   g = grad_fn(i, params)
+#   gx_list.append(g)
+
+# plot_lines(x_list, [gs_list, gx_list],
+#            ['Derivative Step Size', 'Derivative Inputs'],
+#            ['blue', 'green'], "../../figures/lsq_surrogate.png")
 
 
-grad_fn = jax.grad(loss_fn, argnums=1)
+# # MixedPrecision DNN visualization
+# quant_fn = parametric_d_xmax(bits=3)
 
-gs_list = []
-gxmax_list = []
-x_list = jnp.arange(-1, +1, .001)
-for i in x_list:
-  g = grad_fn(i, params)
-  gs_list.append(g['quant_params']['step_size'])
-  gxmax_list.append(g['quant_params']['dynamic_range'])
+# rng = jax.random.PRNGKey(0)
+# rng, init_rng, data_rng = jax.random.split(rng, 3)
 
-grad_fn = jax.grad(loss_fn, argnums=0)
-
-gx_list = []
-for i in x_list:
-  g = grad_fn(i, params)
-  gx_list.append(g)
+# params = quant_fn.init(init_rng, jnp.ones((1, 2)) * .5, sign=True)
 
 
-plot_lines(x_list, [gx_list, gxmax_list, gs_list],
-           ['Derivative Inputs', 'Derivative Dynamic Range',
-            'Derivative Step Size'],
-           ['blue', 'green', 'red'], "../../figures/mixed_gradients.png")
+# def loss_fn(x, params):
+#   logits = quant_fn.apply(params, x, sign=True)
+#   return jnp.sum(logits)
 
 
-# MixedPrecision DNN visualization -- Surrogate
-quant_fn = parametric_d_xmax(bits=3, round_fn=roundsurrogate)
+# grad_fn = jax.grad(loss_fn, argnums=1)
 
-rng = jax.random.PRNGKey(0)
-rng, init_rng, data_rng = jax.random.split(rng, 3)
+# gs_list = []
+# gxmax_list = []
+# x_list = jnp.arange(-1, +1, .001)
+# for i in x_list:
+#   g = grad_fn(i, params)
+#   gs_list.append(g['quant_params']['step_size'])
+#   gxmax_list.append(g['quant_params']['dynamic_range'])
 
-params = quant_fn.init(init_rng, jnp.ones((1, 2)) * .5, sign=True)
+# grad_fn = jax.grad(loss_fn, argnums=0)
 
-
-def loss_fn(x, params):
-  logits = quant_fn.apply(params, x, sign=True)
-  return jnp.sum(logits)
-
-
-grad_fn = jax.grad(loss_fn, argnums=1)
-
-gs_list = []
-gxmax_list = []
-x_list = jnp.arange(-1, +1, .001)
-for i in x_list:
-  g = grad_fn(i, params)
-  gs_list.append(g['quant_params']['step_size'])
-  gxmax_list.append(g['quant_params']['dynamic_range'])
-
-grad_fn = jax.grad(loss_fn, argnums=0)
-
-gx_list = []
-for i in x_list:
-  g = grad_fn(i, params)
-  gx_list.append(g)
+# gx_list = []
+# for i in x_list:
+#   g = grad_fn(i, params)
+#   gx_list.append(g)
 
 
-plot_lines(x_list, [gx_list, gxmax_list, gs_list],
-           ['Derivative Inputs', 'Derivative Dynamic Range',
-            'Derivative Step Size'],
-           ['blue', 'green', 'red'], "../../figures/mixed_surrogate.png")
+# plot_lines(x_list, [gx_list, gxmax_list, gs_list],
+#            ['Derivative Inputs', 'Derivative Dynamic Range',
+#             'Derivative Step Size'],
+#            ['blue', 'green', 'red'], "../../figures/mixed_gradients.png")
+
+
+# # MixedPrecision DNN visualization -- Surrogate
+# quant_fn = parametric_d_xmax(bits=3, round_fn=roundsurrogate)
+
+# rng = jax.random.PRNGKey(0)
+# rng, init_rng, data_rng = jax.random.split(rng, 3)
+
+# params = quant_fn.init(init_rng, jnp.ones((1, 2)) * .5, sign=True)
+
+
+# def loss_fn(x, params):
+#   logits = quant_fn.apply(params, x, sign=True)
+#   return jnp.sum(logits)
+
+
+# grad_fn = jax.grad(loss_fn, argnums=1)
+
+# gs_list = []
+# gxmax_list = []
+# x_list = jnp.arange(-1, +1, .001)
+# for i in x_list:
+#   g = grad_fn(i, params)
+#   gs_list.append(g['quant_params']['step_size'])
+#   gxmax_list.append(g['quant_params']['dynamic_range'])
+
+# grad_fn = jax.grad(loss_fn, argnums=0)
+
+# gx_list = []
+# for i in x_list:
+#   g = grad_fn(i, params)
+#   gx_list.append(g)
+
+
+# plot_lines(x_list, [gx_list, gxmax_list, gs_list],
+#            ['Derivative Inputs', 'Derivative Dynamic Range',
+#             'Derivative Step Size'],
+#            ['blue', 'green', 'red'], "../../figures/mixed_surrogate.png")

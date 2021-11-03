@@ -232,7 +232,8 @@ class EfficientNet(nn.Module):
 
     _blocks_args = BlockDecoder().decode(global_params.blocks_args)
 
-    conv = partial(QuantConv, dtype=self.dtype)
+    conv = partial(QuantConv, dtype=self.dtype,
+                   g_scale=self.config.quant.g_scale)
     norm = partial(nn.BatchNorm,
                    use_running_average=not train,
                    momentum=global_params.batch_norm_momentum,
@@ -347,7 +348,8 @@ class EfficientNet(nn.Module):
 
     x = jnp.mean(x, axis=(1, 2))
     if 'average' in self.config.quant:
-      x = self.config.quant.average()(x, sign=False)
+      x = self.config.quant.average(
+          g_scale=self.config.quant.g_scale)(x, sign=False)
 
     x = nn.Dropout(self.dropout_rate)(x, deterministic=not train)
     x = QuantDense(self.num_classes,
@@ -355,7 +357,8 @@ class EfficientNet(nn.Module):
                    dtype=self.dtype,
                    config=self.config.quant.dense,
                    bits=self.config.quant.bits,
-                   quant_act_sign=False)(x)
+                   quant_act_sign=False,
+                   g_scale=self.config.quant.g_scale)(x)
     x = jnp.asarray(x, self.dtype)
     self.sow('intermediates', 'head', x)
 

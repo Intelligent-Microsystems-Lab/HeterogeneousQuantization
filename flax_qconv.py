@@ -84,6 +84,7 @@ class QuantConv(Module):
   config: dict = None
   bits: int = 8
   quant_act_sign: bool = True
+  g_scale: float = 1e-3
 
   @compact
   def __call__(self, inputs: Array, rng: Any = None) -> Array:
@@ -142,12 +143,13 @@ class QuantConv(Module):
     # Quantization has to be done here to use Flax convenience functions for
     # parameters.
     if "weight" in cfg:
-      kernel_fwd = cfg.weight(bits=self.bits)(kernel)
+      kernel_fwd = cfg.weight(bits=self.bits, g_scale=self.g_scale)(kernel)
     else:
       kernel_fwd = kernel
 
     if "act" in cfg:
-      inpt_fwd = cfg.act(bits=self.bits)(inputs, sign=self.quant_act_sign)
+      inpt_fwd = cfg.act(bits=self.bits, g_scale=self.g_scale)(
+          inputs, sign=self.quant_act_sign)
     else:
       inpt_fwd = inputs
 
