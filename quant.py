@@ -129,18 +129,11 @@ def gaussian_init(x, bits, sign):
   return jnp.maximum(jnp.abs(mu - 3 * sigma), jnp.abs(mu + 3 * sigma))
 
 
-def entropy_init(x, bits, sign):
-  def test_hcb(inpt):
-    inpt = np.random.choice(inpt.flatten(), size=4_000_000)
-    calib_hist, calib_bin_edges = jnp.histogram(jnp.abs(inpt), bins=2048)
-    return compute_amax_entropy_no_jax(calib_hist, calib_bin_edges, bits,
-                                       sign, stride=1, start_bin=128)
-  return hcb.call(test_hcb, x, result_shape=jax.ShapeDtypeStruct((1,),
-                                                                 x.dtype))
+
 
 
 def percentile_init(x, bits, sign, perc):
-  return jnp.percentile(x, perc)
+  return jnp.percentile(jnp.abs(x), perc)
 
 
 class uniform_dynamic(nn.Module):

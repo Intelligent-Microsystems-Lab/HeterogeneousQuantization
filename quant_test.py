@@ -96,10 +96,10 @@ def signed_uniform_max_scale_quant_ste_unique_data():
           scale=0.38,
       ),
       dict(
-          x_dim=9100,
-          y_dim=230,
+          x_dim=9101,
+          y_dim=261,
           bits=11,
-          scale=781,
+          scale=654,
       ),
       dict(
           x_dim=3300,
@@ -227,54 +227,54 @@ class QuantOpsTest(parameterized.TestCase):
         len(np.unique(dataq)), ((2 ** (bits - 1) - 1) * 2) + 1
     )
 
-  # @parameterized.product(signed_uniform_max_scale_quant_ste_unique_data())
-  # def test_parametric_d(self, x_dim, y_dim, bits, scale):
+  @parameterized.product(signed_uniform_max_scale_quant_ste_unique_data())
+  def test_parametric_d(self, x_dim, y_dim, bits, scale):
 
-  #   #
-  #   # DISCLAIMER: too big and and too small of a bit-width breaks unit tests.
-  #   #
+    #
+    # DISCLAIMER: too big and and too small of a bit-width breaks unit tests.
+    #
 
-  #   rng = random.PRNGKey(8627169)
+    rng = random.PRNGKey(8627169)
 
-  #   rng, init_rng, data_rng = jax.random.split(rng, 3)
-  #   data = (
-  #       jax.random.uniform(data_rng, (x_dim, y_dim), minval=-1, maxval=1)
-  #       * scale
-  #   )
+    rng, init_rng, data_rng = jax.random.split(rng, 3)
+    data = (
+        jax.random.uniform(data_rng, (x_dim, y_dim), minval=-1, maxval=1)
+        * scale
+    )
 
-  #   quant_fn = parametric_d(bits=bits)
+    quant_fn = parametric_d(bits=bits)
 
-  #   def loss_fn(x, params):
-  #     logits = quant_fn.apply(params, x)
-  #     return jnp.sum(logits)
+    def loss_fn(x, params):
+      logits = quant_fn.apply(params, x)
+      return jnp.sum(logits)
 
-  #   params = quant_fn.init(init_rng, data)
-  #   grad_fn = jax.grad(loss_fn, argnums=1)
+    params = quant_fn.init(init_rng, data)
+    grad_fn = jax.grad(loss_fn, argnums=1)
 
-  #   num_levels = 2 ** (bits - 1) - 1
-  #   grad_scale = 1 / jnp.sqrt(num_levels * np.prod(data.shape) + 1e-6)
-  #   params_step_size = params['quant_params']['step_size']
+    num_levels = 2 ** (bits - 1) - 1
+    grad_scale = 1 / jnp.sqrt(num_levels * np.prod(data.shape) + 1e-6)
+    params_step_size = params['quant_params']['step_size']
 
-  #   # all outside upper
-  #   g = grad_fn(jnp.abs(data) + num_levels * params_step_size, params)
-  #   np.testing.assert_allclose(g['quant_params']['step_size'] / (
-  #       num_levels * grad_scale), x_dim * y_dim, atol=6.e-05, rtol=7e-6)
+    # all outside upper
+    g = grad_fn(jnp.abs(data) + num_levels * params_step_size, params)
+    np.testing.assert_allclose(g['quant_params']['step_size'] / (
+        num_levels * grad_scale), x_dim * y_dim, atol=6.e-05, rtol=7e-6)
 
-  #   # all inside on point
-  #   g = grad_fn(jnp.ones_like(data) * params_step_size, params)
-  #   # numerical tol.
-  #   np.testing.assert_allclose(
-  #       g['quant_params']['step_size'], 5e-5, atol=6.e-05)
+    # all inside on point
+    g = grad_fn(jnp.ones_like(data) * params_step_size, params)
+    # numerical tol.
+    np.testing.assert_allclose(
+        g['quant_params']['step_size'], 5e-5, atol=6.e-05)
 
-  #   # all inside full off point
-  #   g = grad_fn(jnp.ones_like(data) * params_step_size * .5, params)
-  #   np.testing.assert_allclose(jnp.abs(g['quant_params']['step_size'] / (
-  #       x_dim * y_dim)), .5 * grad_scale, atol=6.e-05)
+    # all inside full off point
+    g = grad_fn(jnp.ones_like(data) * params_step_size * .5, params)
+    np.testing.assert_allclose(jnp.abs(g['quant_params']['step_size'] / (
+        x_dim * y_dim)), .5 * grad_scale, atol=6.e-05)
 
-  #   # all outside lower
-  #   g = grad_fn(-jnp.abs(data) - num_levels * params_step_size, params)
-  #   np.testing.assert_allclose(g['quant_params']['step_size'] / (
-  #       num_levels * grad_scale), -x_dim * y_dim, atol=6.e-05, rtol=7e-6)
+    # all outside lower
+    g = grad_fn(-jnp.abs(data) - num_levels * params_step_size, params)
+    np.testing.assert_allclose(g['quant_params']['step_size'] / (
+        num_levels * grad_scale), -x_dim * y_dim, atol=6.e-05, rtol=7e-6)
 
   @parameterized.product(signed_uniform_max_scale_quant_ste_unique_data(
   ) + signed_uniform_max_scale_quant_ste_unique_data_ext())
@@ -358,7 +358,7 @@ class QuantOpsTest(parameterized.TestCase):
     # all inside full off point
     g = grad_fn(jnp.ones_like(data) * params_step_size * .5, params)
     np.testing.assert_allclose(
-        g['quant_params']['step_size'] / np.prod(data.shape), -.5)
+        g['quant_params']['step_size'] / np.prod(data.shape), -.5, atol=1e-7)
 
 
 if __name__ == "__main__":

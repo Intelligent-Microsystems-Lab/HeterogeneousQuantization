@@ -291,6 +291,17 @@ enet0_mixed = {
 }
 
 
+enet0_lr_best = {
+    3: '9nwVcMdPRRGJtjDjrZpCeg',
+    4: 'kX80UjhnQxWdwEdzQDTNzQ',
+    5: 'KMwHB3liQM2WR7jSzE7nNQ',
+    6: 'mx3Gs5p4T0S9KSBXeFqAvg',
+    7: 'yZQjrnLBS9iG3DFeUzoaPg',
+    8: 'vq1yDQlLSgSbNH0he3QE5A',
+    'params': 4652008,
+    'label': 'EfficientNet-Lite0 (3-8 Bits)',
+}
+
 # enet0_dynamic_lr = {
 #     '2_0.0001': 'eevmuBORRTeBhZjmBYhLQQ',
 #     '2_0.001': 'uMlodEdaSVu4mv3Yk09rLg',
@@ -317,10 +328,10 @@ enet0_mixed = {
 
 
 enet0_static_lr = {
-    '2_0.0001': 'xB6ZxuYlSWmmWymUJVCReQ',
+    '2_0.0001': '3c9xaWUeTaKFm2DUnDbxXA',
     '2_0.001': 'V1ILWkzJRvOkwlbllHDAgw',
     '2_0.01': 'fPJvBqfDRNK5mmWyFgPxqg',
-    '2_0.1': 'mOt1syhgSweqceN97AaZbQ',
+    '2_0.1': 'rRY4DAgdQ22jPbxRg4anAA',
     '3_0.0001': 'rKTXZqHGSdGAluOKeSOevQ',
     '3_0.001': 'li5gkK6rQImofqLw7UP5IQ',
     '3_0.01': '9nwVcMdPRRGJtjDjrZpCeg',
@@ -344,81 +355,65 @@ enet0_static_lr = {
     '8_0.0001': 'RoRByyMeSZKlmOjqY19PZQ',
     '8_0.001': 'vq1yDQlLSgSbNH0he3QE5A',
     '8_0.01': 'cya49VDMTYSnQbLFEp8CmQ',
-    '8_0.1': 'Pu28wFv0ReafaLXBVroBJg',
+    '8_0.1': 'p2VntR8LRFOGiD2lkt0BVQ',
 }
 
 enet0_static_init = {
     'max_max': '7I2DKoqsQrqAH2O63D4eig',
     'max_doublemean': '4aRGN3vNSA6o0qA4TaRcPw',
     'max_gaussian': 'U1fqXpfwROG6hpWWiwqQPQ',
-    'max_entropy': 'aqkpM1tbReKIlQQsoCVNVA',
     'max_p999': 'NsYjCPURSMiMujFrOC0Vzg',
     'max_p9999': '2Zemsxh4Tzu1VikEx4djKg',
     'max_p99999': 'eznienrKQrmQg1dnnJpblQ',
-    'max_p999999': '',
+    'max_p999999': 'DpDDJ9BxSXmQDPOioaMpQA',
 
     'doublemean_max': 'ulnMJxo3TveGAtD3ADrpwg',
     'doublemean_doublemean': '15vphyrbSyuLlgL83m9KKg',
     'doublemean_gaussian': 'U6R18149SyagJ54Mo9tEiQ',
-    'doublemean_entropy': 'vBQfVsqnS7yDv4Z8qmsXtA',
     'doublemean_p999': 'BYwFYZOKREWLZg6w0UDVpA',
     'doublemean_p9999': '1ca0JiOESaG0jRbExPiDqQ',
     'doublemean_p99999': 'dNVOpjxJTd6XNGOERfalrw',
-    'doublemean_p999999': '',
+    'doublemean_p999999': '9x4exLtVSlOyn8Uj4HxXBg',
 
     'gaussian_max': 'hn06OO2YRtGyQcxtYYjOLw',
     'gaussian_doublemean': 'jDPh2vqwRmGa0Baio2AalA',
     'gaussian_gaussian': 'iLAKzaklSQGurdFMxDtJOg',
-    'gaussian_entropy': 'I9XkXEmQQsaonS0QnytbkA',
     'gaussian_p999': 'x0CEYBxTQp6ZeMe8ZDH84Q',
     'gaussian_p9999': 'v7Ggrm3ERf6iWz8Dh0NZMw',
     'gaussian_p99999': '21av70YJTYqErM24ZwO3zg',
-    'gaussian_p999999': '',
-
-    'entropy_max': '',
-    'entropy_doublemean': '',
-    'entropy_gaussian': '',
-    'entropy_entropy': '',
-    'entropy_p999': '',
-    'entropy_p9999': '',
-    'entropy_p99999': '',
-    'entropy_p999999': '',
+    'gaussian_p999999': 'hEQrEEZ1QOeEQ32Hjsm5zg',
 
     'p999_max': 'ymAa2fj5RsmZTMZfveQGkw',
     'p999_doublemean': 'g10BBnYfQQeavWO10V5qWA',
     'p999_gaussian': 'dPvPT6s2TDiVOk9RyBIxqw',
-    'p999_entropy': 'hgwxdYXAQlKCkvLc4DQIlQ',
     'p999_p999': 'gspOQVWzQ32zOubnpQEl0g',
     'p999_p9999': 'zC4T3s6AT12ELjo087ymnA',
     'p999_p99999': 'qjnwaYsQRlq1bVY8rlVQWA',
-    'p999_p999999': '',
+    'p999_p999999': 'ZeP2eOK6TdiBG48sOal4hA',
 
     'p9999_max': 'pofbEKP0QGaM6Fq5FqNfPA',
     'p9999_doublemean': 'vxcXeVQ4QoKyMeN0XwGYCw',
     'p9999_gaussian': 'gEPlRpt3QdGmYGKpy7udeQ',
-    'p9999_entropy': 'aLwYrXWxQu6vGYoqira9Gg',
     'p9999_p999': 'sZc04MPcRWGqH0rEFDKGQg',
     'p9999_p9999': 'j5cpofVtRXGPtkObZYvO9w',
     'p9999_p99999': 'Fymq6Rb2TDGsQHokjFEE3g',
-    'p9999_p999999': '',
+    'p9999_p999999': 'wgFAziqNTEePmv38bAuvcg',
 
     'p99999_max': '0Eji5GCKS0W0KMaqzxCAhg',
     'p99999_doublemean': 'xHNPvrj7SEyRW7ZRbB0JsA',
     'p99999_gaussian': '5gHRwwTyRIqTJCywO9D54w',
-    'p99999_entropy': '7yaG4W5PTmuorsDkvyyM2g',
     'p99999_p999': 'YYEm3vSXT4SehZOsGQQIJg',
     'p99999_p9999': 'nelFQpgbTla0ZZxqmBt9NQ',
     'p99999_p99999': 'xzrG4uwRTXKqe059leSRpA',
-    'p99999_p999999': '',
+    'p99999_p999999': 'HxgPEoyvRJ2I6iGxCKVbAA',
 
     'p999999_max': 'QxxRtDxmTJidP0ObX3S05w',
     'p999999_doublemean': '5u5agSr6TKuAd5yQrXXV7w',
     'p999999_gaussian': '9mRYmMFLT4i0KVJaU5Rz2w',
-    'p999999_entropy': 'C2UBWs9YSgWr2znrQRNy1Q',
     'p999999_p999': 'oUQVLuqoREG3WnnkLWfJfQ',
     'p999999_p9999': '7k5gVecvQKqLBZYOH79Ymw',
     'p999999_p99999': 'lsDDCzMXTaOG7OQ0pWWzBw',
-    'p999999_p999999': '',
+    'p999999_p999999': '5vwtp6xYTrarCnesX7Z2mA',
 }
 
 
@@ -610,23 +605,17 @@ def table_lr(res_dict):
 
 
 def table_init(res_dict):
-  df = pd.DataFrame({'max': [None, None, None, None, None, None, None, None],
-                     'doublemean': [None, None, None, None, None, None, None,
-                                    None],
-                     'gaussian': [None, None, None, None, None, None, None,
-                                  None],
-                     'entropy': [None, None, None, None, None, None, None,
-                                 None],
-                     'p999': [None, None, None, None, None, None, None, None],
-                     'p9999': [None, None, None, None, None, None, None, None],
-                     'p99999': [None, None, None, None, None, None, None,
-                                None],
-                     'p999999': [None, None, None, None, None, None, None,
-                                 None],
+  df = pd.DataFrame({'max': [None, None, None, None, None, None, None],
+                     'doublemean': [None, None, None, None, None, None, None],
+                     'gaussian': [None, None, None, None, None, None, None],
+                     'p999': [None, None, None, None, None, None, None],
+                     'p9999': [None, None, None, None, None, None, None],
+                     'p99999': [None, None, None, None, None, None, None],
+                     'p999999': [None, None, None, None, None, None, None],
                      })
 
-  df.rename(index={0: 'max', 1: 'doublemean', 2: 'gaussian', 3: 'entropy',
-            4: 'p999', 5: 'p9999', 6: 'p99999', 7: 'p999999'}, inplace=True)
+  df.rename(index={0: 'max', 1: 'doublemean', 2: 'gaussian',
+            3: 'p999', 4: 'p9999', 5: 'p99999', 6: 'p999999'}, inplace=True)
   for k, v in res_dict.items():
     acc = get_best_eval(v)
     bit, lr = k.split('_')
@@ -693,10 +682,13 @@ def plot_comparison(name):
   # plot_line(ax, enets_fp32_t2)
   plot_line(ax, enets_int8_t2)
 
-  plot_line(ax, enet0_dynamic_init_double_mean_t2)
-  plot_line(ax, enet0_static_init_double_mean_t2)
-  plot_line(ax, enet0_dynamic_init_gaussian_t2)
-  plot_line(ax, enet0_static_init_gaussian_t2)
+  #plot_line(ax, enet0_dynamic_init_double_mean_t2)
+  #plot_line(ax, enet0_static_init_double_mean_t2)
+  #plot_line(ax, enet0_dynamic_init_gaussian_t2)
+  #plot_line(ax, enet0_static_init_gaussian_t2)
+  
+  plot_line(ax, enet0_lr_best)
+
   plot_mixed(ax, enet0_mixed)
 
   ax.set_xlabel("Network Size (MB)", fontsize=font_size, fontweight='bold')
@@ -754,7 +746,7 @@ if __name__ == '__main__':
       "This notebook requires TensorBoard 2.3 or later."
   print("TensorBoard version: ", tb.__version__)
 
-  # plot_comparison('figures/overview.png')
+  plot_comparison('figures/overview.png')
 
   # df_dynamic_lr = table(enet0_dynamic_lr)
   df_static_lr = table_lr(enet0_static_lr)
