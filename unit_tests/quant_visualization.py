@@ -1,14 +1,14 @@
 from quant import (
     uniform_static,
-    parametric_d,
-    parametric_d_xmax,
+    # parametric_d,
+    # parametric_d_xmax,
 
-    max_init,
-    gaussian_init,
-    percentile_init,
+    # max_init,
+    # gaussian_init,
+    # percentile_init,
     double_mean_init,
 
-    roundsurrogate,
+    # roundsurrogate,
     round_ewgs,
 )
 import sys
