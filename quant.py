@@ -140,7 +140,7 @@ def entropy_init(x, bits, sign):
 
 
 def percentile_init(x, bits, sign, perc):
-  return jnp.percentile(x, perc)
+  return jnp.percentile(jnp.abs(x), perc)
 
 
 class uniform_dynamic(nn.Module):
