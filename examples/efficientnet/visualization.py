@@ -9,8 +9,8 @@ import pandas as pd
 # Validation Runs.
 
 enets_fp = {
-    'label': 'EfficientNet Scaling (FP32)',
-    'color': 'b',
+    'label': 'EfficientNets (FP32)',
+    # 'color': 'b',
     0: 'BRj9fv5PR0yAWkD4z0p5FQ',
     1: 'QRMPo8cVQRqk01JbKZOMjw',
     2: 'DZXKGFneSoW8rj5qZZz3LQ',
@@ -19,21 +19,33 @@ enets_fp = {
 }
 
 enets_int8 = {
-    'label': 'EfficientNet Scaling (INT8)',
-    'color': 'g',
-    0: 'L2wx6i0dRly0LTG3sA9qpg',
-    1: 'oXPvlPrSQkKyZlivUrby7w',
-    2: 'KMC8ULhbQviDC5LN1aj4dA',
-    3: '7hgKgc31QXm7rVOX8hm0rg',
-    4: 'G6PJWXMRQyiAMZCEyVfVsA',
+    'label': 'EfficientNets INT8 (0-4)',
+    # 'color': 'g',
+    4652008: 'L2wx6i0dRly0LTG3sA9qpg',
+    5416680: 'oXPvlPrSQkKyZlivUrby7w',
+    6092072: 'KMC8ULhbQviDC5LN1aj4dA',
+    8197096: '7hgKgc31QXm7rVOX8hm0rg',
+    13006568: 'G6PJWXMRQyiAMZCEyVfVsA',
+    'params': 8,
 }
+
+
+# enets_int8_t2 = {
+#     4652008: 'NAxjD6ydQDq25NdJ7RQauA',
+#     5416680: 'b1kq2yDsRrSoQORKAoiwHQ',
+#     6092072: 'PpcD8wrzRga4S5Qg3RxKfg',
+#     8197096: 'EyXpX0NbTnqvQt88F9JdSg',
+#     13006568: 'ZjKyJ1nlSqqtGivBytyVdg',
+#     'params': 8,
+#     'label': 'EfficientNet-Lites (INT8)',
+# }
 
 
 # Parametric Quant
 
 enet0_lsq = {
     'label': 'LSQ',
-    'color': 'g',
+    # 'color': 'g',
     2: 'mYPAx8Z5QXmyeTx3prbdfQ',
     3: 's8rGb5dCQBWPnD1QyCVZsQ',
     4: 'wY16VBQXSpOcj7mClBMjfA',
@@ -226,15 +238,15 @@ enets_fp32_t2 = {
 }
 
 
-enets_int8_t2 = {
-    4652008: 'NAxjD6ydQDq25NdJ7RQauA',
-    5416680: 'b1kq2yDsRrSoQORKAoiwHQ',
-    6092072: 'PpcD8wrzRga4S5Qg3RxKfg',
-    8197096: 'EyXpX0NbTnqvQt88F9JdSg',
-    13006568: 'ZjKyJ1nlSqqtGivBytyVdg',
-    'params': 8,
-    'label': 'EfficientNet-Lites (INT8)',
-}
+# enets_int8_t2 = {
+#     4652008: 'NAxjD6ydQDq25NdJ7RQauA',
+#     5416680: 'b1kq2yDsRrSoQORKAoiwHQ',
+#     6092072: 'PpcD8wrzRga4S5Qg3RxKfg',
+#     8197096: 'EyXpX0NbTnqvQt88F9JdSg',
+#     13006568: 'ZjKyJ1nlSqqtGivBytyVdg',
+#     'params': 8,
+#     'label': 'EfficientNet-Lites (INT8)',
+# }
 
 
 enet0_dynamic_init_double_mean_t2 = {
@@ -302,36 +314,12 @@ enet0_lr_best = {
     'label': 'EfficientNet-Lite0 (3-8 Bits)',
 }
 
-# enet0_dynamic_lr = {
-#     '2_0.0001': 'eevmuBORRTeBhZjmBYhLQQ',
-#     '2_0.001': 'uMlodEdaSVu4mv3Yk09rLg',
-#     '2_0.01': 'OLiyl8SYSrK8UlYBJeja5A',
-#     '3_0.0001': '',
-#     '3_0.001': '',
-#     '3_0.01': '',
-#     '4_0.0001': '',
-#     '4_0.001': '',
-#     '4_0.01': '',
-#     '5_0.0001': '',
-#     '5_0.001': '',
-#     '5_0.01': '',
-#     '6_0.0001': '',
-#     '6_0.001': '',
-#     '6_0.01': '',
-#     '7_0.0001': '',
-#     '7_0.001': '',
-#     '7_0.01': '',
-#     '8_0.0001': 'y3zEwUjCQgKqoUMgZpvWHg',
-#     '8_0.001': 'BTjBh51DRHyagO6sWO0lLQ',
-#     '8_0.01': 'aaJRWLwsRGKC5UxxdgUO9Q',
-# }
-
 
 enet0_static_lr = {
-    '2_0.0001': '3c9xaWUeTaKFm2DUnDbxXA',
-    '2_0.001': 'V1ILWkzJRvOkwlbllHDAgw',
-    '2_0.01': 'fPJvBqfDRNK5mmWyFgPxqg',
-    '2_0.1': 'rRY4DAgdQ22jPbxRg4anAA',
+    '2_0.0001': '',
+    '2_0.001': '',
+    '2_0.01': '',
+    '2_0.1': '',
     '3_0.0001': 'rKTXZqHGSdGAluOKeSOevQ',
     '3_0.001': 'li5gkK6rQImofqLw7UP5IQ',
     '3_0.01': '9nwVcMdPRRGJtjDjrZpCeg',
@@ -420,14 +408,6 @@ enet0_static_init = {
 # Competitor Performance.
 
 competitors = {
-    'pact_resnet18': {
-        # https://arxiv.org/pdf/1805.06085.pdf
-        'eval_err': [1 - 0.644, 1 - 0.681, 1 - 0.692, 1 - 0.698],
-        'size_mb': np.array([2, 3, 4, 5]) * 11679912 / 8_000_000,
-        'name': 'PACT ResNet18',
-        'alpha': .15,
-        # no first and last layer quant
-    },
 
     'pact_resnet50': {
         # https://arxiv.org/pdf/1805.06085.pdf
@@ -435,6 +415,15 @@ competitors = {
         'size_mb': np.array([2, 3, 4, 5]) * 25636712 / 8_000_000,
         'name': 'PACT ResNet50',
         'alpha': 1.,
+        # no first and last layer quant
+    },
+
+    'pact_resnet18': {
+        # https://arxiv.org/pdf/1805.06085.pdf
+        'eval_err': [1 - 0.644, 1 - 0.681, 1 - 0.692, 1 - 0.698],
+        'size_mb': np.array([2, 3, 4, 5]) * 11679912 / 8_000_000,
+        'name': 'PACT ResNet18',
+        'alpha': .15,
         # no first and last layer quant
     },
 
@@ -656,7 +645,8 @@ def plot_mixed(ax, res_dict):
 def plot_comparison(name):
   font_size = 26
 
-  fig, ax = plt.subplots(figsize=(32, 9.8))
+  fig, ax = plt.subplots(figsize=(32, 13.8))
+
   ax.spines["top"].set_visible(False)
   ax.spines["right"].set_visible(False)
 
@@ -675,18 +665,18 @@ def plot_comparison(name):
   for competitor_name, competitor_data in competitors.items():
     ax.plot(competitor_data['size_mb'], competitor_data['eval_err'],
             label=competitor_data['name'],
-            marker='x', ms=20, markeredgewidth=5, linewidth=5,
-            alpha=competitor_data['alpha'], linestyle='--')
+            marker='.', ms=20, markeredgewidth=5, linewidth=5,
+            alpha=competitor_data['alpha'])
 
   # Our own.
   # plot_line(ax, enets_fp32_t2)
-  plot_line(ax, enets_int8_t2)
+  plot_line(ax, enets_int8)
 
-  #plot_line(ax, enet0_dynamic_init_double_mean_t2)
-  #plot_line(ax, enet0_static_init_double_mean_t2)
-  #plot_line(ax, enet0_dynamic_init_gaussian_t2)
-  #plot_line(ax, enet0_static_init_gaussian_t2)
-  
+  # plot_line(ax, enet0_dynamic_init_double_mean_t2)
+  # plot_line(ax, enet0_static_init_double_mean_t2)
+  # plot_line(ax, enet0_dynamic_init_gaussian_t2)
+  # plot_line(ax, enet0_static_init_gaussian_t2)
+
   plot_line(ax, enet0_lr_best)
 
   plot_mixed(ax, enet0_mixed)
@@ -696,7 +686,7 @@ def plot_comparison(name):
   plt.legend(
       bbox_to_anchor=(1., 1.),
       loc="upper left",
-      ncol=2,
+      ncol=1,
       frameon=False,
       prop={'weight': 'bold', 'size': font_size}
   )

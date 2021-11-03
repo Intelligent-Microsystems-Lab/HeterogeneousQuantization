@@ -5,11 +5,6 @@ from flax import linen as nn
 
 from typing import Any, Iterable, Callable
 
-from utils import compute_amax_entropy_no_jax  # compute_amax_entropy
-
-
-import jax.experimental.host_callback as hcb
-
 
 Array = Any
 PRNGKey = Any
@@ -127,9 +122,6 @@ def gaussian_init(x, bits, sign):
   mu = jnp.mean(x)
   sigma = jnp.std(x)
   return jnp.maximum(jnp.abs(mu - 3 * sigma), jnp.abs(mu + 3 * sigma))
-
-
-
 
 
 def percentile_init(x, bits, sign, perc):
