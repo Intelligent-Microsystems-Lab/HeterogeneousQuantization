@@ -23,23 +23,23 @@ def get_noise(x: Array, percentage: float, rng: PRNGKey) -> Array:
 # Rounding with different backward passes
 #
 
-
+# psgd https://arxiv.org/abs/2005.11035 (like)
 @jax.custom_vjp
-def roundsurrogate(x, scale):
+def round_psgd(x, scale):
   return jnp.round(x)
 
 
-def roundsurrogate_fwd(x, scale):
-  return roundsurrogate(x, scale), (x, scale)
+def round_psgd_fwd(x, scale):
+  return round_psgd(x, scale), (x, scale)
 
 
-def roundsurrogate_bwd(res, g):
+def round_psgd_bwd(res, g):
   (x, scale) = res
 
-  return (g * (1 - scale * jnp.sign(g) * jnp.abs((x - jnp.round(x)))), None)
+  return (g * (1 + scale * jnp.sign(g) * jnp.abs((x - jnp.round(x)))), None)
 
 
-roundsurrogate.defvjp(roundsurrogate_fwd, roundsurrogate_bwd)
+round_psgd.defvjp(round_psgd_fwd, round_psgd_bwd)
 
 
 # ewgs https://arxiv.org/pdf/2104.00903.pdf
@@ -59,6 +59,116 @@ def round_ewgs_bwd(res, g):
 
 
 round_ewgs.defvjp(round_ewgs_fwd, round_ewgs_bwd)
+
+
+@jax.custom_vjp
+def round_tanh(x, scale):
+  return jnp.round(x)
+
+
+def round_tanh_fwd(x, scale):
+  return round_tanh(x, scale), (x, scale)
+
+
+def round_tanh_bwd(res, g):
+  (x, scale) = res
+
+  # 4 is a parameter to scale the softness/steepness.
+  return (g * (1 + scale * jnp.sign(g) * jax.nn.tanh((x - jnp.round(x)
+                                                      ) * 4.)), None)
+
+
+round_tanh.defvjp(round_tanh_fwd, round_tanh_bwd)
+
+
+@jax.custom_vjp
+def round_fsig(x, scale):
+  return jnp.round(x)
+
+
+def round_fsig_fwd(x, scale):
+  return round_fsig(x, scale), (x, scale)
+
+
+def round_fsig_bwd(res, g):
+  (x, scale) = res
+
+  # Fast sigmoid derivative
+  def fsig_deriv(x):
+    return 1 / (1 + jnp.abs(x))**2
+
+  # 2 is a parameter to scale the softness/steepness.
+  return (g * (1 + scale * jnp.sign(g) * (fsig_deriv((x + .5 - jnp.round(
+      x + .5)) * 2.))), None)
+
+
+round_fsig.defvjp(round_fsig_fwd, round_fsig_bwd)
+
+# https://arxiv.org/abs/2103.12593
+# Copied from https://github.com/byin-cwi/Efficient-spiking-networks/\
+# blob/main/DVS128/srnn_class_scnn_enc.ipynb
+
+
+@jax.custom_vjp
+def round_gaussian(x, scale):
+  return jnp.round(x)
+
+
+def round_gaussian_fwd(x, scale):
+  return round_gaussian(x, scale), (x, scale)
+
+
+def round_gaussian_bwd(res, g):
+  (x, scale) = res
+
+  lens = .5
+
+  def gaussian_deriv(x):
+    return jnp.exp(-(x**2) / (2 * lens**2)) / jnp.sqrt(2 * jnp.pi) / lens
+
+  return (g * (1 + scale * jnp.sign(g) * gaussian_deriv((x + .5 - jnp.round(
+      x + .5)) * 3)), None)
+
+
+round_gaussian.defvjp(round_gaussian_fwd, round_gaussian_bwd)
+
+# https://arxiv.org/abs/2103.12593
+# Copied from https://github.com/byin-cwi/Efficient-spiking-networks/\
+# blob/main/DVS128/srnn_class_scnn_enc.ipynb
+
+
+@jax.custom_vjp
+def round_multi_gaussian(x, scale):
+  return jnp.round(x)
+
+
+def round_multi_gaussian_fwd(x, scale):
+  return round_multi_gaussian(x, scale), (x, scale)
+
+
+def round_multi_gaussian_bwd(res, g):
+  (x, scale) = res
+
+  # Fast sigmoid derivative
+  lens = .5
+  hight = .15
+  scale_gaussian = 6.0
+
+  def gaussian_fn(x, mu, sigma):
+    return jnp.exp(-((x - mu) ** 2) / (2 * sigma ** 2)) / jnp.sqrt(
+        2 * jnp.pi) / sigma
+
+  def multi_gaussian_deriv(x):
+    return gaussian_fn(x, mu=0., sigma=lens) * (
+        1. + hight) - gaussian_fn(
+        x, mu=lens, sigma=scale_gaussian * lens) * hight - gaussian_fn(
+        x, mu=- lens, sigma=scale_gaussian * lens) * hight
+
+  return (g * (1 + scale * jnp.sign(g) * multi_gaussian_deriv((
+      x + .5 - jnp.round(x + .5)) * 3)), None)
+
+
+round_multi_gaussian.defvjp(round_multi_gaussian_fwd, round_multi_gaussian_bwd)
 
 
 #
@@ -92,7 +202,7 @@ def percentile_init(x, bits, sign, perc):
 class uniform_static(nn.Module):
   bits: int = 8
   act: bool = False
-  round_fn: Callable = roundsurrogate
+  round_fn: Callable = round_psgd
   init_fn: Callable = max_init
   g_scale: float = 0.
 
@@ -127,7 +237,7 @@ class uniform_static(nn.Module):
 class parametric_d(nn.Module):
   bits: int = 8
   act: bool = False
-  round_fn: Callable = roundsurrogate
+  round_fn: Callable = round_psgd
   init_fn: Callable = max_init
   g_scale: float = 0.
 
@@ -189,7 +299,7 @@ class parametric_d_xmax(nn.Module):
   xmax_max: float = 100
   d_min: float = 2**-8
   d_max: float = 2**+8
-  round_fn: Callable = roundsurrogate
+  round_fn: Callable = round_psgd
   init_fn: Callable = max_init
   g_scale: float = 0.
 
@@ -202,7 +312,7 @@ class parametric_d_xmax(nn.Module):
     x = inputs
 
     def quantize_pow2(v):
-      return 2 ** roundsurrogate(jnp.log2(v), 0)
+      return 2 ** round_psgd(jnp.log2(v), 0)
 
     @jax.custom_vjp
     def ceilpass(x):

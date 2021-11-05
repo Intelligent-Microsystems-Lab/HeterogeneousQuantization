@@ -316,10 +316,10 @@ enet0_lr_best = {
 
 
 enet0_static_lr = {
-    '2_0.0001': '',
-    '2_0.001': '',
-    '2_0.01': '',
-    '2_0.1': '',
+    '2_0.0001': 'jWoecMWnT1eBDLljEJa2kw',
+    '2_0.001': 'D1wSdKMwRmGvL6Xq5ckycw',
+    '2_0.01': 'ulbc5YVzQKGIphKkL82SDA',
+    '2_0.1': 'ANOi0dHOSJSJyqcNROg73A',
     '3_0.0001': 'rKTXZqHGSdGAluOKeSOevQ',
     '3_0.001': 'li5gkK6rQImofqLw7UP5IQ',
     '3_0.01': '9nwVcMdPRRGJtjDjrZpCeg',
@@ -350,58 +350,58 @@ enet0_static_init = {
     'max_max': '7I2DKoqsQrqAH2O63D4eig',
     'max_doublemean': '4aRGN3vNSA6o0qA4TaRcPw',
     'max_gaussian': 'U1fqXpfwROG6hpWWiwqQPQ',
-    'max_p999': 'NsYjCPURSMiMujFrOC0Vzg',
-    'max_p9999': '2Zemsxh4Tzu1VikEx4djKg',
-    'max_p99999': 'eznienrKQrmQg1dnnJpblQ',
-    'max_p999999': 'DpDDJ9BxSXmQDPOioaMpQA',
+    'max_p999': 'DSgmOUWnRYWUnERltqyzfg',
+    'max_p9999': 'PnWsb45aSlOA9cdunJg0aw',
+    'max_p99999': 'IjXkNHrVRZGyNaQYRIdi4A',
+    'max_p999999': 'jrNQkT1LRe6jxd91EzIJgA',
 
     'doublemean_max': 'ulnMJxo3TveGAtD3ADrpwg',
     'doublemean_doublemean': '15vphyrbSyuLlgL83m9KKg',
     'doublemean_gaussian': 'U6R18149SyagJ54Mo9tEiQ',
-    'doublemean_p999': 'BYwFYZOKREWLZg6w0UDVpA',
-    'doublemean_p9999': '1ca0JiOESaG0jRbExPiDqQ',
-    'doublemean_p99999': 'dNVOpjxJTd6XNGOERfalrw',
-    'doublemean_p999999': '9x4exLtVSlOyn8Uj4HxXBg',
+    'doublemean_p999': 'ZjF4WtL9RgqPZrA9K3RC0w',
+    'doublemean_p9999': 'WLSYbxBZT9adklLBYgqx5w',
+    'doublemean_p99999': 'RleVz6NfRECO08GQ2xt3Wg',
+    'doublemean_p999999': 'WDHQazB2TOCZaTqKY5orFw',
 
     'gaussian_max': 'hn06OO2YRtGyQcxtYYjOLw',
     'gaussian_doublemean': 'jDPh2vqwRmGa0Baio2AalA',
     'gaussian_gaussian': 'iLAKzaklSQGurdFMxDtJOg',
-    'gaussian_p999': 'x0CEYBxTQp6ZeMe8ZDH84Q',
-    'gaussian_p9999': 'v7Ggrm3ERf6iWz8Dh0NZMw',
-    'gaussian_p99999': '21av70YJTYqErM24ZwO3zg',
-    'gaussian_p999999': 'hEQrEEZ1QOeEQ32Hjsm5zg',
+    'gaussian_p999': 'YFPdCRt9SvWqmC0A5h12wg',
+    'gaussian_p9999': 'Nk7E7qWfRcKWNt434zz66Q',
+    'gaussian_p99999': 'QptpKhnOSgCVcevL9By33g',
+    'gaussian_p999999': 'jH56RpOCRnSJKYOPnGRJXw',
 
-    'p999_max': 'ymAa2fj5RsmZTMZfveQGkw',
-    'p999_doublemean': 'g10BBnYfQQeavWO10V5qWA',
-    'p999_gaussian': 'dPvPT6s2TDiVOk9RyBIxqw',
-    'p999_p999': 'gspOQVWzQ32zOubnpQEl0g',
-    'p999_p9999': 'zC4T3s6AT12ELjo087ymnA',
-    'p999_p99999': 'qjnwaYsQRlq1bVY8rlVQWA',
-    'p999_p999999': 'ZeP2eOK6TdiBG48sOal4hA',
+    'p999_max': 'pDCdoFmRQzSn4dboj4zuEg',
+    'p999_doublemean': 'tAt1Ktk4TpaZBPsGa2voPQ',
+    'p999_gaussian': 'IVeer3DYTl242ljzJGvC1Q',
+    'p999_p999': '',
+    'p999_p9999': '',
+    'p999_p99999': '',
+    'p999_p999999': '',
 
-    'p9999_max': 'pofbEKP0QGaM6Fq5FqNfPA',
-    'p9999_doublemean': 'vxcXeVQ4QoKyMeN0XwGYCw',
-    'p9999_gaussian': 'gEPlRpt3QdGmYGKpy7udeQ',
-    'p9999_p999': 'sZc04MPcRWGqH0rEFDKGQg',
-    'p9999_p9999': 'j5cpofVtRXGPtkObZYvO9w',
-    'p9999_p99999': 'Fymq6Rb2TDGsQHokjFEE3g',
-    'p9999_p999999': 'wgFAziqNTEePmv38bAuvcg',
+    'p9999_max': 'rcPn5Z82RNaiWk3gYxTReg',
+    'p9999_doublemean': 'P9QkR3cDTj2FJSPgHkILBg',
+    'p9999_gaussian': 'jxqM61lrQsKWOsMHaEWTWA',
+    'p9999_p999': '',
+    'p9999_p9999': '',
+    'p9999_p99999': '',
+    'p9999_p999999': '',
 
-    'p99999_max': '0Eji5GCKS0W0KMaqzxCAhg',
-    'p99999_doublemean': 'xHNPvrj7SEyRW7ZRbB0JsA',
-    'p99999_gaussian': '5gHRwwTyRIqTJCywO9D54w',
-    'p99999_p999': 'YYEm3vSXT4SehZOsGQQIJg',
-    'p99999_p9999': 'nelFQpgbTla0ZZxqmBt9NQ',
-    'p99999_p99999': 'xzrG4uwRTXKqe059leSRpA',
-    'p99999_p999999': 'HxgPEoyvRJ2I6iGxCKVbAA',
+    'p99999_max': 'kafwv81VRpWgGXgKRxO3AQ',
+    'p99999_doublemean': 'WixGrMnBRyG2fWnFG7PSAA',
+    'p99999_gaussian': '13nylvJTQB2KN08exyR6rQ',
+    'p99999_p999': '',
+    'p99999_p9999': '',
+    'p99999_p99999': '',
+    'p99999_p999999': '',
 
-    'p999999_max': 'QxxRtDxmTJidP0ObX3S05w',
-    'p999999_doublemean': '5u5agSr6TKuAd5yQrXXV7w',
-    'p999999_gaussian': '9mRYmMFLT4i0KVJaU5Rz2w',
-    'p999999_p999': 'oUQVLuqoREG3WnnkLWfJfQ',
-    'p999999_p9999': '7k5gVecvQKqLBZYOH79Ymw',
-    'p999999_p99999': 'lsDDCzMXTaOG7OQ0pWWzBw',
-    'p999999_p999999': '5vwtp6xYTrarCnesX7Z2mA',
+    'p999999_max': 'ig53dNZMQKy385FJmoWVCA',
+    'p999999_doublemean': 'DeBoiOFyQeyaMxJlmjt5wQ',
+    'p999999_gaussian': 'd5hxkVuPRRalAjkbwd7azg',
+    'p999999_p999': '',
+    'p999999_p9999': '',
+    'p999999_p99999': '',
+    'p999999_p999999': '',
 }
 
 
@@ -607,8 +607,8 @@ def table_init(res_dict):
             3: 'p999', 4: 'p9999', 5: 'p99999', 6: 'p999999'}, inplace=True)
   for k, v in res_dict.items():
     acc = get_best_eval(v)
-    bit, lr = k.split('_')
-    df[lr][bit] = acc
+    w, a = k.split('_')
+    df[w][a] = acc
 
   return df
 

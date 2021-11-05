@@ -8,8 +8,12 @@ from quant import (
     # percentile_init,
     double_mean_init,
 
-    # roundsurrogate,
     round_ewgs,
+    round_tanh,
+    round_psgd,
+    round_fsig,
+    round_gaussian,
+    round_multi_gaussian,
 )
 import sys
 
@@ -45,7 +49,6 @@ def plot_lines(x, x_list, name_list, color_list, fname):
 
   ax.set_xlabel("x", fontsize=font_size, fontweight='bold')
   ax.set_ylabel("dL/dx", fontsize=font_size, fontweight='bold')
-  ax.set_yscale('log')
   plt.legend(
       bbox_to_anchor=(0.5, 1.2),
       loc="upper center",
@@ -59,29 +62,35 @@ def plot_lines(x, x_list, name_list, color_list, fname):
 
 
 # Ordinary visualization
-quant_fn = uniform_static(
-    bits=3, init_fn=double_mean_init, round_fn=round_ewgs, g_scale=1e-3)
 
-rng = jax.random.PRNGKey(0)
-rng, init_rng, data_rng = jax.random.split(rng, 3)
+def vis_surrogate(sur_fn):
+  quant_fn = uniform_static(
+      bits=2, init_fn=double_mean_init, round_fn=sur_fn, g_scale=3e-1)
 
-params = quant_fn.init(init_rng, jax.random.normal(
-    data_rng, (100, 100)), sign=True)
+  rng = jax.random.PRNGKey(0)
+  rng, init_rng, data_rng = jax.random.split(rng, 3)
+
+  params = quant_fn.init(init_rng, jax.random.normal(
+      data_rng, (100, 100)), sign=True)
+
+  def loss_fn(x, params):
+    logits = quant_fn.apply(params, x, sign=True)
+    return jnp.sum(logits)
+
+  x_list = jnp.arange(-1.7, +1.7, .00001)
+  grad_fn = jax.grad(loss_fn, argnums=0)
+
+  g = grad_fn(x_list, params)
+  plot_lines(x_list, [g], ['Derivative Inputs'], ['blue', ],
+             "../../figures/quant_grad_" + sur_fn.__name__ + ".png")
 
 
-def loss_fn(x, params):
-  logits = quant_fn.apply(params, x, sign=True)
-  return jnp.sum(logits)
-
-
-x_list = jnp.arange(-1.7, +1.7, .001)
-grad_fn = jax.grad(loss_fn, argnums=0)
-
-g = grad_fn(x_list, params)
-
-plot_lines(x_list, [g], ['Derivative Inputs'], ['blue', ],
-           "../../figures/quant_grad.png")
-
+vis_surrogate(round_psgd)
+vis_surrogate(round_ewgs)
+vis_surrogate(round_tanh)
+vis_surrogate(round_fsig)
+vis_surrogate(round_gaussian)
+vis_surrogate(round_multi_gaussian)
 
 # # Ordinary visualization -- Surrogate
 # quant_fn = uniform_dynamic(bits=3, round_fn=roundsurrogate)
