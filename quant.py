@@ -26,9 +26,7 @@ def get_noise(x: Array, percentage: float, rng: PRNGKey) -> Array:
 # psgd https://arxiv.org/abs/2005.11035 (like)
 @jax.custom_vjp
 def round_psgd(x, scale, off=False):
-  if off:
-    return x
-  return jnp.round(x)
+  return jnp.where(off, x, jnp.round(x))
 
 
 def round_psgd_fwd(x, scale, off=False):
@@ -48,9 +46,7 @@ round_psgd.defvjp(round_psgd_fwd, round_psgd_bwd)
 # ewgs https://arxiv.org/pdf/2104.00903.pdf
 @jax.custom_vjp
 def round_ewgs(x, scale, off=False):
-  if off:
-    return x
-  return jnp.round(x)
+  return jnp.where(off, x, jnp.round(x))
 
 
 def round_ewgs_fwd(x, scale, off=False):
@@ -68,9 +64,7 @@ round_ewgs.defvjp(round_ewgs_fwd, round_ewgs_bwd)
 
 @jax.custom_vjp
 def round_tanh(x, scale, off=False):
-  if off:
-    return x
-  return jnp.round(x)
+  return jnp.where(off, x, jnp.round(x))
 
 
 def round_tanh_fwd(x, scale, off=False):
@@ -90,9 +84,7 @@ round_tanh.defvjp(round_tanh_fwd, round_tanh_bwd)
 
 @jax.custom_vjp
 def round_fsig(x, scale, off=False):
-  if off:
-    return x
-  return jnp.round(x)
+  return jnp.where(off, x, jnp.round(x))
 
 
 def round_fsig_fwd(x, scale, off=False):
@@ -120,9 +112,7 @@ round_fsig.defvjp(round_fsig_fwd, round_fsig_bwd)
 
 @jax.custom_vjp
 def round_gaussian(x, scale, off=False):
-  if off:
-    return x
-  return jnp.round(x)
+  return jnp.where(off, x, jnp.round(x))
 
 
 def round_gaussian_fwd(x, scale, off=False):
@@ -150,9 +140,7 @@ round_gaussian.defvjp(round_gaussian_fwd, round_gaussian_bwd)
 
 @jax.custom_vjp
 def round_multi_gaussian(x, scale, off=False):
-  if off:
-    return x
-  return jnp.round(x)
+  return jnp.where(off, x, jnp.round(x))
 
 
 def round_multi_gaussian_fwd(x, scale, off=False):
