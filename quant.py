@@ -25,20 +25,21 @@ def get_noise(x: Array, percentage: float, rng: PRNGKey) -> Array:
 
 # psgd https://arxiv.org/abs/2005.11035 (like)
 @jax.custom_vjp
-def round_psgd(x, scale, off = False):
+def round_psgd(x, scale, off=False):
   if off:
     return x
   return jnp.round(x)
 
 
-def round_psgd_fwd(x, scale, off = False):
-  return round_psgd(x, scale, off = off), (x, scale)
+def round_psgd_fwd(x, scale, off=False):
+  return round_psgd(x, scale, off=off), (x, scale)
 
 
 def round_psgd_bwd(res, g):
   (x, scale) = res
 
-  return (g * (1 + scale * jnp.sign(g) * jnp.abs((x - jnp.round(x)))), None)
+  return (g * (1 + scale * jnp.sign(g) * jnp.abs((x - jnp.round(x)))), None,
+          None)
 
 
 round_psgd.defvjp(round_psgd_fwd, round_psgd_bwd)
@@ -46,34 +47,34 @@ round_psgd.defvjp(round_psgd_fwd, round_psgd_bwd)
 
 # ewgs https://arxiv.org/pdf/2104.00903.pdf
 @jax.custom_vjp
-def round_ewgs(x, scale, off = False):
+def round_ewgs(x, scale, off=False):
   if off:
     return x
   return jnp.round(x)
 
 
-def round_ewgs_fwd(x, scale, off = False):
+def round_ewgs_fwd(x, scale, off=False):
   return round_ewgs(x, scale), (x, scale)
 
 
 def round_ewgs_bwd(res, g):
   (x, scale) = res
 
-  return (g * (1 + scale * jnp.sign(g) * (x - jnp.round(x))), None)
+  return (g * (1 + scale * jnp.sign(g) * (x - jnp.round(x))), None, None)
 
 
 round_ewgs.defvjp(round_ewgs_fwd, round_ewgs_bwd)
 
 
 @jax.custom_vjp
-def round_tanh(x, scale, off = False):
+def round_tanh(x, scale, off=False):
   if off:
     return x
   return jnp.round(x)
 
 
-def round_tanh_fwd(x, scale, off = False):
-  return round_tanh(x, scale, off = off), (x, scale)
+def round_tanh_fwd(x, scale, off=False):
+  return round_tanh(x, scale, off=off), (x, scale)
 
 
 def round_tanh_bwd(res, g):
@@ -81,21 +82,21 @@ def round_tanh_bwd(res, g):
 
   # 4 is a parameter to scale the softness/steepness.
   return (g * (1 + scale * jnp.sign(g) * jax.nn.tanh((x - jnp.round(x)
-                                                      ) * 4.)), None)
+                                                      ) * 4.)), None, None)
 
 
 round_tanh.defvjp(round_tanh_fwd, round_tanh_bwd)
 
 
 @jax.custom_vjp
-def round_fsig(x, scale, off = False):
+def round_fsig(x, scale, off=False):
   if off:
     return x
   return jnp.round(x)
 
 
-def round_fsig_fwd(x, scale, off = False):
-  return round_fsig(x, scale, off = off), (x, scale)
+def round_fsig_fwd(x, scale, off=False):
+  return round_fsig(x, scale, off=off), (x, scale)
 
 
 def round_fsig_bwd(res, g):
@@ -107,7 +108,7 @@ def round_fsig_bwd(res, g):
 
   # 2 is a parameter to scale the softness/steepness.
   return (g * (1 + scale * jnp.sign(g) * (fsig_deriv((x + .5 - jnp.round(
-      x + .5)) * 2.))), None)
+      x + .5)) * 2.))), None, None)
 
 
 round_fsig.defvjp(round_fsig_fwd, round_fsig_bwd)
@@ -118,14 +119,14 @@ round_fsig.defvjp(round_fsig_fwd, round_fsig_bwd)
 
 
 @jax.custom_vjp
-def round_gaussian(x, scale, off = False):
+def round_gaussian(x, scale, off=False):
   if off:
     return x
   return jnp.round(x)
 
 
-def round_gaussian_fwd(x, scale, off = False):
-  return round_gaussian(x, scale, off = off), (x, scale)
+def round_gaussian_fwd(x, scale, off=False):
+  return round_gaussian(x, scale, off=off), (x, scale)
 
 
 def round_gaussian_bwd(res, g):
@@ -137,7 +138,7 @@ def round_gaussian_bwd(res, g):
     return jnp.exp(-(x**2) / (2 * lens**2)) / jnp.sqrt(2 * jnp.pi) / lens
 
   return (g * (1 + scale * jnp.sign(g) * gaussian_deriv((x + .5 - jnp.round(
-      x + .5)) * 3)), None)
+      x + .5)) * 3)), None, None)
 
 
 round_gaussian.defvjp(round_gaussian_fwd, round_gaussian_bwd)
@@ -148,14 +149,14 @@ round_gaussian.defvjp(round_gaussian_fwd, round_gaussian_bwd)
 
 
 @jax.custom_vjp
-def round_multi_gaussian(x, scale, off = False):
+def round_multi_gaussian(x, scale, off=False):
   if off:
     return x
   return jnp.round(x)
 
 
-def round_multi_gaussian_fwd(x, scale, off = False):
-  return round_multi_gaussian(x, scale, off = off), (x, scale)
+def round_multi_gaussian_fwd(x, scale, off=False):
+  return round_multi_gaussian(x, scale, off=off), (x, scale)
 
 
 def round_multi_gaussian_bwd(res, g):
@@ -177,7 +178,7 @@ def round_multi_gaussian_bwd(res, g):
         x, mu=- lens, sigma=scale_gaussian * lens) * hight
 
   return (g * (1 + scale * jnp.sign(g) * multi_gaussian_deriv((
-      x + .5 - jnp.round(x + .5)) * 3)), None)
+      x + .5 - jnp.round(x + .5)) * 3)), None, None)
 
 
 round_multi_gaussian.defvjp(round_multi_gaussian_fwd, round_multi_gaussian_bwd)
