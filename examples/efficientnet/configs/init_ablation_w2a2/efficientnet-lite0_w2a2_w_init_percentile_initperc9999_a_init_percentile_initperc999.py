@@ -43,6 +43,7 @@ def get_config():
   config.weight_decay = 1e-5
   config.momentum = 0.9
   config.batch_size = 2048
+  config.batch_norm_epsilon = 1e-2
 
   config.num_epochs = 50
   config.log_every_steps = 256
@@ -58,38 +59,30 @@ def get_config():
 
   config.quant.bits = 2
 
+  config.quant.g_scale = 0.
+
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
-  config.quant.stem.weight = partial(
-      uniform_static, init_fn=partial(percentile_init, perc=99.99))
-  config.quant.stem.act = partial(
-      uniform_static, init_fn=partial(percentile_init, perc=99.9))
+  config.quant.stem.weight = partial(uniform_static, init_fn = partial(percentile_init, perc=99.9), init_fn = partial(percentile_init,perc=99.99))
+  config.quant.stem.act = partial(uniform_static, init_fn = partial(percentile_init, perc=99.9999), init_fn = partial(percentile_init,perc=99.9))
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
-  config.quant.mbconv.weight = partial(
-      uniform_static, init_fn=partial(percentile_init, perc=99.99))
-  config.quant.mbconv.act = partial(
-      uniform_static, init_fn=partial(percentile_init, perc=99.9))
+  config.quant.mbconv.weight = partial(uniform_static, init_fn = partial(percentile_init, perc=99.9), init_fn = partial(percentile_init,perc=99.99))
+  config.quant.mbconv.act = partial(uniform_static, init_fn = partial(percentile_init, perc=99.9999), init_fn = partial(percentile_init,perc=99.9))
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
-  config.quant.head.weight = partial(
-      uniform_static, init_fn=partial(percentile_init, perc=99.99))
-  config.quant.head.act = partial(
-      uniform_static, init_fn=partial(percentile_init, perc=99.9))
+  config.quant.head.weight = partial(uniform_static, init_fn = partial(percentile_init, perc=99.9), init_fn = partial(percentile_init,perc=99.99))
+  config.quant.head.act = partial(uniform_static, init_fn = partial(percentile_init, perc=99.9999), init_fn = partial(percentile_init,perc=99.9))
 
   # Average quant.
-  config.quant.average = partial(
-      uniform_static, init_fn=partial(percentile_init, perc=99.9))
+  config.quant.average = partial(uniform_static, init_fn = partial(percentile_init, perc=99.9999), init_fn = partial(percentile_init,perc=99.9))
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
-  config.quant.dense.weight = partial(
-      uniform_static, init_fn=partial(percentile_init, perc=99.99))
-  config.quant.dense.act = partial(
-      uniform_static, init_fn=partial(percentile_init, perc=99.9))
-  config.quant.dense.bias = partial(
-      uniform_static, init_fn=partial(percentile_init, perc=99.99))
+  config.quant.dense.weight = partial(uniform_static, init_fn = partial(percentile_init, perc=99.9), init_fn = partial(percentile_init,perc=99.99))
+  config.quant.dense.act = partial(uniform_static, init_fn = partial(percentile_init, perc=99.9999), init_fn = partial(percentile_init,perc=99.9))
+  config.quant.dense.bias = partial(uniform_static, init_fn = partial(percentile_init, perc=99.9), init_fn = partial(percentile_init,perc=99.99))
 
   return config
