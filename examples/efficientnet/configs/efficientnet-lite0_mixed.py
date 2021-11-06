@@ -6,7 +6,7 @@
 
 import ml_collections
 from functools import partial
-from quant import parametric_d_xmax
+from quant import parametric_d_xmax, percentile_init
 
 
 def get_config():
@@ -38,11 +38,12 @@ def get_config():
   # Load pretrained weights.
   config.pretrained = "../../../pretrained_efficientnet/efficientnet-lite0"
 
-  config.learning_rate = 0.001
+  config.learning_rate = 0.01
   config.warmup_epochs = 2
   config.weight_decay = 1e-5
   config.momentum = 0.9
   config.batch_size = 2048
+  config.batch_norm_epsilon=1e-3
 
   config.num_epochs = 50
   config.log_every_steps = 256
@@ -54,10 +55,10 @@ def get_config():
 
   config.quant_target = ml_collections.ConfigDict()
 
-  config.quant_target.weight_mb = 2.24
+  config.quant_target.weight_mb = 2.907505
   config.quant_target.weight_penalty = .1
   config.quant_target.act_mode = 'max'
-  config.quant_target.act_mb = .38
+  config.quant_target.act_mb = 0.75264
   config.quant_target.act_penalty = .1
 
   config.quant = ml_collections.ConfigDict()
@@ -69,29 +70,29 @@ def get_config():
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
   config.quant.stem.weight = partial(
-      parametric_d_xmax)
-  config.quant.stem.act = partial(parametric_d_xmax, act=True)
+      parametric_d_xmax, init_fn=partial(percentile_init, perc=99.9))
+  config.quant.stem.act = partial(parametric_d_xmax, act=True, init_fn=partial(percentile_init, perc=99.9999))
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
   config.quant.mbconv.weight = partial(
-      parametric_d_xmax)
-  config.quant.mbconv.act = partial(parametric_d_xmax, act=True)
+      parametric_d_xmax, init_fn=partial(percentile_init, perc=99.9))
+  config.quant.mbconv.act = partial(parametric_d_xmax, act=True, init_fn=partial(percentile_init, perc=99.9999))
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
   config.quant.head.weight = partial(
-      parametric_d_xmax)
-  config.quant.head.act = partial(parametric_d_xmax, act=True)
+      parametric_d_xmax, init_fn=partial(percentile_init, perc=99.9))
+  config.quant.head.act = partial(parametric_d_xmax, act=True, init_fn=partial(percentile_init, perc=99.9999))
 
   # Average quant.
-  config.quant.average = partial(parametric_d_xmax, act=True)
+  config.quant.average = partial(parametric_d_xmax, act=True, init_fn=partial(percentile_init, perc=99.9999))
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
   config.quant.dense.weight = partial(
-      parametric_d_xmax)
-  config.quant.dense.act = partial(parametric_d_xmax, act=True)
-  config.quant.dense.bias = partial(parametric_d_xmax)
+      parametric_d_xmax, init_fn=partial(percentile_init, perc=99.9))
+  config.quant.dense.act = partial(parametric_d_xmax, act=True, init_fn=partial(percentile_init, perc=99.9999))
+  config.quant.dense.bias = partial(parametric_d_xmax, init_fn=partial(percentile_init, perc=99.9))
 
   return config
