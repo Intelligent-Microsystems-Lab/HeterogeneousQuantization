@@ -276,21 +276,20 @@ class parametric_d(nn.Module):
     gradScaleFactor = 1 / jnp.sqrt(q_pos * np.prod(n_wf) + 1e-6)
 
     @jax.custom_vjp
-    def gradscale(x, scale):
+    def gradscale(x, scale, d):
       return x
 
-    def gradscale_fwd(x, scale):
-      return gradscale(x, scale), (scale,)
+    def gradscale_fwd(x, scale, d):
+      return gradscale(x, scale, d), (scale, d)
 
     def gradscale_bwd(res, g):
-      (scale,) = res
+      (scale, d) = res
 
       # clip gradient
-      return jnp.clip(g * scale, a_min=-step_size.value,
-                      a_max=step_size.value), None
+      return jnp.clip(g * scale, a_min=-d, a_max=d), None, None
     gradscale.defvjp(gradscale_fwd, gradscale_bwd)
 
-    s = gradscale(step_size.value, gradScaleFactor)
+    s = gradscale(step_size.value, gradScaleFactor, step_size.value)
     v = v / s
     v = jnp.clip(v, q_neg, q_pos)
     vbar = self.round_fn(v, self.g_scale)
@@ -415,8 +414,9 @@ class parametric_d_xmax(nn.Module):
         g_xmax = jnp.where(x > xmax, 1, 0)
 
       # clip gradient
-      return g * mask, jnp.clip(jnp.sum(g * g_d * mask), a_min=-d, a_max=d),
-      jnp.clip(jnp.sum(g * g_xmax), a_min=-d, a_max=d)
+      return g * mask, jnp.clip(jnp.sum(g * g_d * mask), a_min=-d,
+                                a_max=d), jnp.clip(jnp.sum(g * g_xmax),
+                                                   a_min=-d, a_max=d)
     quant.defvjp(quant_fwd, quant_bwd)
 
     return quant(x, d, xmax)  # quantize_pow2
