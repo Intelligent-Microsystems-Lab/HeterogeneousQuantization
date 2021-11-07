@@ -1,7 +1,7 @@
 from quant import (
     uniform_static,
     # parametric_d,
-    # parametric_d_xmax,
+    parametric_d_xmax,
 
     # max_init,
     # gaussian_init,
@@ -85,12 +85,12 @@ def vis_surrogate(sur_fn):
              "../../figures/quant_grad_" + sur_fn.__name__ + ".png")
 
 
-vis_surrogate(round_psgd)
-vis_surrogate(round_ewgs)
-vis_surrogate(round_tanh)
-vis_surrogate(round_fsig)
-vis_surrogate(round_gaussian)
-vis_surrogate(round_multi_gaussian)
+# vis_surrogate(round_psgd)
+# vis_surrogate(round_ewgs)
+# vis_surrogate(round_tanh)
+# vis_surrogate(round_fsig)
+# vis_surrogate(round_gaussian)
+# vis_surrogate(round_multi_gaussian)
 
 # # Ordinary visualization -- Surrogate
 # quant_fn = uniform_dynamic(bits=3, round_fn=roundsurrogate)
@@ -192,9 +192,9 @@ vis_surrogate(round_multi_gaussian)
 # params = quant_fn.init(init_rng, jnp.ones((1, 2)) * .5, sign=True)
 
 
-# def loss_fn(x, params):
+# def loss_fn(x, params, target):
 #   logits = quant_fn.apply(params, x, sign=True)
-#   return jnp.sum(logits)
+#   return jnp.sum(logits) - target
 
 
 # grad_fn = jax.grad(loss_fn, argnums=1)
@@ -203,7 +203,7 @@ vis_surrogate(round_multi_gaussian)
 # gxmax_list = []
 # x_list = jnp.arange(-1, +1, .001)
 # for i in x_list:
-#   g = grad_fn(i, params)
+#   g = grad_fn(i, params, i)
 #   gs_list.append(g['quant_params']['step_size'])
 #   gxmax_list.append(g['quant_params']['dynamic_range'])
 
@@ -211,7 +211,7 @@ vis_surrogate(round_multi_gaussian)
 
 # gx_list = []
 # for i in x_list:
-#   g = grad_fn(i, params)
+#   g = grad_fn(i, params, i)
 #   gx_list.append(g)
 
 

@@ -192,8 +192,7 @@ def gaussian_init(x, bits, sign):
 
 
 def percentile_init(x, bits, sign, perc):
-  return jnp.max(jnp.abs(x))
-  # return jnp.percentile(jnp.abs(x), perc)
+  return jnp.percentile(jnp.abs(x), perc)
 
 
 #
@@ -242,6 +241,7 @@ class parametric_d(nn.Module):
   round_fn: Callable = round_psgd
   init_fn: Callable = max_init
   g_scale: float = 0.
+  clip_quant_grads: bool = True
 
   # parametric homogenouse quantization
   # Based on LEARNED STEP SIZE QUANTIZATION
@@ -286,10 +286,14 @@ class parametric_d(nn.Module):
       (scale, d) = res
 
       # clip gradient
-      return jnp.clip(g * scale, a_min=-d, a_max=d), None, None
+      if d is not None:
+        return jnp.clip(g * scale, a_min=-d, a_max=d), None, None
+      else:
+        return g * scale, None, None
     gradscale.defvjp(gradscale_fwd, gradscale_bwd)
 
-    s = gradscale(step_size.value, gradScaleFactor, step_size.value)
+    s = gradscale(step_size.value, gradScaleFactor,
+                  step_size.value if self.clip_quant_grads else None)
     v = v / s
     v = jnp.clip(v, q_neg, q_pos)
     vbar = self.round_fn(v, self.g_scale)
@@ -306,6 +310,7 @@ class parametric_d_xmax(nn.Module):
   round_fn: Callable = round_psgd
   init_fn: Callable = max_init
   g_scale: float = 0.
+  clip_quant_grads: bool = True
 
   # Parametric heterogenous quantization.
   # Based on MIXED PRECISION DNNS.
@@ -384,7 +389,7 @@ class parametric_d_xmax(nn.Module):
               n_wf) * (ceilpass(jnp.log2((xmax / d) + 1))) / 8_000_000
 
     @jax.custom_vjp
-    def quant(x, d, xmax):
+    def quant(x, d, xmax, clip_b):
       if sign:
         xmin = -xmax
       else:
@@ -392,11 +397,11 @@ class parametric_d_xmax(nn.Module):
 
       return d * jnp.round(jnp.clip(x, xmin, xmax) / d)
 
-    def quant_fwd(x, d, xmax):
-      return quant(x, d, xmax), (x, d, xmax)
+    def quant_fwd(x, d, xmax, clip_b):
+      return quant(x, d, xmax, clip_b), (x, d, xmax, clip_b)
 
     def quant_bwd(res, g):
-      (x, d, xmax) = res
+      (x, d, xmax, clip_b) = res
 
       if sign:
         xmin = -xmax
@@ -405,7 +410,7 @@ class parametric_d_xmax(nn.Module):
 
       mask = jnp.where(jnp.logical_and((x < xmax), (x > xmin)), 1, 0)
 
-      g_d = (1 / d) * (quant(x, d, xmax) - x)
+      g_d = (1 / d) * (quant(x, d, xmax, clip_b) - x)
 
       if sign:
         g_xmax = jnp.where(x > xmax, 1, 0)
@@ -414,9 +419,13 @@ class parametric_d_xmax(nn.Module):
         g_xmax = jnp.where(x > xmax, 1, 0)
 
       # clip gradient
-      return g * mask, jnp.clip(jnp.sum(g * g_d * mask), a_min=-d,
-                                a_max=d), jnp.clip(jnp.sum(g * g_xmax),
-                                                   a_min=-d, a_max=d)
+      if clip_b:
+        return g * mask, jnp.clip(jnp.sum(g * g_d * mask), a_min=-d,
+                                  a_max=d), jnp.clip(jnp.sum(g * g_xmax),
+                                                     a_min=-d, a_max=d), None
+      else:
+        return g * mask, jnp.sum(g * g_d * mask), jnp.sum(g * g_xmax), None
+
     quant.defvjp(quant_fwd, quant_bwd)
 
-    return quant(x, d, xmax)  # quantize_pow2
+    return quant(x, d, xmax, self.clip_quant_grads)

@@ -214,9 +214,9 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     if config.get('log_every_steps'):
       train_metrics.append(metrics)
       if (step + 1) % config.log_every_steps == 0:
-        # train_metrics = common_utils.get_metrics(train_metrics)
-        # Debug
-        train_metrics = common_utils.stack_forest(train_metrics)
+        train_metrics = common_utils.get_metrics(train_metrics)
+        # # Debug
+        # train_metrics = common_utils.stack_forest(train_metrics)
         summary = {
             f'{k}': v
             for k, v in jax.tree_map(lambda x: x.mean(), train_metrics).items()

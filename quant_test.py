@@ -241,7 +241,7 @@ class QuantOpsTest(parameterized.TestCase):
         * scale
     )
 
-    quant_fn = parametric_d(bits=bits)
+    quant_fn = parametric_d(bits=bits, clip_quant_grads=False)
 
     def loss_fn(x, params):
       logits = quant_fn.apply(params, x)
@@ -294,11 +294,12 @@ class QuantOpsTest(parameterized.TestCase):
     )
     data = data.at[0, 0].set(data[0, 0] + 0.01)
 
-    quant_fn = parametric_d_xmax(bits=bits, xmax_max=scale + 1, d_min=1e-12)
+    quant_fn = parametric_d_xmax(
+        bits=bits, xmax_max=scale + 1, d_min=1e-12, clip_quant_grads=False)
 
     def loss_fn(x, params):
       logits = quant_fn.apply(params, x)
-      return jnp.sum(logits)
+      return jnp.sum(logits) - jax.lax.stop_gradient(0.1 * jnp.sum(logits))
 
     params = quant_fn.init(init_rng, data)
     grad_fn = jax.grad(loss_fn, argnums=1)
