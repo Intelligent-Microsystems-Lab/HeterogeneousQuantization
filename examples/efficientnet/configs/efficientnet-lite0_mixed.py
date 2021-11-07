@@ -43,7 +43,7 @@ def get_config():
   config.weight_decay = 1e-5
   config.momentum = 0.9
   config.batch_size = 2048
-  config.batch_norm_epsilon=1e-3
+  config.batch_norm_epsilon = 1e-3
 
   config.num_epochs = 50
   config.log_every_steps = 256
@@ -71,28 +71,34 @@ def get_config():
   config.quant.stem = ml_collections.ConfigDict()
   config.quant.stem.weight = partial(
       parametric_d_xmax, init_fn=partial(percentile_init, perc=99.9))
-  config.quant.stem.act = partial(parametric_d_xmax, act=True, init_fn=partial(percentile_init, perc=99.9999))
+  config.quant.stem.act = partial(
+      parametric_d_xmax, act=True, init_fn=partial(percentile_init, perc=99.9999))
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
   config.quant.mbconv.weight = partial(
       parametric_d_xmax, init_fn=partial(percentile_init, perc=99.9))
-  config.quant.mbconv.act = partial(parametric_d_xmax, act=True, init_fn=partial(percentile_init, perc=99.9999))
+  config.quant.mbconv.act = partial(
+      parametric_d_xmax, act=True, init_fn=partial(percentile_init, perc=99.9999))
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
   config.quant.head.weight = partial(
       parametric_d_xmax, init_fn=partial(percentile_init, perc=99.9))
-  config.quant.head.act = partial(parametric_d_xmax, act=True, init_fn=partial(percentile_init, perc=99.9999))
+  config.quant.head.act = partial(
+      parametric_d_xmax, act=True, init_fn=partial(percentile_init, perc=99.9999))
 
   # Average quant.
-  config.quant.average = partial(parametric_d_xmax, act=True, init_fn=partial(percentile_init, perc=99.9999))
+  config.quant.average = partial(
+      parametric_d_xmax, act=True, init_fn=partial(percentile_init, perc=99.9999))
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
   config.quant.dense.weight = partial(
       parametric_d_xmax, init_fn=partial(percentile_init, perc=99.9))
-  config.quant.dense.act = partial(parametric_d_xmax, act=True, init_fn=partial(percentile_init, perc=99.9999))
-  config.quant.dense.bias = partial(parametric_d_xmax, init_fn=partial(percentile_init, perc=99.9))
+  config.quant.dense.act = partial(
+      parametric_d_xmax, act=True, init_fn=partial(percentile_init, perc=99.9999))
+  config.quant.dense.bias = partial(
+      parametric_d_xmax, init_fn=partial(percentile_init, perc=99.9))
 
   return config

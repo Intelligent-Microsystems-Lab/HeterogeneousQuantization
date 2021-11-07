@@ -193,7 +193,7 @@ def gaussian_init(x, bits, sign):
 
 def percentile_init(x, bits, sign, perc):
   return jnp.max(jnp.abs(x))
-  #return jnp.percentile(jnp.abs(x), perc)
+  # return jnp.percentile(jnp.abs(x), perc)
 
 
 #
@@ -286,7 +286,8 @@ class parametric_d(nn.Module):
       (scale,) = res
 
       # clip gradient
-      return jnp.clip(g * scale, a_min= -step_size.value, a_max=step_size.value), None
+      return jnp.clip(g * scale, a_min=-step_size.value,
+                      a_max=step_size.value), None
     gradscale.defvjp(gradscale_fwd, gradscale_bwd)
 
     s = gradscale(step_size.value, gradScaleFactor)
@@ -364,10 +365,10 @@ class parametric_d_xmax(nn.Module):
         n_wf = inputs.shape[1:]
         if sign:
           act_mb.value = np.prod(
-              n_wf) * (ceilpass(jnp.log2((xmax / d ) + 1)) + 1) / 8_000_000
+              n_wf) * (ceilpass(jnp.log2((xmax / d) + 1)) + 1) / 8_000_000
         else:
           act_mb.value = np.prod(
-              n_wf) * (ceilpass(jnp.log2((xmax / d ) + 1))) / 8_000_000
+              n_wf) * (ceilpass(jnp.log2((xmax / d) + 1))) / 8_000_000
       else:
         act_mb.value = 0.
 
@@ -414,7 +415,8 @@ class parametric_d_xmax(nn.Module):
         g_xmax = jnp.where(x > xmax, 1, 0)
 
       # clip gradient
-      return g * mask, jnp.clip(jnp.sum(g * g_d * mask), a_min= -d, a_max= d), jnp.clip(jnp.sum(g * g_xmax), a_min= -d, a_max= d)
+      return g * mask, jnp.clip(jnp.sum(g * g_d * mask), a_min=-d, a_max=d),
+      jnp.clip(jnp.sum(g * g_xmax), a_min=-d, a_max=d)
     quant.defvjp(quant_fwd, quant_bwd)
 
     return quant(x, d, xmax)  # quantize_pow2

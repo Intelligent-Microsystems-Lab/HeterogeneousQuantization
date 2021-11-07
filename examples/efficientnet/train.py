@@ -87,10 +87,10 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   writer_eval = metric_writers.create_default_writer(
       logdir=workdir + '/eval', just_logging=jax.process_index() != 0)
 
-  # logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
-  # logging.info('Git commit: ' + subprocess.check_output(
-  #     ['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
-  # logging.info(config)
+  logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
+  logging.info('Git commit: ' + subprocess.check_output(
+      ['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
+  logging.info(config)
 
   rng = random.PRNGKey(config.seed)
 
