@@ -6,7 +6,7 @@
 import ml_collections
 from functools import partial
 
-from quant import signed_uniform_max_scale_quant_ste, parametric_d
+from quant import parametric_d, double_mean_init
 
 
 def get_config():
@@ -21,14 +21,14 @@ def get_config():
   config.dataset = 'imagenet2012'
   config.tfds_data_dir = 'gs://imagenet_clemens/tensorflow_datasets'
 
-  config.learning_rate = 0.001
-  config.warmup_epochs = 5.0
+  config.learning_rate = 0.0001
+  config.warmup_epochs = 0.0
   config.momentum = 0.9
-  config.batch_size = 1024
-  config.weight_decay = 0.0001
+  config.batch_size = 2024
+  config.weight_decay = 10e-4
 
-  config.num_epochs = 100.0
-  config.log_every_steps = 100
+  config.num_epochs = 1.0
+  config.log_every_steps = 200
 
   config.cache = True
   config.half_precision = False
@@ -40,25 +40,31 @@ def get_config():
   config.num_train_steps = -1
   config.steps_per_eval = -1
 
+  config.quant_target = ml_collections.ConfigDict()
+
   config.quant = ml_collections.ConfigDict()
+
+  config.quant.bits = 8
+
+  config.quant.g_scale = 0.
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
-  config.quant.stem.weight = partial(parametric_d, bits=8)
-  config.quant.stem.act = partial(parametric_d, bits=8)
+  config.quant.stem.weight = partial(parametric_d, init_fn=double_mean_init, clip_quant_grads=False)
+  config.quant.stem.act = partial(parametric_d, init_fn=double_mean_init, clip_quant_grads=False)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
-  config.quant.mbconv.weight = partial(parametric_d, bits=8)
-  config.quant.mbconv.act = partial(parametric_d, bits=8)
+  config.quant.mbconv.weight = partial(parametric_d, init_fn=double_mean_init, clip_quant_grads=False)
+  config.quant.mbconv.act = partial(parametric_d, init_fn=double_mean_init, clip_quant_grads=False)
 
   # Average quant.
-  config.quant.average = partial(parametric_d, bits=8)
+  config.quant.average = partial(parametric_d, init_fn=double_mean_init, clip_quant_grads=False)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
-  config.quant.dense.weight = partial(parametric_d, bits=8)
-  config.quant.dense.act = partial(parametric_d, bits=8)
-  config.quant.dense.bias = partial(parametric_d, bits=8)
+  config.quant.dense.weight = partial(parametric_d, init_fn=double_mean_init, clip_quant_grads=False)
+  config.quant.dense.act = partial(parametric_d, init_fn=double_mean_init, clip_quant_grads=False)
+  config.quant.dense.bias = partial(parametric_d, init_fn=double_mean_init, clip_quant_grads=False)
 
   return config

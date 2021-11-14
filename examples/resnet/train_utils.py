@@ -22,12 +22,9 @@ import ml_collections
 import optax
 
 
-NUM_CLASSES = 1000
-
-
 def create_model(*, model_cls, **kwargs):
   model_dtype = jnp.float32
-  return model_cls(num_classes=NUM_CLASSES, dtype=model_dtype, **kwargs)
+  return model_cls(num_classes=kwargs['config'].num_classes, dtype=model_dtype, **kwargs)
 
 
 def initialized(key, image_size, model):
@@ -53,12 +50,12 @@ def initialized(key, image_size, model):
 
 
 def cross_entropy_loss(logits, labels):
-  one_hot_labels = common_utils.onehot(labels, num_classes=NUM_CLASSES)
+  one_hot_labels = common_utils.onehot(labels, num_classes=logits.shape[1])
   xentropy = optax.softmax_cross_entropy(logits=logits, labels=one_hot_labels)
   return jnp.mean(xentropy)
 
 
-def compute_metrics(logits, labels, state):
+def compute_metrics(logits, labels, state, size_div):
   loss = cross_entropy_loss(logits, labels)
   accuracy = jnp.mean(jnp.argmax(logits, -1) == labels)
   metrics = {
@@ -68,15 +65,15 @@ def compute_metrics(logits, labels, state):
   if 'weight_size' in state:
     if state['weight_size'] != {}:
       metrics['weight_size'] = jnp.sum(
-          jnp.array(jax.tree_util.tree_flatten(state['weight_size'])[0]))
+          jnp.array(jax.tree_util.tree_flatten(state['weight_size'])[0]))/size_div
   if 'act_size' in state:
     if state['act_size'] != {}:
       metrics['act_size_sum'] = jnp.sum(
-          jnp.array(jax.tree_util.tree_flatten(state['act_size'])[0]))
+          jnp.array(jax.tree_util.tree_flatten(state['act_size'])[0]))/size_div
       metrics['act_size_max'] = jnp.max(
-          jnp.array(jax.tree_util.tree_flatten(state['act_size'])[0]))
+          jnp.array(jax.tree_util.tree_flatten(state['act_size'])[0]))/size_div
 
-  metrics = lax.pmean(metrics, axis_name='batch')
+  # metrics = lax.pmean(metrics, axis_name='batch')
   return metrics
 
 
@@ -85,16 +82,19 @@ def create_learning_rate_fn(
         base_learning_rate: float,
         steps_per_epoch: int):
   """Create learning rate schedule."""
-  warmup_fn = optax.linear_schedule(
-      init_value=0., end_value=base_learning_rate,
-      transition_steps=config.warmup_epochs * steps_per_epoch)
-  cosine_epochs = max(config.num_epochs - config.warmup_epochs, 1)
-  cosine_fn = optax.cosine_decay_schedule(
-      init_value=base_learning_rate,
-      decay_steps=cosine_epochs * steps_per_epoch)
-  schedule_fn = optax.join_schedules(
-      schedules=[warmup_fn, cosine_fn],
-      boundaries=[config.warmup_epochs * steps_per_epoch])
+  if config.lr_boundaries_scale is not None:
+    schedule_fn = optax.piecewise_constant_schedule(config.learning_rate, {int(k)*steps_per_epoch:v for k,v in config.lr_boundaries_scale.items()})
+  else: 
+    warmup_fn = optax.linear_schedule(
+        init_value=0., end_value=base_learning_rate,
+        transition_steps=config.warmup_epochs * steps_per_epoch)
+    cosine_epochs = max(config.num_epochs - config.warmup_epochs, 1)
+    cosine_fn = optax.cosine_decay_schedule(
+        init_value=base_learning_rate,
+        decay_steps=cosine_epochs * steps_per_epoch)
+    schedule_fn = optax.join_schedules(
+        schedules=[warmup_fn, cosine_fn],
+        boundaries=[config.warmup_epochs * steps_per_epoch])
   return schedule_fn
 
 
@@ -119,18 +119,18 @@ def train_step(state, batch, learning_rate_fn, weight_decay, quant_target):
     if hasattr(quant_target, 'weight_mb'):
       size_penalty += quant_target.weight_penalty * jax.nn.relu(jnp.sum(
           jnp.array(jax.tree_util.tree_flatten(new_model_state['weight_size']
-                                               )[0])) - quant_target.weight_mb
+                                               )[0]))/quant_target.size_div - quant_target.weight_mb
       ) ** 2
     if hasattr(quant_target, 'act_size'):
       if quant_target.act_mode == 'sum':
         size_penalty += quant_target.act_penalty * jax.nn.relu(jnp.sum(
             jnp.array(jax.tree_util.tree_flatten(new_model_state['act_size']
-                                                 )[0])) - quant_target.act_mb
+                                                 )[0]))/quant_target.size_div - quant_target.act_mb
         ) ** 2
       elif quant_target.act_mode == 'max':
         size_penalty += quant_target.act_penalty * jax.nn.relu(jnp.max(
             jnp.array(jax.tree_util.tree_flatten(new_model_state['act_size']
-                                                 )[0])) - quant_target.act_mb
+                                                 )[0]))/quant_target.size_div - quant_target.act_mb
         ) ** 2
       else:
         raise Exception(
@@ -146,12 +146,11 @@ def train_step(state, batch, learning_rate_fn, weight_decay, quant_target):
   grad_fn = jax.value_and_grad(loss_fn, argnums=[0, 1], has_aux=True)
   aux, grads = grad_fn(state.params['params'], state.params['quant_params'])
   # Re-use same axis_name as in the call to `pmap(...train_step...)` below.
-  grads = lax.pmean(grads, axis_name='batch')
+  # grads = lax.pmean(grads, axis_name='batch')
 
   new_model_state, logits = aux[1]
-  metrics = compute_metrics(logits, batch['label'], new_model_state)
+  metrics = compute_metrics(logits, batch['label'], new_model_state, quant_target.size_div)
   metrics['learning_rate'] = lr
-
   new_state = state.apply_gradients(
       grads={'params': grads[0], 'quant_params': grads[1]},
       batch_stats=new_model_state['batch_stats'],
@@ -161,7 +160,7 @@ def train_step(state, batch, learning_rate_fn, weight_decay, quant_target):
   return new_state, metrics
 
 
-def eval_step(state, batch, num_classes=NUM_CLASSES):
+def eval_step(state, batch, size_div):
   variables = {'params': state.params['params'],
                'quant_params': state.params['quant_params'],
                'batch_stats': state.batch_stats,
@@ -171,7 +170,7 @@ def eval_step(state, batch, num_classes=NUM_CLASSES):
       batch['image'],
       train=False,
       mutable=['weight_size', 'act_size'])
-  return compute_metrics(logits, batch['label'], new_state)
+  return compute_metrics(logits, batch['label'], new_state, size_div)
 
 
 def prepare_tf_data(xs):
@@ -189,11 +188,37 @@ def prepare_tf_data(xs):
   return jax.tree_map(_prepare, xs)
 
 
-def create_input_iter(dataset_builder, batch_size, image_size, dtype, train,
-                      cache):
-  ds = input_pipeline.create_split(
-      dataset_builder, batch_size, image_size=image_size, dtype=dtype,
-      train=train, cache=cache)
+# def create_input_iter(dataset_builder, batch_size, image_size, dtype, train,
+#                       cache):
+#   ds = input_pipeline.create_split(
+#       dataset_builder, batch_size, image_size=image_size, dtype=dtype,
+#       train=train, cache=cache)
+#   it = map(prepare_tf_data, ds)
+#   it = jax_utils.prefetch_to_device(it, 2)
+#   return it
+
+
+def create_input_iter(
+    dataset_builder, batch_size, image_size, dtype, train, cache
+):
+  if "imagenet" in dataset_builder.name:
+    ds = input_pipeline.create_split(
+        dataset_builder,
+        batch_size,
+        image_size=image_size,
+        dtype=dtype,
+        train=train,
+        cache=cache,
+    )
+  else:
+    ds = input_pipeline.create_split_cifar10(
+        dataset_builder,
+        batch_size,
+        image_size=image_size,
+        dtype=dtype,
+        train=train,
+        cache=cache,
+    )
   it = map(prepare_tf_data, ds)
   it = jax_utils.prefetch_to_device(it, 2)
   return it
@@ -238,7 +263,7 @@ def create_train_state(rng, config: ml_collections.ConfigDict,
   tx = optax.sgd(
       learning_rate=learning_rate_fn,
       momentum=config.momentum,
-      nesterov=True,
+      nesterov=config.nesterov,
   )
   quant_params = unfreeze(quant_params)
   quant_params['placeholder'] = 0.

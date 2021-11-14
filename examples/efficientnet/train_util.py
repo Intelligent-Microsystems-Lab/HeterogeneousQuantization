@@ -10,10 +10,14 @@ The data is loaded using tensorflow_datasets.
 
 from typing import Any
 
+import flax
 from flax.training import checkpoints
 from flax.training import common_utils
 from flax.training import train_state
 from flax.core import freeze, unfreeze
+
+from jax.flatten_util import ravel_pytree
+from typing import Any, Callable
 
 import jax
 from jax import lax
@@ -22,7 +26,9 @@ import jax.numpy as jnp
 import ml_collections
 
 import optax
+from functools import partial
 
+Array = jnp.ndarray
 
 def create_model(*, model_cls, num_classes, **kwargs):
   model_dtype = jnp.float32
@@ -103,19 +109,14 @@ def create_learning_rate_fn(config: ml_collections.ConfigDict,
 
 
 def train_step(state, batch, rng, learning_rate_fn, num_classes, weight_decay,
-               quant_target):
+               quant_target, compute_hessian = False):
   """Perform a single training step."""
   rng, prng = jax.random.split(rng, 2)
 
-  def loss_fn(params, quant_params):
+  def loss_fn(params, inputs, targets, quant_params, return_state = True):
     """loss function used for training."""
-    logits, new_model_state = state.apply_fn(
-        {'params': params, 'quant_params': quant_params,
-         'batch_stats': state.batch_stats, 'weight_size': state.weight_size,
-         'act_size': state.act_size},
-        batch['image'], rng=prng, mutable=['batch_stats', 'weight_size',
-                                           'act_size'], rngs={'dropout': rng})
-    loss = cross_entropy_loss(logits, batch['label'], num_classes)
+    logits, new_model_state = state.apply_fn({'params': params, 'quant_params': quant_params, 'batch_stats': state.batch_stats, 'weight_size': state.weight_size, 'act_size': state.act_size}, inputs, rng=prng, mutable=['batch_stats', 'weight_size', 'act_size'], rngs={'dropout': rng})
+    loss = cross_entropy_loss(logits, targets, num_classes)
     weight_penalty_params = jax.tree_leaves(params)
     weight_l2 = sum([jnp.sum(x ** 2)
                      for x in weight_penalty_params
@@ -146,14 +147,17 @@ def train_step(state, batch, rng, learning_rate_fn, num_classes, weight_decay,
             + quant_target.act_mode)
 
     loss = loss + weight_penalty + size_penalty
-    return loss, (new_model_state, logits)
+    if return_state:
+      return loss, (new_model_state, logits)
+    else:
+      return loss
 
   step = state.step
   lr = learning_rate_fn(step)
 
-  grad_fn = jax.value_and_grad(loss_fn, argnums=[0, 1], has_aux=True)
+  grad_fn = jax.value_and_grad(loss_fn, argnums=[0, 3], has_aux=True)
   aux, grads = grad_fn(
-      state.params['params'], state.params['quant_params'])
+      state.params['params'], batch['image'], batch['label'], state.params['quant_params'])
   # Re-use same axis_name as in the call to `pmap(...train_step...)` below.
   grads = lax.pmean(grads, axis_name='batch')
 

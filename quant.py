@@ -178,21 +178,21 @@ round_multi_gaussian.defvjp(round_multi_gaussian_fwd, round_multi_gaussian_bwd)
 
 
 def max_init(x, bits, sign):
-  return jnp.max(jnp.abs(x))
+  return jnp.where(jnp.max(x) == 0, 1/2**bits, jnp.max(jnp.abs(x)))
 
 
 def double_mean_init(x, bits, sign):
-  return 2 * jnp.mean(jnp.abs(x))
+  return jnp.where(jnp.max(x) == 0, 1/2**bits, 2 * jnp.mean(jnp.abs(x)))
 
 
 def gaussian_init(x, bits, sign):
   mu = jnp.mean(x)
   sigma = jnp.std(x)
-  return jnp.maximum(jnp.abs(mu - 3 * sigma), jnp.abs(mu + 3 * sigma))
+  return jnp.where(jnp.max(x) == 0, 1/2**bits, jnp.maximum(jnp.abs(mu - 3 * sigma), jnp.abs(mu + 3 * sigma)))
 
 
 def percentile_init(x, bits, sign, perc):
-  return jnp.percentile(jnp.abs(x), perc)
+  return jnp.where(jnp.max(x) == 0, 1/2**bits, jnp.percentile(jnp.abs(x), perc))
 
 
 #
@@ -274,6 +274,8 @@ class parametric_d(nn.Module):
                                       sign=sign) / jnp.sqrt(q_pos)
 
     gradScaleFactor = 1 / jnp.sqrt(q_pos * np.prod(n_wf) + 1e-6)
+    #print('step_size = ' + str(step_size.value))
+    #print('scale = '+str(gradScaleFactor))
 
     @jax.custom_vjp
     def gradscale(x, scale, d):
@@ -284,7 +286,6 @@ class parametric_d(nn.Module):
 
     def gradscale_bwd(res, g):
       (scale, d) = res
-
       # clip gradient
       if d is not None:
         return jnp.clip(g * scale, a_min=-d, a_max=d), None, None
@@ -301,16 +302,17 @@ class parametric_d(nn.Module):
 
 
 class parametric_d_xmax(nn.Module):
-  bits: int = 8  # here its just init bits
+  bits: int = 4  # here its just init bits
   act: bool = False
-  xmax_min: float = 0.001
-  xmax_max: float = 100
+  xmax_min: float = 2**-8
+  xmax_max: float = 2**8
   d_min: float = 2**-8
-  d_max: float = 2**+8
+  d_max: float = 1 # 2**+8
   round_fn: Callable = round_psgd
   init_fn: Callable = max_init
   g_scale: float = 0.
   clip_quant_grads: bool = True
+  ceil_tolerance: float = 1e-6
 
   # Parametric heterogenous quantization.
   # Based on MIXED PRECISION DNNS.
@@ -325,7 +327,7 @@ class parametric_d_xmax(nn.Module):
 
     @jax.custom_vjp
     def ceilpass(x):
-      return jnp.ceil(x)
+      return jnp.ceil(x - self.ceil_tolerance)
 
     def ceilpass_fwd(x):
       return ceilpass(x), (None,)
@@ -368,11 +370,9 @@ class parametric_d_xmax(nn.Module):
       if self.act:
         n_wf = inputs.shape[1:]
         if sign:
-          act_mb.value = np.prod(
-              n_wf) * (ceilpass(jnp.log2((xmax / d) + 1)) + 1) / 8_000_000
+          act_mb.value = np.prod(n_wf) * (ceilpass(jnp.log2((xmax / d) + 1)) + 1)
         else:
-          act_mb.value = np.prod(
-              n_wf) * (ceilpass(jnp.log2((xmax / d) + 1))) / 8_000_000
+          act_mb.value = np.prod(n_wf) * (ceilpass(jnp.log2((xmax / d) + 1)))
       else:
         act_mb.value = 0.
 
@@ -382,11 +382,9 @@ class parametric_d_xmax(nn.Module):
       else:
         n_wf = inputs.shape
         if sign:
-          weight_mb.value = np.prod(
-              n_wf) * (ceilpass(jnp.log2((xmax / d) + 1)) + 1) / 8_000_000
+          weight_mb.value = np.prod(n_wf) * (ceilpass(jnp.log2((xmax / d) + 1)) + 1)
         else:
-          weight_mb.value = np.prod(
-              n_wf) * (ceilpass(jnp.log2((xmax / d) + 1))) / 8_000_000
+          weight_mb.value = np.prod(n_wf) * (ceilpass(jnp.log2((xmax / d) + 1)))
 
     @jax.custom_vjp
     def quant(x, d, xmax, clip_b):

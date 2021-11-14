@@ -1,6 +1,15 @@
+import sys
+
+import jax
+import jax.numpy as jnp
+
+import matplotlib.pyplot as plt
+
+sys.path.append("..")
+
 from quant import (
     uniform_static,
-    # parametric_d,
+    parametric_d,
     parametric_d_xmax,
 
     # max_init,
@@ -15,14 +24,6 @@ from quant import (
     round_gaussian,
     round_multi_gaussian,
 )
-import sys
-
-import jax
-import jax.numpy as jnp
-
-import matplotlib.pyplot as plt
-
-sys.path.append("..")
 
 
 def plot_lines(x, x_list, name_list, color_list, fname):
@@ -115,38 +116,38 @@ def vis_surrogate(sur_fn):
 #            "../../figures/ordinary_surrogate.png")
 
 
-# # LSQ visualization
-# quant_fn = parametric_d(bits=3)
+# LSQ visualization
+quant_fn = parametric_d(bits=3, clip_quant_grads=False)
 
-# rng = jax.random.PRNGKey(0)
-# rng, init_rng, data_rng = jax.random.split(rng, 3)
+rng = jax.random.PRNGKey(0)
+rng, init_rng, data_rng = jax.random.split(rng, 3)
 
-# params = quant_fn.init(init_rng, jnp.ones((1, 2)) * .25, sign=True)
-
-
-# def loss_fn(x, params):
-#   logits = quant_fn.apply(params, x, sign=True)
-#   return jnp.sum(logits)
+params = quant_fn.init(init_rng, jnp.ones((1, 2)) * .25, sign=True)
 
 
-# grad_fn = jax.grad(loss_fn, argnums=1)
+def loss_fn(x, params):
+  logits = quant_fn.apply(params, x, sign=True)
+  return jnp.sum(logits)
 
-# gs_list = []
-# x_list = jnp.arange(-1, +1, .001)
-# for i in x_list:
-#   g = grad_fn(i, params)
-#   gs_list.append(g['quant_params']['step_size'])
 
-# grad_fn = jax.grad(loss_fn, argnums=0)
+grad_fn = jax.grad(loss_fn, argnums=1)
 
-# gx_list = []
-# for i in x_list:
-#   g = grad_fn(i, params)
-#   gx_list.append(g)
+gs_list = []
+x_list = jnp.arange(-1, +1, .001)
+for i in x_list:
+  g = grad_fn(i, params)
+  gs_list.append(g['quant_params']['step_size'])
 
-# plot_lines(x_list, [gs_list, gx_list],
-#            ['Derivative Step Size', 'Derivative Inputs'],
-#            ['blue', 'green'], "../../figures/lsq_gradients.png")
+grad_fn = jax.grad(loss_fn, argnums=0)
+
+gx_list = []
+for i in x_list:
+  g = grad_fn(i, params)
+  gx_list.append(g)
+
+plot_lines(x_list, [gs_list, gx_list],
+           ['Derivative Step Size', 'Derivative Inputs'],
+           ['blue', 'green'], "../../figures/lsq_gradients.png")
 
 
 # # LSQ visualization -- Surrogate

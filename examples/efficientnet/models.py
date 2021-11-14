@@ -32,6 +32,9 @@ from flax_qdense import QuantDense  # noqa: E402
 ModuleDef = Any
 Array = Any
 
+def fake_quant_conv(config, bits, quant_act_sign, g_scale, **kwargs):
+  return nn.Conv(**kwargs)
+
 
 _DEFAULT_BLOCKS_ARGS = [
     'r1_k3_s11_e1_i32_o16_se0.25', 'r2_k3_s22_e6_i16_o24_se0.25',
@@ -232,7 +235,11 @@ class EfficientNet(nn.Module):
 
     _blocks_args = BlockDecoder().decode(global_params.blocks_args)
 
-    conv = partial(QuantConv, dtype=self.dtype,
+    if self.config.quant.bits is None:
+      conv = partial(fake_quant_conv, dtype=self.dtype,
+                   g_scale=self.config.quant.g_scale)
+    else:
+      conv = partial(QuantConv, dtype=self.dtype,
                    g_scale=self.config.quant.g_scale)
     norm = partial(nn.BatchNorm,
                    use_running_average=not train,
@@ -261,7 +268,8 @@ class EfficientNet(nn.Module):
         use_bias=False,
         name='stem_conv',
         config=self.config.quant.stem,
-        bits=self.config.quant.bits)(x)
+        bits=self.config.quant.bits,
+        quant_act_sign=True,)(x)
 
     x = norm(name='stem_bn')(x)
     x = self.act(x)
@@ -342,17 +350,23 @@ class EfficientNet(nn.Module):
              use_bias=False,
              name='head_conv',
              config=self.config.quant.head,
-             bits=self.config.quant.bits,)(x)
+             bits=self.config.quant.bits,
+             quant_act_sign=True)(x)
     x = norm(name='head_bn')(x)
     x = self.act(x)
 
     x = jnp.mean(x, axis=(1, 2))
     if 'average' in self.config.quant:
       x = self.config.quant.average(
-          g_scale=self.config.quant.g_scale)(x, sign=False)
+          g_scale=self.config.quant.g_scale, bits = self.config.quant.bits)(x, sign=False)
 
     x = nn.Dropout(self.dropout_rate)(x, deterministic=not train)
-    x = QuantDense(self.num_classes,
+    if self.config.quant.bits is None:
+      x = nn.Dense(self.num_classes,
+                   kernel_init=dense_kernel_initializer(),
+                   dtype=self.dtype)(x)
+    else:
+      x = QuantDense(self.num_classes,
                    kernel_init=dense_kernel_initializer(),
                    dtype=self.dtype,
                    config=self.config.quant.dense,

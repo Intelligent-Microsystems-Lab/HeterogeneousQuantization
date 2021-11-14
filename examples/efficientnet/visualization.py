@@ -314,6 +314,67 @@ enet0_lr_best = {
     'label': 'EfficientNet-Lite0 (3-8 Bits)',
 }
 
+enet0_dynamic_lsq = {
+    2: '5QmhaVjKQJ21PuQndhjS5w',
+    3: 'acnxrPWPQUe9sMoWDnar9w',
+    4: 'm9nfdsZUQNad0k577p3x2Q',
+    5: 'CeTVs6kyQki18J6HyaF06g',
+    6: 'qdXDLDiwTaGrg4EsEtjBQA',
+    7: 'I01f3bJpR62asyFksRrX6Q',
+    8: '9wqXBWQKR8qfpyQwpF8z3Q',
+    'params': 4652008,
+    'label': 'EfficientNet-Lite0 LSQ',
+}
+
+
+enet0_mixed_8 = {
+    0.5: 'BfqJm7rsRYSPm9Igwm9VRg',
+    0.75: 'I3RVK4FXRby7YF1gytxSOw',
+    1.0: 'hjFmom8pTwOrZhwwauZPZg',
+    1.25: '2NHLJfzxQyS3ugxfAhOOHg',
+    1.5: 'XLwyYn0rTOyhafpy0vYUDg',
+    1.75: 'dNU3243wRnOnjcXyGk2XNg',
+    2.0: '4gRxTD4JSZWDYX44ZYM1ww',
+    2.25: 'b2Y0DDiDRuKRA3PUzT2N9Q',
+    2.5: 'ewbosqbfRTO13BtxAxwjgQ',
+    2.75: 'd5d0lJJUQZups43m35tBHQ',
+    3.0: 't9OXcxOPT4yi3WqLdRKLCw',
+    3.25: 'Mcg57HqZRiywmfnzqXb8qQ',
+    3.5: 'tQEtg1enT1OPjogd7FBLsw',
+    3.75: '3ZGkHm0nS2aBm54KawqkAA',
+    4.0: 'jDEpeS66RhqGJaD73At8qQ',
+    4.25: 'gRhrXPWSRWy3R6u6ZwhXKw',
+    4.5:  'FENZ1HNmQfyZYJHzgXUq8g',
+    4.75: 'ywRdvzYQR2WTeKyvdRuXrA',
+    5.0: 'hJyU7YsoRqKjrJf2JD34lQ',
+    #'params': 'mixed',
+    'label': 'EfficientNet Mixed (Start 8bit)',
+}
+
+
+enet0_mixed_4 = {
+    0.5: 'hN9VIxi7QoqbyvymbO2dJQ',
+    0.75: 'R6v7VidcREWgLrLjcbW2CQ',
+    1.0: 'vOXeFEPKQlOu71Imk6NIbg',
+    1.25: 'Ue7qJd3kRWGAF2l2HWlOEw',
+    1.5: 'wv32wt6vTDmjcGaWzXy9Yw',
+    1.75: 'Sxa2Bqn3SGK4vlK4xQ14TA',
+    2.0: 'vHwxbPKmR8GMtYFRzGt7uQ',
+    2.25: 'C2x3rAM5TeqALJMQ90BpZA',
+    2.5: '5uBFXcQWQAaSEl71fQDNEA',
+    2.75: 'uNg6HGxjS9m1FxNqK5CX2w',
+    3.0: 'UgivLu3bSl2l6EydK3lXPQ',
+    3.25: 'tJoAavSRRIyWvOKJgEwDdg',
+    3.5: 'zr2NDALbRa2kRACMTBTEwA',
+    3.75: 'WsKpFjvzSMep8jORSRwPLQ',
+    4.0: 'bvONnY97QxO1bVQluAKt3w',
+    4.25: 'cM62vormRIaL7OdmiwqKsg',
+    4.5:  'Lnl8YwyVTWaas8JmeVKMzw',
+    4.75: '6f3DvWziQEaygRfl6p8RBA',
+    5.0: 'QbdFAh2ZSlSYJXnvK65Rbg',
+    #'params': 'mixed',
+    'label': 'EfficientNet Mixed (Start 4bit)',
+}
 
 enet0_static_lr = {
     '2_0.0001': 'jWoecMWnT1eBDLljEJa2kw',
@@ -346,7 +407,7 @@ enet0_static_lr = {
     '8_0.1': 'p2VntR8LRFOGiD2lkt0BVQ',
 }
 
-enet0_static_init = {
+enet0_static_init_4b = {
     'max_max': '7I2DKoqsQrqAH2O63D4eig',
     'max_doublemean': '4aRGN3vNSA6o0qA4TaRcPw',
     'max_gaussian': 'U1fqXpfwROG6hpWWiwqQPQ',
@@ -404,6 +465,64 @@ enet0_static_init = {
     'p999999_p999999': 'm2szxYF4TVqfDIjQ5OmHyg',
 }
 
+
+enet0_static_init_3b = {
+    'max_max': 'uRkyLVXHRI2RnzFyxx2BLg',
+    'max_doublemean': 'Ag1XfkXdRwiBvbioaA1NUQ',
+    'max_gaussian': 'Adptwcm1SmCbzVJ18Tr43A',
+    'max_p999': 'LtOkikgwR6ubngOy5lCLhg',
+    'max_p9999': 'FEFmoTN7SJOZGWe1bmLpwQ',
+    'max_p99999': 'qiWPD3w8QFmxXvk2c0YjmQ',
+    'max_p999999': 'qV22RLlcQeCGN3LW0oKbJA',
+
+    'doublemean_max': '8dKoewxOQV6LlnyymPbbOg',
+    'doublemean_doublemean': 'Tvp8kjYURJ6xFpHw5KQvOw',
+    'doublemean_gaussian': 'DzDr17udTnivVQlTbBXd1Q',
+    'doublemean_p999': '6hWkjL3OTLGcANGoHzKVIA',
+    'doublemean_p9999': 'm8nvD0qPSBe3YnWuXOLLyQ',
+    'doublemean_p99999': 'pAqAXIm7REu1SWjakNAaNw',
+    'doublemean_p999999': 'BmWbYNf9RMaSg6PamiBZkw',
+
+    'gaussian_max': '9044XvMlS96g1ljurWLI7w',
+    'gaussian_doublemean': 'Q6RFDe31Qe2xK8eTzsQeCQ',
+    'gaussian_gaussian': 'dnWamizRTdS4Qt6Oz7Qk9w',
+    'gaussian_p999': '8YYKZvSnSke8ecyAyjwnYg',
+    'gaussian_p9999': 'Vbvayi1FQHadjU7DdUGPhA',
+    'gaussian_p99999': 'bXL7RwouRLyxBSQWt3wQkA',
+    'gaussian_p999999': 'XVY4qKtKRQenWsXLJXqokQ',
+
+    'p999_max': 'vi5i2xJvT16bPnilErd2Pw',
+    'p999_doublemean': '6xFdtew1TEGFbjJLS6AoAg',
+    'p999_gaussian': 'KKRKyqPaQ7C3a6Vr2Twreg',
+    'p999_p999': '14P9POD3SaWcdfDXngv2Zg',
+    'p999_p9999': 'FoR5LEqPS7ygbro9OwVvZQ',
+    'p999_p99999': 'TVXrZRj4T0qZDOyx3OWLLg',
+    'p999_p999999': '3tVBnoxYSdapnd2UX7RowA',
+
+    'p9999_max': 'w6WkIj66TOmtvi93bbJUNA',
+    'p9999_doublemean': 'n2IoTlvbR06J68cl5nlpvg',
+    'p9999_gaussian': 'idkI2juaRUqqezAFE6Czww',
+    'p9999_p999': 'VbinTYLfRB2My65je0AsNg',
+    'p9999_p9999': 'v9GMOG6oSyyFveziyWrpQw',
+    'p9999_p99999': 'rWenj2tKT7WfVNJn283BBQ',
+    'p9999_p999999': 'Mmv7OxytQ6uAxFOveMn7tQ',
+
+    'p99999_max': 'dASV9OpdQZeHxq8hkQpjPw',
+    'p99999_doublemean': 'TPvW5jV0S5aNo8eFpD22PQ',
+    'p99999_gaussian': 'G6uxYvwGQ6KwQX24BhzUDw',
+    'p99999_p999': 'sVpijtdCQHq5akXnpmUQkg',
+    'p99999_p9999': 'YoRpeTb9RvqT1ivi9uRrOQ',
+    'p99999_p99999': 'HBr4e29dQZaplKDU00FdoQ',
+    'p99999_p999999': '9po6ogmlQD6Y7Gbr7mPVwg',
+
+    'p999999_max': 'NvO4bpV0TjeI27K52FaBGQ',
+    'p999999_doublemean': 'knbuV66eTyyk6DFLdlK2eA',
+    'p999999_gaussian': 'XcMU4VkpRZKoLFPoT5gOgA',
+    'p999999_p999': 'neGnvMv6Ra6OmIX4dupQww',
+    'p999999_p9999': 'wTD1jzN6S8u4Xd5gW1pnGQ',
+    'p999999_p99999': '6NqbGJPfR3mtYC3M8Gsbhw',
+    'p999999_p999999': 'BBSZp7sXQHqWiz6EReRLvQ',
+}
 
 # Competitor Performance.
 
@@ -568,13 +687,21 @@ def get_best_eval(experiment_id):
 
 def get_best_eval_and_size(experiment_id):
   experiment = tb.data.experimental.ExperimentFromDev(experiment_id)
-  df = experiment.get_scalars()
+  try:
+    df = experiment.get_scalars()
+  except grpc.RpcError as rpc_error:
+    print('Couldn\'t fetch experiment: ' + experiment_id + ' got error: '
+          + str(rpc_error))
+    return None, None
 
   data = df[df['run'] == 'eval']
   max_eval = data[data['tag'] == 'accuracy']['value'].max()
-  vals_at_step = data[data['step'] == int(
-      data[data['value'] == max_eval]['step'])]
+  if len(data[data['value'] == max_eval]) > 1:
+    vals_at_step = data[data['step'] == int(data[data['value'] == max_eval]['step'].to_list()[0])]
+  else:
+    vals_at_step = data[data['step'] == int(data[data['value'] == max_eval]['step'])]
   size_mb = float(vals_at_step[vals_at_step['tag'] == 'weight_size']['value'])
+
   return max_eval, size_mb
 
 
@@ -622,8 +749,10 @@ def plot_line(ax, res_dict):
     elif key == 'params':
       pass
     else:
-      y.append(1 - get_best_eval(value))
-      x.append(key * res_dict['params'] / 8_000_000)
+      acc_temp = get_best_eval(value)
+      if acc_temp is not None and acc_temp > .15:
+        y.append(1 - acc_temp)
+        x.append(key * res_dict['params'] / 8_000_000)
 
   ax.plot(x, y, marker='x', label=label, ms=20, markeredgewidth=5, linewidth=5)
 
@@ -636,6 +765,8 @@ def plot_mixed(ax, res_dict):
       label = value
     else:
       acc_t, size_t = get_best_eval_and_size(value)
+      if acc_t is None:
+        continue
       y.append(1 - acc_t)
       x.append(size_t)
 
@@ -679,7 +810,11 @@ def plot_comparison(name):
 
   plot_line(ax, enet0_lr_best)
 
-  plot_mixed(ax, enet0_mixed)
+  plot_line(ax, enet0_dynamic_lsq)
+
+  #plot_mixed(ax, enet0_mixed)
+  plot_mixed(ax, enet0_mixed_8)
+  plot_mixed(ax, enet0_mixed_4)
 
   ax.set_xlabel("Network Size (MB)", fontsize=font_size, fontweight='bold')
   ax.set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
@@ -740,14 +875,20 @@ if __name__ == '__main__':
 
   # df_dynamic_lr = table(enet0_dynamic_lr)
   df_static_lr = table_lr(enet0_static_lr)
-  df_static_init = table_init(enet0_static_init)
+  df_static_init_4b = table_init(enet0_static_init_4b)
+  df_static_init_3b = table_init(enet0_static_init_3b)
+
   # print("Dynamic Quant")
   # print(df_dynamic_lr.to_csv())
+
   print("LR Static Quant")
   print(df_static_lr.to_csv())
 
-  print("Init Static Quant")
-  print(df_static_init.to_csv())
+  print("Init Static Quant 4b")
+  print(df_static_init_4b.to_csv())
+
+  print("Init Static Quant 3b")
+  print(df_static_init_3b.to_csv())
 
   # plot_bits_vs_acc([enet0_dynamic_init_max, enet0_dynamic_init_double_mean,
   #                   enet0_dynamic_init_gaussian], 'figures/dynamic_init.png')

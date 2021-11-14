@@ -36,13 +36,13 @@ def get_config():
   # Load pretrained weights.
   config.pretrained = "../../../pretrained_efficientnet/efficientnet-lite0"
 
-  config.learning_rate = 0.0001
-  config.warmup_epochs = 2  # for optimizer to settle in
+  config.learning_rate = 0.016 #0.0001
+  config.warmup_epochs = 5  # for optimizer to settle in
   config.weight_decay = 1e-5
   config.momentum = 0.9
-  config.batch_size = 2048
+  config.batch_size = 512
 
-  config.num_epochs = 50
+  config.num_epochs = 350 
   config.log_every_steps = 256
 
   # If num_train_steps==-1 then the number of training steps is calculated from

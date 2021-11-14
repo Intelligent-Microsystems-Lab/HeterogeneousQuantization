@@ -26,6 +26,8 @@ CROP_PADDING = 32
 MEAN_RGB = [0.485 * 255, 0.456 * 255, 0.406 * 255]
 STDDEV_RGB = [0.229 * 255, 0.224 * 255, 0.225 * 255]
 
+MEAN_CIFAR10 = [0.485 * 255, 0.456 * 255, 0.406 * 255] # [0.49139968 * 255, 0.48215841 * 255, 0.44653091 * 255]
+STDDEV_CIFAR10 = [0.229 * 255, 0.224 * 255, 0.225 * 255] # [0.24703223 * 255, 0.24348513 * 255, 0.26158784 * 255]
 
 def distorted_bounding_box_crop(image_bytes,
                                 bbox,
@@ -219,6 +221,89 @@ def create_split(dataset_builder, batch_size, train, dtype=tf.float32,
     ds = ds.shuffle(16 * batch_size, seed=0)
 
   ds = ds.map(decode_example, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+  ds = ds.batch(batch_size, drop_remainder=True)
+
+  if not train:
+    ds = ds.repeat()
+
+  ds = ds.prefetch(10)
+
+  return ds
+
+
+def create_split_cifar10(
+    dataset_builder,
+    batch_size,
+    train,
+    dtype=tf.float32,
+    image_size=IMAGE_SIZE,
+    cache=False,
+):
+  """Creates a split from the CIFAR10 dataset using TensorFlow Datasets.
+  Args:
+    dataset_builder: TFDS dataset builder for CIFAR10.
+    batch_size: the batch size returned by the data pipeline.
+    train: Whether to load the train or evaluation split.
+    dtype: data type of the image.
+    image_size: The target size of the images.
+    cache: Whether to cache the dataset.
+  Returns:
+    A `tf.data.Dataset`.
+  """
+  if train:
+    train_examples = dataset_builder.info.splits["train"].num_examples
+    split_size = train_examples // jax.host_count()
+    start = jax.host_id() * split_size
+    split = "train[{}:{}]".format(start, start + split_size)
+  else:
+    validate_examples = dataset_builder.info.splits["test"].num_examples
+    split_size = validate_examples // jax.host_count()
+    start = jax.host_id() * split_size
+    split = "test[{}:{}]".format(start, start + split_size)
+
+  def decode_example(example):
+    if train:
+      image = tf.io.decode_png(example["image"])
+      # original ResNet cifar10 preprocessing
+      image = tf.image.random_flip_left_right(image)
+      image = tf.image.resize_with_crop_or_pad(image, 40, 40)
+      image = tf.image.random_crop(image, size=(32,32,3))
+      image = tf.cast(image, dtype=tf.dtypes.float32 )
+
+      #image -= tf.constant(MEAN_CIFAR10, shape=[1, 1, 3], dtype=image.dtype)
+      #image /= tf.constant(STDDEV_CIFAR10, shape=[1, 1, 3], dtype=image.dtype)
+
+    else:
+      image = tf.io.decode_png(example["image"])
+      image = tf.cast(image, dtype=tf.dtypes.float32 )
+
+      image = (image / 255.0 - 0.5) * 2.0
+
+      #image -= tf.constant(MEAN_CIFAR10, shape=[1, 1, 3], dtype=image.dtype)
+      #image /= tf.constant(STDDEV_CIFAR10, shape=[1, 1, 3], dtype=image.dtype)
+
+    return {"image": image, "label": example["label"]}
+
+  ds = dataset_builder.as_dataset(
+      split=split,
+      decoders={
+          "image": tfds.decode.SkipDecoding(),
+      },
+  )
+  options = tf.data.Options()
+  options.experimental_threading.private_threadpool_size = 48
+  ds = ds.with_options(options)
+
+  if cache:
+    ds = ds.cache()
+
+  if train:
+    ds = ds.repeat()
+    ds = ds.shuffle(16 * batch_size, seed=0)
+
+  ds = ds.map(
+      decode_example, num_parallel_calls=tf.data.experimental.AUTOTUNE
+  )
   ds = ds.batch(batch_size, drop_remainder=True)
 
   if not train:

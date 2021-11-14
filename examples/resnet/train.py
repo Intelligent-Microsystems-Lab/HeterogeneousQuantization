@@ -27,6 +27,8 @@ from flax.training import common_utils
 import jax
 from jax import random
 
+import jax.numpy as jnp
+
 import ml_collections
 from ml_collections import config_flags
 
@@ -48,9 +50,9 @@ from train_utils import (
 )
 from load_pretrained_weights import load_pretrained_weights
 
-# from jax.config import config
-# config.update("jax_debug_nans", True)
-# config.update("jax_disable_jit", True)
+from jax.config import config
+config.update("jax_debug_nans", True)
+config.update("jax_disable_jit", True)
 
 low, high = resource.getrlimit(resource.RLIMIT_NOFILE)
 resource.setrlimit(resource.RLIMIT_NOFILE, (high, high))
@@ -85,7 +87,10 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
   rng = random.PRNGKey(config.seed)
 
-  image_size = 224
+  if config.dataset == 'cifar10':
+    image_size = 32
+  else:
+    image_size = 224
 
   if config.batch_size % jax.device_count() > 0:
     raise ValueError('Batch size must be divisible by the number of devices')
@@ -118,16 +123,17 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   else:
     num_steps = config.num_train_steps
 
+  val_or_test = "validation" if "imagenet" in config.dataset else "test"
+
   if config.steps_per_eval == -1:
-    num_validation_examples = dataset_builder.info.splits[
-        'validation'].num_examples
+    num_validation_examples = dataset_builder.info.splits[val_or_test].num_examples
     steps_per_eval = num_validation_examples // config.batch_size
   else:
     steps_per_eval = config.steps_per_eval
 
   steps_per_checkpoint = steps_per_epoch * 10
 
-  base_learning_rate = config.learning_rate * config.batch_size / 256.
+  base_learning_rate = config.learning_rate #* config.batch_size / 256.
 
   model_cls = getattr(models, config.model)
   model = create_model(
@@ -144,6 +150,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   # Pre load weights.
   if config.pretrained and step_offset == 0:
     state = load_pretrained_weights(state, config.pretrained)
+    print("------------------- Loaded -------------------")
 
   # Reinitialize quant params.
   init_batch = next(train_iter)['image'][0, :, :, :, :]
@@ -159,7 +166,13 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
                             weight_size=state.weight_size,
                             act_size=state.act_size)
 
-  state = jax_utils.replicate(state)
+  if len(state.weight_size) != 0:
+    print('Initial Network Weight Size in kB: ' + str(jnp.sum(jnp.array(jax.tree_util.tree_flatten(state.weight_size)[0])) / 8. / 1024.) + ' init bits ' + str(config.quant.bits) + ' (No. Params: ' + str(jnp.sum(jnp.array(jax.tree_util.tree_flatten(state.weight_size)[0])) / config.quant.bits) + ')')
+  if len(state.act_size) != 0:
+    print('Initial Network Activation (Sum) Size in kB: ' + str(jnp.sum(jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])) / 8. / 1024.) + ' init bits ' + str(config.quant.bits) + ' (No. Params: ' + str(jnp.sum(jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])) / config.quant.bits) + ')')
+    print('Initial Network Activation (Max) Size in kB: ' + str(jnp.max(jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])) / 8. / 1024.) + ' init bits ' + str(config.quant.bits) + ' (No. Params: ' + str(jnp.max(jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])) / config.quant.bits) + ')')
+
+  # state = jax_utils.replicate(state)
   # Debug note:
   # 1. Make above line a comment "state = jax_utils.replicate(state)".
   # 2. In train_util.py make all pmean commands comments.
@@ -167,22 +180,39 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   # 4. Swtich train and eval metrics lines.
   # 5. Uncomment JIT configs at the top.
 
-  p_train_step = jax.pmap(
-      functools.partial(train_step,
-                        learning_rate_fn=learning_rate_fn,
-                        weight_decay=config.weight_decay,
-                        quant_target=config.quant_target),
-      axis_name='batch')
-  p_eval_step = jax.pmap(eval_step, axis_name='batch')
+  # p_train_step = jax.pmap(
+  #     functools.partial(train_step,
+  #                       learning_rate_fn=learning_rate_fn,
+  #                       weight_decay=config.weight_decay,
+  #                       quant_target=config.quant_target),
+  #     axis_name='batch')
+  # p_eval_step = jax.pmap(functools.partial(eval_step, size_div = config.quant_target.size_div), axis_name='batch')
 
-  # # Debug
-  # p_train_step = functools.partial(
-  #     train_step,
-  #     learning_rate_fn=learning_rate_fn,
-  #     weight_decay=config.weight_decay,
-  #     quant_target=config.quant_target)
-  # p_eval_step = functools.partial(eval_step)
+  # Debug
+  p_train_step = functools.partial(
+      train_step,
+      learning_rate_fn=learning_rate_fn,
+      weight_decay=config.weight_decay,
+      quant_target=config.quant_target)
+  p_eval_step = functools.partial(eval_step, size_div = config.quant_target.size_div)
+  
+  print("------------------- Eval Now -------------------")
+  eval_metrics = []
+  import pdb; pdb.set_trace()
+  for _ in range(steps_per_eval):
+    eval_batch = next(eval_iter)
+    metrics = p_eval_step(state, {'image':eval_batch['image'][0,:,:,:,:], 'label':eval_batch['label']})
+    eval_metrics.append(metrics)
+  eval_metrics = common_utils.stack_forest(eval_metrics)
 
+  summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
+  logging.info('Loaded model evaluated on test set:')
+  logging.info( {f'{key}': val for key, val in summary.items()})
+  import pdb; pdb.set_trace()
+
+
+
+  
   train_metrics = []
   hooks = []
   if jax.process_index() == 0:
@@ -191,7 +221,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   logging.info('Initial compilation, this might take some minutes...')
   for step, batch in zip(range(step_offset, num_steps), train_iter):
     state, metrics = p_train_step(state, batch)
-
     # # Debug
     # state, metrics = p_train_step(
     #     state, {'image': batch['image'][0, :, :, :],

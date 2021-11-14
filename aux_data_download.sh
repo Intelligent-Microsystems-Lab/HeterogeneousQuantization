@@ -31,3 +31,5 @@ wget https://upload.wikimedia.org/wikipedia/commons/f/fe/Giant_Panda_in_Beijing_
 mkdir ../pretrained_resnet
 wget https://notredame.box.com/shared/static/5m485mqpskw5lwop1z3yfi4wsvvdjsx3.zip -O ../pretrained_resnet/resnet18.zip
 unzip ../pretrained_resnet/resnet18.zip -d ../pretrained_resnet
+
+wget https://notredame.box.com/shared/static/75qdzq728n4a7qovtkujax0dxicwzrtv.h5 -O ../pretrained_resnet/resnet20_cifar10.h5

@@ -84,7 +84,7 @@ class QuantConv(Module):
   config: dict = None
   bits: int = 8
   quant_act_sign: bool = True
-  g_scale: float = 1e-3
+  g_scale: float = 0.
 
   @compact
   def __call__(self, inputs: Array, rng: Any = None) -> Array:
@@ -173,7 +173,6 @@ class QuantConv(Module):
 
       # if "act" in cfg:
       #   inpt = cfg.act(bits=self.bits)(inpt, sign=self.quant_act_sign)
-
       return jax.lax.conv_general_dilated(
           inpt_fwd,
           kernel_fwd,

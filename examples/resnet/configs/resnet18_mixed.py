@@ -22,9 +22,9 @@ def get_config():
   config.tfds_data_dir = 'gs://imagenet_clemens/tensorflow_datasets'
 
   config.learning_rate = .01  # 0.0001
-  config.warmup_epochs = 5.0
+  config.warmup_epochs = 2.0
   config.momentum = 0.9
-  config.batch_size = 1024
+  config.batch_size = 128 # 2048
   config.weight_decay = 0.0001
 
   config.num_epochs = 100.0
@@ -50,26 +50,30 @@ def get_config():
 
   config.quant = ml_collections.ConfigDict()
 
+  config.quant.bits = 8
+
+  config.quant.g_scale = 0.
+
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
   config.quant.stem.weight = partial(
-      parametric_d_xmax, bits=4)
-  config.quant.stem.act = partial(parametric_d_xmax, bits=4, act=True)
+      parametric_d_xmax)
+  config.quant.stem.act = partial(parametric_d_xmax, act=True)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
   config.quant.mbconv.weight = partial(
-      parametric_d_xmax, bits=4)
-  config.quant.mbconv.act = partial(parametric_d_xmax, bits=4, act=True)
+      parametric_d_xmax)
+  config.quant.mbconv.act = partial(parametric_d_xmax, act=True)
 
   # Average quant.
-  #config.quant.average = partial(parametric_d_xmax, bits=4, act=True)
+  # config.quant.average = partial(parametric_d_xmax, bits=4, act=True)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
   config.quant.dense.weight = partial(
-      parametric_d_xmax, bits=4)
-  config.quant.dense.act = partial(parametric_d_xmax, bits=4, act=True)
-  config.quant.dense.bias = partial(parametric_d_xmax, bits=4)
+      parametric_d_xmax)
+  config.quant.dense.act = partial(parametric_d_xmax, act=True)
+  config.quant.dense.bias = partial(parametric_d_xmax)
 
   return config
