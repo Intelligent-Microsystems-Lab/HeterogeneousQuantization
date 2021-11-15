@@ -145,16 +145,17 @@ class EfficientNetTest(parameterized.TestCase):
 
     # testing for equality
     np.testing.assert_allclose(inpt, np.load(
-        '../../../unit_tests/efficientnet/enet' + str(name[-1]) + '_inputs\
-        .npy'))
+        '../../../unit_tests/efficientnet/enet' + str(name[-1]) + '_inputs.npy'
+    ))
 
     np.testing.assert_allclose(state['intermediates']['stem'][0], np.load(
         '../../../unit_tests/efficientnet/enet' + str(name[-1]) + '_stem.npy'),
         rtol=rtol, atol=atol)
 
     np.testing.assert_allclose(state['intermediates']['features0'][0], np.load(
-        '../../../unit_tests/efficientnet/enet' + str(name[-1]) + '_features0\
-        .npy'), rtol=rtol, atol=atol)
+        '../../../unit_tests/efficientnet/enet' + str(name[-1]
+                                                      ) + '_features0.npy'),
+                               rtol=rtol, atol=atol)
 
     np.testing.assert_allclose(state['intermediates']['head'][0], np.load(
         '../../../unit_tests/efficientnet/enet' + str(name[-1]) + '_head.npy'),
