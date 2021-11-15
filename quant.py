@@ -309,7 +309,7 @@ class parametric_d_xmax(nn.Module):
   xmax_min: float = 2**-8
   xmax_max: float = 2**8
   d_min: float = 2**-8
-  d_max: float = 2**+8 # for MixedDNNs 1
+  d_max: float = 2**+8  # for MixedDNNs 1
   round_fn: Callable = round_psgd
   init_fn: Callable = max_init
   g_scale: float = 0.
