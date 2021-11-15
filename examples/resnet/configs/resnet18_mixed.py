@@ -24,7 +24,7 @@ def get_config():
   config.learning_rate = .01  # 0.0001
   config.warmup_epochs = 2.0
   config.momentum = 0.9
-  config.batch_size = 128 # 2048
+  config.batch_size = 128  # 2048
   config.weight_decay = 0.0001
 
   config.num_epochs = 100.0

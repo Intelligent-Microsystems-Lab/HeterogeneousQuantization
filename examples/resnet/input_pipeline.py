@@ -26,8 +26,13 @@ CROP_PADDING = 32
 MEAN_RGB = [0.485 * 255, 0.456 * 255, 0.406 * 255]
 STDDEV_RGB = [0.229 * 255, 0.224 * 255, 0.225 * 255]
 
-MEAN_CIFAR10 = [0.485 * 255, 0.456 * 255, 0.406 * 255] # [0.49139968 * 255, 0.48215841 * 255, 0.44653091 * 255]
-STDDEV_CIFAR10 = [0.229 * 255, 0.224 * 255, 0.225 * 255] # [0.24703223 * 255, 0.24348513 * 255, 0.26158784 * 255]
+MEAN_CIFAR10 = [0.485 * 255, 0.456 * 255, 0.406 * 255]
+# Means I computed myself...
+# [0.49139968 * 255, 0.48215841 * 255, 0.44653091 * 255]
+STDDEV_CIFAR10 = [0.229 * 255, 0.224 * 255, 0.225 * 255]
+# Stddev I computed myself...
+# [0.24703223 * 255, 0.24348513 * 255, 0.26158784 * 255]
+
 
 def distorted_bounding_box_crop(image_bytes,
                                 bbox,
@@ -262,25 +267,28 @@ def create_split_cifar10(
     split = "test[{}:{}]".format(start, start + split_size)
 
   def decode_example(example):
+    # Alternative Preprocessing
+    # image = tf.image.resize_with_crop_or_pad(image, 40, 40)
+    # image = tf.image.random_crop(image, size=(32,32,3))
+    # image -= tf.constant(MEAN_CIFAR10, shape=[1, 1, 3], dtype=image.dtype)
+    # image /= tf.constant(STDDEV_CIFAR10, shape=[1, 1, 3], dtype=image.dtype)
+    # image -= tf.constant(MEAN_CIFAR10, shape=[1, 1, 3], dtype=image.dtype)
+    # image /= tf.constant(STDDEV_CIFAR10, shape=[1, 1, 3], dtype=image.dtype)
+
     if train:
       image = tf.io.decode_png(example["image"])
-      # original ResNet cifar10 preprocessing
       image = tf.image.random_flip_left_right(image)
-      image = tf.image.resize_with_crop_or_pad(image, 40, 40)
-      image = tf.image.random_crop(image, size=(32,32,3))
-      image = tf.cast(image, dtype=tf.dtypes.float32 )
+      image = tf.cast(image, dtype=tf.dtypes.float32)
 
-      #image -= tf.constant(MEAN_CIFAR10, shape=[1, 1, 3], dtype=image.dtype)
-      #image /= tf.constant(STDDEV_CIFAR10, shape=[1, 1, 3], dtype=image.dtype)
-
-    else:
-      image = tf.io.decode_png(example["image"])
-      image = tf.cast(image, dtype=tf.dtypes.float32 )
+      # TODO: @clemens do random shift and clean up here.
 
       image = (image / 255.0 - 0.5) * 2.0
 
-      #image -= tf.constant(MEAN_CIFAR10, shape=[1, 1, 3], dtype=image.dtype)
-      #image /= tf.constant(STDDEV_CIFAR10, shape=[1, 1, 3], dtype=image.dtype)
+    else:
+      image = tf.io.decode_png(example["image"])
+      image = tf.cast(image, dtype=tf.dtypes.float32)
+
+      image = (image / 255.0 - 0.5) * 2.0
 
     return {"image": image, "label": example["label"]}
 

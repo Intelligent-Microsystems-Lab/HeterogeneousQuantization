@@ -13,9 +13,8 @@ Shape = Iterable[int]
 
 def get_noise(x: Array, percentage: float, rng: PRNGKey) -> Array:
   return (
-      jnp.max(jnp.abs(x))
-      * percentage
-      * jax.random.uniform(rng, x.shape, minval=-1, maxval=1.0)
+      jnp.max(jnp.abs(x)) * percentage * jax.random.uniform(
+          rng, x.shape, minval=-1, maxval=1.0)
   )
 
 
@@ -178,21 +177,24 @@ round_multi_gaussian.defvjp(round_multi_gaussian_fwd, round_multi_gaussian_bwd)
 
 
 def max_init(x, bits, sign):
-  return jnp.where(jnp.max(x) == 0, 1/2**bits, jnp.max(jnp.abs(x)))
+  return jnp.where(jnp.max(x) == 0, 1 / 2**bits, jnp.max(jnp.abs(x)))
 
 
 def double_mean_init(x, bits, sign):
-  return jnp.where(jnp.max(x) == 0, 1/2**bits, 2 * jnp.mean(jnp.abs(x)))
+  return jnp.where(jnp.max(x) == 0, 1 / 2**bits, 2 * jnp.mean(jnp.abs(x)))
 
 
 def gaussian_init(x, bits, sign):
   mu = jnp.mean(x)
   sigma = jnp.std(x)
-  return jnp.where(jnp.max(x) == 0, 1/2**bits, jnp.maximum(jnp.abs(mu - 3 * sigma), jnp.abs(mu + 3 * sigma)))
+  return jnp.where(jnp.max(x) == 0, 1 / 2**bits,
+                   jnp.maximum(jnp.abs(mu - 3 * sigma),
+                   jnp.abs(mu + 3 * sigma)))
 
 
 def percentile_init(x, bits, sign, perc):
-  return jnp.where(jnp.max(x) == 0, 1/2**bits, jnp.percentile(jnp.abs(x), perc))
+  return jnp.where(jnp.max(x) == 0, 1 / 2**bits,
+                   jnp.percentile(jnp.abs(x), perc))
 
 
 #
@@ -274,8 +276,8 @@ class parametric_d(nn.Module):
                                       sign=sign) / jnp.sqrt(q_pos)
 
     gradScaleFactor = 1 / jnp.sqrt(q_pos * np.prod(n_wf) + 1e-6)
-    #print('step_size = ' + str(step_size.value))
-    #print('scale = '+str(gradScaleFactor))
+    # print('step_size = ' + str(step_size.value))
+    # print('scale = '+str(gradScaleFactor))
 
     @jax.custom_vjp
     def gradscale(x, scale, d):
@@ -307,7 +309,7 @@ class parametric_d_xmax(nn.Module):
   xmax_min: float = 2**-8
   xmax_max: float = 2**8
   d_min: float = 2**-8
-  d_max: float = 1 # 2**+8
+  d_max: float = 2**+8 # for MixedDNNs 1
   round_fn: Callable = round_psgd
   init_fn: Callable = max_init
   g_scale: float = 0.
@@ -370,7 +372,8 @@ class parametric_d_xmax(nn.Module):
       if self.act:
         n_wf = inputs.shape[1:]
         if sign:
-          act_mb.value = np.prod(n_wf) * (ceilpass(jnp.log2((xmax / d) + 1)) + 1)
+          act_mb.value = np.prod(
+              n_wf) * (ceilpass(jnp.log2((xmax / d) + 1)) + 1)
         else:
           act_mb.value = np.prod(n_wf) * (ceilpass(jnp.log2((xmax / d) + 1)))
       else:
@@ -382,9 +385,11 @@ class parametric_d_xmax(nn.Module):
       else:
         n_wf = inputs.shape
         if sign:
-          weight_mb.value = np.prod(n_wf) * (ceilpass(jnp.log2((xmax / d) + 1)) + 1)
+          weight_mb.value = np.prod(
+              n_wf) * (ceilpass(jnp.log2((xmax / d) + 1)) + 1)
         else:
-          weight_mb.value = np.prod(n_wf) * (ceilpass(jnp.log2((xmax / d) + 1)))
+          weight_mb.value = np.prod(
+              n_wf) * (ceilpass(jnp.log2((xmax / d) + 1)))
 
     @jax.custom_vjp
     def quant(x, d, xmax, clip_b):

@@ -17,12 +17,8 @@ class TrainState(train_state.TrainState):
 
 def test_shapes(shape1, shape2, name):
   assert shape1 == shape2, (
-      "Checkpoint corrupt, shapes incompatible: "
-      + str(shape1)
-      + " vs "
-      + str(shape2)
-      + " at layer "
-      + name
+      "Checkpoint corrupt, shapes incompatible: " + str(shape1) + " vs \
+      " + str(shape2) + " at layer " + name
   )
 
 
@@ -76,13 +72,13 @@ def load_pretrained_weights(state, location):
             shape,
             list(
                 params["MBConvBlock_" + layer.split("_")[-1]][
-                    quant_opt+"Conv_" + flax_op_num
+                    quant_opt + "Conv_" + flax_op_num
                 ]["kernel"].shape
             ),
             name,
         )
         params["MBConvBlock_" + layer.split("_")[-1]][
-            quant_opt+"Conv_" + flax_op_num
+            quant_opt + "Conv_" + flax_op_num
         ]["kernel"] = jnp.array(tf.train.load_variable(location, name))
 
         continue
@@ -160,8 +156,9 @@ def load_pretrained_weights(state, location):
 
     if ("stem" in layer) or ("head" in layer):
       if op == "dense":
-        test_shapes(shape, list(params[quant_opt+"Dense_0"][param].shape), name)
-        params[quant_opt+"Dense_0"][param] = jnp.array(
+        test_shapes(shape, list(
+            params[quant_opt + "Dense_0"][param].shape), name)
+        params[quant_opt + "Dense_0"][param] = jnp.array(
             tf.train.load_variable(location, name)
         )
         continue

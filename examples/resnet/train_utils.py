@@ -24,7 +24,8 @@ import optax
 
 def create_model(*, model_cls, **kwargs):
   model_dtype = jnp.float32
-  return model_cls(num_classes=kwargs['config'].num_classes, dtype=model_dtype, **kwargs)
+  return model_cls(num_classes=kwargs['config'].num_classes, dtype=model_dtype,
+                   **kwargs)
 
 
 def initialized(key, image_size, model):
@@ -65,15 +66,18 @@ def compute_metrics(logits, labels, state, size_div):
   if 'weight_size' in state:
     if state['weight_size'] != {}:
       metrics['weight_size'] = jnp.sum(
-          jnp.array(jax.tree_util.tree_flatten(state['weight_size'])[0]))/size_div
+          jnp.array(jax.tree_util.tree_flatten(state['weight_size'])[0])
+      ) / size_div
   if 'act_size' in state:
     if state['act_size'] != {}:
       metrics['act_size_sum'] = jnp.sum(
-          jnp.array(jax.tree_util.tree_flatten(state['act_size'])[0]))/size_div
+          jnp.array(jax.tree_util.tree_flatten(state['act_size'])[0])
+      ) / size_div
       metrics['act_size_max'] = jnp.max(
-          jnp.array(jax.tree_util.tree_flatten(state['act_size'])[0]))/size_div
+          jnp.array(jax.tree_util.tree_flatten(state['act_size'])[0])
+      ) / size_div
 
-  # metrics = lax.pmean(metrics, axis_name='batch')
+  metrics = lax.pmean(metrics, axis_name='batch')
   return metrics
 
 
@@ -83,8 +87,10 @@ def create_learning_rate_fn(
         steps_per_epoch: int):
   """Create learning rate schedule."""
   if config.lr_boundaries_scale is not None:
-    schedule_fn = optax.piecewise_constant_schedule(config.learning_rate, {int(k)*steps_per_epoch:v for k,v in config.lr_boundaries_scale.items()})
-  else: 
+    schedule_fn = optax.piecewise_constant_schedule(config.learning_rate, {int(
+        k) * steps_per_epoch: v for k, v in config.lr_boundaries_scale.items()}
+    )
+  else:
     warmup_fn = optax.linear_schedule(
         init_value=0., end_value=base_learning_rate,
         transition_steps=config.warmup_epochs * steps_per_epoch)
@@ -117,25 +123,25 @@ def train_step(state, batch, learning_rate_fn, weight_decay, quant_target):
     # size penalty
     size_penalty = 0.
     if hasattr(quant_target, 'weight_mb'):
-      size_penalty += quant_target.weight_penalty * jax.nn.relu(jnp.sum(
-          jnp.array(jax.tree_util.tree_flatten(new_model_state['weight_size']
-                                               )[0]))/quant_target.size_div - quant_target.weight_mb
-      ) ** 2
+      size_weight = jnp.sum(jnp.array(jax.tree_util.tree_flatten(
+          new_model_state['weight_size'])[0])) / quant_target.size_div
+      size_penalty += quant_target.weight_penalty * jax.nn.relu(
+          size_weight - quant_target.weight_mb) ** 2
     if hasattr(quant_target, 'act_size'):
       if quant_target.act_mode == 'sum':
-        size_penalty += quant_target.act_penalty * jax.nn.relu(jnp.sum(
-            jnp.array(jax.tree_util.tree_flatten(new_model_state['act_size']
-                                                 )[0]))/quant_target.size_div - quant_target.act_mb
-        ) ** 2
+        size_act = jnp.sum(jnp.array(jax.tree_util.tree_flatten(
+            new_model_state['act_size'])[0])) / quant_target.size_div
+        size_penalty += quant_target.act_penalty * jax.nn.relu(
+            size_act - quant_target.act_mb) ** 2
       elif quant_target.act_mode == 'max':
-        size_penalty += quant_target.act_penalty * jax.nn.relu(jnp.max(
-            jnp.array(jax.tree_util.tree_flatten(new_model_state['act_size']
-                                                 )[0]))/quant_target.size_div - quant_target.act_mb
-        ) ** 2
+        size_act = jnp.max(jnp.array(jax.tree_util.tree_flatten(
+            new_model_state['act_size'])[0])) / quant_target.size_div
+        size_penalty += quant_target.act_penalty * jax.nn.relu(
+            size_act - quant_target.act_mb) ** 2
       else:
         raise Exception(
-            'Unrecongized quant act mode, either sum or max but got: '
-            + quant_target.act_mode)
+            'Unrecongized quant act mode, either sum or \
+            max but got: ' + quant_target.act_mode)
 
     loss = loss + weight_penalty + size_penalty
     return loss, (new_model_state, logits)
@@ -146,10 +152,11 @@ def train_step(state, batch, learning_rate_fn, weight_decay, quant_target):
   grad_fn = jax.value_and_grad(loss_fn, argnums=[0, 1], has_aux=True)
   aux, grads = grad_fn(state.params['params'], state.params['quant_params'])
   # Re-use same axis_name as in the call to `pmap(...train_step...)` below.
-  # grads = lax.pmean(grads, axis_name='batch')
+  grads = lax.pmean(grads, axis_name='batch')
 
   new_model_state, logits = aux[1]
-  metrics = compute_metrics(logits, batch['label'], new_model_state, quant_target.size_div)
+  metrics = compute_metrics(
+      logits, batch['label'], new_model_state, quant_target.size_div)
   metrics['learning_rate'] = lr
   new_state = state.apply_gradients(
       grads={'params': grads[0], 'quant_params': grads[1]},

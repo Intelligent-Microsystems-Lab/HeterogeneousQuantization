@@ -525,8 +525,7 @@ class QuantConvTest(parameterized.TestCase):
             minval=-1,
             maxval=1,
             dtype=jnp.float32,
-        )
-        * 100
+        ) * 100
     )
     data_y = (
         random.uniform(
@@ -541,8 +540,7 @@ class QuantConvTest(parameterized.TestCase):
             minval=-1,
             maxval=1,
             dtype=jnp.float32,
-        )
-        * 100
+        ) * 100
     )
     # setup QuantConv
     key, subkey1, subkey2, subkey3 = random.split(key, 4)
@@ -556,7 +554,7 @@ class QuantConvTest(parameterized.TestCase):
         config,
         subkey2,
     )["params"]
-    optimizer_quant_grad = create_optimizer(params_quant_grad, 1)
+    optimizer_qgrad = create_optimizer(params_quant_grad, 1)
 
     p_train_step_conv_quant_grad = jax.pmap(
         functools.partial(
@@ -592,19 +590,17 @@ class QuantConvTest(parameterized.TestCase):
 
     # check that weights are initially equal
     assert (
-        optimizer_quant_grad.target["QuantConv_0"]
-        == optimizer.target["Conv_0"]
+        optimizer_qgrad.target["QuantConv_0"] == optimizer.target["Conv_0"]
     ) and (
-        optimizer_quant_grad.target["QuantConv_1"]
-        == optimizer.target["Conv_1"]
+        optimizer_qgrad.target["QuantConv_1"] == optimizer.target["Conv_1"]
     ), "Initial parameters not equal"
 
-    optimizer_quant_grad = jax_utils.replicate(optimizer_quant_grad)
+    optimizer_qgrad = jax_utils.replicate(optimizer_qgrad)
     optimizer = jax_utils.replicate(optimizer)
 
     # one backward pass
-    logits_quant, optimizer_quant_grad = p_train_step_conv_quant_grad(
-        optimizer_quant_grad,
+    logits_quant, optimizer_qgrad = p_train_step_conv_quant_grad(
+        optimizer_qgrad,
         {"image": data_x, "label": data_y},
     )
     logits, optimizer = p_train_step_conv(
@@ -612,32 +608,20 @@ class QuantConvTest(parameterized.TestCase):
         {"image": data_x, "label": data_y},
     )
     # determine difference between nn.Conv and QuantConv
+    diff_conv0 = optimizer.target["Conv_0"]["kernel"] - (
+        optimizer_qgrad.target["QuantConv_0"]["kernel"])
+    diff_conv1 = optimizer.target["Conv_1"]["kernel"] - (
+        optimizer_qgrad.target["QuantConv_1"]["kernel"])
     self.assertLessEqual(
         (
             (
                 jnp.mean(
-                    abs(
-                        optimizer.target["Conv_0"]["kernel"]
-                        - optimizer_quant_grad.target["QuantConv_0"][
-                            "kernel"
-                        ]
-                    )
+                    abs(diff_conv0)
                 )
-            )
-            / jnp.mean(abs(optimizer.target["Conv_0"]["kernel"]))
-            + (
-                jnp.mean(
-                    abs(
-                        optimizer.target["Conv_1"]["kernel"]
-                        - optimizer_quant_grad.target["QuantConv_1"][
-                            "kernel"
-                        ]
-                    )
-                )
-            )
-            / jnp.mean(abs(optimizer.target["Conv_1"]["kernel"]))
-        )
-        / 2,
+            ) / jnp.mean(abs(optimizer.target["Conv_0"]["kernel"])) + (
+                jnp.mean(abs(diff_conv1))
+            ) / jnp.mean(abs(optimizer.target["Conv_1"]["kernel"]))
+        ) / 2,
         numerical_tolerance,
     )
 
@@ -671,8 +655,7 @@ class QuantConvTest(parameterized.TestCase):
             minval=-1,
             maxval=1,
             dtype=jnp.float32,
-        )
-        * 100
+        ) * 100
     )
     data_y = (
         random.uniform(
@@ -687,8 +670,7 @@ class QuantConvTest(parameterized.TestCase):
             minval=-1,
             maxval=1,
             dtype=jnp.float32,
-        )
-        * 100
+        ) * 100
     )
     # setup QuantConv
     key, subkey1, subkey2, subkey3 = random.split(key, 4)
@@ -702,7 +684,7 @@ class QuantConvTest(parameterized.TestCase):
         config,
         subkey3,
     )["params"]
-    optimizer_quant_grad = create_optimizer(params_quant_grad, 1)
+    optimizer_qgrad = create_optimizer(params_quant_grad, 1)
 
     p_train_step_conv_quant_grad = jax.pmap(
         functools.partial(
@@ -738,19 +720,17 @@ class QuantConvTest(parameterized.TestCase):
 
     # check that weights are initially equal
     assert (
-        optimizer_quant_grad.target["QuantConv_0"]
-        == optimizer.target["Conv_0"]
+        optimizer_qgrad.target["QuantConv_0"] == optimizer.target["Conv_0"]
     ) and (
-        optimizer_quant_grad.target["QuantConv_1"]
-        == optimizer.target["Conv_1"]
+        optimizer_qgrad.target["QuantConv_1"] == optimizer.target["Conv_1"]
     ), "Initial parameters not equal"
 
-    optimizer_quant_grad = jax_utils.replicate(optimizer_quant_grad)
+    optimizer_qgrad = jax_utils.replicate(optimizer_qgrad)
     optimizer = jax_utils.replicate(optimizer)
 
     # one backward pass
-    logits_quant, optimizer_quant_grad = p_train_step_conv_quant_grad(
-        optimizer_quant_grad,
+    logits_quant, optimizer_qgrad = p_train_step_conv_quant_grad(
+        optimizer_qgrad,
         {"image": data_x, "label": data_y},
     )
     logits, optimizer = p_train_step_conv(
@@ -758,35 +738,25 @@ class QuantConvTest(parameterized.TestCase):
         {"image": data_x, "label": data_y},
     )
 
-    # TODO: rethink noise unit test!
+    # TODO: @clemens rethink noise unit test!
 
     # determine difference between nn.Conv and QuantConv
+    conv0_diff = optimizer.target["Conv_0"]["kernel"] - (
+        optimizer_qgrad.target["QuantConv_0"]["kernel"])
+    conv1_diff = optimizer.target["Conv_1"]["kernel"] - (
+        optimizer_qgrad.target["QuantConv_1"]["kernel"])
     self.assertLessEqual(
         (
             (
                 jnp.mean(
-                    abs(
-                        optimizer.target["Conv_0"]["kernel"]
-                        - optimizer_quant_grad.target["QuantConv_0"][
-                            "kernel"
-                        ]
-                    )
+                    abs(conv0_diff)
                 )
-            )
-            / jnp.mean(abs(optimizer.target["Conv_0"]["kernel"]))
-            + (
+            ) / jnp.mean(abs(optimizer.target["Conv_0"]["kernel"])) + (
                 jnp.mean(
-                    abs(
-                        optimizer.target["Conv_1"]["kernel"]
-                        - optimizer_quant_grad.target["QuantConv_1"][
-                            "kernel"
-                        ]
-                    )
+                    abs(conv1_diff)
                 )
-            )
-            / jnp.mean(abs(optimizer.target["Conv_1"]["kernel"]))
-        )
-        / 2,
+            ) / jnp.mean(abs(optimizer.target["Conv_1"]["kernel"]))
+        ) / 2,
         numerical_tolerance,
     )
 

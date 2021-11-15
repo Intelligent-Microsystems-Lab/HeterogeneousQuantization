@@ -10,7 +10,7 @@ import sys
 
 from functools import partial
 import ml_collections
-from typing import Any, Callable, Sequence, Tuple
+from typing import Any, Callable, Sequence, Tuple, Union, Iterable
 
 from flax import linen as nn
 import jax.numpy as jnp
@@ -19,7 +19,7 @@ import jax.numpy as jnp
 sys.path.append("../..")
 from flax_qconv import QuantConv  # noqa: E402
 from flax_qdense import QuantDense  # noqa: E402
-from batchnorm import BatchNorm
+from batchnorm import BatchNorm  # noqa: E402
 
 ModuleDef = Any
 
@@ -34,32 +34,37 @@ class ResNetBlock(nn.Module):
   config: dict = ml_collections.FrozenConfigDict({})
   bits: int = 8
   shortcut_type: str = 'B'
+  padding: Union[str, Iterable[Tuple[int, int]]] = "SAME"
 
   @nn.compact
   def __call__(self, x,):
     residual = x
-    y = self.conv(self.filters, (3, 3), self.strides, config=self.config,
-                  quant_act_sign=False, bits=self.bits)(x)
+    y = self.conv(self.filters, (3, 3), self.strides, padding=self.padding,
+                  config=self.config, quant_act_sign=False, bits=self.bits)(x)
     y = self.norm()(y)
     y = self.act(y)
-    y = self.conv(self.filters, (3, 3), config=self.config, bits = self.bits,
-                  quant_act_sign=False)(y)
+    y = self.conv(self.filters, (3, 3), padding=self.padding,
+                  config=self.config, bits=self.bits, quant_act_sign=False)(y)
     y = self.norm(scale_init=nn.initializers.zeros)(y)
-
     if residual.shape != y.shape:
       if self.shortcut_type == 'A':
         if residual.shape[-1] != y.shape[-1]:
           # pad channel with zero
-          zero_channel_pad = jnp.zeros(residual.shape[:-1] + (y.shape[-1] - residual.shape[-1],))
+          zero_channel_pad = jnp.zeros(
+              residual.shape[:-1] + (y.shape[-1] - residual.shape[-1],))
           residual = jnp.concatenate((residual, zero_channel_pad), 3)
-          # residual = jnp.pad(residual[:, ::2, ::2, :], ((0, 0), (0, 0), (0, 0), (self.filters//4, self.filters//4)), "constant", constant_values = 0)
-        if self.strides != (1,1):
-         # this removes excess entries
-         residual = nn.avg_pool(residual, (1, 1), strides=self.strides, padding='SAME')
-      else: # Option B
-        residual = self.conv(self.filters, (1, 1),
-                             self.strides, name='conv_proj', config=self.config,
-                             bits = self.bits, quant_act_sign=False)(residual)
+          # residual = jnp.pad(residual[:, ::2, ::2, :], ((0, 0), (0, 0),
+          #   (0, 0), (self.filters//4, self.filters//4)), "constant",
+          #   constant_values = 0)
+        if self.strides != (1, 1):
+          # this removes excess entries
+          residual = nn.avg_pool(
+              residual, (1, 1), strides=self.strides, padding='SAME')
+      else:  # Option B
+        residual = self.conv(self.filters, (1, 1), self.strides,
+                             padding=self.padding, name='conv_proj',
+                             config=self.config, bits=self.bits,
+                             quant_act_sign=False)(residual)
         residual = self.norm(name='norm_proj')(residual)
     return self.act(residual + y)
 
@@ -74,26 +79,26 @@ class BottleneckResNetBlock(nn.Module):
   config: dict = ml_collections.FrozenConfigDict({})
   bits: int = 8
   shortcut_type: str = 'B'
+  padding: Union[str, Iterable[Tuple[int, int]]] = "SAME"
 
   @nn.compact
   def __call__(self, x):
     residual = x
-    y = self.conv(self.filters, (1, 1), config=self.config, bits = self.bits,
+    y = self.conv(self.filters, (1, 1), config=self.config, bits=self.bits,
                   quant_act_sign=False)(x)
     y = self.norm()(y)
     y = self.act(y)
     y = self.conv(self.filters, (3, 3), self.strides, config=self.config,
-                  bits = self.bits, quant_act_sign=False)(y)
+                  bits=self.bits, quant_act_sign=False)(y)
     y = self.norm()(y)
     y = self.act(y)
-    y = self.conv(self.filters * 4, (1, 1), config=self.config, bits = self.bits,
+    y = self.conv(self.filters * 4, (1, 1), config=self.config, bits=self.bits,
                   quant_act_sign=False)(y)
     y = self.norm(scale_init=nn.initializers.zeros)(y)
-
     if residual.shape != y.shape:
       residual = self.conv(self.filters * 4, (1, 1),
                            self.strides, name='conv_proj', config=self.config,
-                           bits = self.bits, quant_act_sign=False)(residual)
+                           bits=self.bits, quant_act_sign=False)(residual)
       residual = self.norm(name='norm_proj')(residual)
 
     return self.act(residual + y)
@@ -118,18 +123,19 @@ class ResNet(nn.Module):
                    momentum=0.9,
                    epsilon=1e-5,
                    dtype=self.dtype)
-    if x.shape[-3:]  == (32, 32, 3):
+    if x.shape[-3:] == (32, 32, 3):
       cifar10_flag = True
-      kernel_size = (3,3)
-      stride_size = (1,1)
-      padding_size = [(1,1),(1,1)]
+      kernel_size = (3, 3)
+      stride_size = (1, 1)
+      padding_size = [(1, 1), (1, 1)]
     else:
       cifar10_flag = False
-      kernel_size = (7,7)
-      stride_size = (2,2)
-      padding_size = [(3,3),(3,3)]
-    x = jnp.ones_like(x)
-    x = conv(self.num_filters, kernel_size, stride_size, padding=padding_size, name='conv_init', config=self.config.quant.stem, bits=self.config.quant.bits, quant_act_sign=False)(x)
+      kernel_size = (7, 7)
+      stride_size = (2, 2)
+      padding_size = [(3, 3), (3, 3)]
+    x = conv(self.num_filters, kernel_size, stride_size, padding=padding_size,
+             name='conv_init', config=self.config.quant.stem,
+             bits=self.config.quant.bits, quant_act_sign=False)(x)
     x = norm(name='bn_init')(x)
     x = nn.relu(x)
     if not cifar10_flag:
@@ -144,22 +150,25 @@ class ResNet(nn.Module):
                            act=self.act,
                            config=self.config.quant.mbconv,
                            bits=self.config.quant.bits,
-                           shortcut_type=self.shortcut_type)(x)
-      
+                           shortcut_type=self.shortcut_type,
+                           padding=[(1, 1), (1, 1)] if cifar10_flag else "SAME"
+                           )(x)
     if cifar10_flag and 'average' in self.config.quant:
-      x = self.config.quant.average(bits = self.config.quant.bits)(x, sign=False)
+      x = self.config.quant.average(bits=self.config.quant.bits)(x, sign=False)
 
     x = jnp.mean(x, axis=(1, 2))
     if not cifar10_flag and 'average' in self.config.quant:
-      x = self.config.quant.average(bits = self.config.quant.bits)(x, sign=False)
+      x = self.config.quant.average(bits=self.config.quant.bits)(x, sign=False)
     x = QuantDense(self.num_classes, dtype=self.dtype,
-                   config=self.config.quant.dense, quant_act_sign=False, bits=self.config.quant.bits)(x)
+                   config=self.config.quant.dense, quant_act_sign=False,
+                   bits=self.config.quant.bits)(x)
     x = jnp.asarray(x, self.dtype)
     return x
 
 
 ResNet20_CIFAR10 = partial(ResNet, stage_sizes=[3, 3, 3],
-                   block_cls=ResNetBlock, num_filters = 16, shortcut_type = 'A')
+                           block_cls=ResNetBlock, num_filters=16,
+                           shortcut_type='A')
 
 ResNet18 = partial(ResNet, stage_sizes=[2, 2, 2, 2],
                    block_cls=ResNetBlock)

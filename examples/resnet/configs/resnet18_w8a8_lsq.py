@@ -50,21 +50,29 @@ def get_config():
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
-  config.quant.stem.weight = partial(parametric_d, init_fn=double_mean_init, clip_quant_grads=False)
-  config.quant.stem.act = partial(parametric_d, init_fn=double_mean_init, clip_quant_grads=False)
+  config.quant.stem.weight = partial(
+      parametric_d, init_fn=double_mean_init, clip_quant_grads=False)
+  config.quant.stem.act = partial(
+      parametric_d, init_fn=double_mean_init, clip_quant_grads=False)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
-  config.quant.mbconv.weight = partial(parametric_d, init_fn=double_mean_init, clip_quant_grads=False)
-  config.quant.mbconv.act = partial(parametric_d, init_fn=double_mean_init, clip_quant_grads=False)
+  config.quant.mbconv.weight = partial(
+      parametric_d, init_fn=double_mean_init, clip_quant_grads=False)
+  config.quant.mbconv.act = partial(
+      parametric_d, init_fn=double_mean_init, clip_quant_grads=False)
 
   # Average quant.
-  config.quant.average = partial(parametric_d, init_fn=double_mean_init, clip_quant_grads=False)
+  config.quant.average = partial(
+      parametric_d, init_fn=double_mean_init, clip_quant_grads=False)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
-  config.quant.dense.weight = partial(parametric_d, init_fn=double_mean_init, clip_quant_grads=False)
-  config.quant.dense.act = partial(parametric_d, init_fn=double_mean_init, clip_quant_grads=False)
-  config.quant.dense.bias = partial(parametric_d, init_fn=double_mean_init, clip_quant_grads=False)
+  config.quant.dense.weight = partial(
+      parametric_d, init_fn=double_mean_init, clip_quant_grads=False)
+  config.quant.dense.act = partial(
+      parametric_d, init_fn=double_mean_init, clip_quant_grads=False)
+  config.quant.dense.bias = partial(
+      parametric_d, init_fn=double_mean_init, clip_quant_grads=False)
 
   return config

@@ -95,9 +95,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   rng = random.PRNGKey(config.seed)
 
   if config.batch_size % jax.device_count() > 0:
-    raise ValueError('Batch size (' + str(config.batch_size)
-                     + ') must be divisible by the number of devices ('
-                     + str(jax.device_count()) + ').')
+    raise ValueError('Batch size (' + str(config.batch_size) + ') must be \
+      divisible by the number of devices (' + str(jax.device_count()) + ').')
   local_batch_size = config.batch_size // jax.process_count()
 
   dataset_builder = tfds.builder(config.dataset, data_dir=config.tfds_data_dir)
@@ -175,8 +174,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
           learning_rate_fn=learning_rate_fn,
           num_classes=config.num_classes,
           weight_decay=config.weight_decay,
-          quant_target=config.quant_target,
-          compute_hessian = True),
+          quant_target=config.quant_target,),
       axis_name='batch')
   p_eval_step = jax.pmap(functools.partial(
       eval_step, num_classes=config.num_classes), axis_name='batch')
@@ -201,11 +199,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     rng_list = jax.random.split(rng, jax.device_count() + 1)
     rng = rng_list[0]
 
-    state, metrics, hess_diag = p_train_step(state, batch, rng_list[1:])
-
-    import pdb; pdb.set_trace()
-    state, metrics, hess_diag = train_step(jax_utils.unreplicate(state), {'image': batch['image'][0, :, :, :], 'label': batch['label'][0]}, rng_list[2], learning_rate_fn=learning_rate_fn, num_classes=config.num_classes, weight_decay=config.weight_decay, quant_target=config.quant_target, compute_hessian = True)
-    
+    state, metrics = p_train_step(state, batch, rng_list[1:])
 
     # # Debug
     # state, metrics = p_train_step(

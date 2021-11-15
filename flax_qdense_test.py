@@ -343,27 +343,25 @@ class QuantDenseTest(parameterized.TestCase):
 
     # setup QuantDense
     key, subkey1, subkey2, subkey3 = random.split(key, 4)
-    params_quant_grad = DQG().init(
+    params_qgrad = DQG().init(
         subkey1, jnp.take(data_x, 0, axis=0), channels, config, subkey2
     )["params"]
-    optimizer_quant_grad = create_optimizer(params_quant_grad, 1)
+    optimizer_quant_grad = create_optimizer(params_qgrad, 1)
 
     # setup nn.Dense with parameters from QuantDense
     params = freeze(
         {
-            "Dense_0": params_quant_grad["QuantDense_0"],
-            "Dense_1": params_quant_grad["QuantDense_1"],
+            "Dense_0": params_qgrad["QuantDense_0"],
+            "Dense_1": params_qgrad["QuantDense_1"],
         }
     )
     optimizer = create_optimizer(params, 1)
 
     # check that weights are initially equal for both layers
     assert (
-        params_quant_grad["QuantDense_0"]["kernel"]
-        == params["Dense_0"]["kernel"]
+        params_qgrad["QuantDense_0"]["kernel"] == params["Dense_0"]["kernel"]
     ).all() and (
-        params_quant_grad["QuantDense_1"]["kernel"]
-        == params["Dense_1"]["kernel"]
+        params_qgrad["QuantDense_1"]["kernel"] == params["Dense_1"]["kernel"]
     ).all(), "Initial parameters not equal"
 
     optimizer_quant_grad = jax_utils.replicate(optimizer_quant_grad)
@@ -397,29 +395,20 @@ class QuantDenseTest(parameterized.TestCase):
     )
 
     # determine difference between nn.Dense and QuantDense
+    dense1_diff = optimizer.target["Dense_1"]["kernel"] - (
+        optimizer_quant_grad.target["QuantDense_1"]["kernel"])
+    dense0_diff = optimizer.target["Dense_0"]["kernel"] - (
+        optimizer_quant_grad.target["QuantDense_0"]["kernel"])
     self.assertLessEqual(
         jnp.mean(
             (
                 jnp.mean(
-                    abs(
-                        optimizer.target["Dense_1"]["kernel"]
-                        - optimizer_quant_grad.target["QuantDense_1"][
-                            "kernel"
-                        ]
-                    )
-                )
-                / jnp.mean(abs(optimizer.target["Dense_1"]["kernel"]))
-            )
-            + (
+                    abs(dense1_diff)
+                ) / jnp.mean(abs(optimizer.target["Dense_1"]["kernel"]))
+            ) + (
                 jnp.mean(
-                    abs(
-                        optimizer.target["Dense_0"]["kernel"]
-                        - optimizer_quant_grad.target["QuantDense_0"][
-                            "kernel"
-                        ]
-                    )
-                )
-                / jnp.mean(abs(optimizer.target["Dense_0"]["kernel"]))
+                    abs(dense0_diff)
+                ) / jnp.mean(abs(optimizer.target["Dense_0"]["kernel"]))
             )
         ),
         numerical_tolerance,
@@ -463,8 +452,7 @@ class QuantDenseTest(parameterized.TestCase):
 
     # test for variance
     self.assertLessEqual(
-        jnp.std(out_d)
-        - jnp.sqrt((1 / 12 * (noise * 2) ** 2) * inp_channels),
+        jnp.std(out_d) - jnp.sqrt((1 / 12 * (noise * 2) ** 2) * inp_channels),
         numerical_tolerance,
     )
 
@@ -684,8 +672,8 @@ class QuantDenseTest(parameterized.TestCase):
 
     # test for variance
     self.assertLessEqual(
-        jnp.std(grads_wrt_weights["params"]["kernel"])
-        - jnp.sqrt((1 / 12 * (noise * 2) ** 2) * examples),
+        jnp.std(grads_wrt_weights["params"]["kernel"]) - jnp.sqrt(
+            (1 / 12 * (noise * 2) ** 2) * examples),
         numerical_tolerance * examples / inp_channels,
     )
 

@@ -18,12 +18,14 @@ def get_config():
   # `name` argument of tensorflow_datasets.builder()
   config.dataset = 'imagenet2012'
   config.tfds_data_dir = 'gs://imagenet_clemens/tensorflow_datasets'
-
+  config.num_classes = 1000
   config.learning_rate = 0.1
+  config.lr_boundaries_scale = None
   config.warmup_epochs = 5.0
   config.momentum = 0.9
   config.batch_size = 1024
   config.weight_decay = 0.0001
+  config.nesterov = True
 
   config.num_epochs = 100.0
   config.log_every_steps = 100
@@ -39,8 +41,13 @@ def get_config():
   config.steps_per_eval = -1
 
   config.quant_target = ml_collections.ConfigDict()
+  config.quant_target.size_div = 8. * 1024.
 
   config.quant = ml_collections.ConfigDict()
+
+  config.quant.bits = 32
+
+  config.quant.g_scale = 0.
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()

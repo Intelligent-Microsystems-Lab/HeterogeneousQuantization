@@ -48,12 +48,12 @@ for w_init in init_methods:
 
 i = 0
 for idx, conf in enumerate(config_list):
-  if (idx % np.ceil(len(config_list)/num_run_scripts)) == 0:
+  if (idx % np.ceil(len(config_list) / num_run_scripts)) == 0:
     i = i + 1
-    with open(config_dir + '/run_init_ablation_'+str(i)+'.sh', 'w') as f:
+    with open(config_dir + '/run_init_ablation_' + str(i) + '.sh', 'w') as f:
       f.write('')
 
-  with open(config_dir + '/run_init_ablation_'+str(i)+'.sh', 'a+') as f:
+  with open(config_dir + '/run_init_ablation_' + str(i) + '.sh', 'a+') as f:
 
     f.write('python3 train.py --workdir=../../../' +
             conf.split('/')[2][:-3] + ' --config=' + conf + '\n')

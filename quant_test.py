@@ -198,8 +198,7 @@ class QuantOpsTest(parameterized.TestCase):
 
     key, subkey = jax.random.split(key)
     data = (
-        jax.random.uniform(subkey, (x_dim, y_dim), minval=-1, maxval=1)
-        * scale
+        jax.random.uniform(subkey, (x_dim, y_dim), minval=-1, maxval=1) * scale
     )
     data = data.at[0, 0].set(scale)
 
@@ -237,8 +236,8 @@ class QuantOpsTest(parameterized.TestCase):
 
     rng, init_rng, data_rng = jax.random.split(rng, 3)
     data = (
-        jax.random.uniform(data_rng, (x_dim, y_dim), minval=-1, maxval=1)
-        * scale
+        jax.random.uniform(data_rng, (x_dim, y_dim), minval=-1, maxval=1
+                           ) * scale
     )
 
     quant_fn = parametric_d(bits=bits, clip_quant_grads=False)
@@ -289,8 +288,8 @@ class QuantOpsTest(parameterized.TestCase):
 
     rng, init_rng, data_rng = jax.random.split(rng, 3)
     data = (
-        jax.random.uniform(data_rng, (x_dim, y_dim), minval=-1, maxval=1)
-        * scale
+        jax.random.uniform(data_rng, (x_dim, y_dim), minval=-1, maxval=1
+                           ) * scale
     )
     data = data.at[0, 0].set(data[0, 0] + 0.01)
 

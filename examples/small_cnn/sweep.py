@@ -51,13 +51,13 @@ if __name__ == "__main__":
       subprocess.call(["mkdir", work_dir])
 
       name = (
-          args.parameter
-          + "_"
-          + "{:.6f}".format(val)
-          + "_"
-          + args.network_type
-          + "_t"
-          + str(i)
+          args.parameter +
+          "_" +
+          "{:.6f}".format(val) +
+          "_" +
+          args.network_type +
+          "_t" +
+          str(i)
       )
 
       job_script = "#!/bin/csh \n#$ -M "

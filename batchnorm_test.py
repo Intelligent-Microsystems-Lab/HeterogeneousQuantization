@@ -4,16 +4,12 @@
 from absl.testing import absltest
 
 from flax import linen as nn
-
-import jax
 from jax import random
-from jax import test_util as jtu
-from jax.nn import initializers
-import jax.numpy as jnp
 
 import numpy as np
 
 from batchnorm import BatchNorm
+
 
 class NormalizationTest(absltest.TestCase):
 
@@ -54,6 +50,7 @@ class NormalizationTest(absltest.TestCase):
     x = random.normal(random.PRNGKey(1), (2, 4))
     (y1, y2), variables = model.init_with_output(key, x)
     np.testing.assert_allclose(y1, y2, rtol=1e-4)
+
 
 if __name__ == '__main__':
   absltest.main()

@@ -32,6 +32,7 @@ from flax_qdense import QuantDense  # noqa: E402
 ModuleDef = Any
 Array = Any
 
+
 def fake_quant_conv(config, bits, quant_act_sign, g_scale, **kwargs):
   return nn.Conv(**kwargs)
 
@@ -237,10 +238,10 @@ class EfficientNet(nn.Module):
 
     if self.config.quant.bits is None:
       conv = partial(fake_quant_conv, dtype=self.dtype,
-                   g_scale=self.config.quant.g_scale)
+                     g_scale=self.config.quant.g_scale)
     else:
       conv = partial(QuantConv, dtype=self.dtype,
-                   g_scale=self.config.quant.g_scale)
+                     g_scale=self.config.quant.g_scale)
     norm = partial(nn.BatchNorm,
                    use_running_average=not train,
                    momentum=global_params.batch_norm_momentum,
@@ -358,7 +359,8 @@ class EfficientNet(nn.Module):
     x = jnp.mean(x, axis=(1, 2))
     if 'average' in self.config.quant:
       x = self.config.quant.average(
-          g_scale=self.config.quant.g_scale, bits = self.config.quant.bits)(x, sign=False)
+          g_scale=self.config.quant.g_scale, bits=self.config.quant.bits
+      )(x, sign=False)
 
     x = nn.Dropout(self.dropout_rate)(x, deterministic=not train)
     if self.config.quant.bits is None:
@@ -367,12 +369,12 @@ class EfficientNet(nn.Module):
                    dtype=self.dtype)(x)
     else:
       x = QuantDense(self.num_classes,
-                   kernel_init=dense_kernel_initializer(),
-                   dtype=self.dtype,
-                   config=self.config.quant.dense,
-                   bits=self.config.quant.bits,
-                   quant_act_sign=False,
-                   g_scale=self.config.quant.g_scale)(x)
+                     kernel_init=dense_kernel_initializer(),
+                     dtype=self.dtype,
+                     config=self.config.quant.dense,
+                     bits=self.config.quant.bits,
+                     quant_act_sign=False,
+                     g_scale=self.config.quant.g_scale)(x)
     x = jnp.asarray(x, self.dtype)
     self.sow('intermediates', 'head', x)
 

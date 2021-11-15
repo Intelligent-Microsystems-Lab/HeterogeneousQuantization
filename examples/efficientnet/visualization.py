@@ -344,10 +344,10 @@ enet0_mixed_8 = {
     3.75: '3ZGkHm0nS2aBm54KawqkAA',
     4.0: 'jDEpeS66RhqGJaD73At8qQ',
     4.25: 'gRhrXPWSRWy3R6u6ZwhXKw',
-    4.5:  'FENZ1HNmQfyZYJHzgXUq8g',
+    4.5: 'FENZ1HNmQfyZYJHzgXUq8g',
     4.75: 'ywRdvzYQR2WTeKyvdRuXrA',
     5.0: 'hJyU7YsoRqKjrJf2JD34lQ',
-    #'params': 'mixed',
+    # 'params': 'mixed',
     'label': 'EfficientNet Mixed (Start 8bit)',
 }
 
@@ -369,10 +369,10 @@ enet0_mixed_4 = {
     3.75: 'WsKpFjvzSMep8jORSRwPLQ',
     4.0: 'bvONnY97QxO1bVQluAKt3w',
     4.25: 'cM62vormRIaL7OdmiwqKsg',
-    4.5:  'Lnl8YwyVTWaas8JmeVKMzw',
+    4.5: 'Lnl8YwyVTWaas8JmeVKMzw',
     4.75: '6f3DvWziQEaygRfl6p8RBA',
     5.0: 'QbdFAh2ZSlSYJXnvK65Rbg',
-    #'params': 'mixed',
+    # 'params': 'mixed',
     'label': 'EfficientNet Mixed (Start 4bit)',
 }
 
@@ -677,8 +677,8 @@ def get_best_eval(experiment_id):
   try:
     df = experiment.get_scalars()
   except grpc.RpcError as rpc_error:
-    print('Couldn\'t fetch experiment: ' + experiment_id + ' got error: '
-          + str(rpc_error))
+    print('Couldn\'t fetch experiment: ' + experiment_id + ' got \
+        error: ' + str(rpc_error))
     return None
 
   data = df[df['run'] == 'eval']
@@ -690,16 +690,18 @@ def get_best_eval_and_size(experiment_id):
   try:
     df = experiment.get_scalars()
   except grpc.RpcError as rpc_error:
-    print('Couldn\'t fetch experiment: ' + experiment_id + ' got error: '
-          + str(rpc_error))
+    print('Couldn\'t fetch experiment: ' + experiment_id + ' got \
+        error: ' + str(rpc_error))
     return None, None
 
   data = df[df['run'] == 'eval']
   max_eval = data[data['tag'] == 'accuracy']['value'].max()
   if len(data[data['value'] == max_eval]) > 1:
-    vals_at_step = data[data['step'] == int(data[data['value'] == max_eval]['step'].to_list()[0])]
+    vals_at_step = data[data['step'] == int(
+        data[data['value'] == max_eval]['step'].to_list()[0])]
   else:
-    vals_at_step = data[data['step'] == int(data[data['value'] == max_eval]['step'])]
+    vals_at_step = data[data['step'] == int(
+        data[data['value'] == max_eval]['step'])]
   size_mb = float(vals_at_step[vals_at_step['tag'] == 'weight_size']['value'])
 
   return max_eval, size_mb
@@ -812,7 +814,7 @@ def plot_comparison(name):
 
   plot_line(ax, enet0_dynamic_lsq)
 
-  #plot_mixed(ax, enet0_mixed)
+  # plot_mixed(ax, enet0_mixed)
   plot_mixed(ax, enet0_mixed_8)
   plot_mixed(ax, enet0_mixed_4)
 

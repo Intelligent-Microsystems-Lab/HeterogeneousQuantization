@@ -17,11 +17,14 @@ Array = Any
 Shape = Tuple[int]
 Dtype = Any  # this could be a real type?
 
-_no_init = lambda rng, shape: ()
+
+def _no_init(rng, shape):
+  return ()
 
 
 def _absolute_dims(rank, dims):
   return tuple([rank + dim if dim < 0 else dim for dim in dims])
+
 
 class BatchNorm(Module):
   """BatchNorm Module.
@@ -112,7 +115,8 @@ class BatchNorm(Module):
     axis = self.axis if isinstance(self.axis, tuple) else (self.axis,)
     axis = _absolute_dims(x.ndim, axis)
     feature_shape = tuple(d if i in axis else 1 for i, d in enumerate(x.shape))
-    reduced_feature_shape = tuple(d for i, d in enumerate(x.shape) if i in axis)
+    reduced_feature_shape = tuple(
+        d for i, d in enumerate(x.shape) if i in axis)
     reduction_axis = tuple(i for i in range(x.ndim) if i not in axis)
 
     # see NOTE above on initialization behavior
@@ -140,7 +144,8 @@ class BatchNorm(Module):
       var = jax.nn.relu(mean2 - lax.square(mean))
 
       if not initializing:
-        ra_mean.value = self.momentum * ra_mean.value + (1 - self.momentum) * mean
+        ra_mean.value = self.momentum * \
+            ra_mean.value + (1 - self.momentum) * mean
         ra_var.value = self.momentum * ra_var.value + (1 - self.momentum) * var
 
     y = x - mean.reshape(feature_shape)

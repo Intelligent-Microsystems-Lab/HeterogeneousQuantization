@@ -1,12 +1,3 @@
-import sys
-
-import jax
-import jax.numpy as jnp
-
-import matplotlib.pyplot as plt
-
-sys.path.append("..")
-
 from quant import (
     uniform_static,
     parametric_d,
@@ -24,6 +15,14 @@ from quant import (
     round_gaussian,
     round_multi_gaussian,
 )
+import sys
+
+import jax
+import jax.numpy as jnp
+
+import matplotlib.pyplot as plt
+
+sys.path.append("..")
 
 
 def plot_lines(x, x_list, name_list, color_list, fname):
