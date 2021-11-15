@@ -99,7 +99,7 @@ def evaluate(config: ml_collections.ConfigDict,
   state = jax_utils.replicate(state)
 
   p_eval_step = jax.pmap(functools.partial(
-      eval_step), axis_name='batch')
+      eval_step, size_div=config.quant_target.size_div), axis_name='batch')
 
   logging.info('Initial compilation, this might take some minutes...')
   eval_metrics = []
