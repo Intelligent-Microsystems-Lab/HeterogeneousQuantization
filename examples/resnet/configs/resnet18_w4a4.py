@@ -4,7 +4,7 @@
 """Default Hyperparameter configuration."""
 
 import ml_collections
-from functools import partial
+from quant import uniform_static
 
 
 def get_config():
@@ -63,24 +63,21 @@ def get_config():
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
-  config.quant.stem.weight = partial(
-      uniform_dynamic)
-  config.quant.stem.act = partial(uniform_dynamic)
+  config.quant.stem.weight = partial(uniform_static)
+  config.quant.stem.act = partial(uniform_static)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
-  config.quant.mbconv.weight = partial(
-      uniform_dynamic)
-  config.quant.mbconv.act = partial(uniform_dynamic)
+  config.quant.mbconv.weight = partial(uniform_static)
+  config.quant.mbconv.act = partial(uniform_static)
 
   # Average quant.
-  config.quant.average = partial(uniform_dynamic)
+  config.quant.average = partial(uniform_static)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
-  config.quant.dense.weight = partial(
-      uniform_dynamic)
-  config.quant.dense.act = partial(uniform_dynamic)
-  config.quant.dense.bias = partial(uniform_dynamic)
+  config.quant.dense.weight = partial(uniform_static)
+  config.quant.dense.act = partial(uniform_static)
+  config.quant.dense.bias = partial(uniform_static)
 
   return config
