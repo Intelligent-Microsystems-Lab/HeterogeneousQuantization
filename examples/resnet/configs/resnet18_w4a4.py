@@ -33,13 +33,13 @@ def get_config():
   config.optimizer = 'sgd'
   config.learning_rate = 0.001
   config.lr_boundaries_scale = None
-  config.warmup_epochs = 5.0
+  config.warmup_epochs = 2.0
   config.momentum = 0.9
   config.batch_size = 1024
   config.weight_decay = 0.0001
   config.nesterov = True
 
-  config.num_epochs = 100.0
+  config.num_epochs = 50.0
   config.log_every_steps = 100
 
   config.cache = True
