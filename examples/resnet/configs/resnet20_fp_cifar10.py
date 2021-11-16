@@ -22,9 +22,10 @@ def get_config():
   config.num_classes = 10
   config.tfds_data_dir = 'gs://imagenet_clemens/tensorflow_datasets'
 
+  config.optimizer = 'sgd'
   config.learning_rate = .1
-  config.lr_boundaries_scale = {'80': .1, '120': .1}
-  config.warmup_epochs = 2.0
+  config.lr_boundaries_scale = None  #{'80': .1, '120': .1}
+  config.warmup_epochs = 5.0
   config.momentum = 0.9
   config.batch_size = 1024
   config.weight_decay = 0.0001
