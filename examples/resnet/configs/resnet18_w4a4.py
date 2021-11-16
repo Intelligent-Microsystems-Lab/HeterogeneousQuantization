@@ -5,6 +5,7 @@
 
 import ml_collections
 from quant import uniform_static
+from functools import partial
 
 
 def get_config():
