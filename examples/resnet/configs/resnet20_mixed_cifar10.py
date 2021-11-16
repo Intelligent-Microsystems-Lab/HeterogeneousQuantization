@@ -21,7 +21,18 @@ def get_config():
   config.dataset = 'cifar10'
   config.num_classes = 10
   config.tfds_data_dir = 'gs://imagenet_clemens/tensorflow_datasets'
+  config.image_size = 224
+  config.crop_padding = 32
 
+  # Mean and std style for pre-processing.
+  # config.mean_rgb = [0.485 * 255, 0.456 * 255, 0.406 * 255]
+  # config.stddev_rgb = [0.229 * 255, 0.224 * 255, 0.225 * 255]
+
+  # Edge models use inception-style MEAN & STDDEV for better post-quantization.
+  config.mean_rgb = [127.0, 127.0, 127.0]
+  config.stddev_rgb = [128.0, 128.0, 128.0]
+
+  config.optimizer = 'sgd'
   config.learning_rate = .01  # 0.0001
   config.lr_boundaries_scale = {'80': .1, '120': .1}
   config.warmup_epochs = 2.0
