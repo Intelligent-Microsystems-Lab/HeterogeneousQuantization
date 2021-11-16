@@ -105,10 +105,18 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
   dataset_builder = tfds.builder(config.dataset, data_dir=config.tfds_data_dir)
   dataset_builder.download_and_prepare()
-  train_iter = input_pipeline.create_input_iter(
-      dataset_builder, local_batch_size, train=True, config=config)
-  eval_iter = input_pipeline.create_input_iter(
-      dataset_builder, local_batch_size, train=False, config=config)
+  if 'cifar10' in config.dataset:
+    train_iter = input_pipeline.create_split_cifar10(
+        dataset_builder, local_batch_size, train=True, config=config)
+    eval_iter = input_pipeline.create_split_cifar10(
+        dataset_builder, local_batch_size, train=False, config=config)
+  elif 'imagenet2012' in config.dataset:
+    train_iter = input_pipeline.create_input_iter(
+        dataset_builder, local_batch_size, train=True, config=config)
+    eval_iter = input_pipeline.create_input_iter(
+        dataset_builder, local_batch_size, train=False, config=config)
+  else:
+    raise Exception('Unrecognized data set: ' + config.dataset)
 
   steps_per_epoch = (
       dataset_builder.info.splits['train'].num_examples // config.batch_size
