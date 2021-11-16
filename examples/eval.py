@@ -29,7 +29,6 @@ import ml_collections
 from ml_collections import config_flags
 
 
-from load_pretrained_weights import load_pretrained_weights
 from train_utils import (
     TrainState,
     create_model,
@@ -85,7 +84,7 @@ def evaluate(config: ml_collections.ConfigDict,
 
   # Pre load weights.
   if config.pretrained and int(state.step) == 0:
-    state = load_pretrained_weights(state, config.pretrained)
+    state = model.load_model_fn(state, config.pretrained)
 
   state = jax_utils.replicate(state)
 
