@@ -15,8 +15,10 @@ from typing import Any, Callable, Sequence, Tuple, Union, Iterable
 from flax import linen as nn
 import jax.numpy as jnp
 
+sys.path.append("resnet")
+from resnet_load_pretrained_weights import resnet_load_pretrained_weights  # noqa: E402, E501
 
-sys.path.append("../..")
+sys.path.append("..")
 from flax_qconv import QuantConv  # noqa: E402
 from flax_qdense import QuantDense  # noqa: E402
 from batchnorm import BatchNorm  # noqa: E402
@@ -114,9 +116,10 @@ class ResNet(nn.Module):
   act: Callable = nn.relu
   config: dict = ml_collections.FrozenConfigDict({})
   shortcut_type: str = 'B'
+  load_model_fn: Callable = resnet_load_pretrained_weights
 
   @nn.compact
-  def __call__(self, x, train: bool = True):
+  def __call__(self, x, train: bool = True, rng: Any = None):
     conv = partial(QuantConv, use_bias=False, dtype=self.dtype)
     norm = partial(BatchNorm,
                    use_running_average=not train,
@@ -185,4 +188,4 @@ ResNet200 = partial(ResNet, stage_sizes=[3, 24, 36, 3],
 
 
 # Used for testing only.
-_ResNet1 = partial(ResNet, stage_sizes=[1], block_cls=ResNetBlock)
+ResNet1 = partial(ResNet, stage_sizes=[1], block_cls=ResNetBlock)

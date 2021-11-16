@@ -1,6 +1,6 @@
 # IMSL Lab - University of Notre Dame
 # Author: Clemens JS Schaefer
-# Originally copied  https://github.com/tensorflow/tpu/blob/master/models/ \
+# Originally copied https://github.com/tensorflow/tpu/blob/master/models/ \
 # official/efficientnet/efficientnet_builder.py
 import re
 

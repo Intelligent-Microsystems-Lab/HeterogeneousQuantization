@@ -2,11 +2,6 @@
 # Author: Clemens JS Schaefer
 # Originally copied from https://github.com/google/flax/tree/main/examples
 
-"""EfficientNet example.
-
-This script evaluats a Efficient on the ImageNet dataset.
-The data is loaded using tensorflow_datasets.
-"""
 import functools
 import resource
 import time
@@ -35,7 +30,7 @@ from ml_collections import config_flags
 
 
 from load_pretrained_weights import load_pretrained_weights
-from train_util import (
+from train_utils import (
     TrainState,
     create_model,
     create_train_state,
@@ -81,7 +76,7 @@ def evaluate(config: ml_collections.ConfigDict,
 
   model_cls = getattr(models, config.model)
   model = create_model(
-      model_cls=model_cls, num_classes=config.num_classes, config=config)
+      model_cls=model_cls, config=config)
 
   rng, subkey = jax.random.split(rng, 2)
   state = create_train_state(
@@ -95,7 +90,7 @@ def evaluate(config: ml_collections.ConfigDict,
   state = jax_utils.replicate(state)
 
   p_eval_step = jax.pmap(functools.partial(
-      eval_step, num_classes=config.num_classes), axis_name='batch')
+      eval_step, size_div=config.quant_target.size_div), axis_name='batch')
 
   logging.info('Initial compilation, this might take some minutes...')
   eval_metrics = []

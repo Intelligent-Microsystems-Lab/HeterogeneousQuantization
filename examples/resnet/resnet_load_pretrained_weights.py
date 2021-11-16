@@ -46,7 +46,7 @@ map_dict_nnabla = {
 }
 
 
-def load_pretrained_weights(state, location):
+def resnet_load_pretrained_weights(state, location):
 
   # Note JAX convolutions are H(eight)W(idth)I(n)O(ut)
   # NNABLA convolutions are O(ut)I(n)H(eight)W(idth)

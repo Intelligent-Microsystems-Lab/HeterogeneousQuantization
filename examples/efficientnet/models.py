@@ -23,9 +23,11 @@ from absl import logging
 import jax
 from jax._src.nn.initializers import variance_scaling
 
-from efficientnet_utils import BlockDecoder, GlobalParams
+sys.path.append("efficientnet")
+from enet_load_pretrained_weights import enet_load_pretrained_weights  # noqa: E402, E501
+from efficientnet_utils import BlockDecoder, GlobalParams  # noqa: E402
 
-sys.path.append("../..")
+sys.path.append("..")
 from flax_qconv import QuantConv  # noqa: E402
 from flax_qdense import QuantDense  # noqa: E402
 
@@ -213,6 +215,7 @@ class EfficientNet(nn.Module):
   dtype: Any = jnp.float32
   act: Callable = jax.nn.relu6
   config: dict = ml_collections.FrozenConfigDict({})
+  load_model_fn: Callable = enet_load_pretrained_weights
 
   @nn.compact
   def __call__(self, x: Array, train: bool = True, rng: Any = None) -> Array:

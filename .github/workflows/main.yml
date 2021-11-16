@@ -90,9 +90,7 @@ jobs:
           python flax_qdense.py
           python quant_test.py
           python batchnorm_test.py
-          cd examples/efficientnet/
-          python models_test.py
+          cd examples/
           python train_test.py
-          cd ../resnet/
-          python models_test.py
-          python train_test.py
+          python efficientnet/models_test.py
+          python resnet/models_test.py

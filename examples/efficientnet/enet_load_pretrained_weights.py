@@ -22,7 +22,7 @@ def test_shapes(shape1, shape2, name):
   )
 
 
-def load_pretrained_weights(state, location):
+def enet_load_pretrained_weights(state, location):
   tf_vars = tf.train.list_variables(location)
   general_params = unfreeze(state.params)
   params = unfreeze(state.params['params'])

@@ -2,11 +2,9 @@
 # Author: Clemens JS Schaefer
 # Originally copied from https://github.com/google/flax/tree/main/examples
 
+
 from typing import Any
 
-import input_pipeline
-
-from flax import jax_utils
 from flax.training import checkpoints
 from flax.training import common_utils
 from flax.training import train_state
@@ -14,18 +12,18 @@ from flax.core import freeze, unfreeze
 
 import jax
 from jax import lax
-
 import jax.numpy as jnp
 
 import ml_collections
 
 import optax
 
+Array = jnp.ndarray
 
-def create_model(*, model_cls, **kwargs):
+
+def create_model(*, model_cls, num_classes, **kwargs):
   model_dtype = jnp.float32
-  return model_cls(num_classes=kwargs['config'].num_classes, dtype=model_dtype,
-                   **kwargs)
+  return model_cls(num_classes=num_classes, dtype=model_dtype, **kwargs)
 
 
 def initialized(key, image_size, model):
@@ -34,7 +32,7 @@ def initialized(key, image_size, model):
 
   @jax.jit
   def init(*args):
-    return model.init(*args, train=False)
+    return model.init(*args, rng=rng, train=False)
   variables = init({'params': key}, jnp.ones(input_shape, model.dtype))
 
   variables = unfreeze(variables)
@@ -52,6 +50,11 @@ def initialized(key, image_size, model):
 
 def cross_entropy_loss(logits, labels):
   one_hot_labels = common_utils.onehot(labels, num_classes=logits.shape[1])
+
+  factor = .1
+  one_hot_labels *= (1 - factor)
+  one_hot_labels += (factor / one_hot_labels.shape[1])
+
   xentropy = optax.softmax_cross_entropy(logits=logits, labels=one_hot_labels)
   return jnp.mean(xentropy)
 
@@ -104,16 +107,22 @@ def create_learning_rate_fn(
   return schedule_fn
 
 
-def train_step(state, batch, learning_rate_fn, weight_decay, quant_target):
+def train_step(state, batch, rng, learning_rate_fn, weight_decay,
+               quant_target):
   """Perform a single training step."""
-  def loss_fn(params, quant_params):
+  rng, prng = jax.random.split(rng, 2)
+
+  def loss_fn(params, inputs, targets, quant_params):
     """loss function used for training."""
-    logits, new_model_state = state.apply_fn(
-        {'params': params, 'quant_params': quant_params,
-         'batch_stats': state.batch_stats, 'weight_size': state.weight_size,
-         'act_size': state.act_size},
-        batch['image'], mutable=['batch_stats', 'weight_size', 'act_size'])
-    loss = cross_entropy_loss(logits, batch['label'])
+    logits, new_model_state = state.apply_fn({'params': params,
+                                              'quant_params': quant_params,
+                                              'batch_stats': state.batch_stats,
+                                              'weight_size': state.weight_size,
+                                              'act_size': state.act_size},
+                                             inputs, rng=prng, mutable=[
+        'batch_stats', 'weight_size', 'act_size'],
+        rngs={'dropout': rng})
+    loss = cross_entropy_loss(logits, targets)
     weight_penalty_params = jax.tree_leaves(params)
     weight_l2 = sum([jnp.sum(x ** 2)
                      for x in weight_penalty_params
@@ -149,8 +158,10 @@ def train_step(state, batch, learning_rate_fn, weight_decay, quant_target):
   step = state.step
   lr = learning_rate_fn(step)
 
-  grad_fn = jax.value_and_grad(loss_fn, argnums=[0, 1], has_aux=True)
-  aux, grads = grad_fn(state.params['params'], state.params['quant_params'])
+  grad_fn = jax.value_and_grad(loss_fn, argnums=[0, 3], has_aux=True)
+  aux, grads = grad_fn(
+      state.params['params'], batch['image'], batch['label'],
+      state.params['quant_params'])
   # Re-use same axis_name as in the call to `pmap(...train_step...)` below.
   grads = lax.pmean(grads, axis_name='batch')
 
@@ -158,6 +169,7 @@ def train_step(state, batch, learning_rate_fn, weight_decay, quant_target):
   metrics = compute_metrics(
       logits, batch['label'], new_model_state, quant_target.size_div)
   metrics['learning_rate'] = lr
+
   new_state = state.apply_gradients(
       grads={'params': grads[0], 'quant_params': grads[1]},
       batch_stats=new_model_state['batch_stats'],
@@ -175,60 +187,10 @@ def eval_step(state, batch, size_div):
   logits, new_state = state.apply_fn(
       variables,
       batch['image'],
+      rng=jax.random.PRNGKey(0),
       train=False,
       mutable=['weight_size', 'act_size'])
   return compute_metrics(logits, batch['label'], new_state, size_div)
-
-
-def prepare_tf_data(xs):
-  """Convert a input batch from tf Tensors to numpy arrays."""
-  local_device_count = jax.local_device_count()
-
-  def _prepare(x):
-    # Use _numpy() for zero-copy conversion between TF and NumPy.
-    x = x._numpy()  # pylint: disable=protected-access
-
-    # reshape (host_batch_size, height, width, 3) to
-    # (local_devices, device_batch_size, height, width, 3)
-    return x.reshape((local_device_count, -1) + x.shape[1:])
-
-  return jax.tree_map(_prepare, xs)
-
-
-# def create_input_iter(dataset_builder, batch_size, image_size, dtype, train,
-#                       cache):
-#   ds = input_pipeline.create_split(
-#       dataset_builder, batch_size, image_size=image_size, dtype=dtype,
-#       train=train, cache=cache)
-#   it = map(prepare_tf_data, ds)
-#   it = jax_utils.prefetch_to_device(it, 2)
-#   return it
-
-
-def create_input_iter(
-    dataset_builder, batch_size, image_size, dtype, train, cache
-):
-  if "imagenet" in dataset_builder.name:
-    ds = input_pipeline.create_split(
-        dataset_builder,
-        batch_size,
-        image_size=image_size,
-        dtype=dtype,
-        train=train,
-        cache=cache,
-    )
-  else:
-    ds = input_pipeline.create_split_cifar10(
-        dataset_builder,
-        batch_size,
-        image_size=image_size,
-        dtype=dtype,
-        train=train,
-        cache=cache,
-    )
-  it = map(prepare_tf_data, ds)
-  it = jax_utils.prefetch_to_device(it, 2)
-  return it
 
 
 class TrainState(train_state.TrainState):
@@ -267,11 +229,21 @@ def create_train_state(rng, config: ml_collections.ConfigDict,
 
   params, quant_params, batch_stats, weight_size, act_size = initialized(
       rng, image_size, model)
-  tx = optax.sgd(
-      learning_rate=learning_rate_fn,
-      momentum=config.momentum,
-      nesterov=config.nesterov,
-  )
+  if config.optimizer == 'rmsprop':
+    tx = optax.rmsprop(
+        learning_rate=learning_rate_fn,
+        decay=0.9,
+        momentum=config.momentum,
+        eps=0.001,
+    )
+  elif config.optimizer == 'sgd':
+    tx = optax.sgd(
+        learning_rate=learning_rate_fn,
+        momentum=config.momentum,
+        nesterov=config.nesterov,
+    )
+  else:
+    raise Exception('Unknown optimizer in config: ' + config.optimizer)
   quant_params = unfreeze(quant_params)
   quant_params['placeholder'] = 0.
   quant_params = freeze(quant_params)

@@ -34,9 +34,11 @@ def get_config():
   config.num_classes = 1000
 
   # Load pretrained weights.
-  config.pretrained = "../../../pretrained_efficientnet/efficientnet-lite0"
+  config.pretrained = "../../pretrained_efficientnet/efficientnet-lite0"
 
+  config.optimizer = 'rmsprop'
   config.learning_rate = 0.016  # 0.0001
+  config.lr_boundaries_scale = None
   config.warmup_epochs = 5  # for optimizer to settle in
   config.weight_decay = 1e-5
   config.momentum = 0.9
@@ -51,6 +53,7 @@ def get_config():
   config.steps_per_eval = -1
 
   config.quant_target = ml_collections.ConfigDict()
+  config.quant_target.size_div = 8. * 1024.
 
   config.quant = ml_collections.ConfigDict()
 

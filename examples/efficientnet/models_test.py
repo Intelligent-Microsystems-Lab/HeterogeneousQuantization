@@ -17,7 +17,7 @@ import optax
 
 import models
 from input_pipeline import preprocess_for_eval
-from load_pretrained_weights import load_pretrained_weights
+from enet_load_pretrained_weights import enet_load_pretrained_weights
 from train_util import TrainState
 
 
@@ -124,10 +124,10 @@ class EfficientNetTest(parameterized.TestCase):
             'quant_params': quant_params}, tx=tx,
         batch_stats=variables['batch_stats'],
         weight_size={}, act_size={})
-    state = load_pretrained_weights(state, config.pretrained)
+    state = enet_load_pretrained_weights(state, config.pretrained)
 
     # load inpt
-    inpt_bytes = tf.io.read_file('../../../unit_tests/efficientnet/panda.jpg')
+    inpt_bytes = tf.io.read_file('../../unit_tests/efficientnet/panda.jpg')
     inpt = np.reshape(preprocess_for_eval(
         inpt_bytes, config), (1, inpt_size, inpt_size, 3))
 
@@ -145,20 +145,20 @@ class EfficientNetTest(parameterized.TestCase):
 
     # testing for equality
     np.testing.assert_allclose(inpt, np.load(
-        '../../../unit_tests/efficientnet/enet' + str(name[-1]) + '_inputs.npy'
+        '../../unit_tests/efficientnet/enet' + str(name[-1]) + '_inputs.npy'
     ))
 
     np.testing.assert_allclose(state['intermediates']['stem'][0], np.load(
-        '../../../unit_tests/efficientnet/enet' + str(name[-1]) + '_stem.npy'),
+        '../../unit_tests/efficientnet/enet' + str(name[-1]) + '_stem.npy'),
         rtol=rtol, atol=atol)
 
     np.testing.assert_allclose(state['intermediates']['features0'][0], np.load(
-        '../../../unit_tests/efficientnet/enet' + str(name[-1]
-                                                      ) + '_features0.npy'),
+        '../../unit_tests/efficientnet/enet' + str(name[-1]
+                                                   ) + '_features0.npy'),
                                rtol=rtol, atol=atol)
 
     np.testing.assert_allclose(state['intermediates']['head'][0], np.load(
-        '../../../unit_tests/efficientnet/enet' + str(name[-1]) + '_head.npy'),
+        '../../unit_tests/efficientnet/enet' + str(name[-1]) + '_head.npy'),
         rtol=rtol, atol=atol)
 
 

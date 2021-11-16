@@ -2,15 +2,16 @@
 # Author: Clemens JS Schaefer
 # Originally copied from https://github.com/google/flax/tree/main/examples
 
-"""ImageNet example.
+"""Training script.
 
-This script trains a ResNet-18 on the ImageNet dataset.
 The data is loaded using tensorflow_datasets.
 """
 
+
 import functools
-import time
 import resource
+import subprocess
+import time
 
 from absl import app
 from absl import flags
@@ -19,21 +20,23 @@ from clu import platform
 from clu import metric_writers
 from clu import periodic_actions
 
+from flax import jax_utils
+
+import input_pipeline
 import models
 
-from flax import jax_utils
 from flax.training import common_utils
 
 import jax
-from jax import random
-
 import jax.numpy as jnp
+
+from jax import random
+import tensorflow as tf
+import tensorflow_datasets as tfds
+
 
 import ml_collections
 from ml_collections import config_flags
-
-import tensorflow as tf
-import tensorflow_datasets as tfds
 
 
 from train_utils import (
@@ -46,9 +49,7 @@ from train_utils import (
     eval_step,
     sync_batch_stats,
     save_checkpoint,
-    create_input_iter,
 )
-from load_pretrained_weights import load_pretrained_weights
 
 # from jax.config import config
 # config.update("jax_debug_nans", True)
@@ -85,34 +86,29 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   writer_eval = metric_writers.create_default_writer(
       logdir=workdir + '/eval', just_logging=jax.process_index() != 0)
 
+  logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
+  logging.info('Git commit: ' + subprocess.check_output(
+      ['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
+  logging.info(config)
+
+  logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
+  logging.info('Git commit: ' + subprocess.check_output(
+      ['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
+  logging.info(config)
+
   rng = random.PRNGKey(config.seed)
 
-  if config.dataset == 'cifar10':
-    image_size = 32
-  else:
-    image_size = 224
-
   if config.batch_size % jax.device_count() > 0:
-    raise ValueError('Batch size must be divisible by the number of devices')
+    raise ValueError('Batch size (' + str(config.batch_size) + ') must be \
+      divisible by the number of devices (' + str(jax.device_count()) + ').')
   local_batch_size = config.batch_size // jax.process_count()
 
-  platform = jax.local_devices()[0].platform
-
-  if config.half_precision:
-    if platform == 'tpu':
-      input_dtype = tf.bfloat16
-    else:
-      input_dtype = tf.float16
-  else:
-    input_dtype = tf.float32
-
   dataset_builder = tfds.builder(config.dataset, data_dir=config.tfds_data_dir)
-  train_iter = create_input_iter(
-      dataset_builder, local_batch_size, image_size, input_dtype, train=True,
-      cache=config.cache)
-  eval_iter = create_input_iter(
-      dataset_builder, local_batch_size, image_size, input_dtype, train=False,
-      cache=config.cache)
+  dataset_builder.download_and_prepare()
+  train_iter = input_pipeline.create_input_iter(
+      dataset_builder, local_batch_size, train=True, config=config)
+  eval_iter = input_pipeline.create_input_iter(
+      dataset_builder, local_batch_size, train=False, config=config)
 
   steps_per_epoch = (
       dataset_builder.info.splits['train'].num_examples // config.batch_size
@@ -126,8 +122,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   val_or_test = "validation" if "imagenet" in config.dataset else "test"
 
   if config.steps_per_eval == -1:
-    num_validation_examples = dataset_builder.info.splits[val_or_test
-                                                          ].num_examples
+    num_validation_examples = dataset_builder.info.splits[
+        val_or_test].num_examples
     steps_per_eval = num_validation_examples // config.batch_size
   else:
     steps_per_eval = config.steps_per_eval
@@ -138,27 +134,32 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
   model_cls = getattr(models, config.model)
   model = create_model(
-      model_cls=model_cls, config=config)
+      model_cls=model_cls, num_classes=config.num_classes, config=config)
 
   learning_rate_fn = create_learning_rate_fn(
       config, base_learning_rate, steps_per_epoch)
 
-  state = create_train_state(rng, config, model, image_size, learning_rate_fn)
+  rng, subkey = jax.random.split(rng, 2)
+  state = create_train_state(
+      subkey, config, model, config.image_size, learning_rate_fn)
   state = restore_checkpoint(state, workdir)
   # step_offset > 0 if restarting from checkpoint
   step_offset = int(state.step)
 
   # Pre load weights.
   if config.pretrained and step_offset == 0:
-    state = load_pretrained_weights(state, config.pretrained)
+    state = model.load_model_fn(state, config.pretrained)
 
   # Reinitialize quant params.
   init_batch = next(train_iter)['image'][0, :, :, :, :]
+  rng, rng1, rng2 = jax.random.split(rng, 3)
   _, new_state = state.apply_fn({'params': state.params['params'],
                                  'quant_params': state.params['quant_params'],
                                  'batch_stats': state.batch_stats}, init_batch,
+                                rng=rng1,
                                 mutable=['batch_stats', 'quant_params',
-                                         'weight_size', 'act_size'],)
+                                         'weight_size', 'act_size'],
+                                rngs={'dropout': rng2})
   state = TrainState.create(apply_fn=state.apply_fn,
                             params={'params': state.params['params'],
                                     'quant_params': new_state['quant_params']},
@@ -193,10 +194,11 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   # 5. Uncomment JIT configs at the top.
 
   p_train_step = jax.pmap(
-      functools.partial(train_step,
-                        learning_rate_fn=learning_rate_fn,
-                        weight_decay=config.weight_decay,
-                        quant_target=config.quant_target),
+      functools.partial(
+          train_step,
+          learning_rate_fn=learning_rate_fn,
+          weight_decay=config.weight_decay,
+          quant_target=config.quant_target,),
       axis_name='batch')
   p_eval_step = jax.pmap(functools.partial(
       eval_step, size_div=config.quant_target.size_div), axis_name='batch')
@@ -207,8 +209,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   #     learning_rate_fn=learning_rate_fn,
   #     weight_decay=config.weight_decay,
   #     quant_target=config.quant_target)
-  # p_eval_step = functools.partial(eval_step,
-  #                                 size_div = config.quant_target.size_div)
+  # p_eval_step = functools.partial(
+  #     eval_step, size_div=config.quant_target.size_div)
 
   train_metrics = []
   hooks = []
@@ -217,12 +219,15 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   train_metrics_last_t = time.time()
   logging.info('Initial compilation, this might take some minutes...')
   for step, batch in zip(range(step_offset, num_steps), train_iter):
-    state, metrics = p_train_step(state, batch)
+    rng_list = jax.random.split(rng, jax.device_count() + 1)
+    rng = rng_list[0]
+
+    state, metrics = p_train_step(state, batch, rng_list[1:])
+
     # # Debug
     # state, metrics = p_train_step(
     #     state, {'image': batch['image'][0, :, :, :],
-    #             'label': batch['label'][0]})
-
+    #             'label': batch['label'][0]}, rng_list[2])
     for h in hooks:
       h(step)
     if step == step_offset:
@@ -241,10 +246,12 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         summary['steps_per_second'] = config.log_every_steps / (
             time.time() - train_metrics_last_t)
         writer_train.write_scalars(step + 1, summary)
+        writer_train.flush()
         train_metrics = []
         train_metrics_last_t = time.time()
 
     if (step + 1) % steps_per_epoch == 0:
+      epoch = step // steps_per_epoch
       eval_metrics = []
 
       # sync batch statistics across replicas
@@ -257,10 +264,11 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       # # Debug
       # eval_metrics = common_utils.stack_forest(eval_metrics)
       summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
+      logging.info('eval epoch: %d, loss: %.4f, accuracy: %.2f',
+                   epoch, summary['loss'], summary['accuracy'] * 100)
       writer_eval.write_scalars(
           step + 1, {f'{key}': val for key, val in summary.items()})
       writer_eval.flush()
-      writer_train.flush()
     if (step + 1) % steps_per_checkpoint == 0 or step + 1 == num_steps:
       state = sync_batch_stats(state)
       save_checkpoint(state, workdir)
