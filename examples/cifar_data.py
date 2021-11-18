@@ -21,6 +21,9 @@ import pickle
 import jax
 import jax.numpy as jnp
 
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+
 class DataIterator(object):
 
     def __init__(self, batch_size, mean_norm=True, var_norm=True, augmented_shift=False,
@@ -118,12 +121,11 @@ class DataIterator(object):
         if batch_size is None:
             batch_size = self.batch_size
         end = self.current + batch_size
-        images = self.images[self.idxs[self.current:end]].copy()
-        labels = self.labels[self.idxs[self.current:end]].copy()
+        images = self.images[self.idxs[self.current:end]]#.copy()
+        labels = self.labels[self.idxs[self.current:end]]#.copy()
         self.current = end
         if self.current + batch_size > self.idxs.size:
             self._reset()
-
         if self.augmented_shift:
             for i in range(batch_size):
                 # padded = np.pad(images[i], ((0, 0), (4, 4), (4, 4)), mode='constant')
@@ -139,10 +141,9 @@ class DataIterator(object):
                     images[i] = images[i, :, :, ::-1]
 
         local_device_count = jax.local_device_count()
-        #images = jnp.moveaxis(images, (1),(3))
         images = images.reshape((local_device_count, -1) + images.shape[1:])
 
-        labels = labels.reshape((local_device_count, -1) + labels.shape[1:])
+        labels = labels.reshape((local_device_count, -1))
         return {'image':images, 'label':labels}
 
     def _downsize(self, max_size):

@@ -52,6 +52,9 @@ from train_utils import (
     save_checkpoint,
 )
 
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+
 # from jax.config import config
 # config.update("jax_debug_nans", True)
 # config.update("jax_disable_jit", True)
@@ -93,15 +96,15 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   writer_eval = metric_writers.create_default_writer(
       logdir=workdir + '/eval', just_logging=jax.process_index() != 0)
 
-  logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
-  logging.info('Git commit: ' + subprocess.check_output(
-      ['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
-  logging.info(config)
+  # logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
+  # logging.info('Git commit: ' + subprocess.check_output(
+  #     ['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
+  # logging.info(config)
 
-  logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
-  logging.info('Git commit: ' + subprocess.check_output(
-      ['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
-  logging.info(config)
+  # logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
+  # logging.info('Git commit: ' + subprocess.check_output(
+  #     ['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
+  # logging.info(config)
 
   rng = random.PRNGKey(config.seed)
 
@@ -171,22 +174,22 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   if config.pretrained and step_offset == 0:
     state = model.load_model_fn(state, config.pretrained)
 
-  # Reinitialize quant params.
-  init_batch = next(train_iter)['image'][0, :, :, :, :]
-  rng, rng1, rng2 = jax.random.split(rng, 3)
-  _, new_state = state.apply_fn({'params': state.params['params'],
-                                 'quant_params': state.params['quant_params'],
-                                 'batch_stats': state.batch_stats}, init_batch,
-                                rng=rng1,
-                                mutable=['batch_stats', 'quant_params',
-                                         'weight_size', 'act_size'],
-                                rngs={'dropout': rng2})
-  state = TrainState.create(apply_fn=state.apply_fn,
-                            params={'params': state.params['params'],
-                                    'quant_params': new_state['quant_params']},
-                            tx=state.tx, batch_stats=state.batch_stats,
-                            weight_size=state.weight_size,
-                            act_size=state.act_size)
+  # # Reinitialize quant params.
+  # init_batch = next(train_iter)['image'][0, :, :, :, :]
+  # rng, rng1, rng2 = jax.random.split(rng, 3)
+  # _, new_state = state.apply_fn({'params': state.params['params'],
+  #                                'quant_params': state.params['quant_params'],
+  #                                'batch_stats': state.batch_stats}, init_batch,
+  #                               rng=rng1,
+  #                               mutable=['batch_stats', 'quant_params',
+  #                                        'weight_size', 'act_size'],
+  #                               rngs={'dropout': rng2})
+  # state = TrainState.create(apply_fn=state.apply_fn,
+  #                           params={'params': state.params['params'],
+  #                                   'quant_params': new_state['quant_params']},
+  #                           tx=state.tx, batch_stats=state.batch_stats,
+  #                           weight_size=state.weight_size,
+  #                           act_size=state.act_size)
 
   if len(state.weight_size) != 0:
     print('Initial Network Weight Size in kB: ' + str(jnp.sum(jnp.array(
@@ -251,7 +254,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     rng = rng_list[0]
 
     state, metrics = p_train_step(state, batch, rng_list[1:])
-
     # # Debug
     # state, metrics = p_train_step(
     #     state, {'image': batch['image'][0, :, :, :] * 0 + 1,
