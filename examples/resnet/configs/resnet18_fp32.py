@@ -7,6 +7,7 @@ import ml_collections
 from functools import partial
 
 
+
 def get_config():
   """Get the default hyperparameter configuration."""
   config = ml_collections.ConfigDict()
@@ -45,7 +46,7 @@ def get_config():
   config.cache = True
   config.half_precision = False
 
-  config.pretrained = None  # '../../pretrained_resnet/resnet18'
+  config.pretrained = '../../pretrained_resnet/resnet18_v2'
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.
@@ -53,7 +54,7 @@ def get_config():
   config.steps_per_eval = -1
 
   config.quant_target = ml_collections.ConfigDict()
-  config.quant_target.size_div = 8. * 1024.
+  config.quant_target.size_div = 8. * 1024. * 1024.
 
   config.quant = ml_collections.ConfigDict()
 

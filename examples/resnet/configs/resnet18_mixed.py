@@ -33,7 +33,7 @@ def get_config():
   config.cache = True
   config.half_precision = False
 
-  config.pretrained = '../../../pretrained_resnet/resnet18'
+  config.pretrained = '../../pretrained_resnet/resnet18_v2'
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.

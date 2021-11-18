@@ -348,15 +348,13 @@ def resnet_load_pretrained_weights(state, location):
             torch_bn_stats)[0]) * 1000 + sum_list_of_tensors(
         jax.tree_util.tree_flatten(torch_weights)[0]) * 1000) == int(
         sum_list_of_tensors(torch_state['state_dict'].values()) * 1000)
-
     general_params = {'params': torch_weights,
                       'quant_params': state.params['quant_params']}
     batch_stats = torch_bn_stats
   else:
 
     chk_state = checkpoints.restore_checkpoint(location, None)
-
-    chk_weights, _ = jax.tree_util.tree_flatten(chk_state['params'])
+    chk_weights, _ = jax.tree_util.tree_flatten(chk_state['params']['params'])
     _, weight_def = jax.tree_util.tree_flatten(state.params['params'])
     params = jax.tree_util.tree_unflatten(weight_def, chk_weights)
 
@@ -364,7 +362,6 @@ def resnet_load_pretrained_weights(state, location):
     _, batchstats_def = jax.tree_util.tree_flatten(state.batch_stats)
     batch_stats = jax.tree_util.tree_unflatten(batchstats_def, chk_batchstats)
 
-    # ml_collections.FrozenConfigDict(
     general_params = {'params': params,
                       'quant_params': state.params['quant_params']}
 

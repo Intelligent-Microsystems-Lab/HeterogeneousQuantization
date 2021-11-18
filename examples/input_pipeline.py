@@ -11,10 +11,19 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 
 from flax import jax_utils
+from functools import partial
 
 
 def create_input_iter(dataset_builder, batch_size, train, config):
   ds = create_split(
+      dataset_builder, batch_size, train=train, config=config)
+  prepare_tf_data_fn = partial(prepare_tf_data, config = config)
+  it = map(prepare_tf_data_fn, ds)
+  it = jax_utils.prefetch_to_device(it, 2)
+  return it
+
+def create_input_iter_cifar10(dataset_builder, batch_size, train, config):
+  ds = create_split_cifar10(
       dataset_builder, batch_size, train=train, config=config)
   it = map(prepare_tf_data, ds)
   it = jax_utils.prefetch_to_device(it, 2)
@@ -274,18 +283,33 @@ def create_split_cifar10(dataset_builder, batch_size, train, config):
 
     if train:
       image = tf.io.decode_png(example["image"])
-      image = tf.image.random_flip_left_right(image)
-      image = tf.cast(image, dtype=tf.dtypes.float32)
+      
+      
 
       # TODO: @clemens do random shift and clean up here.
 
-      image = (image / 255.0 - 0.5) * 2.0
+      #image = (image / 255.0 - 0.5) * 2.0
+      #image = tf.image.random_flip_left_right(image)
+      #image = tf.image.resize_with_crop_or_pad(image, 40, 40)
+      image = tf.cast(image, dtype=tf.dtypes.float32)
+      image = tf.image.pad_to_bounding_box(image, 4, 4, 40, 40)
+      image = tf.image.random_crop(image, size=(32,32,3))
+      image = tf.image.random_flip_left_right(image)
+
+      
+      image = (image / 255. -.5) * 2.0
+      #image = normalize_image(image, config)
+      # image = image / 255.
+      
 
     else:
       image = tf.io.decode_png(example["image"])
       image = tf.cast(image, dtype=tf.dtypes.float32)
 
       image = (image / 255.0 - 0.5) * 2.0
+      #image = image / 255.
+      #image = (image / 255. -.5) * 2.0
+      #image = normalize_image(image, config)
 
     return {"image": image, "label": example["label"]}
 

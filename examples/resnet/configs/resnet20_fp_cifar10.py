@@ -21,25 +21,29 @@ def get_config():
   config.dataset = 'cifar10'
   config.num_classes = 10
   config.tfds_data_dir = 'gs://imagenet_clemens/tensorflow_datasets'
-  config.image_size = 224
-  config.crop_padding = 32
+  config.image_size = 32
+  config.crop_padding = 0
 
   # Mean and std style for pre-processing.
   # config.mean_rgb = [0.485 * 255, 0.456 * 255, 0.406 * 255]
   # config.stddev_rgb = [0.229 * 255, 0.224 * 255, 0.225 * 255]
 
   # Edge models use inception-style MEAN & STDDEV for better post-quantization.
-  config.mean_rgb = [127.0, 127.0, 127.0]
-  config.stddev_rgb = [128.0, 128.0, 128.0]
+  # config.mean_rgb = [0.4914 * 255, 0.4822 * 255, 0.4465 * 255]
+  # config.stddev_rgb = [0.2023 * 255, 0.1994 * 255, 0.2010 * 255]
+
+  #config.mean_rgb = [127.0, 127.0, 127.0]
+  #config.stddev_rgb = [128.0, 128.0, 128.0]
 
   config.optimizer = 'sgd'
   config.learning_rate = .1
-  config.lr_boundaries_scale = None  # {'80': .1, '120': .1}
+  config.lr_boundaries_scale = {'80': .1, '120': .1}
   config.warmup_epochs = 5.0
   config.momentum = 0.9
-  config.batch_size = 1024
-  config.weight_decay = 0.0001
-  config.nesterov = True
+  config.batch_size = 128
+  config.weight_decay = 0.0002
+  config.nesterov = False
+  config.smoothing = 0.0
 
   config.num_epochs = 160.
   config.log_every_steps = 100
@@ -47,7 +51,7 @@ def get_config():
   config.cache = True
   config.half_precision = False
 
-  config.pretrained = None
+  config.pretrained = None # '../../pretrained_resnet/resnet20_cifar10.h5'
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.

@@ -38,6 +38,7 @@ import tensorflow_datasets as tfds
 import ml_collections
 from ml_collections import config_flags
 
+import cifar_data
 
 from train_utils import (
     TrainState,
@@ -54,6 +55,12 @@ from train_utils import (
 # from jax.config import config
 # config.update("jax_debug_nans", True)
 # config.update("jax_disable_jit", True)
+
+# import os
+# os.environ["TPU_CHIPS_PER_HOST_BOUNDS"] = "1,1,1"
+# os.environ["TPU_HOST_BOUNDS"] = "1,1,1"
+# os.environ["CLOUD_TPU_TASK_ID"] = "0" 
+# os.environ["TPU_VISIBLE_DEVICES"] = "0"  
 
 low, high = resource.getrlimit(resource.RLIMIT_NOFILE)
 resource.setrlimit(resource.RLIMIT_NOFILE, (high, high))
@@ -101,15 +108,20 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   if config.batch_size % jax.device_count() > 0:
     raise ValueError('Batch size (' + str(config.batch_size) + ') must be \
       divisible by the number of devices (' + str(jax.device_count()) + ').')
+
   local_batch_size = config.batch_size // jax.process_count()
 
   dataset_builder = tfds.builder(config.dataset, data_dir=config.tfds_data_dir)
   dataset_builder.download_and_prepare()
   if 'cifar10' in config.dataset:
-    train_iter = input_pipeline.create_split_cifar10(
-        dataset_builder, local_batch_size, train=True, config=config)
-    eval_iter = input_pipeline.create_split_cifar10(
-        dataset_builder, local_batch_size, train=False, config=config)
+    # train_iter = input_pipeline.create_input_iter_cifar10(
+    #     dataset_builder, local_batch_size, train=True, config=config)
+    # eval_iter = input_pipeline.create_input_iter_cifar10(
+    #     dataset_builder, local_batch_size, train=False, config=config)
+
+    train_iter = cifar_data.DataIterator(config.batch_size, augmented_shift=True,
+                                  augmented_flip=True)
+    eval_iter = cifar_data.DataIterator(config.batch_size, val=True)
   elif 'imagenet2012' in config.dataset:
     train_iter = input_pipeline.create_input_iter(
         dataset_builder, local_batch_size, train=True, config=config)
@@ -135,6 +147,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     steps_per_eval = num_validation_examples // config.batch_size
   else:
     steps_per_eval = config.steps_per_eval
+
 
   steps_per_checkpoint = steps_per_epoch * 10
 
@@ -177,18 +190,18 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
   if len(state.weight_size) != 0:
     print('Initial Network Weight Size in kB: ' + str(jnp.sum(jnp.array(
-        jax.tree_util.tree_flatten(state.weight_size)[0])) / 8. / 1024.
+        jax.tree_util.tree_flatten(state.weight_size)[0])) / config.quant_target.size_div
     ) + ' init bits ' + str(config.quant.bits) + ' (No. Params: ' + str(
         jnp.sum(jnp.array(jax.tree_util.tree_flatten(state.weight_size)[0])
                 ) / config.quant.bits) + ')')
   if len(state.act_size) != 0:
     print('Initial Network Activation (Sum) Size in kB: ' + str(jnp.sum(
-        jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])) / 8. / 1024.
+        jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])) / config.quant_target.size_div
     ) + ' init bits ' + str(config.quant.bits) + ' (No. Params: ' + str(
         jnp.sum(jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])
                 ) / config.quant.bits) + ')')
     print('Initial Network Activation (Max) Size in kB: ' + str(jnp.max(
-        jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])) / 8. / 1024.
+        jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])) / config.quant_target.size_div
     ) + ' init bits ' + str(config.quant.bits) + ' (No. Params: ' + str(
         jnp.max(jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])
                 ) / config.quant.bits) + ')')
@@ -201,24 +214,31 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   # 4. Swtich train and eval metrics lines.
   # 5. Uncomment JIT configs at the top.
 
-  p_train_step = jax.pmap(
-      functools.partial(
-          train_step,
-          learning_rate_fn=learning_rate_fn,
-          weight_decay=config.weight_decay,
-          quant_target=config.quant_target,),
-      axis_name='batch')
-  p_eval_step = jax.pmap(functools.partial(
-      eval_step, size_div=config.quant_target.size_div), axis_name='batch')
+  p_train_step = jax.pmap(functools.partial(train_step, learning_rate_fn=learning_rate_fn, weight_decay=config.weight_decay, quant_target=config.quant_target, smoothing=config.smoothing), axis_name='batch')
+  p_eval_step = jax.pmap(functools.partial(eval_step, size_div=config.quant_target.size_div, smoothing=config.smoothing), axis_name='batch')
 
   # # Debug
   # p_train_step = functools.partial(
   #     train_step,
   #     learning_rate_fn=learning_rate_fn,
   #     weight_decay=config.weight_decay,
-  #     quant_target=config.quant_target)
+  #     quant_target=config.quant_target,
+  #     smoothing=config.smoothing)
   # p_eval_step = functools.partial(
-  #     eval_step, size_div=config.quant_target.size_div)
+  #     eval_step, size_div=config.quant_target.size_div, smoothing=config.smoothing)
+
+
+  # Initial Accurcay
+  eval_metrics = []
+  for _ in range(steps_per_eval):
+    eval_batch = next(eval_iter)
+    metrics = p_eval_step(state, eval_batch)
+    eval_metrics.append(metrics)
+  eval_metrics = common_utils.get_metrics(eval_metrics)
+  # # Debug
+  # eval_metrics = common_utils.stack_forest(eval_metrics)
+  summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
+  logging.info('Initial, loss: %.4f, accuracy: %.2f', summary['loss'], summary['accuracy'] * 100)
 
   train_metrics = []
   hooks = []
@@ -234,8 +254,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
     # # Debug
     # state, metrics = p_train_step(
-    #     state, {'image': batch['image'][0, :, :, :],
-    #             'label': batch['label'][0]}, rng_list[2])
+    #     state, {'image': batch['image'][0, :, :, :] * 0 + 1,
+    #             'label': batch['label'][0] * 0 + 1}, rng_list[2])
     for h in hooks:
       h(step)
     if step == step_offset:

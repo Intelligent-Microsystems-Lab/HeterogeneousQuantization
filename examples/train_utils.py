@@ -48,10 +48,10 @@ def initialized(key, image_size, model):
       variables['batch_stats'], variables['weight_size'], variables['act_size']
 
 
-def cross_entropy_loss(logits, labels):
+def cross_entropy_loss(logits, labels, smoothing):
   one_hot_labels = common_utils.onehot(labels, num_classes=logits.shape[1])
 
-  factor = .1
+  factor = smoothing
   one_hot_labels *= (1 - factor)
   one_hot_labels += (factor / one_hot_labels.shape[1])
 
@@ -59,8 +59,8 @@ def cross_entropy_loss(logits, labels):
   return jnp.mean(xentropy)
 
 
-def compute_metrics(logits, labels, state, size_div):
-  loss = cross_entropy_loss(logits, labels)
+def compute_metrics(logits, labels, state, size_div, smoothing):
+  loss = cross_entropy_loss(logits, labels, smoothing)
   accuracy = jnp.mean(jnp.argmax(logits, -1) == labels)
   metrics = {
       'loss': loss,
@@ -108,7 +108,7 @@ def create_learning_rate_fn(
 
 
 def train_step(state, batch, rng, learning_rate_fn, weight_decay,
-               quant_target):
+               quant_target, smoothing):
   """Perform a single training step."""
   rng, prng = jax.random.split(rng, 2)
 
@@ -122,12 +122,14 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
                                              inputs, rng=prng, mutable=[
         'batch_stats', 'weight_size', 'act_size'],
         rngs={'dropout': rng})
-    loss = cross_entropy_loss(logits, targets)
+    loss = cross_entropy_loss(logits, targets, smoothing)
     weight_penalty_params = jax.tree_leaves(params)
     weight_l2 = sum([jnp.sum(x ** 2)
-                     for x in weight_penalty_params
-                     if x.ndim > 1])
-    weight_penalty = weight_decay * 0.5 * weight_l2
+                       for x in weight_penalty_params
+                       if x.ndim > 1])
+    #weight_l2 = sum([jnp.sum(x ** 2)
+    #                 for x in weight_penalty_params])
+    weight_penalty = weight_decay * weight_l2 * .5
 
     # size penalty
     size_penalty = 0.
@@ -152,8 +154,8 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
             'Unrecongized quant act mode, either sum or \
             max but got: ' + quant_target.act_mode)
 
-    loss = loss + weight_penalty + size_penalty
-    return loss, (new_model_state, logits)
+    final_loss = loss + weight_penalty + size_penalty
+    return final_loss, (new_model_state, logits)
 
   step = state.step
   lr = learning_rate_fn(step)
@@ -167,7 +169,7 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
 
   new_model_state, logits = aux[1]
   metrics = compute_metrics(
-      logits, batch['label'], new_model_state, quant_target.size_div)
+      logits, batch['label'], new_model_state, quant_target.size_div, smoothing)
   metrics['learning_rate'] = lr
 
   new_state = state.apply_gradients(
@@ -179,7 +181,7 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
   return new_state, metrics
 
 
-def eval_step(state, batch, size_div):
+def eval_step(state, batch, size_div, smoothing):
   variables = {'params': state.params['params'],
                'quant_params': state.params['quant_params'],
                'batch_stats': state.batch_stats,
@@ -190,7 +192,7 @@ def eval_step(state, batch, size_div):
       rng=jax.random.PRNGKey(0),
       train=False,
       mutable=['weight_size', 'act_size'])
-  return compute_metrics(logits, batch['label'], new_state, size_div)
+  return compute_metrics(logits, batch['label'], new_state, size_div, smoothing)
 
 
 class TrainState(train_state.TrainState):

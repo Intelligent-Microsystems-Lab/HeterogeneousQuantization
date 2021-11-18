@@ -4,8 +4,8 @@
 """Default Hyperparameter configuration."""
 
 import ml_collections
-from quant import uniform_static
 from functools import partial
+from quant import uniform_static
 
 
 def get_config():
@@ -46,7 +46,7 @@ def get_config():
   config.cache = True
   config.half_precision = False
 
-  config.pretrained = '../../pretrained_resnet/resnet18'
+  config.pretrained = '../../pretrained_resnet/resnet18_v2'
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.
@@ -65,20 +65,20 @@ def get_config():
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
   config.quant.stem.weight = partial(uniform_static)
-  config.quant.stem.act = partial(uniform_static)
+  config.quant.stem.act = partial(uniform_static, act = True)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
   config.quant.mbconv.weight = partial(uniform_static)
-  config.quant.mbconv.act = partial(uniform_static)
+  config.quant.mbconv.act = partial(uniform_static, act = True)
 
   # Average quant.
-  config.quant.average = partial(uniform_static)
+  config.quant.average = partial(uniform_static, act = True)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
   config.quant.dense.weight = partial(uniform_static)
-  config.quant.dense.act = partial(uniform_static)
+  config.quant.dense.act = partial(uniform_static, act = True)
   config.quant.dense.bias = partial(uniform_static)
 
   return config

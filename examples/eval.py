@@ -63,8 +63,14 @@ def evaluate(config: ml_collections.ConfigDict,
 
   dataset_builder = tfds.builder(config.dataset, data_dir=config.tfds_data_dir)
   dataset_builder.download_and_prepare()
-  eval_iter = input_pipeline.create_input_iter(
-      dataset_builder, local_batch_size, train=False, config=config)
+  if 'cifar10' in config.dataset:
+    eval_iter = input_pipeline.create_input_iter_cifar10(
+        dataset_builder, local_batch_size, train=False, config=config)
+  elif 'imagenet2012' in config.dataset:
+    eval_iter = input_pipeline.create_input_iter(
+        dataset_builder, local_batch_size, train=False, config=config)
+  else:
+    raise Exception('Unrecognized data set: ' + config.dataset)
 
   if config.steps_per_eval == -1:
     num_validation_examples = dataset_builder.info.splits[
@@ -75,16 +81,12 @@ def evaluate(config: ml_collections.ConfigDict,
 
   model_cls = getattr(models, config.model)
   model = create_model(
-      model_cls=model_cls, config=config)
+      model_cls=model_cls, num_classes=config.num_classes, config=config)
 
   rng, subkey = jax.random.split(rng, 2)
   state = create_train_state(
       subkey, config, model, config.image_size, 0.0)
   state = restore_checkpoint(state, workdir)
-
-  # Pre load weights.
-  if config.pretrained and int(state.step) == 0:
-    state = model.load_model_fn(state, config.pretrained)
 
   state = jax_utils.replicate(state)
 
