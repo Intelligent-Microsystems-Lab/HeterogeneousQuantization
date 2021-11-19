@@ -27,7 +27,7 @@ import matplotlib.image as mpimg
 class DataIterator(object):
 
     def __init__(self, batch_size, mean_norm=True, var_norm=True, augmented_shift=False,
-                 augmented_flip=False, shuffle=True, max_size=None, val=False, rng=None):
+                 augmented_flip=False, shuffle=False, max_size=None, val=False, rng=None):
         """
         Parameters
         ----------
@@ -154,7 +154,7 @@ class DataIterator(object):
 
     def _reset(self):
         mode = 'validation' if self.val else 'training'
-        #print("Initializing CIFAR10 epoch ({})...".format(mode))
+        print("Initializing CIFAR10 epoch ({})...".format(mode))
         if self.shuffle:
             self.idxs = self.rng.permutation(self.labels.size)
         else:

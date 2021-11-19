@@ -124,11 +124,11 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
         rngs={'dropout': rng})
     loss = cross_entropy_loss(logits, targets, smoothing)
     weight_penalty_params = jax.tree_leaves(params)
-    weight_l2 = sum([jnp.sum(x ** 2)
-                       for x in weight_penalty_params
-                       if x.ndim > 1])
     #weight_l2 = sum([jnp.sum(x ** 2)
-    #                 for x in weight_penalty_params])
+    #                   for x in weight_penalty_params
+    #                   if x.ndim > 1])
+    weight_l2 = sum([jnp.sum(x ** 2)
+                     for x in weight_penalty_params])
     weight_penalty = weight_decay * weight_l2 * .5
 
     # size penalty
@@ -178,6 +178,7 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
       weight_size=new_model_state['weight_size'],
       act_size=new_model_state['act_size'])
 
+  metrics['logits'] = aux[1][-1]
   return new_state, metrics
 
 
