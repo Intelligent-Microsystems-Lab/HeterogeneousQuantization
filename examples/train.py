@@ -254,7 +254,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     rng = rng_list[0]
 
     state, metrics = p_train_step(state, batch, rng_list[1:])
-    print(metrics['loss'])
+
     # # Debug
     # state, metrics = p_train_step(
     #     state, {'image': batch['image'][0, :, :, :] * 0 + 1,
