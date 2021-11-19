@@ -27,7 +27,7 @@ import matplotlib.image as mpimg
 class DataIterator(object):
 
     def __init__(self, batch_size, mean_norm=True, var_norm=True, augmented_shift=False,
-                 augmented_flip=False, shuffle=False, max_size=None, val=False, rng=None):
+                 augmented_flip=False, shuffle=True, max_size=None, val=False, rng=None):
         """
         Parameters
         ----------
