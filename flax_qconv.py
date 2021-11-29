@@ -173,6 +173,7 @@ class QuantConv(Module):
 
       # if "act" in cfg:
       #   inpt = cfg.act(bits=self.bits)(inpt, sign=self.quant_act_sign)
+
       return jax.lax.conv_general_dilated(
           inpt_fwd,
           kernel_fwd,
@@ -321,6 +322,7 @@ class QuantConv(Module):
       return (g_inpt_fwd, g_kernel_fwd, None, None, None)
 
     conv_general.defvjp(conv_general_fwd, conv_general_bwd)
+
 
     y = conv_general(
         inpt_fwd,

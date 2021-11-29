@@ -20,6 +20,8 @@ class TrainState(train_state.TrainState):
   weight_size: Any
   act_size: Any
 
+def sum_list_of_tensors(x):
+  return np.sum([y.sum() for y in x])
 
 map_dict = {
     '10': '0',
@@ -45,6 +47,18 @@ map_dict_nnabla = {
     '33': '8',
 }
 
+map_dict_jax = {
+    '00': '0',
+    '01': '1',
+    '02': '2',
+    '10': '3',
+    '11': '4',
+    '12': '5',
+    '20': '6',
+    '21': '7',
+    '22': '8',
+}
+
 
 def resnet_load_pretrained_weights(state, location):
 
@@ -52,7 +66,7 @@ def resnet_load_pretrained_weights(state, location):
   # NNABLA convolutions are O(ut)I(n)H(eight)W(idth)
 
   if '.h5' in location:
-
+    # Load NNABLA style resnet18.
     nnabla_weights = unfreeze(jax.tree_util.tree_map(
         lambda x: jnp.zeros(x.shape), state.params['params']))
     nnabla_bn_stats = unfreeze(jax.tree_util.tree_map(
@@ -252,6 +266,7 @@ def resnet_load_pretrained_weights(state, location):
     batch_stats = nnabla_bn_stats
 
   elif '.th' in location:
+    # Load torch style resnet18.
     torch_state = torch.load(location, map_location=torch.device('cpu'))
 
     torch_weights = unfreeze(jax.tree_util.tree_map(
@@ -340,14 +355,125 @@ def resnet_load_pretrained_weights(state, location):
         torch_bn_stats['bn_init']['var'] = jnp.array(value)
         continue
 
-    def sum_list_of_tensors(x):
-      return np.sum([y.sum() for y in x])
-
     assert int(sum_list_of_tensors(
         jax.tree_util.tree_flatten(
             torch_bn_stats)[0]) * 1000 + sum_list_of_tensors(
         jax.tree_util.tree_flatten(torch_weights)[0]) * 1000) == int(
         sum_list_of_tensors(torch_state['state_dict'].values()) * 1000)
+    general_params = {'params': torch_weights,
+                      'quant_params': state.params['quant_params']}
+    batch_stats = torch_bn_stats
+  elif '.pickle' in location:
+    # load model from https://github.com/hushon/JAX-ResNet-CIFAR10 style
+    # implementation.
+    torch_state = torch.load(location, map_location=torch.device('cpu'))
+
+    torch_weights = unfreeze(jax.tree_util.tree_map(
+        lambda x: jnp.zeros(x.shape), state.params['params']))
+    torch_bn_stats = unfreeze(jax.tree_util.tree_map(
+        lambda x: jnp.zeros(x.shape), state.batch_stats))
+
+    for high_level_key in torch_state['params']:
+      if 'res_net20/~/initial_conv' == high_level_key:
+        assert torch_weights['conv_init']['kernel'].shape == torch_state['params'][high_level_key]['w'].shape, 'Shape missmatch at ' + high_level_key + \
+            ' JAX (theirs) shape: ' + str(torch_weights['conv_init']['kernel'].shape) + \
+            ' JAX shape: ' + str(torch_state['params'][high_level_key]['w'].shape)
+
+        torch_weights['conv_init']['kernel'] = torch_state['params'][high_level_key]['w']
+        continue
+      if 'conv_' in high_level_key:
+        block_num = high_level_key.split('group_')[1][0] + high_level_key.split('block_')[-1][0]
+
+        assert torch_weights['ResNetBlock_' + map_dict_jax[block_num]]['QuantConv_'+high_level_key[-1]]['kernel'].shape == torch_state['params'][high_level_key]['w'].shape, 'Shape missmatch at ' + high_level_key + \
+            ' JAX (theirs) shape: ' + str(torch_weights['ResNetBlock_' + map_dict_jax[block_num]]['QuantConv_'+high_level_key[-1]]['kernel'].shape) + \
+            ' JAX shape: ' + str(torch_state['params'][high_level_key]['w'].shape)
+
+        torch_weights['ResNetBlock_' + map_dict_jax[block_num]]['QuantConv_'+high_level_key[-1]]['kernel'] = torch_state['params'][high_level_key]['w']
+        continue
+
+      if 'logits' in high_level_key:
+        assert torch_weights['QuantDense_0']['kernel'].shape == torch_state['params'][high_level_key]['w'].shape, 'Shape missmatch at ' + high_level_key + \
+            ' JAX (theirs) shape: ' + str(torch_weights['QuantDense_0']['kernel'].shape) + \
+            ' JAX shape: ' + str(torch_state['params'][high_level_key]['w'].shape)
+
+        assert torch_weights['QuantDense_0']['bias'].shape == torch_state['params'][high_level_key]['b'].shape, 'Shape missmatch at ' + high_level_key + \
+            ' JAX (theirs) shape: ' + str(torch_weights['QuantDense_0']['bias'].shape) + \
+            ' JAX shape: ' + str(torch_state['params'][high_level_key]['b'].shape)
+
+        torch_weights['QuantDense_0']['kernel'] = torch_state['params'][high_level_key]['w']
+        torch_weights['QuantDense_0']['bias'] = torch_state['params'][high_level_key]['b']
+        continue
+
+      if 'res_net20/~/initial_batchnorm' == high_level_key:
+        assert torch_weights['bn_init']['scale'].shape[0] == torch_state['params'][high_level_key]['scale'].shape[-1], 'Shape missmatch at ' + high_level_key + \
+            ' JAX (theirs) shape: ' + str(torch_weights['bn_init']['scale'].shape) + \
+            ' JAX shape: ' + str(torch_state['params'][high_level_key]['scale'].shape)
+
+        assert torch_weights['bn_init']['bias'].shape[0] == torch_state['params'][high_level_key]['offset'].shape[-1], 'Shape missmatch at ' + high_level_key + \
+            ' JAX (theirs) shape: ' + str(torch_weights['bn_init']['bias'].shape) + \
+            ' JAX shape: ' + str(torch_state['params'][high_level_key]['offset'].shape)
+
+
+        torch_weights['bn_init']['scale'] = torch_state['params'][high_level_key]['scale'][0,0,0,:]
+        torch_weights['bn_init']['bias'] = torch_state['params'][high_level_key]['offset'][0,0,0,:]
+        continue
+
+      if '/batchnorm' in high_level_key:
+        block_num = high_level_key.split('group_')[1][0] + high_level_key.split('block_')[-1][0]
+
+        assert torch_weights['ResNetBlock_' + map_dict_jax[block_num]]['BatchNorm_'+high_level_key[-1]]['scale'].shape[0] == torch_state['params'][high_level_key]['scale'].shape[-1], 'Shape missmatch at ' + high_level_key + \
+            ' JAX (theirs) shape: ' + str(torch_weights['ResNetBlock_' + map_dict_jax[block_num]]['BatchNorm_'+high_level_key[-1]]['scale'].shape) + \
+            ' JAX shape: ' + str(torch_state['params'][high_level_key]['scale'].shape)
+
+        assert torch_weights['ResNetBlock_' + map_dict_jax[block_num]]['BatchNorm_'+high_level_key[-1]]['bias'].shape[0] == torch_state['params'][high_level_key]['offset'].shape[-1], 'Shape missmatch at ' + high_level_key + \
+            ' JAX (theirs) shape: ' + str(torch_weights['ResNetBlock_' + map_dict_jax[block_num]]['BatchNorm_'+high_level_key[-1]]['bias'].shape) + \
+            ' JAX shape: ' + str(torch_state['params'][high_level_key]['offset'].shape)
+
+        torch_weights['ResNetBlock_' + map_dict_jax[block_num]]['BatchNorm_'+high_level_key[-1]]['scale'] = torch_state['params'][high_level_key]['scale'][0,0,0,:]
+        torch_weights['ResNetBlock_' + map_dict_jax[block_num]]['BatchNorm_'+high_level_key[-1]]['bias'] = torch_state['params'][high_level_key]['offset'][0,0,0,:]
+        continue
+
+    for high_level_key in torch_state['state']:
+      if '/batchnorm' in high_level_key and 'mean' in high_level_key:
+        block_num = high_level_key.split('group_')[1][0] + high_level_key.split('block_')[-1][0]
+        batchnorm_num = high_level_key.split('/~/')[-2][-1]
+
+        assert torch_bn_stats['ResNetBlock_' + map_dict_jax[block_num]]['BatchNorm_'+batchnorm_num]['mean'].shape[0] == torch_state['state'][high_level_key]['average'].shape[-1], 'Shape missmatch at ' + high_level_key + \
+            ' JAX (theirs) shape: ' + str(torch_bn_stats['ResNetBlock_' + map_dict_jax[block_num]]['BatchNorm_'+batchnorm_num]['mean'].shape) + \
+            ' JAX shape: ' + str(torch_state['state'][high_level_key]['average'].shape)
+
+        torch_bn_stats['ResNetBlock_' + map_dict_jax[block_num]]['BatchNorm_'+batchnorm_num]['mean'] = torch_state['state'][high_level_key]['average'][0,0,0,:]
+        continue
+      if '/batchnorm' in high_level_key and 'var' in high_level_key:
+        block_num = high_level_key.split('group_')[1][0] + high_level_key.split('block_')[-1][0]
+        batchnorm_num = high_level_key.split('/~/')[-2][-1]
+
+        assert torch_bn_stats['ResNetBlock_' + map_dict_jax[block_num]]['BatchNorm_'+batchnorm_num]['var'].shape[0] == torch_state['state'][high_level_key]['average'].shape[-1], 'Shape missmatch at ' + high_level_key + \
+            ' JAX (theirs) shape: ' + str(torch_bn_stats['ResNetBlock_' + map_dict_jax[block_num]]['BatchNorm_'+batchnorm_num]['var'].shape) + \
+            ' JAX shape: ' + str(torch_state['state'][high_level_key]['average'].shape)
+
+        torch_bn_stats['ResNetBlock_' + map_dict_jax[block_num]]['BatchNorm_'+batchnorm_num]['var'] = torch_state['state'][high_level_key]['average'][0,0,0,:]
+        continue
+
+      if 'initial_batchnorm' in high_level_key and 'mean' in high_level_key:
+
+        assert torch_bn_stats['bn_init']['mean'].shape[0] == torch_state['state'][high_level_key]['average'].shape[-1], 'Shape missmatch at ' + high_level_key + \
+            ' JAX (theirs) shape: ' + str(torch_bn_stats['bn_init']['mean'].shape) + \
+            ' JAX shape: ' + str(torch_state['state'][high_level_key]['average'].shape)
+
+        torch_bn_stats['bn_init']['mean'] = torch_state['state'][high_level_key]['average'][0,0,0,:]
+        continue
+      if 'initial_batchnorm' in high_level_key and 'var' in high_level_key:
+
+        assert torch_bn_stats['bn_init']['var'].shape[0] == torch_state['state'][high_level_key]['average'].shape[-1], 'Shape missmatch at ' + high_level_key + \
+            ' JAX (theirs) shape: ' + str(torch_bn_stats['bn_init']['var'].shape) + \
+            ' JAX shape: ' + str(torch_state['state'][high_level_key]['average'].shape)
+
+        torch_bn_stats['bn_init']['var'] = torch_state['state'][high_level_key]['average'][0,0,0,:]
+        continue
+
+    assert int(sum_list_of_tensors(jax.tree_util.tree_flatten(torch_weights)[0]) * 1000) == int(sum_list_of_tensors(jax.tree_util.tree_flatten(torch_state['params'])[0]) * 1000)
+
     general_params = {'params': torch_weights,
                       'quant_params': state.params['quant_params']}
     batch_stats = torch_bn_stats

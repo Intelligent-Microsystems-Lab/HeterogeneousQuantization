@@ -13,9 +13,11 @@ from flax.core import freeze, unfreeze
 import jax
 from jax import lax
 import jax.numpy as jnp
+import numpy as np
 
 import ml_collections
 
+import tree
 import optax
 
 Array = jnp.ndarray
@@ -44,8 +46,9 @@ def initialized(key, image_size, model):
     variables['act_size'] = {}
   variables = freeze(variables)
 
-  return variables['params'], variables['quant_params'],\
-      variables['batch_stats'], variables['weight_size'], variables['act_size']
+  return variables['params'], variables['quant_params'], variables['batch_stats'], \
+    variables['weight_size'], variables['act_size']
+      
 
 
 def cross_entropy_loss(logits, labels, smoothing):
@@ -56,12 +59,12 @@ def cross_entropy_loss(logits, labels, smoothing):
   one_hot_labels += (factor / one_hot_labels.shape[1])
 
   xentropy = optax.softmax_cross_entropy(logits=logits, labels=one_hot_labels)
-  return jnp.mean(xentropy)
+  return xentropy
 
 
 def compute_metrics(logits, labels, state, size_div, smoothing):
   loss = cross_entropy_loss(logits, labels, smoothing)
-  accuracy = jnp.mean(jnp.argmax(logits, -1) == labels)
+  accuracy = (jnp.argmax(logits, -1) == labels)
   metrics = {
       'loss': loss,
       'accuracy': accuracy,
@@ -80,7 +83,7 @@ def compute_metrics(logits, labels, state, size_div, smoothing):
           jnp.array(jax.tree_util.tree_flatten(state['act_size'])[0])
       ) / size_div
 
-  metrics = lax.pmean(metrics, axis_name='batch')
+  #metrics = lax.pmean(metrics, axis_name='batch')
   return metrics
 
 
@@ -94,17 +97,26 @@ def create_learning_rate_fn(
         k) * steps_per_epoch: v for k, v in config.lr_boundaries_scale.items()}
     )
   else:
-    warmup_fn = optax.linear_schedule(
-        init_value=0., end_value=base_learning_rate,
-        transition_steps=config.warmup_epochs * steps_per_epoch)
     cosine_epochs = max(config.num_epochs - config.warmup_epochs, 1)
     cosine_fn = optax.cosine_decay_schedule(
         init_value=base_learning_rate,
         decay_steps=cosine_epochs * steps_per_epoch)
-    schedule_fn = optax.join_schedules(
+
+    if config.warmup_epochs != 0.:
+      warmup_fn = optax.linear_schedule(
+        init_value=0., end_value=base_learning_rate,
+        transition_steps=config.warmup_epochs * steps_per_epoch)
+      schedule_fn = optax.join_schedules(
         schedules=[warmup_fn, cosine_fn],
         boundaries=[config.warmup_epochs * steps_per_epoch])
+    else:
+      schedule_fn = cosine_fn
   return schedule_fn
+
+
+def weight_decay_fn(params):
+  l2_params = [p for ((mod_name), p) in tree.flatten_with_path(params) if 'BatchNorm' not in str(mod_name) and 'bn_init' not in str(mod_name)]
+  return 0.5 * sum(jnp.sum(jnp.square(p)) for p in l2_params)
 
 
 def train_step(state, batch, rng, learning_rate_fn, weight_decay,
@@ -122,14 +134,9 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
                                              inputs, rng=prng, mutable=[
         'batch_stats', 'weight_size', 'act_size'],
         rngs={'dropout': rng})
-    loss = cross_entropy_loss(logits, targets, smoothing)
-    weight_penalty_params = jax.tree_leaves(params)
-    #weight_l2 = sum([jnp.sum(x ** 2)
-    #                   for x in weight_penalty_params
-    #                   if x.ndim > 1])
-    weight_l2 = sum([jnp.sum(x ** 2)
-                     for x in weight_penalty_params])
-    weight_penalty = weight_decay * weight_l2 * .5
+
+    loss = jnp.mean(cross_entropy_loss(logits, targets, smoothing))
+    weight_penalty = weight_decay * weight_decay_fn(params)
 
     # size penalty
     size_penalty = 0.
@@ -155,7 +162,8 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
             max but got: ' + quant_target.act_mode)
 
     final_loss = loss + weight_penalty + size_penalty
-    return final_loss, (new_model_state, logits)
+    return final_loss, (new_model_state, logits, weight_penalty)
+
 
   step = state.step
   lr = learning_rate_fn(step)
@@ -167,7 +175,9 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
   # Re-use same axis_name as in the call to `pmap(...train_step...)` below.
   grads = lax.pmean(grads, axis_name='batch')
 
-  new_model_state, logits = aux[1]
+
+  new_model_state, logits, _ = aux[1]
+
   metrics = compute_metrics(
       logits, batch['label'], new_model_state, quant_target.size_div, smoothing)
   metrics['learning_rate'] = lr
@@ -178,8 +188,10 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
       weight_size=new_model_state['weight_size'],
       act_size=new_model_state['act_size'])
 
-  metrics['logits'] = aux[1][-1]
+  metrics['logits'] = aux[1][-2]
+  metrics['decay'] = aux[1][-1]
   return new_state, metrics
+
 
 
 def eval_step(state, batch, size_div, smoothing):
@@ -193,7 +205,9 @@ def eval_step(state, batch, size_div, smoothing):
       rng=jax.random.PRNGKey(0),
       train=False,
       mutable=['weight_size', 'act_size'])
-  return compute_metrics(logits, batch['label'], new_state, size_div, smoothing)
+  metrics = compute_metrics(logits, batch['label'], new_state, size_div, smoothing)
+  metrics['logits'] = logits
+  return metrics
 
 
 class TrainState(train_state.TrainState):

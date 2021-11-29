@@ -29,6 +29,7 @@ from flax.training import common_utils
 
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 from jax import random
 import tensorflow as tf
@@ -39,6 +40,7 @@ import ml_collections
 from ml_collections import config_flags
 
 import cifar_data
+
 
 from train_utils import (
     TrainState,
@@ -101,11 +103,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   #     ['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
   # logging.info(config)
 
-  # logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
-  # logging.info('Git commit: ' + subprocess.check_output(
-  #     ['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
-  # logging.info(config)
-
   rng = random.PRNGKey(config.seed)
 
   if config.batch_size % jax.device_count() > 0:
@@ -117,14 +114,11 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   dataset_builder = tfds.builder(config.dataset, data_dir=config.tfds_data_dir)
   dataset_builder.download_and_prepare()
   if 'cifar10' in config.dataset:
-    # train_iter = input_pipeline.create_input_iter_cifar10(
-    #     dataset_builder, local_batch_size, train=True, config=config)
-    # eval_iter = input_pipeline.create_input_iter_cifar10(
-    #     dataset_builder, local_batch_size, train=False, config=config)
+    train_iter = input_pipeline.create_input_iter_cifar10(
+        dataset_builder, local_batch_size, train=True, config=config)
+    eval_iter = input_pipeline.create_input_iter_cifar10(
+        dataset_builder, local_batch_size, train=False, config=config)
 
-    train_iter = cifar_data.DataIterator(config.batch_size, augmented_shift=True,
-                                  augmented_flip=True)
-    eval_iter = cifar_data.DataIterator(config.batch_size, val=True)
   elif 'imagenet2012' in config.dataset:
     train_iter = input_pipeline.create_input_iter(
         dataset_builder, local_batch_size, train=True, config=config)
@@ -151,7 +145,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   else:
     steps_per_eval = config.steps_per_eval
 
-
   steps_per_checkpoint = steps_per_epoch * 10
 
   base_learning_rate = config.learning_rate * config.batch_size / 256.
@@ -174,22 +167,22 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   if config.pretrained and step_offset == 0:
     state = model.load_model_fn(state, config.pretrained)
 
-  # # Reinitialize quant params.
-  # init_batch = next(train_iter)['image'][0, :, :, :, :]
-  # rng, rng1, rng2 = jax.random.split(rng, 3)
-  # _, new_state = state.apply_fn({'params': state.params['params'],
-  #                                'quant_params': state.params['quant_params'],
-  #                                'batch_stats': state.batch_stats}, init_batch,
-  #                               rng=rng1,
-  #                               mutable=['batch_stats', 'quant_params',
-  #                                        'weight_size', 'act_size'],
-  #                               rngs={'dropout': rng2})
-  # state = TrainState.create(apply_fn=state.apply_fn,
-  #                           params={'params': state.params['params'],
-  #                                   'quant_params': new_state['quant_params']},
-  #                           tx=state.tx, batch_stats=state.batch_stats,
-  #                           weight_size=state.weight_size,
-  #                           act_size=state.act_size)
+  # Reinitialize quant params.
+  init_batch = next(train_iter)['image'][0, :, :, :, :]
+  rng, rng1, rng2 = jax.random.split(rng, 3)
+  _, new_state = state.apply_fn({'params': state.params['params'],
+                                 'quant_params': state.params['quant_params'],
+                                 'batch_stats': state.batch_stats}, init_batch,
+                                rng=rng1,
+                                mutable=['batch_stats', 'quant_params',
+                                         'weight_size', 'act_size'],
+                                rngs={'dropout': rng2})
+  state = TrainState.create(apply_fn=state.apply_fn,
+                            params={'params': state.params['params'],
+                                    'quant_params': new_state['quant_params']},
+                            tx=state.tx, batch_stats=state.batch_stats,
+                            weight_size=state.weight_size,
+                            act_size=state.act_size)
 
   if len(state.weight_size) != 0:
     print('Initial Network Weight Size in kB: ' + str(jnp.sum(jnp.array(
@@ -209,7 +202,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         jnp.max(jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])
                 ) / config.quant.bits) + ')')
 
-  state = jax_utils.replicate(state)
+
+  state = jax_utils.replicate(state, devices = jax.devices()[:config.num_devices] if type(config.num_devices) == int else  jax.devices())
   # Debug note:
   # 1. Make above line a comment "state = jax_utils.replicate(state)".
   # 2. In train_util.py make all pmean commands comments.
@@ -217,8 +211,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   # 4. Swtich train and eval metrics lines.
   # 5. Uncomment JIT configs at the top.
 
-  p_train_step = jax.pmap(functools.partial(train_step, learning_rate_fn=learning_rate_fn, weight_decay=config.weight_decay, quant_target=config.quant_target, smoothing=config.smoothing), axis_name='batch')
-  p_eval_step = jax.pmap(functools.partial(eval_step, size_div=config.quant_target.size_div, smoothing=config.smoothing), axis_name='batch')
+  p_train_step = jax.pmap(functools.partial(train_step, learning_rate_fn=learning_rate_fn, weight_decay=config.weight_decay, quant_target=config.quant_target, smoothing=config.smoothing), axis_name='batch', devices = jax.devices()[:config.num_devices] if type(config.num_devices) == int else  jax.devices())
+  p_eval_step = jax.pmap(functools.partial(eval_step, size_div=config.quant_target.size_div, smoothing=config.smoothing), axis_name='batch', devices = jax.devices()[:config.num_devices] if type(config.num_devices) == int else  jax.devices())
 
   # # Debug
   # p_train_step = functools.partial(
@@ -230,7 +224,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   # p_eval_step = functools.partial(
   #     eval_step, size_div=config.quant_target.size_div, smoothing=config.smoothing)
 
-
   # Initial Accurcay
   eval_metrics = []
   for _ in range(steps_per_eval):
@@ -240,8 +233,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   eval_metrics = common_utils.get_metrics(eval_metrics)
   # # Debug
   # eval_metrics = common_utils.stack_forest(eval_metrics)
-  summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
-  logging.info('Initial, loss: %.4f, accuracy: %.2f', summary['loss'], summary['accuracy'] * 100)
+  summary = jax.tree_map(lambda x: jnp.mean(x), eval_metrics)
+  logging.info('Initial, loss: %.10f, accuracy: %.10f', summary['loss'], summary['accuracy'] * 100)
 
   train_metrics = []
   hooks = []
@@ -250,15 +243,16 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   train_metrics_last_t = time.time()
   logging.info('Initial compilation, this might take some minutes...')
   for step, batch in zip(range(step_offset, num_steps), train_iter):
-    rng_list = jax.random.split(rng, jax.device_count() + 1)
+    rng_list = jax.random.split(rng, (config.num_devices if type(config.num_devices) == int else jax.local_device_count()) + 1)
     rng = rng_list[0]
-
+    
     state, metrics = p_train_step(state, batch, rng_list[1:])
-
+    
     # # Debug
     # state, metrics = p_train_step(
-    #     state, {'image': batch['image'][0, :, :, :] * 0 + 1,
-    #             'label': batch['label'][0] * 0 + 1}, rng_list[2])
+    #     state, {'image': batch['image'][0, :, :, :],
+    #             'label': batch['label'][0]}, rng_list[2])
+
     for h in hooks:
       h(step)
     if step == step_offset:
@@ -282,7 +276,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         train_metrics_last_t = time.time()
 
     if (step + 1) % steps_per_epoch == 0:
-      epoch = step // steps_per_epoch
+      epoch = (step+1) // steps_per_epoch
       eval_metrics = []
 
       # sync batch statistics across replicas

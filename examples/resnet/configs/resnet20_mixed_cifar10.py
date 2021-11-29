@@ -33,11 +33,11 @@ def get_config():
   config.stddev_rgb = [128.0, 128.0, 128.0]
 
   config.optimizer = 'sgd'
-  config.learning_rate = .01  # 0.0001
-  config.lr_boundaries_scale = {'80': .1, '120': .1}
+  config.learning_rate = .1  # 0.0001
+  config.lr_boundaries_scale = {'100': .1, '150': .1}
   config.warmup_epochs = 2.0
   config.momentum = 0.9
-  config.batch_size = 1024  # 2048
+  config.batch_size = 128  # 2048
   config.weight_decay = 0.0001
   config.nesterov = False
 
