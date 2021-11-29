@@ -92,5 +92,5 @@ jobs:
           python batchnorm_test.py
           cd examples/
           python train_test.py
-          python efficientnet/models_test.py
-          python resnet/models_test.py
+          python efficientnet_test.py
+          python resnet_test.py

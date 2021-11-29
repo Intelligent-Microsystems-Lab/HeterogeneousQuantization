@@ -4,7 +4,6 @@
 
 """Tests for EfficientNet."""
 
-import sys
 from absl.testing import absltest
 from absl.testing import parameterized
 
@@ -16,10 +15,11 @@ from jax import numpy as jnp
 import numpy as np
 import optax
 
-import models
-from enet_load_pretrained_weights import enet_load_pretrained_weights
+import efficientnet.models as models
+from efficientnet.enet_load_pretrained_weights import (
+    enet_load_pretrained_weights
+)
 
-sys.path.append(".")
 from input_pipeline import preprocess_for_eval  # noqa: E402
 from train_utils import TrainState  # noqa: E402
 

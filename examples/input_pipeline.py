@@ -250,6 +250,7 @@ def create_split(dataset_builder, batch_size, train, config):
 
   if not train:
     ds = ds.repeat()
+    ds = ds.shuffle(16 * batch_size, seed=0)
 
   ds = ds.prefetch(10)
 

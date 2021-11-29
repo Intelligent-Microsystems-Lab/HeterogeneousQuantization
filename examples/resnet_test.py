@@ -19,9 +19,9 @@ from absl.testing import absltest
 import jax
 from jax import numpy as jnp
 
-from configs import resnet18_fp32 as default_lib
+from resnet.configs import resnet18_fp32 as default_lib
 
-import models
+import resnet.models as models
 
 jax.config.update('jax_platform_name', 'cpu')
 jax.config.update('jax_disable_most_optimizations', True)

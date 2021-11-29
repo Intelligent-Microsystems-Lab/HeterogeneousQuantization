@@ -83,6 +83,7 @@ class BottleneckResNetBlock(nn.Module):
   bits: int = 8
   shortcut_type: str = 'B'
   padding: Union[str, Iterable[Tuple[int, int]]] = "SAME"
+  cifar10_flag: bool = False
 
   @nn.compact
   def __call__(self, x):
