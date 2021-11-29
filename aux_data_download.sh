@@ -33,3 +33,6 @@ wget https://notredame.box.com/shared/static/5m485mqpskw5lwop1z3yfi4wsvvdjsx3.zi
 unzip ../pretrained_resnet/resnet18.zip -d ../pretrained_resnet
 
 wget https://notredame.box.com/shared/static/75qdzq728n4a7qovtkujax0dxicwzrtv.h5 -O ../pretrained_resnet/resnet20_cifar10.h5
+
+wget https://notredame.box.com/shared/static/z1pxy1b5poz8cdarg4wgm2jp4esg0mji.zip -O  ../pretrained_resnet/resnet20_cifar10.zip
+unzip ../pretrained_resnet/resnet20_cifar10.zip -d ../pretrained_resnet

@@ -34,20 +34,22 @@ def get_config():
 
   config.optimizer = 'sgd'
   config.learning_rate = .1  # 0.0001
-  config.lr_boundaries_scale = {'100': .1, '150': .1}
-  config.warmup_epochs = 2.0
+  config.lr_boundaries_scale = {'80': .1, '120': .1}
+  config.warmup_epochs = .0
   config.momentum = 0.9
   config.batch_size = 128  # 2048
-  config.weight_decay = 0.0001
+  config.weight_decay = 0.0002
   config.nesterov = False
+  config.smoothing = .0
 
   config.num_epochs = 160.0
   config.log_every_steps = 100
+  config.num_devices = 1
 
   config.cache = True
   config.half_precision = False
 
-  config.pretrained = '../../pretrained_resnet/resnet20_cifar10.h5'
+  config.pretrained = '../../pretrained_resnet/resnet20_cifar10'
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.

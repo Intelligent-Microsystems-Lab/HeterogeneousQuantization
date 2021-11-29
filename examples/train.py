@@ -180,25 +180,25 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
                             act_size=state.act_size)
 
   if len(state.weight_size) != 0:
-    print('Initial Network Weight Size in kB: ' + str(jnp.sum(jnp.array(
+    logging.info('Initial Network Weight Size in kB: ' + str(jnp.sum(jnp.array(
         jax.tree_util.tree_flatten(state.weight_size
                                    )[0])) / config.quant_target.size_div
     ) + ' init bits ' + str(config.quant.bits) + ' (No. Params: ' + str(
         jnp.sum(jnp.array(jax.tree_util.tree_flatten(state.weight_size)[0])
                 ) / config.quant.bits) + ')')
   if len(state.act_size) != 0:
-    print('Initial Network Activation (Sum) Size in kB: ' + str(jnp.sum(
+    logging.info('Initial Network Activation (Sum) Size in kB: ' + str(jnp.sum(
         jnp.array(
-          jax.tree_util.tree_flatten(state.act_size
-                                     )[0])) / config.quant_target.size_div
+            jax.tree_util.tree_flatten(state.act_size
+                                       )[0])) / config.quant_target.size_div
     ) + ' init bits ' + str(config.quant.bits) + ' (No. Params: ' + str(
         jnp.sum(jnp.array(
             jax.tree_util.tree_flatten(state.act_size
                                        )[0])) / config.quant.bits) + ')')
-    print('Initial Network Activation (Max) Size in kB: ' + str(jnp.max(
+    logging.info('Initial Network Activation (Max) Size in kB: ' + str(jnp.max(
         jnp.array(
-          jax.tree_util.tree_flatten(state.act_size
-                                     )[0])) / config.quant_target.size_div
+            jax.tree_util.tree_flatten(state.act_size
+                                       )[0])) / config.quant_target.size_div
     ) + ' init bits ' + str(config.quant.bits) + ' (No. Params: ' + str(
         jnp.max(jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])
                 ) / config.quant.bits) + ')')
