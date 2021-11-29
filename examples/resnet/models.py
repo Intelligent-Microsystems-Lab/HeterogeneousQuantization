@@ -46,31 +46,28 @@ class ResNetBlock(nn.Module):
     residual = x
     y = self.conv(self.filters, (3, 3), self.strides, padding=self.padding,
                   config=self.config, quant_act_sign=False, bits=self.bits)(x)
-    # self.sow('intermediates', 'conv_0_rec', y)
     y = self.norm()(y)
     y = self.act(y)
     y = self.conv(self.filters, (3, 3), padding=self.padding,
                   config=self.config, bits=self.bits, quant_act_sign=False)(y)
-    # self.sow('intermediates', 'conv_1_rec', y)
 
     if self.cifar10_flag:
       y = self.norm()(y)
     else:
       y = self.norm(scale_init=nn.initializers.zeros)(y)
-    
 
     if self.strides != (1, 1) and self.shortcut_type == 'A':
-      residual = jnp.pad(residual[:, ::2, ::2, :], ((0, 0), (0, 0),
-             (0, 0), (self.filters//4, self.filters//4)), "constant",
-             constant_values = 0)
+      residual = jnp.pad(residual[
+          :, ::2, ::2, :], ((0, 0), (0, 0), (0, 0),
+                            (self.filters // 4, self.filters // 4)),
+          "constant", constant_values=0)
 
     if residual.shape != y.shape and self.shortcut_type == 'B':
       residual = self.conv(self.filters, (1, 1), self.strides,
-                             padding=self.padding, name='conv_proj',
-                             config=self.config, bits=self.bits,
-                             quant_act_sign=False)(residual)
+                           padding=self.padding, name='conv_proj',
+                           config=self.config, bits=self.bits,
+                           quant_act_sign=False)(residual)
       residual = self.norm(name='norm_proj')(residual)
-
 
     return self.act(residual + y)
 
@@ -127,7 +124,7 @@ class ResNet(nn.Module):
   def __call__(self, x, train: bool = True, rng: Any = None):
     conv = partial(QuantConv, use_bias=False, dtype=self.dtype)
     norm = partial(BatchNorm,
-                   use_running_average = not train,
+                   use_running_average=not train,
                    momentum=.9,
                    epsilon=1e-5,
                    dtype=self.dtype)
@@ -142,10 +139,8 @@ class ResNet(nn.Module):
     x = conv(self.num_filters, kernel_size, stride_size, padding=padding_size,
              name='conv_init', config=self.config.quant.stem,
              bits=self.config.quant.bits, quant_act_sign=False)(x)
-    # self.sow('intermediates', 'conv_init_rec', x)
     x = norm(name='bn_init')(x)
     x = nn.relu(x)
-    # self.sow('intermediates', 'bn_relu_init_rec', x)
     if not self.cifar10_flag:
       x = nn.max_pool(x, (3, 3), strides=(2, 2), padding='SAME')
     for i, block_size in enumerate(self.stage_sizes):
@@ -159,10 +154,11 @@ class ResNet(nn.Module):
                            config=self.config.quant.mbconv,
                            bits=self.config.quant.bits,
                            shortcut_type=self.shortcut_type,
-                           padding=[(1, 1), (1, 1)] if self.cifar10_flag else "SAME",
+                           padding=[
+                               (1, 1), (1, 1)] if self.cifar10_flag else
+                           "SAME",
                            cifar10_flag=self.cifar10_flag,
                            )(x)
-      # self.sow('intermediates', 'block_' + str(i) + '_rec', x)
     if self.cifar10_flag and 'average' in self.config.quant:
       x = self.config.quant.average(bits=self.config.quant.bits)(x, sign=False)
 
@@ -171,14 +167,16 @@ class ResNet(nn.Module):
       x = self.config.quant.average(bits=self.config.quant.bits)(x, sign=False)
     x = QuantDense(self.num_classes, dtype=self.dtype,
                    config=self.config.quant.dense, quant_act_sign=False,
-                   bits=self.config.quant.bits, kernel_init = nn.initializers.zeros if self.cifar10_flag else default_kernel_init)(x)
+                   bits=self.config.quant.bits,
+                   kernel_init=nn.initializers.zeros if self.cifar10_flag else
+                   default_kernel_init)(x)
     x = jnp.asarray(x, self.dtype)
     return x
 
 
 ResNet20_CIFAR10 = partial(ResNet, stage_sizes=[3, 3, 3],
                            block_cls=ResNetBlock, num_filters=16,
-                           shortcut_type='A', cifar10_flag = True)
+                           shortcut_type='A', cifar10_flag=True)
 
 ResNet18 = partial(ResNet, stage_sizes=[2, 2, 2, 2],
                    block_cls=ResNetBlock)

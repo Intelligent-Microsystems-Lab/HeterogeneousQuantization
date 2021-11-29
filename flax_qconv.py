@@ -323,7 +323,6 @@ class QuantConv(Module):
 
     conv_general.defvjp(conv_general_fwd, conv_general_bwd)
 
-
     y = conv_general(
         inpt_fwd,
         kernel_fwd,

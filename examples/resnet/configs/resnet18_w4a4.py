@@ -65,20 +65,20 @@ def get_config():
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
   config.quant.stem.weight = partial(uniform_static)
-  config.quant.stem.act = partial(uniform_static, act = True)
+  config.quant.stem.act = partial(uniform_static, act=True)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
   config.quant.mbconv.weight = partial(uniform_static)
-  config.quant.mbconv.act = partial(uniform_static, act = True)
+  config.quant.mbconv.act = partial(uniform_static, act=True)
 
   # Average quant.
-  config.quant.average = partial(uniform_static, act = True)
+  config.quant.average = partial(uniform_static, act=True)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
   config.quant.dense.weight = partial(uniform_static)
-  config.quant.dense.act = partial(uniform_static, act = True)
+  config.quant.dense.act = partial(uniform_static, act=True)
   config.quant.dense.bias = partial(uniform_static)
 
   return config

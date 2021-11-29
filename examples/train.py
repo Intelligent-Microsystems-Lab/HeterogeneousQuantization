@@ -29,7 +29,6 @@ from flax.training import common_utils
 
 import jax
 import jax.numpy as jnp
-import numpy as np
 
 from jax import random
 import tensorflow as tf
@@ -38,8 +37,6 @@ import tensorflow_datasets as tfds
 
 import ml_collections
 from ml_collections import config_flags
-
-import cifar_data
 
 
 from train_utils import (
@@ -54,8 +51,6 @@ from train_utils import (
     save_checkpoint,
 )
 
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
 
 # from jax.config import config
 # config.update("jax_debug_nans", True)
@@ -64,8 +59,8 @@ import matplotlib.image as mpimg
 # import os
 # os.environ["TPU_CHIPS_PER_HOST_BOUNDS"] = "1,1,1"
 # os.environ["TPU_HOST_BOUNDS"] = "1,1,1"
-# os.environ["CLOUD_TPU_TASK_ID"] = "0" 
-# os.environ["TPU_VISIBLE_DEVICES"] = "0"  
+# os.environ["CLOUD_TPU_TASK_ID"] = "0"
+# os.environ["TPU_VISIBLE_DEVICES"] = "0"
 
 low, high = resource.getrlimit(resource.RLIMIT_NOFILE)
 resource.setrlimit(resource.RLIMIT_NOFILE, (high, high))
@@ -98,10 +93,10 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   writer_eval = metric_writers.create_default_writer(
       logdir=workdir + '/eval', just_logging=jax.process_index() != 0)
 
-  # logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
-  # logging.info('Git commit: ' + subprocess.check_output(
-  #     ['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
-  # logging.info(config)
+  logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
+  logging.info('Git commit: ' + subprocess.check_output(
+      ['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
+  logging.info(config)
 
   rng = random.PRNGKey(config.seed)
 
@@ -186,24 +181,30 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
   if len(state.weight_size) != 0:
     print('Initial Network Weight Size in kB: ' + str(jnp.sum(jnp.array(
-        jax.tree_util.tree_flatten(state.weight_size)[0])) / config.quant_target.size_div
+        jax.tree_util.tree_flatten(state.weight_size
+                                   )[0])) / config.quant_target.size_div
     ) + ' init bits ' + str(config.quant.bits) + ' (No. Params: ' + str(
         jnp.sum(jnp.array(jax.tree_util.tree_flatten(state.weight_size)[0])
                 ) / config.quant.bits) + ')')
   if len(state.act_size) != 0:
     print('Initial Network Activation (Sum) Size in kB: ' + str(jnp.sum(
-        jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])) / config.quant_target.size_div
+        jnp.array(
+          jax.tree_util.tree_flatten(state.act_size
+                                     )[0])) / config.quant_target.size_div
     ) + ' init bits ' + str(config.quant.bits) + ' (No. Params: ' + str(
-        jnp.sum(jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])
-                ) / config.quant.bits) + ')')
+        jnp.sum(jnp.array(
+            jax.tree_util.tree_flatten(state.act_size
+                                       )[0])) / config.quant.bits) + ')')
     print('Initial Network Activation (Max) Size in kB: ' + str(jnp.max(
-        jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])) / config.quant_target.size_div
+        jnp.array(
+          jax.tree_util.tree_flatten(state.act_size
+                                     )[0])) / config.quant_target.size_div
     ) + ' init bits ' + str(config.quant.bits) + ' (No. Params: ' + str(
         jnp.max(jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])
                 ) / config.quant.bits) + ')')
 
-
-  state = jax_utils.replicate(state, devices = jax.devices()[:config.num_devices] if type(config.num_devices) == int else  jax.devices())
+  state = jax_utils.replicate(state, devices=jax.devices(
+  )[:config.num_devices] if type(config.num_devices) == int else jax.devices())
   # Debug note:
   # 1. Make above line a comment "state = jax_utils.replicate(state)".
   # 2. In train_util.py make all pmean commands comments.
@@ -211,8 +212,28 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   # 4. Swtich train and eval metrics lines.
   # 5. Uncomment JIT configs at the top.
 
-  p_train_step = jax.pmap(functools.partial(train_step, learning_rate_fn=learning_rate_fn, weight_decay=config.weight_decay, quant_target=config.quant_target, smoothing=config.smoothing), axis_name='batch', devices = jax.devices()[:config.num_devices] if type(config.num_devices) == int else  jax.devices())
-  p_eval_step = jax.pmap(functools.partial(eval_step, size_div=config.quant_target.size_div, smoothing=config.smoothing), axis_name='batch', devices = jax.devices()[:config.num_devices] if type(config.num_devices) == int else  jax.devices())
+  p_train_step = jax.pmap(
+      functools.partial(
+          train_step,
+          learning_rate_fn=learning_rate_fn,
+          weight_decay=config.weight_decay,
+          quant_target=config.quant_target,
+          smoothing=config.smoothing
+      ),
+      axis_name='batch',
+      devices=jax.devices()[:config.num_devices
+                            ] if type(config.num_devices) == int else
+      jax.devices())
+  p_eval_step = jax.pmap(
+      functools.partial(
+          eval_step,
+          size_div=config.quant_target.size_div,
+          smoothing=config.smoothing
+      ),
+      axis_name='batch',
+      devices=jax.devices()[:config.num_devices
+                            ] if type(config.num_devices) == int else
+      jax.devices())
 
   # # Debug
   # p_train_step = functools.partial(
@@ -222,7 +243,9 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   #     quant_target=config.quant_target,
   #     smoothing=config.smoothing)
   # p_eval_step = functools.partial(
-  #     eval_step, size_div=config.quant_target.size_div, smoothing=config.smoothing)
+  #     eval_step,
+  #     size_div=config.quant_target.size_div,
+  #     smoothing=config.smoothing)
 
   # Initial Accurcay
   eval_metrics = []
@@ -234,7 +257,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   # # Debug
   # eval_metrics = common_utils.stack_forest(eval_metrics)
   summary = jax.tree_map(lambda x: jnp.mean(x), eval_metrics)
-  logging.info('Initial, loss: %.10f, accuracy: %.10f', summary['loss'], summary['accuracy'] * 100)
+  logging.info('Initial, loss: %.10f, accuracy: %.10f',
+               summary['loss'], summary['accuracy'] * 100)
 
   train_metrics = []
   hooks = []
@@ -243,11 +267,12 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   train_metrics_last_t = time.time()
   logging.info('Initial compilation, this might take some minutes...')
   for step, batch in zip(range(step_offset, num_steps), train_iter):
-    rng_list = jax.random.split(rng, (config.num_devices if type(config.num_devices) == int else jax.local_device_count()) + 1)
+    rng_list = jax.random.split(rng, (config.num_devices if type(
+        config.num_devices) == int else jax.local_device_count()) + 1)
     rng = rng_list[0]
-    
+
     state, metrics = p_train_step(state, batch, rng_list[1:])
-    
+
     # # Debug
     # state, metrics = p_train_step(
     #     state, {'image': batch['image'][0, :, :, :],
@@ -276,7 +301,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         train_metrics_last_t = time.time()
 
     if (step + 1) % steps_per_epoch == 0:
-      epoch = (step+1) // steps_per_epoch
+      epoch = (step + 1) // steps_per_epoch
       eval_metrics = []
 
       # sync batch statistics across replicas

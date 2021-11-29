@@ -4,9 +4,6 @@
 """Default Hyperparameter configuration."""
 
 import ml_collections
-from functools import partial
-
-from quant import parametric_d_xmax, double_mean_init
 
 
 def get_config():
@@ -24,8 +21,8 @@ def get_config():
   config.image_size = 32
 
   # Mean and std style for pre-processing.
-  #config.mean_rgb = [0.4914 * 255, 0.4822 * 255, 0.4465 * 255]
-  #config.stddev_rgb = [0.2023 * 255, 0.1994 * 255, 0.2010 * 255]
+  # config.mean_rgb = [0.4914 * 255, 0.4822 * 255, 0.4465 * 255]
+  # config.stddev_rgb = [0.2023 * 255, 0.1994 * 255, 0.2010 * 255]
 
   # Edge models use inception-style MEAN & STDDEV for better post-quantization.
   config.mean_rgb = [127.0, 127.0, 127.0]
