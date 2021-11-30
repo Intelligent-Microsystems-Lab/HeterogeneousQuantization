@@ -39,7 +39,7 @@ def get_config():
   config.pretrained = "../../../pretrained_efficientnet/efficientnet-lite0"
 
   config.learning_rate = 0.0001
-  config.optimzier = 'rmsprop'
+  config.optimizer = 'rmsprop'
   config.lr_boundaries_scale = None
   config.warmup_epochs = 2  # for optimizer to settle in
   config.weight_decay = 1e-5
