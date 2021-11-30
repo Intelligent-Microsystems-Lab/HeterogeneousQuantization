@@ -44,9 +44,11 @@ def get_config():
   config.momentum = 0.9
   config.batch_size = 2048
   config.batch_norm_epsilon = 1e-2
+  config.smoothing = .1
 
   config.num_epochs = 50
   config.log_every_steps = 256
+  config.num_devices = None
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.
@@ -64,35 +66,35 @@ def get_config():
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
   config.quant.stem.weight = partial(
-      uniform_static, init_fn=partial(percentile_init, perc=99.9))
+      uniform_static)
   config.quant.stem.act = partial(
-      uniform_static, init_fn=partial(percentile_init, perc=99.9999))
+      uniform_static)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
   config.quant.mbconv.weight = partial(
-      uniform_static, init_fn=partial(percentile_init, perc=99.9))
+      uniform_static)
   config.quant.mbconv.act = partial(
-      uniform_static, init_fn=partial(percentile_init, perc=99.9999))
+      uniform_static)
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
   config.quant.head.weight = partial(
-      uniform_static, init_fn=partial(percentile_init, perc=99.9))
+      uniform_static)
   config.quant.head.act = partial(
-      uniform_static, init_fn=partial(percentile_init, perc=99.9999))
+      uniform_static)
 
   # Average quant.
   config.quant.average = partial(
-      uniform_static, init_fn=partial(percentile_init, perc=99.9999))
+      uniform_static)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
   config.quant.dense.weight = partial(
-      uniform_static, init_fn=partial(percentile_init, perc=99.9))
+      uniform_static)
   config.quant.dense.act = partial(
-      uniform_static, init_fn=partial(percentile_init, perc=99.9999))
+      uniform_static)
   config.quant.dense.bias = partial(
-      uniform_static, init_fn=partial(percentile_init, perc=99.9))
+      uniform_static)
 
   return config
