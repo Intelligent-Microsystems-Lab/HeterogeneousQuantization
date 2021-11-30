@@ -166,12 +166,11 @@ class QuantDense(Module):
     y = dot_general(inpt_fwd, kernel_fwd, inputs, kernel, rng)
 
     if self.use_bias:
-      # assert False, "Bias for Dense layer not supported yet."
       bias = self.param("bias", self.bias_init, (self.features,))
       bias = jnp.asarray(bias, self.dtype)
 
       if "bias" in self.config:
-        bias = self.config.weight(bits=self.bits, g_scale=self.g_scale)(bias)
+        bias = self.config.bias(bits=self.bits, g_scale=self.g_scale)(bias)
 
       y = y + bias
     return y

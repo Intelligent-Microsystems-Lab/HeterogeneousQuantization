@@ -33,7 +33,7 @@ def get_config():
   config.stddev_rgb = [128.0, 128.0, 128.0]
 
   config.optimizer = 'sgd'
-  config.learning_rate = .1  # 0.0001
+  config.learning_rate = .01
   config.lr_boundaries_scale = {'80': .1, '120': .1}
   config.warmup_epochs = .0
   config.momentum = 0.9
@@ -60,9 +60,9 @@ def get_config():
 
   config.quant_target.weight_mb = 70.1
   config.quant_target.weight_penalty = .1
-  config.quant_target.act_mode = 'sum'
+  config.quant_target.act_mode = 'max'
   config.quant_target.act_mb = 92.1
-  config.quant_target.act_penalty = .1
+  config.quant_target.act_penalty = .0
   config.quant_target.size_div = 8. * 1024.  # 8_000 # mb or kb
 
   config.quant = ml_collections.ConfigDict()

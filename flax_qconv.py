@@ -148,8 +148,7 @@ class QuantConv(Module):
       kernel_fwd = kernel
 
     if "act" in cfg:
-      inpt_fwd = cfg.act(bits=self.bits, g_scale=self.g_scale)(
-          inputs, sign=self.quant_act_sign)
+      inpt_fwd = cfg.act(bits=self.bits, g_scale=self.g_scale)(inputs, sign=self.quant_act_sign)
     else:
       inpt_fwd = inputs
 
@@ -318,7 +317,6 @@ class QuantConv(Module):
           precision=None,
           preferred_element_type=None,
       )
-
       return (g_inpt_fwd, g_kernel_fwd, None, None, None)
 
     conv_general.defvjp(conv_general_fwd, conv_general_bwd)

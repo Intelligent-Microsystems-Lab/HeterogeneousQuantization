@@ -29,6 +29,7 @@ from flax.training import common_utils
 
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 from jax import random
 import tensorflow as tf
@@ -93,10 +94,10 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   writer_eval = metric_writers.create_default_writer(
       logdir=workdir + '/eval', just_logging=jax.process_index() != 0)
 
-  logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
-  logging.info('Git commit: ' + subprocess.check_output(
-      ['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
-  logging.info(config)
+  # logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
+  # logging.info('Git commit: ' + subprocess.check_output(
+  #     ['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
+  # logging.info(config)
 
   rng = random.PRNGKey(config.seed)
 
@@ -203,6 +204,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         jnp.max(jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])
                 ) / config.quant.bits) + ')')
 
+
+  # np.sum(jax.tree_util.tree_flatten(jax.tree_util.tree_map(lambda x: np.prod(x.shape), state.params['params']))[0])
   state = jax_utils.replicate(state, devices=jax.devices(
   )[:config.num_devices] if type(config.num_devices) == int else jax.devices())
   # Debug note:
@@ -253,9 +256,9 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     eval_batch = next(eval_iter)
     metrics = p_eval_step(state, eval_batch)
     eval_metrics.append(metrics)
-  eval_metrics = common_utils.get_metrics(eval_metrics)
-  # # Debug
-  # eval_metrics = common_utils.stack_forest(eval_metrics)
+  # eval_metrics = common_utils.get_metrics(eval_metrics)
+  # Debug
+  eval_metrics = common_utils.stack_forest(eval_metrics)
   summary = jax.tree_map(lambda x: jnp.mean(x), eval_metrics)
   logging.info('Initial, loss: %.10f, accuracy: %.10f',
                summary['loss'], summary['accuracy'] * 100)
@@ -272,7 +275,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     rng = rng_list[0]
 
     state, metrics = p_train_step(state, batch, rng_list[1:])
-
     # # Debug
     # state, metrics = p_train_step(
     #     state, {'image': batch['image'][0, :, :, :],

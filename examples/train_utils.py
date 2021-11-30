@@ -3,7 +3,7 @@
 # Originally copied from https://github.com/google/flax/tree/main/examples
 
 
-from typing import Any
+from typing import Any, Iterable
 
 from flax.training import checkpoints
 from flax.training import common_utils
@@ -11,7 +11,9 @@ from flax.training import train_state
 from flax.core import freeze, unfreeze
 
 import jax
+import jaxlib
 from jax import lax
+import flax
 import jax.numpy as jnp
 
 import ml_collections
@@ -119,6 +121,46 @@ def weight_decay_fn(params):
   return 0.5 * sum(jnp.sum(jnp.square(p)) for p in l2_params)
 
 
+def parametric_d_xmax_is_leaf(x):
+  if type(x) is dict or type(x) is flax.core.frozen_dict.FrozenDict:
+    if 'dynamic_range' in x:
+      return True
+    return False
+  return True
+
+
+def clip_single_leaf_params(x):
+  if type(x) is dict or type(x) is flax.core.frozen_dict.FrozenDict:
+    if 'dynamic_range' in x and 'step_size' in x:
+      x['dynamic_range'] = jnp.clip(x['dynamic_range'], 0.001, 10)
+      x['step_size'] = jnp.clip(x['step_size'], 2**-8, 2**8)
+
+      # Ensure xmax and d do not exceed each other
+      x['step_size'] = jnp.where(x['step_size'] > x['dynamic_range'], x['dynamic_range'], x['step_size'])
+      x['dynamic_range'] = jnp.where(x['dynamic_range'] < x['step_size'], x['step_size'], x['dynamic_range'])
+
+  return x
+
+def clip_quant_vals(params):
+  return jax.tree_util.tree_map(clip_single_leaf_params, params, is_leaf = parametric_d_xmax_is_leaf)
+
+
+def clip_single_leaf_grads(x, params):
+  if type(x) is dict or type(x) is flax.core.frozen_dict.FrozenDict:
+    if 'dynamic_range' in x and 'step_size' in x:
+      x['dynamic_range'] = jnp.clip(x['dynamic_range'], -params['step_size'], +params['step_size'])
+      x['step_size'] = jnp.clip(x['step_size'], -params['step_size'], +params['step_size'])
+
+    for key in x.keys():
+      if 'no_train' in key:
+        print(key)
+        x[key] = jnp.zeros_like(x[key])
+  return x
+
+def clip_quant_grads(grads, quant_params):
+  return jax.tree_util.tree_multimap(clip_single_leaf_grads, grads, quant_params, is_leaf = parametric_d_xmax_is_leaf)
+
+
 def train_step(state, batch, rng, learning_rate_fn, weight_decay,
                quant_target, smoothing):
   """Perform a single training step."""
@@ -162,7 +204,7 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
             max but got: ' + quant_target.act_mode)
 
     final_loss = loss + weight_penalty + size_penalty
-    return final_loss, (new_model_state, logits, weight_penalty)
+    return final_loss, (new_model_state, logits, weight_penalty, size_penalty)
 
   step = state.step
   lr = learning_rate_fn(step)
@@ -172,23 +214,24 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
       state.params['params'], batch['image'], batch['label'],
       state.params['quant_params'])
   # Re-use same axis_name as in the call to `pmap(...train_step...)` below.
+  grads = (grads[0], clip_quant_grads(grads[1], state.params['quant_params']))
   grads = lax.pmean(grads, axis_name='batch')
 
-  new_model_state, logits, _ = aux[1]
+  new_model_state, logits, _, _ = aux[1]
 
   metrics = compute_metrics(
       logits, batch['label'], new_model_state, quant_target.size_div,
       smoothing)
   metrics['learning_rate'] = lr
-
   new_state = state.apply_gradients(
       grads={'params': grads[0], 'quant_params': grads[1]},
       batch_stats=new_model_state['batch_stats'],
       weight_size=new_model_state['weight_size'],
       act_size=new_model_state['act_size'])
 
-  metrics['logits'] = aux[1][-2]
-  metrics['decay'] = aux[1][-1]
+  new_state.params['quant_params'] = clip_quant_vals(new_state.params['quant_params'])
+  metrics['decay'] = aux[1][-2]
+  metrics['size_penalty'] = aux[1][-1]
   return new_state, metrics
 
 
