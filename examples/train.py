@@ -164,7 +164,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     state = model.load_model_fn(state, config.pretrained)
 
   # Reinitialize quant params.
-  init_batch = next(train_iter)['image'][0, :, :, :, :]
+  # TODO: @clee change this to train train_iter
+  init_batch = next(eval_iter)['image'][0, :, :, :, :]
   rng, rng1, rng2 = jax.random.split(rng, 3)
   _, new_state = state.apply_fn({'params': state.params['params'],
                                  'quant_params': state.params['quant_params'],
@@ -188,24 +189,20 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         jnp.sum(jnp.array(jax.tree_util.tree_flatten(state.weight_size)[0])
                 ) / config.quant.bits) + ')')
   if len(state.act_size) != 0:
-    logging.info('Initial Network Activation (Sum) Size in kB: ' + str(jnp.sum(
-        jnp.array(
-            jax.tree_util.tree_flatten(state.act_size
-                                       )[0])) / config.quant_target.size_div
+    logging.info('Initial Network Activation (Sum) Size in kB: ' + str(jnp.sum(jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])) / config.quant_target.size_div
     ) + ' init bits ' + str(config.quant.bits) + ' (No. Params: ' + str(
         jnp.sum(jnp.array(
             jax.tree_util.tree_flatten(state.act_size
                                        )[0])) / config.quant.bits) + ')')
-    logging.info('Initial Network Activation (Max) Size in kB: ' + str(jnp.max(
-        jnp.array(
-            jax.tree_util.tree_flatten(state.act_size
-                                       )[0])) / config.quant_target.size_div
+    logging.info('Initial Network Activation (Max) Size in kB: ' + str(jnp.max(jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])) / config.quant_target.size_div
     ) + ' init bits ' + str(config.quant.bits) + ' (No. Params: ' + str(
         jnp.max(jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])
                 ) / config.quant.bits) + ')')
 
 
   # np.sum(jax.tree_util.tree_flatten(jax.tree_util.tree_map(lambda x: np.prod(x.shape), state.params['params']))[0])
+
+
   state = jax_utils.replicate(state, devices=jax.devices(
   )[:config.num_devices] if type(config.num_devices) == int else jax.devices())
   # Debug note:
@@ -274,12 +271,28 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         config.num_devices) == int else jax.local_device_count()) + 1)
     rng = rng_list[0]
 
+    
+    import pdb; pdb.set_trace()
     state, metrics = p_train_step(state, batch, rng_list[1:])
+    # print(str(metrics['ce_loss'][0]) + ',' + str(metrics['accuracy'].mean()) + ',' +str(metrics['size_weight_penalty'][0]*10))
+    # print(
+    #   str(state.params['params']['conv_init']['kernel'].max()) + ',' 
+    #   + str( state.params['params']['conv_init']['kernel'].sum()) + ',' 
+    #   + str( state.params['params']['conv_init']['kernel'].mean()) + ',' 
+    #   + str(g_info[0][0]) + ',' 
+    #   + str(g_info[1][0]) + ',' 
+    #   + str(g_info[2][0])
+    # )
+    # except:
+    #  import pdb; pdb.set_trace()
     # # Debug
     # state, metrics = p_train_step(
     #     state, {'image': batch['image'][0, :, :, :],
     #             'label': batch['label'][0]}, rng_list[2])
 
+    #if metrics['decay'] > .2 and metrics['decay'] < 10:
+    #  import pdb; pdb.set_trace()
+    #print(metrics['decay'])
     for h in hooks:
       h(step)
     if step == step_offset:

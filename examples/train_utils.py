@@ -82,7 +82,6 @@ def compute_metrics(logits, labels, state, size_div, smoothing):
       metrics['act_size_max'] = jnp.max(
           jnp.array(jax.tree_util.tree_flatten(state['act_size'])[0])
       ) / size_div
-
   # metrics = lax.pmean(metrics, axis_name='batch')
   return metrics
 
@@ -161,6 +160,10 @@ def clip_quant_grads(grads, quant_params):
   return jax.tree_util.tree_multimap(clip_single_leaf_grads, grads, quant_params, is_leaf = parametric_d_xmax_is_leaf)
 
 
+# def manual_weight_decay(grads, params, rate):
+#   return jax.tree_util.tree_multimap(lambda x: )
+
+
 def train_step(state, batch, rng, learning_rate_fn, weight_decay,
                quant_target, smoothing):
   """Perform a single training step."""
@@ -178,33 +181,34 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
         rngs={'dropout': rng})
 
     loss = jnp.mean(cross_entropy_loss(logits, targets, smoothing))
-    weight_penalty = weight_decay * weight_decay_fn(params)
+    # weight_penalty = weight_decay * weight_decay_fn(params)
 
     # size penalty
-    size_penalty = 0.
+    size_weight_penalty = 0.
+    size_act_penalty = 0.
     if hasattr(quant_target, 'weight_mb'):
       size_weight = jnp.sum(jnp.array(jax.tree_util.tree_flatten(
           new_model_state['weight_size'])[0])) / quant_target.size_div
-      size_penalty += quant_target.weight_penalty * jax.nn.relu(
+      size_weight_penalty += quant_target.weight_penalty * jax.nn.relu(
           size_weight - quant_target.weight_mb) ** 2
     if hasattr(quant_target, 'act_size'):
       if quant_target.act_mode == 'sum':
         size_act = jnp.sum(jnp.array(jax.tree_util.tree_flatten(
             new_model_state['act_size'])[0])) / quant_target.size_div
-        size_penalty += quant_target.act_penalty * jax.nn.relu(
+        size_act_penalty += quant_target.act_penalty * jax.nn.relu(
             size_act - quant_target.act_mb) ** 2
       elif quant_target.act_mode == 'max':
         size_act = jnp.max(jnp.array(jax.tree_util.tree_flatten(
             new_model_state['act_size'])[0])) / quant_target.size_div
-        size_penalty += quant_target.act_penalty * jax.nn.relu(
+        size_act_penalty += quant_target.act_penalty * jax.nn.relu(
             size_act - quant_target.act_mb) ** 2
       else:
         raise Exception(
             'Unrecongized quant act mode, either sum or \
             max but got: ' + quant_target.act_mode)
 
-    final_loss = loss + weight_penalty + size_penalty
-    return final_loss, (new_model_state, logits, weight_penalty, size_penalty)
+    final_loss = loss + size_act_penalty + size_weight_penalty # + weight_penalty
+    return final_loss, (new_model_state, logits, final_loss, None, size_act_penalty, size_weight_penalty, loss)
 
   step = state.step
   lr = learning_rate_fn(step)
@@ -213,11 +217,17 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
   aux, grads = grad_fn(
       state.params['params'], batch['image'], batch['label'],
       state.params['quant_params'])
+
+  # manual weight decay
+  grads = (jax.tree_util.tree_multimap(lambda x, y: x + weight_decay * y ,grads[0], state.params['params']), jax.tree_util.tree_multimap(lambda x, y: x + weight_decay * y ,grads[1], state.params['quant_params']))
+
   # Re-use same axis_name as in the call to `pmap(...train_step...)` below.
+  # jax.tree_util.tree_map(lambda x: jnp.clip(x, -2.5, 2.5),grads[0])
   grads = (grads[0], clip_quant_grads(grads[1], state.params['quant_params']))
   grads = lax.pmean(grads, axis_name='batch')
 
-  new_model_state, logits, _, _ = aux[1]
+
+  new_model_state, logits, _, _, _, _, _ = aux[1]
 
   metrics = compute_metrics(
       logits, batch['label'], new_model_state, quant_target.size_div,
@@ -230,9 +240,13 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
       act_size=new_model_state['act_size'])
 
   new_state.params['quant_params'] = clip_quant_vals(new_state.params['quant_params'])
-  metrics['decay'] = aux[1][-2]
-  metrics['size_penalty'] = aux[1][-1]
-  return new_state, metrics
+  metrics['final_loss'] = aux[1][-5]
+  # metrics['decay'] = aux[1][-4]
+  metrics['size_act_penalty'] = aux[1][-3]
+  metrics['size_weight_penalty'] = aux[1][-2]
+  metrics['ce_loss'] = aux[1][-1]
+  metrics['logits'] = logits
+  return new_state, metrics #, (grads[0]['conv_init']['kernel'].max(), grads[0]['conv_init']['kernel'].sum(), grads[0]['conv_init']['kernel'].mean())
 
 
 def eval_step(state, batch, size_div, smoothing):

@@ -21,8 +21,7 @@ def get_config():
   config.dataset = 'cifar10'
   config.num_classes = 10
   config.tfds_data_dir = 'gs://imagenet_clemens/tensorflow_datasets'
-  config.image_size = 224
-  config.crop_padding = 32
+  config.image_size = 32
 
   # Mean and std style for pre-processing.
   # config.mean_rgb = [0.485 * 255, 0.456 * 255, 0.406 * 255]
@@ -37,7 +36,7 @@ def get_config():
   config.lr_boundaries_scale = {'80': .1, '120': .1}
   config.warmup_epochs = .0
   config.momentum = 0.9
-  config.batch_size = 128  # 2048
+  config.batch_size = 128
   config.weight_decay = 0.0002
   config.nesterov = False
   config.smoothing = .0
@@ -46,10 +45,10 @@ def get_config():
   config.log_every_steps = 100
   config.num_devices = 1
 
-  config.cache = True
+  config.cache = False #True
   config.half_precision = False
 
-  config.pretrained = '../../pretrained_resnet/resnet20_cifar10'
+  config.pretrained = '../../pretrained_resnet/resnet20_cifar10.h5'
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.
@@ -62,7 +61,7 @@ def get_config():
   config.quant_target.weight_penalty = .1
   config.quant_target.act_mode = 'max'
   config.quant_target.act_mb = 92.1
-  config.quant_target.act_penalty = .0
+  config.quant_target.act_penalty = .1
   config.quant_target.size_div = 8. * 1024.  # 8_000 # mb or kb
 
   config.quant = ml_collections.ConfigDict()
@@ -73,24 +72,21 @@ def get_config():
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
-  config.quant.stem.weight = partial(
-      parametric_d_xmax)
+  config.quant.stem.weight = partial(parametric_d_xmax)
   # no input quant in MixedDNN paper.
   # config.quant.stem.act = partial(parametric_d_xmax, act=True)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
-  config.quant.mbconv.weight = partial(
-      parametric_d_xmax)
-  config.quant.mbconv.act = partial(parametric_d_xmax, act=True)
+  config.quant.mbconv.weight = partial(parametric_d_xmax, init_bits = 4)
+  config.quant.mbconv.act = partial(parametric_d_xmax, act=True, init_bits = 6)
 
   # Average quant.
-  config.quant.average = partial(parametric_d_xmax, act=True)
+  config.quant.average = partial(parametric_d_xmax, act=True, init_bits = 6)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
-  config.quant.dense.weight = partial(
-      parametric_d_xmax)
+  config.quant.dense.weight = partial(parametric_d_xmax)
   # config.quant.dense.act = partial(parametric_d_xmax, act=True)
   config.quant.dense.bias = partial(parametric_d_xmax)
 

@@ -56,11 +56,20 @@ class ResNetBlock(nn.Module):
     else:
       y = self.norm(scale_init=nn.initializers.zeros)(y)
 
-    if self.strides != (1, 1) and self.shortcut_type == 'A':
-      residual = jnp.pad(residual[
-          :, ::2, ::2, :], ((0, 0), (0, 0), (0, 0),
-                            (self.filters // 4, self.filters // 4)),
-          "constant", constant_values=0)
+    # if self.strides != (1, 1) and self.shortcut_type == 'A':
+    #   residual = jnp.pad(residual[
+    #       :, ::2, ::2, :], ((0, 0), (0, 0), (0, 0),
+    #                         (self.filters // 4, self.filters // 4)),
+    #       "constant", constant_values=0)
+    if self.shortcut_type == 'A':
+      if self.strides != (1, 1):
+          # Stride
+          residual = nn.avg_pool(residual, (1, 1), self.strides)
+      if x.shape[-1] != self.filters:
+          # Zero-padding to channel axis
+          ishape = residual.shape
+          zeros = jnp.zeros((ishape[:-1] + (self.filters - ishape[-1],)))
+          residual = jnp.concatenate((residual, zeros), axis=3)
 
     if residual.shape != y.shape and self.shortcut_type == 'B':
       residual = self.conv(self.filters, (1, 1), self.strides,

@@ -305,6 +305,7 @@ class parametric_d(nn.Module):
 
 class parametric_d_xmax(nn.Module):
   bits: int = 4  # here its just init bits
+  init_bits: int = None
   act: bool = False
   xmax_min: float = 0.001 # 2**-8
   xmax_max: float = 10 #2**8
@@ -339,9 +340,9 @@ class parametric_d_xmax(nn.Module):
     ceilpass.defvjp(ceilpass_fwd, ceilpass_bwd)
 
     if sign:
-      num_levels = 2 ** (self.bits - 1) - 1
+      num_levels = 2 ** (self.bits if self.init_bits is None else self.init_bits - 1) - 1
     else:
-      num_levels = 2 ** (self.bits) - 1
+      num_levels = 2 ** (self.bits if self.init_bits is None else self.init_bits) - 1
 
     # Intialize step size. Step size only changes when init is called or apply
     # with mutable = ['quant_params'].
@@ -351,11 +352,22 @@ class parametric_d_xmax(nn.Module):
 
     act_mb = self.variable('act_size', 'act_mb', jnp.ones, (1,))
     weight_mb = self.variable('weight_size', 'weight_mb', jnp.ones, (1,))
+    bw = (self.bits if self.init_bits is None else self.init_bits)
     if self.is_mutable_collection('quant_params'):
-      xmax.value = jnp.clip(self.init_fn(inputs, bits=self.bits, sign=sign),
-                           self.xmax_min, self.xmax_max)
-      xmax.value = jnp.where(xmax.value == 0, 1., xmax.value)
-      d.value =  jnp.clip(xmax.value / num_levels, self.d_min, self.d_max)
+      if self.act:
+        xmax.value = 2**-3 * (2. ** bw  - 1)
+        d.value = 2**-3
+      else:
+        maxabs_w = jnp.max(jnp.abs(inputs))
+        if bw > 4:
+          d.value = 2**(jnp.ceil(jnp.log2(maxabs_w/(2**(bw-1)-1))))
+        else:
+          d.value = 2**(jnp.floor(jnp.log2(maxabs_w/(2**(bw-1)-1))))
+        xmax.value = d.value * (2 ** (bw - 1) - 1)
+      #xmax.value = jnp.clip(self.init_fn(inputs, bits=self.bits if self.init_bits is None else self.init_bits, sign=sign),
+      #                     self.xmax_min, self.xmax_max)
+      #xmax.value = jnp.where(xmax.value == 0, 1., xmax.value)
+      #d.value =  jnp.clip(xmax.value / num_levels, self.d_min, self.d_max)
 
     # Ensure that stepsize is in specified range (and a power of two).
     d = jnp.clip(d.value, self.d_min, self.d_max)

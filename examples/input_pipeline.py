@@ -286,9 +286,9 @@ def create_split_cifar10(dataset_builder, batch_size, train, config):
       image = tf.io.decode_png(example["image"])
 
       image = tf.cast(image, dtype=tf.dtypes.float32)
-      image = tf.image.pad_to_bounding_box(image, 4, 4, 40, 40)
-      image = tf.image.random_crop(image, size=(32, 32, 3))
-      image = tf.image.random_flip_left_right(image)
+      # image = tf.image.pad_to_bounding_box(image, 4, 4, 40, 40)
+      # image = tf.image.random_crop(image, size=(32, 32, 3))
+      # image = tf.image.random_flip_left_right(image)
 
       image = normalize_image(image, config)
 
@@ -315,7 +315,7 @@ def create_split_cifar10(dataset_builder, batch_size, train, config):
 
   if train:
     ds = ds.repeat()
-    ds = ds.shuffle(16 * batch_size, seed=0)
+    # ds = ds.shuffle(16 * batch_size, seed=0)
 
   ds = ds.map(
       decode_example, num_parallel_calls=tf.data.experimental.AUTOTUNE
@@ -324,7 +324,7 @@ def create_split_cifar10(dataset_builder, batch_size, train, config):
 
   if not train:
     ds = ds.repeat()
-    ds = ds.shuffle(16 * batch_size, seed=0)
+    # ds = ds.shuffle(16 * batch_size, seed=0)
 
   ds = ds.prefetch(10)
 
