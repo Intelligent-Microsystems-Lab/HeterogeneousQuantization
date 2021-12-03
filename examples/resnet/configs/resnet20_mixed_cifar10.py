@@ -60,7 +60,7 @@ def get_config():
   config.quant_target.weight_mb = 70.1
   config.quant_target.weight_penalty = .1
   config.quant_target.act_mode = 'max'
-  config.quant_target.act_mb = 92.1
+  config.quant_target.act_mb = 8.1
   config.quant_target.act_penalty = .1
   config.quant_target.size_div = 8. * 1024.  # 8_000 # mb or kb
 
@@ -76,13 +76,16 @@ def get_config():
   # no input quant in MixedDNN paper.
   # config.quant.stem.act = partial(parametric_d_xmax, act=True)
 
+  config.quant.post_init = partial(parametric_d_xmax, act=True, init_bits = 6)
+
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
   config.quant.mbconv.weight = partial(parametric_d_xmax, init_bits = 4)
-  config.quant.mbconv.act = partial(parametric_d_xmax, act=True, init_bits = 6)
+  #config.quant.mbconv.act = partial(parametric_d_xmax, act=True, init_bits = 6)
+  config.quant.mbconv.nonl = partial(parametric_d_xmax, act=True, init_bits = 6)
 
   # Average quant.
-  config.quant.average = partial(parametric_d_xmax, act=True, init_bits = 6)
+  # config.quant.average = partial(parametric_d_xmax, act=True, init_bits = 6)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()

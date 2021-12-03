@@ -25,7 +25,6 @@ from jax._src.lax.lax import (
 )
 
 from flax.linen.module import Module, compact
-# from flax.linen.initializers import zeros
 from flax.linen.linear import (
     default_kernel_init,
     PRNGKey,

@@ -315,6 +315,7 @@ class parametric_d_xmax(nn.Module):
   init_fn: Callable = max_init
   g_scale: float = 0.
   ceil_tolerance: float = 1e-6
+  maxabs_w: float = None
 
   # Parametric heterogenous quantization.
   # Based on MIXED PRECISION DNNS.
@@ -358,7 +359,7 @@ class parametric_d_xmax(nn.Module):
         xmax.value = 2**-3 * (2. ** bw  - 1)
         d.value = 2**-3
       else:
-        maxabs_w = jnp.max(jnp.abs(inputs))
+        maxabs_w = self.maxabs_w if self.maxabs_w is not None else jnp.max(jnp.abs(inputs))
         if bw > 4:
           d.value = 2**(jnp.ceil(jnp.log2(maxabs_w/(2**(bw-1)-1))))
         else:

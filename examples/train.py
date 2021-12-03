@@ -272,8 +272,10 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     rng = rng_list[0]
 
     
-    import pdb; pdb.set_trace()
-    state, metrics = p_train_step(state, batch, rng_list[1:])
+    
+    state, metrics, grads = p_train_step(state, batch, rng_list[1:])
+    # print(metrics['final_loss'][0])
+    #import pdb; pdb.set_trace()
     # print(str(metrics['ce_loss'][0]) + ',' + str(metrics['accuracy'].mean()) + ',' +str(metrics['size_weight_penalty'][0]*10))
     # print(
     #   str(state.params['params']['conv_init']['kernel'].max()) + ',' 

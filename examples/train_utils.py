@@ -177,7 +177,7 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
                                               'weight_size': state.weight_size,
                                               'act_size': state.act_size},
                                              inputs, rng=prng, mutable=[
-        'batch_stats', 'weight_size', 'act_size'],
+        'batch_stats', 'weight_size', 'act_size', 'intermediates'],
         rngs={'dropout': rng})
 
     loss = jnp.mean(cross_entropy_loss(logits, targets, smoothing))
@@ -191,15 +191,14 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
           new_model_state['weight_size'])[0])) / quant_target.size_div
       size_weight_penalty += quant_target.weight_penalty * jax.nn.relu(
           size_weight - quant_target.weight_mb) ** 2
-    if hasattr(quant_target, 'act_size'):
+    if hasattr(quant_target, 'act_mb'):
       if quant_target.act_mode == 'sum':
         size_act = jnp.sum(jnp.array(jax.tree_util.tree_flatten(
             new_model_state['act_size'])[0])) / quant_target.size_div
         size_act_penalty += quant_target.act_penalty * jax.nn.relu(
             size_act - quant_target.act_mb) ** 2
       elif quant_target.act_mode == 'max':
-        size_act = jnp.max(jnp.array(jax.tree_util.tree_flatten(
-            new_model_state['act_size'])[0])) / quant_target.size_div
+        size_act = jnp.max(jnp.array(jax.tree_util.tree_flatten(new_model_state['act_size'])[0])) / quant_target.size_div
         size_act_penalty += quant_target.act_penalty * jax.nn.relu(
             size_act - quant_target.act_mb) ** 2
       else:
@@ -208,7 +207,7 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
             max but got: ' + quant_target.act_mode)
 
     final_loss = loss + size_act_penalty + size_weight_penalty # + weight_penalty
-    return final_loss, (new_model_state, logits, final_loss, None, size_act_penalty, size_weight_penalty, loss)
+    return final_loss, (new_model_state, logits,  new_model_state['intermediates'], final_loss, None, size_act_penalty, size_weight_penalty, loss)
 
   step = state.step
   lr = learning_rate_fn(step)
@@ -227,7 +226,7 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
   grads = lax.pmean(grads, axis_name='batch')
 
 
-  new_model_state, logits, _, _, _, _, _ = aux[1]
+  new_model_state, logits, _, _, _, _, _, _ = aux[1]
 
   metrics = compute_metrics(
       logits, batch['label'], new_model_state, quant_target.size_div,
@@ -240,13 +239,14 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
       act_size=new_model_state['act_size'])
 
   new_state.params['quant_params'] = clip_quant_vals(new_state.params['quant_params'])
+  metrics['intermediates'] = aux[1][-6]
   metrics['final_loss'] = aux[1][-5]
   # metrics['decay'] = aux[1][-4]
   metrics['size_act_penalty'] = aux[1][-3]
   metrics['size_weight_penalty'] = aux[1][-2]
   metrics['ce_loss'] = aux[1][-1]
   metrics['logits'] = logits
-  return new_state, metrics #, (grads[0]['conv_init']['kernel'].max(), grads[0]['conv_init']['kernel'].sum(), grads[0]['conv_init']['kernel'].mean())
+  return new_state, metrics, grads #, (grads[0]['conv_init']['kernel'].max(), grads[0]['conv_init']['kernel'].sum(), grads[0]['conv_init']['kernel'].mean())
 
 
 def eval_step(state, batch, size_div, smoothing):
