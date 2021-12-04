@@ -275,6 +275,16 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     
     state, metrics, grads = p_train_step(state, batch, rng_list[1:])
     # print(metrics['final_loss'][0])
+    # import pdb; pdb.set_trace()
+    # a = str(jnp.max(jnp.abs(state.params['params']['conv_init']['kernel'])))
+    # b = str(jnp.max(jnp.abs(grads[0]['conv_init']['kernel'])))
+
+    # c = str(state.params['quant_params']['conv_init']['parametric_d_xmax_0']['dynamic_range'][0])
+    # d = str(state.params['quant_params']['conv_init']['parametric_d_xmax_0']['step_size'][0])
+
+    # e = str(grads[1]['conv_init']['parametric_d_xmax_0']['dynamic_range'][0])
+    # f = str(grads[1]['conv_init']['parametric_d_xmax_0']['step_size'][0])
+    # print(a+','+b+','+c+','+d+','+e+','+f)
     #import pdb; pdb.set_trace()
     # print(str(metrics['ce_loss'][0]) + ',' + str(metrics['accuracy'].mean()) + ',' +str(metrics['size_weight_penalty'][0]*10))
     # print(
@@ -295,50 +305,54 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     #if metrics['decay'] > .2 and metrics['decay'] < 10:
     #  import pdb; pdb.set_trace()
     #print(metrics['decay'])
-    for h in hooks:
-      h(step)
-    if step == step_offset:
-      logging.info('Initial compilation completed.')
 
-    if config.get('log_every_steps'):
-      train_metrics.append(metrics)
-      if (step + 1) % config.log_every_steps == 0:
-        train_metrics = common_utils.get_metrics(train_metrics)
-        # # Debug
-        # train_metrics = common_utils.stack_forest(train_metrics)
-        summary = {
-            f'{k}': v
-            for k, v in jax.tree_map(lambda x: x.mean(), train_metrics).items()
-        }
-        summary['steps_per_second'] = config.log_every_steps / (
-            time.time() - train_metrics_last_t)
-        writer_train.write_scalars(step + 1, summary)
-        writer_train.flush()
-        train_metrics = []
-        train_metrics_last_t = time.time()
 
-    if (step + 1) % steps_per_epoch == 0:
-      epoch = (step + 1) // steps_per_epoch
-      eval_metrics = []
 
-      # sync batch statistics across replicas
-      state = sync_batch_stats(state)
-      for _ in range(steps_per_eval):
-        eval_batch = next(eval_iter)
-        metrics = p_eval_step(state, eval_batch)
-        eval_metrics.append(metrics)
-      eval_metrics = common_utils.get_metrics(eval_metrics)
-      # # Debug
-      # eval_metrics = common_utils.stack_forest(eval_metrics)
-      summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
-      logging.info('eval epoch: %d, loss: %.4f, accuracy: %.2f',
-                   epoch, summary['loss'], summary['accuracy'] * 100)
-      writer_eval.write_scalars(
-          step + 1, {f'{key}': val for key, val in summary.items()})
-      writer_eval.flush()
-    if (step + 1) % steps_per_checkpoint == 0 or step + 1 == num_steps:
-      state = sync_batch_stats(state)
-      save_checkpoint(state, workdir)
+
+    # for h in hooks:
+    #   h(step)
+    # if step == step_offset:
+    #   logging.info('Initial compilation completed.')
+
+    # if config.get('log_every_steps'):
+    #   train_metrics.append(metrics)
+    #   if (step + 1) % config.log_every_steps == 0:
+    #     train_metrics = common_utils.get_metrics(train_metrics)
+    #     # # Debug
+    #     # train_metrics = common_utils.stack_forest(train_metrics)
+    #     summary = {
+    #         f'{k}': v
+    #         for k, v in jax.tree_map(lambda x: x.mean(), train_metrics).items()
+    #     }
+    #     summary['steps_per_second'] = config.log_every_steps / (
+    #         time.time() - train_metrics_last_t)
+    #     writer_train.write_scalars(step + 1, summary)
+    #     writer_train.flush()
+    #     train_metrics = []
+    #     train_metrics_last_t = time.time()
+
+    # if (step + 1) % steps_per_epoch == 0:
+    #   epoch = (step + 1) // steps_per_epoch
+    #   eval_metrics = []
+
+    #   # sync batch statistics across replicas
+    #   state = sync_batch_stats(state)
+    #   for _ in range(steps_per_eval):
+    #     eval_batch = next(eval_iter)
+    #     metrics = p_eval_step(state, eval_batch)
+    #     eval_metrics.append(metrics)
+    #   eval_metrics = common_utils.get_metrics(eval_metrics)
+    #   # # Debug
+    #   # eval_metrics = common_utils.stack_forest(eval_metrics)
+    #   summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
+    #   logging.info('eval epoch: %d, loss: %.4f, accuracy: %.2f',
+    #                epoch, summary['loss'], summary['accuracy'] * 100)
+    #   writer_eval.write_scalars(
+    #       step + 1, {f'{key}': val for key, val in summary.items()})
+    #   writer_eval.flush()
+    # if (step + 1) % steps_per_checkpoint == 0 or step + 1 == num_steps:
+    #   state = sync_batch_stats(state)
+    #   save_checkpoint(state, workdir)
 
   # Wait until computations are done before exiting
   jax.random.normal(jax.random.PRNGKey(0), ()).block_until_ready()

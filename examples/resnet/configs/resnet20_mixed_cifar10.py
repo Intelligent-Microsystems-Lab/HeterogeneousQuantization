@@ -76,13 +76,13 @@ def get_config():
   # no input quant in MixedDNN paper.
   # config.quant.stem.act = partial(parametric_d_xmax, act=True)
 
-  config.quant.post_init = partial(parametric_d_xmax, act=True, init_bits = 6)
+  config.quant.post_init = partial(parametric_d_xmax, act=True, init_bits = 6, bitwidth_min = 1)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
   config.quant.mbconv.weight = partial(parametric_d_xmax, init_bits = 4)
   #config.quant.mbconv.act = partial(parametric_d_xmax, act=True, init_bits = 6)
-  config.quant.mbconv.nonl = partial(parametric_d_xmax, act=True, init_bits = 6)
+  config.quant.mbconv.nonl = partial(parametric_d_xmax, act=True, init_bits = 6, bitwidth_min = 1)
 
   # Average quant.
   # config.quant.average = partial(parametric_d_xmax, act=True, init_bits = 6)

@@ -316,6 +316,7 @@ class parametric_d_xmax(nn.Module):
   g_scale: float = 0.
   ceil_tolerance: float = 1e-6
   maxabs_w: float = None
+  bitwidth_min: int = 2
 
   # Parametric heterogenous quantization.
   # Based on MIXED PRECISION DNNS.
@@ -326,6 +327,7 @@ class parametric_d_xmax(nn.Module):
     x = inputs
 
     def quantize_pow2(v):
+      # return 2 ** round_psgd(jnp.log2(v), 0)
       return 2 ** round_psgd(jnp.log2(v), 0)
 
     @jax.custom_vjp
@@ -372,22 +374,25 @@ class parametric_d_xmax(nn.Module):
 
     # Ensure that stepsize is in specified range (and a power of two).
     d = jnp.clip(d.value, self.d_min, self.d_max)
+    d = quantize_pow2(d)
     # Ensure that dynamic range is in specified range.
     xmax = jnp.clip(xmax.value, self.xmax_min, self.xmax_max)
 
     # Ensure xmax and d do not exceed each other
-    d = jnp.where(d > xmax, xmax, d)
-    xmax = jnp.where(xmax < d, d, xmax)
+    # d = jnp.where(d > xmax, xmax, d)
+    # xmax = jnp.where(xmax < d, d, xmax)
 
     # Aux scope to compute network size on the fly.
+    real_xmax = round_psgd(xmax / d, 0) * d # for size computation
     if self.is_mutable_collection('act_size'):
+
       if self.act:
         n_wf = inputs.shape[1:]
         if sign:
           act_mb.value = np.prod(
-              n_wf) * (ceilpass(jnp.log2((xmax / d) + 1)) + 1)
+              n_wf) * jnp.maximum((ceilpass(jnp.log2((real_xmax / d) + 1)) + 1), self.bitwidth_min)
         else:
-          act_mb.value = np.prod(n_wf) * (ceilpass(jnp.log2((xmax / d) + 1)))
+          act_mb.value = np.prod(n_wf) * jnp.maximum((ceilpass(jnp.log2((real_xmax / d) + 1))), self.bitwidth_min)
       else:
         act_mb.value = 0.
 
@@ -398,10 +403,10 @@ class parametric_d_xmax(nn.Module):
         n_wf = inputs.shape
         if sign:
           weight_mb.value = np.prod(
-              n_wf) * (ceilpass(jnp.log2((xmax / d) + 1)) + 1)
+              n_wf) * jnp.maximum((ceilpass(jnp.log2((real_xmax / d) + 1)) + 1), self.bitwidth_min)
         else:
           weight_mb.value = np.prod(
-              n_wf) * (ceilpass(jnp.log2((xmax / d) + 1)))
+              n_wf) * jnp.maximum((ceilpass(jnp.log2((real_xmax / d) + 1))), self.bitwidth_min)
 
     @jax.custom_vjp
     def quant(x, d, xmax):
@@ -435,11 +440,11 @@ class parametric_d_xmax(nn.Module):
 
       return g * mask, jnp.sum(g * g_d * mask), jnp.sum(g * g_xmax)
 
-    quant.defvjp(quant_fwd, quant_bwd)
+    #quant.defvjp(quant_fwd, quant_bwd)
 
-    return quant(x, d, xmax)
-    # if sign:
-    #   xmin = -xmax
-    # else:
-    #   xmin = 0.
-    # return d * self.round_fn(jnp.clip(x, xmin, xmax) / d, self.g_scale)
+    #return quant(x, d, xmax)
+    if sign:
+      xmin = -xmax
+    else:
+      xmin = 0.
+    return d * self.round_fn(jnp.clip(x, xmin, xmax) / d, self.g_scale)

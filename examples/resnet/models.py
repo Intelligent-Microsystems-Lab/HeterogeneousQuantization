@@ -49,11 +49,11 @@ class ResNetBlock(nn.Module):
     y = self.norm()(y)
     y = self.act(y)
 
-    # self.sow('intermediates', 'x1_noquant', y)
+    self.sow('intermediates', 'x1_noquant', y)
     if 'nonl' in self.config:
       y = self.config.nonl(bits=self.bits)(y, sign=False)
 
-    # self.sow('intermediates', 'x1', y)
+    self.sow('intermediates', 'x1', y)
 
     y = self.conv(self.filters, (3, 3), padding=self.padding,
                   config=self.config, bits=self.bits, quant_act_sign=False)(y)
@@ -91,10 +91,10 @@ class ResNetBlock(nn.Module):
 
     out = self.act(residual + y)
     # out = y
-    # self.sow('intermediates', 'xs_noquant', out)
+    self.sow('intermediates', 'xs_noquant', out)
     if 'nonl' in self.config:
       out = self.config.nonl(bits=self.bits)(out, sign=False)
-    # self.sow('intermediates', 'xs', out)
+    self.sow('intermediates', 'xs', out)
     return out
 
 
@@ -170,10 +170,10 @@ class ResNet(nn.Module):
     x = nn.relu(x)
     if 'post_init' in self.config.quant:
       x = self.config.quant.post_init(bits=self.config.quant.bits)(x, sign=False)
-      # this_here = x
+      this_here = x
     if not self.cifar10_flag:
       x = nn.max_pool(x, (3, 3), strides=(2, 2), padding='SAME')
-    # self.sow('intermediates', 'stem', x)
+    self.sow('intermediates', 'stem', x)
     for i, block_size in enumerate(self.stage_sizes):
       for j in range(block_size):
         strides = (2, 2) if i > 0 and j == 0 else (1, 1)
@@ -194,9 +194,9 @@ class ResNet(nn.Module):
       x = self.config.quant.average(bits=self.config.quant.bits)(x, sign=False)
 
     x = jnp.mean(x, axis=(1, 2))
-
-    # x = this_here[:,:2,:,0].reshape((-1,64))
-    # self.sow('intermediates', 'clem_r', x)
+    
+    x = this_here[:,:2,:,0].reshape((-1,64))
+    self.sow('intermediates', 'clem_r', x)
     if not self.cifar10_flag and 'average' in self.config.quant:
       x = self.config.quant.average(bits=self.config.quant.bits)(x, sign=False)
     x = QuantDense(self.num_classes, dtype=self.dtype,

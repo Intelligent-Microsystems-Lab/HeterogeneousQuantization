@@ -129,14 +129,26 @@ def parametric_d_xmax_is_leaf(x):
 
 
 def clip_single_leaf_params(x):
+
+  def quantize_pow2(v):
+    # return 2 ** round_psgd(jnp.log2(v), 0)
+    return 2 ** jnp.round(jnp.log2(v), 0)
+
   if type(x) is dict or type(x) is flax.core.frozen_dict.FrozenDict:
     if 'dynamic_range' in x and 'step_size' in x:
-      x['dynamic_range'] = jnp.clip(x['dynamic_range'], 0.001, 10)
-      x['step_size'] = jnp.clip(x['step_size'], 2**-8, 2**8)
+      
+      min_value = jnp.minimum(x['step_size'], x['dynamic_range'] - 1e-5)
+      max_value = jnp.maximum(x['step_size'] + 1e-5, x['dynamic_range'])
+      x['step_size'] = min_value
+      x['dynamic_range'] = max_value
 
-      # Ensure xmax and d do not exceed each other
-      x['step_size'] = jnp.where(x['step_size'] > x['dynamic_range'], x['dynamic_range'], x['step_size'])
-      x['dynamic_range'] = jnp.where(x['dynamic_range'] < x['step_size'], x['step_size'], x['dynamic_range'])
+
+      x['step_size'] = jnp.clip(x['step_size'], 2**-8 + 1e-5, 2**8 - 1e-5)
+      # x['step_size'] = quantize_pow2(x['step_size'])
+      x['dynamic_range'] = jnp.clip(x['dynamic_range'], 0.001 + 1e-5, 10 - 1e-5)
+      # # Ensure xmax and d do not exceed each other
+      # x['step_size'] = jnp.where(x['step_size'] > x['dynamic_range'], x['dynamic_range'], x['step_size'])
+      # x['dynamic_range'] = jnp.where(x['dynamic_range'] < x['step_size'], x['step_size'], x['dynamic_range'])
 
   return x
 
@@ -312,8 +324,12 @@ def create_train_state(rng, config: ml_collections.ConfigDict,
   elif config.optimizer == 'sgd':
     tx = optax.sgd(
         learning_rate=learning_rate_fn,
-        momentum=config.momentum,
+        momentum=None, #config.momentum,
         nesterov=config.nesterov,
+    )
+  elif config.optimizer == 'adam':
+    tx = optax.adam(
+        learning_rate=learning_rate_fn,
     )
   else:
     raise Exception('Unknown optimizer in config: ' + config.optimizer)
