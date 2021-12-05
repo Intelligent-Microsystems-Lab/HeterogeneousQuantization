@@ -6,6 +6,9 @@
 import ml_collections
 
 
+
+
+
 def get_config():
   """Get the default hyperparameter configuration."""
   config = ml_collections.ConfigDict()
@@ -30,22 +33,22 @@ def get_config():
 
   config.optimizer = 'sgd'
   config.learning_rate = .1
-  config.lr_boundaries_scale = {'80': .1, '120': .1}
-  config.warmup_epochs = 0.0
+  config.lr_boundaries_scale = None #{'80': .1, '120': .1}
+  config.warmup_epochs = 5.
   config.momentum = 0.9
   config.batch_size = 128
   config.weight_decay = 0.0002
   config.nesterov = False
-  config.smoothing = 0.0
-  config.num_devices = 1
+  config.smoothing = .1
 
-  config.num_epochs = 160.
+  config.num_epochs = 160.0
   config.log_every_steps = 100
+  config.num_devices = 1
 
   config.cache = True
   config.half_precision = False
 
-  config.pretrained = '../../pretrained_resnet/resnet20_cifar10.h5' # None
+  config.pretrained = None
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.
@@ -57,7 +60,8 @@ def get_config():
 
   config.quant = ml_collections.ConfigDict()
 
-  config.quant.bits = 32
+  config.quant.a_bits = 32
+  config.quant.w_bits = 32
 
   config.quant.g_scale = 0.
 

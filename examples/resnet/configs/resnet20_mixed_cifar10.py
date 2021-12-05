@@ -33,22 +33,22 @@ def get_config():
 
   config.optimizer = 'sgd'
   config.learning_rate = .01
-  config.lr_boundaries_scale = {'80': .1, '120': .1}
-  config.warmup_epochs = .0
+  config.lr_boundaries_scale = None #{'80': .1, '120': .1}
+  config.warmup_epochs = 5.
   config.momentum = 0.9
   config.batch_size = 128
   config.weight_decay = 0.0002
   config.nesterov = False
-  config.smoothing = .0
+  config.smoothing = .1
 
   config.num_epochs = 160.0
-  config.log_every_steps = 100
+  config.log_every_steps = 1
   config.num_devices = 1
 
-  config.cache = False #True
+  config.cache = True
   config.half_precision = False
 
-  config.pretrained = '../../pretrained_resnet/resnet20_cifar10.h5'
+  config.pretrained =  '/tmp/clem0055/best' #'../../pretrained_resnet/resnet20_cifar10.h5'
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.
@@ -66,7 +66,8 @@ def get_config():
 
   config.quant = ml_collections.ConfigDict()
 
-  config.quant.bits = 4
+  config.quant.w_bits = 4
+  config.quant.a_bits = 6
 
   config.quant.g_scale = 0.
 
@@ -76,13 +77,13 @@ def get_config():
   # no input quant in MixedDNN paper.
   # config.quant.stem.act = partial(parametric_d_xmax, act=True)
 
-  config.quant.post_init = partial(parametric_d_xmax, act=True, init_bits = 6, bitwidth_min = 1)
+  config.quant.post_init = partial(parametric_d_xmax, act=True, bitwidth_min = 1, xmax_max = 255)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
-  config.quant.mbconv.weight = partial(parametric_d_xmax, init_bits = 4)
+  config.quant.mbconv.weight = partial(parametric_d_xmax)
   #config.quant.mbconv.act = partial(parametric_d_xmax, act=True, init_bits = 6)
-  config.quant.mbconv.nonl = partial(parametric_d_xmax, act=True, init_bits = 6, bitwidth_min = 1)
+  config.quant.mbconv.nonl = partial(parametric_d_xmax, act=True, bitwidth_min = 1, xmax_max = 255)
 
   # Average quant.
   # config.quant.average = partial(parametric_d_xmax, act=True, init_bits = 6)

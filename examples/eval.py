@@ -64,38 +64,60 @@ def evaluate(config: ml_collections.ConfigDict,
   dataset_builder = tfds.builder(config.dataset, data_dir=config.tfds_data_dir)
   dataset_builder.download_and_prepare()
   if 'cifar10' in config.dataset:
+    train_iter = input_pipeline.create_input_iter_cifar10(
+        dataset_builder, local_batch_size, train=True, config=config)
     eval_iter = input_pipeline.create_input_iter_cifar10(
         dataset_builder, local_batch_size, train=False, config=config)
+
   elif 'imagenet2012' in config.dataset:
+    train_iter = input_pipeline.create_input_iter(
+        dataset_builder, local_batch_size, train=True, config=config)
     eval_iter = input_pipeline.create_input_iter(
         dataset_builder, local_batch_size, train=False, config=config)
   else:
     raise Exception('Unrecognized data set: ' + config.dataset)
 
+  val_or_test = "validation" if "imagenet" in config.dataset else "test"
+
   if config.steps_per_eval == -1:
     num_validation_examples = dataset_builder.info.splits[
-        'validation'].num_examples
+        val_or_test].num_examples
     steps_per_eval = num_validation_examples // config.batch_size
   else:
     steps_per_eval = config.steps_per_eval
+
 
   model_cls = getattr(models, config.model)
   model = create_model(
       model_cls=model_cls, num_classes=config.num_classes, config=config)
 
+
   rng, subkey = jax.random.split(rng, 2)
   state = create_train_state(
-      subkey, config, model, config.image_size, 0.0)
+      subkey, config, model, config.image_size, lambda x: x)
   state = restore_checkpoint(state, workdir)
 
-  state = jax_utils.replicate(state)
 
-  p_eval_step = jax.pmap(functools.partial(
-      eval_step, size_div=config.quant_target.size_div), axis_name='batch')
+  #state = jax_utils.replicate(state)
+  state = jax_utils.replicate(state, devices=jax.devices(
+  )[:config.num_devices] if type(config.num_devices) == int else jax.devices())
+
+
+  p_eval_step = jax.pmap(
+      functools.partial(
+          eval_step,
+          size_div=config.quant_target.size_div,
+          smoothing=config.smoothing
+      ),
+      axis_name='batch',
+      devices=jax.devices()[:config.num_devices
+                            ] if type(config.num_devices) == int else
+      jax.devices())
 
   logging.info('Initial compilation, this might take some minutes...')
   eval_metrics = []
   time_per_epoch = []
+
   for _ in range(steps_per_eval):
     eval_batch = next(eval_iter)
     train_metrics_last_t = time.time()
@@ -109,6 +131,8 @@ def evaluate(config: ml_collections.ConfigDict,
                summary['accuracy'] * 100,
                np.mean(time_per_epoch[1:]) * 1000,
                np.std(time_per_epoch[1:]) * 1000)
+  for key, val in summary.items():
+    logging.info('%s: %.4f',key, val)
 
   # Wait until computations are done before exiting
   jax.random.normal(jax.random.PRNGKey(0), ()).block_until_ready()

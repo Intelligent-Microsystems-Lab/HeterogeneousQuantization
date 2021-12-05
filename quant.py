@@ -305,12 +305,11 @@ class parametric_d(nn.Module):
 
 class parametric_d_xmax(nn.Module):
   bits: int = 4  # here its just init bits
-  init_bits: int = None
   act: bool = False
-  xmax_min: float = 0.001 # 2**-8
-  xmax_max: float = 10 #2**8
+  xmax_min: float = 2**-8
+  xmax_max: float = 128 #2**8
   d_min: float = 2**-8
-  d_max: float = 2**+8  # for MixedDNNs 1
+  d_max: float = 1  # for MixedDNNs 1
   round_fn: Callable = round_psgd
   init_fn: Callable = max_init
   g_scale: float = 0.
@@ -343,19 +342,20 @@ class parametric_d_xmax(nn.Module):
     ceilpass.defvjp(ceilpass_fwd, ceilpass_bwd)
 
     if sign:
-      num_levels = 2 ** (self.bits if self.init_bits is None else self.init_bits - 1) - 1
+      num_levels = 2 ** (self.bits - 1) - 1
     else:
-      num_levels = 2 ** (self.bits if self.init_bits is None else self.init_bits) - 1
+      num_levels = 2 ** self.bits - 1
 
     # Intialize step size. Step size only changes when init is called or apply
     # with mutable = ['quant_params'].
+    xmax_max = self.variable('quant_params', 'max_xmax', lambda x: float(self.xmax_max), (1,))
     d = self.variable('quant_params', 'step_size', jnp.ones, (1,))
     xmax = self.variable(
         'quant_params', 'dynamic_range', jnp.ones, (1,))
 
     act_mb = self.variable('act_size', 'act_mb', jnp.ones, (1,))
     weight_mb = self.variable('weight_size', 'weight_mb', jnp.ones, (1,))
-    bw = (self.bits if self.init_bits is None else self.init_bits)
+    bw = self.bits
     if self.is_mutable_collection('quant_params'):
       if self.act:
         xmax.value = 2**-3 * (2. ** bw  - 1)

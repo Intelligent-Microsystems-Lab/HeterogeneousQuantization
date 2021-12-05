@@ -143,7 +143,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
   steps_per_checkpoint = steps_per_epoch * 10
 
-  base_learning_rate = config.learning_rate * config.batch_size / 256.
+  base_learning_rate = config.learning_rate #* config.batch_size / 256.
 
   model_cls = getattr(models, config.model)
   model = create_model(
@@ -164,8 +164,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     state = model.load_model_fn(state, config.pretrained)
 
   # Reinitialize quant params.
-  # TODO: @clee change this to train train_iter
-  init_batch = next(eval_iter)['image'][0, :, :, :, :]
+  init_batch = next(train_iter)['image'][0, :, :, :, :]
   rng, rng1, rng2 = jax.random.split(rng, 3)
   _, new_state = state.apply_fn({'params': state.params['params'],
                                  'quant_params': state.params['quant_params'],
@@ -185,19 +184,19 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     logging.info('Initial Network Weight Size in kB: ' + str(jnp.sum(jnp.array(
         jax.tree_util.tree_flatten(state.weight_size
                                    )[0])) / config.quant_target.size_div
-    ) + ' init bits ' + str(config.quant.bits) + ' (No. Params: ' + str(
+    ) + ' init bits ' + str(config.quant.w_bits) + ' (No. Params: ' + str(
         jnp.sum(jnp.array(jax.tree_util.tree_flatten(state.weight_size)[0])
-                ) / config.quant.bits) + ')')
+                ) / config.quant.w_bits) + ')')
   if len(state.act_size) != 0:
     logging.info('Initial Network Activation (Sum) Size in kB: ' + str(jnp.sum(jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])) / config.quant_target.size_div
-    ) + ' init bits ' + str(config.quant.bits) + ' (No. Params: ' + str(
+    ) + ' init bits ' + str(config.quant.a_bits) + ' (No. Params: ' + str(
         jnp.sum(jnp.array(
             jax.tree_util.tree_flatten(state.act_size
-                                       )[0])) / config.quant.bits) + ')')
+                                       )[0])) / config.quant.a_bits) + ')')
     logging.info('Initial Network Activation (Max) Size in kB: ' + str(jnp.max(jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])) / config.quant_target.size_div
-    ) + ' init bits ' + str(config.quant.bits) + ' (No. Params: ' + str(
+    ) + ' init bits ' + str(config.quant.a_bits) + ' (No. Params: ' + str(
         jnp.max(jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])
-                ) / config.quant.bits) + ')')
+                ) / config.quant.a_bits) + ')')
 
 
   # np.sum(jax.tree_util.tree_flatten(jax.tree_util.tree_map(lambda x: np.prod(x.shape), state.params['params']))[0])
@@ -249,6 +248,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
   # Initial Accurcay
   eval_metrics = []
+  eval_best = 0.
   for _ in range(steps_per_eval):
     eval_batch = next(eval_iter)
     metrics = p_eval_step(state, eval_batch)
@@ -273,86 +273,82 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
     
     
-    state, metrics, grads = p_train_step(state, batch, rng_list[1:])
-    # print(metrics['final_loss'][0])
-    # import pdb; pdb.set_trace()
-    # a = str(jnp.max(jnp.abs(state.params['params']['conv_init']['kernel'])))
-    # b = str(jnp.max(jnp.abs(grads[0]['conv_init']['kernel'])))
+    state, metrics = p_train_step(state, batch, rng_list[1:])
+    
 
-    # c = str(state.params['quant_params']['conv_init']['parametric_d_xmax_0']['dynamic_range'][0])
-    # d = str(state.params['quant_params']['conv_init']['parametric_d_xmax_0']['step_size'][0])
-
-    # e = str(grads[1]['conv_init']['parametric_d_xmax_0']['dynamic_range'][0])
-    # f = str(grads[1]['conv_init']['parametric_d_xmax_0']['step_size'][0])
-    # print(a+','+b+','+c+','+d+','+e+','+f)
-    #import pdb; pdb.set_trace()
-    # print(str(metrics['ce_loss'][0]) + ',' + str(metrics['accuracy'].mean()) + ',' +str(metrics['size_weight_penalty'][0]*10))
-    # print(
-    #   str(state.params['params']['conv_init']['kernel'].max()) + ',' 
-    #   + str( state.params['params']['conv_init']['kernel'].sum()) + ',' 
-    #   + str( state.params['params']['conv_init']['kernel'].mean()) + ',' 
-    #   + str(g_info[0][0]) + ',' 
-    #   + str(g_info[1][0]) + ',' 
-    #   + str(g_info[2][0])
-    # )
-    # except:
-    #  import pdb; pdb.set_trace()
-    # # Debug
-    # state, metrics = p_train_step(
-    #     state, {'image': batch['image'][0, :, :, :],
-    #             'label': batch['label'][0]}, rng_list[2])
-
-    #if metrics['decay'] > .2 and metrics['decay'] < 10:
-    #  import pdb; pdb.set_trace()
-    #print(metrics['decay'])
+    for h in hooks:
+      h(step)
+    if step == step_offset:
+      logging.info('Initial compilation completed.')
 
 
+    # evalaute when constraints are fullfilled
+    if 'act_mb' in config.quant_target and 'weight_mb' in config.quant_target:
+      # evaluate network size after gradients are applied.
+      metrics_size = p_eval_step(state, eval_batch)
+      if metrics_size['weight_size'] <= config.quant_target.weight_mb and (config.quant_target.act_mode == 'max' and metrics_size['act_size_max'] <= config.quant_target.act_mb) or (config.quant_target.act_mode == 'sum' and metrics_size['act_size_sum'] <= config.quant_target.act_mb):
+
+        # sync batch statistics across replicas
+        eval_metrics = []
+        state = sync_batch_stats(state)
+        for _ in range(steps_per_eval):
+          eval_batch = next(eval_iter)
+          size_metrics = p_eval_step(state, eval_batch)
+          eval_metrics.append(size_metrics)
+        eval_metrics = common_utils.get_metrics(eval_metrics)
+        # # Debug
+        # eval_metrics = common_utils.stack_forest(eval_metrics)
+        summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
+        if summary['accuracy'] > eval_best:
+          save_checkpoint(state, workdir+'/best')
+          logging.info('!!!! Saved new best model with accuracy %.4f weight size %.4f max act %.4f sum act %.4f', summary['accuracy'], summary['weight_size'], summary['act_size_max'], summary['act_size_sum'])
+          eval_best = summary['accuracy']
 
 
-    # for h in hooks:
-    #   h(step)
-    # if step == step_offset:
-    #   logging.info('Initial compilation completed.')
+    if config.get('log_every_steps'):
+      train_metrics.append(metrics)
+      if (step + 1) % config.log_every_steps == 0:
+        train_metrics = common_utils.get_metrics(train_metrics)
+        # # Debug
+        # train_metrics = common_utils.stack_forest(train_metrics)
+        summary = {
+            f'{k}': v
+            for k, v in jax.tree_map(lambda x: x.mean(), train_metrics).items()
+        }
+        summary['steps_per_second'] = config.log_every_steps / (
+            time.time() - train_metrics_last_t)
+        writer_train.write_scalars(step + 1, summary)
+        writer_train.flush()
+        train_metrics = []
+        train_metrics_last_t = time.time()
 
-    # if config.get('log_every_steps'):
-    #   train_metrics.append(metrics)
-    #   if (step + 1) % config.log_every_steps == 0:
-    #     train_metrics = common_utils.get_metrics(train_metrics)
-    #     # # Debug
-    #     # train_metrics = common_utils.stack_forest(train_metrics)
-    #     summary = {
-    #         f'{k}': v
-    #         for k, v in jax.tree_map(lambda x: x.mean(), train_metrics).items()
-    #     }
-    #     summary['steps_per_second'] = config.log_every_steps / (
-    #         time.time() - train_metrics_last_t)
-    #     writer_train.write_scalars(step + 1, summary)
-    #     writer_train.flush()
-    #     train_metrics = []
-    #     train_metrics_last_t = time.time()
+    if (step + 1) % steps_per_epoch == 0:
+      epoch = (step + 1) // steps_per_epoch
+      eval_metrics = []
 
-    # if (step + 1) % steps_per_epoch == 0:
-    #   epoch = (step + 1) // steps_per_epoch
-    #   eval_metrics = []
+      # sync batch statistics across replicas
+      state = sync_batch_stats(state)
+      for _ in range(steps_per_eval):
+        eval_batch = next(eval_iter)
+        metrics = p_eval_step(state, eval_batch)
+        eval_metrics.append(metrics)
+      eval_metrics = common_utils.get_metrics(eval_metrics)
+      # # Debug
+      # eval_metrics = common_utils.stack_forest(eval_metrics)
+      summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
+      logging.info('eval epoch: %d, loss: %.4f, accuracy: %.2f',
+                   epoch, summary['loss'], summary['accuracy'] * 100)
+      writer_eval.write_scalars(
+          step + 1, {f'{key}': val for key, val in summary.items()})
+      writer_eval.flush()
+      if 'act_mb' not in config.quant_target and 'weight_mb' not in config.quant_target and summary['accuracy'] > eval_best:
+        save_checkpoint(state, workdir+'/best')
+        logging.info('!!!! Saved new best model with accuracy %.4f', summary['accuracy'])
+        eval_best = summary['accuracy']
 
-    #   # sync batch statistics across replicas
-    #   state = sync_batch_stats(state)
-    #   for _ in range(steps_per_eval):
-    #     eval_batch = next(eval_iter)
-    #     metrics = p_eval_step(state, eval_batch)
-    #     eval_metrics.append(metrics)
-    #   eval_metrics = common_utils.get_metrics(eval_metrics)
-    #   # # Debug
-    #   # eval_metrics = common_utils.stack_forest(eval_metrics)
-    #   summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
-    #   logging.info('eval epoch: %d, loss: %.4f, accuracy: %.2f',
-    #                epoch, summary['loss'], summary['accuracy'] * 100)
-    #   writer_eval.write_scalars(
-    #       step + 1, {f'{key}': val for key, val in summary.items()})
-    #   writer_eval.flush()
-    # if (step + 1) % steps_per_checkpoint == 0 or step + 1 == num_steps:
-    #   state = sync_batch_stats(state)
-    #   save_checkpoint(state, workdir)
+    if (step + 1) % steps_per_checkpoint == 0 or step + 1 == num_steps:
+      state = sync_batch_stats(state)
+      save_checkpoint(state, workdir)
 
   # Wait until computations are done before exiting
   jax.random.normal(jax.random.PRNGKey(0), ()).block_until_ready()

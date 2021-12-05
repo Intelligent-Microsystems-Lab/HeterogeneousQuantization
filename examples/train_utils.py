@@ -130,10 +130,6 @@ def parametric_d_xmax_is_leaf(x):
 
 def clip_single_leaf_params(x):
 
-  def quantize_pow2(v):
-    # return 2 ** round_psgd(jnp.log2(v), 0)
-    return 2 ** jnp.round(jnp.log2(v), 0)
-
   if type(x) is dict or type(x) is flax.core.frozen_dict.FrozenDict:
     if 'dynamic_range' in x and 'step_size' in x:
       
@@ -143,9 +139,8 @@ def clip_single_leaf_params(x):
       x['dynamic_range'] = max_value
 
 
-      x['step_size'] = jnp.clip(x['step_size'], 2**-8 + 1e-5, 2**8 - 1e-5)
-      # x['step_size'] = quantize_pow2(x['step_size'])
-      x['dynamic_range'] = jnp.clip(x['dynamic_range'], 0.001 + 1e-5, 10 - 1e-5)
+      x['step_size'] = jnp.clip(x['step_size'], 2**-8 + 1e-5, 1 - 1e-5)
+      x['dynamic_range'] = jnp.clip(x['dynamic_range'], 2**-8 + 1e-5, x['max_xmax'] - 1e-5)
       # # Ensure xmax and d do not exceed each other
       # x['step_size'] = jnp.where(x['step_size'] > x['dynamic_range'], x['dynamic_range'], x['step_size'])
       # x['dynamic_range'] = jnp.where(x['dynamic_range'] < x['step_size'], x['step_size'], x['dynamic_range'])
@@ -219,7 +214,7 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
             max but got: ' + quant_target.act_mode)
 
     final_loss = loss + size_act_penalty + size_weight_penalty # + weight_penalty
-    return final_loss, (new_model_state, logits,  new_model_state['intermediates'], final_loss, None, size_act_penalty, size_weight_penalty, loss)
+    return final_loss, (new_model_state, logits, None, final_loss, None, size_act_penalty, size_weight_penalty, loss)
 
   step = state.step
   lr = learning_rate_fn(step)
@@ -251,14 +246,14 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
       act_size=new_model_state['act_size'])
 
   new_state.params['quant_params'] = clip_quant_vals(new_state.params['quant_params'])
-  metrics['intermediates'] = aux[1][-6]
+  # metrics['intermediates'] = aux[1][-6]
   metrics['final_loss'] = aux[1][-5]
   # metrics['decay'] = aux[1][-4]
   metrics['size_act_penalty'] = aux[1][-3]
   metrics['size_weight_penalty'] = aux[1][-2]
   metrics['ce_loss'] = aux[1][-1]
-  metrics['logits'] = logits
-  return new_state, metrics, grads #, (grads[0]['conv_init']['kernel'].max(), grads[0]['conv_init']['kernel'].sum(), grads[0]['conv_init']['kernel'].mean())
+  # metrics['logits'] = logits
+  return new_state, metrics#, grads #, (grads[0]['conv_init']['kernel'].max(), grads[0]['conv_init']['kernel'].sum(), grads[0]['conv_init']['kernel'].mean())
 
 
 def eval_step(state, batch, size_div, smoothing):
@@ -324,7 +319,7 @@ def create_train_state(rng, config: ml_collections.ConfigDict,
   elif config.optimizer == 'sgd':
     tx = optax.sgd(
         learning_rate=learning_rate_fn,
-        momentum=None, #config.momentum,
+        momentum=config.momentum,
         nesterov=config.nesterov,
     )
   elif config.optimizer == 'adam':
