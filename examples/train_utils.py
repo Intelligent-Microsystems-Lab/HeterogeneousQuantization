@@ -45,10 +45,12 @@ def initialized(key, image_size, model):
     variables['weight_size'] = {}
   if 'act_size' not in variables:
     variables['act_size'] = {}
+  if 'quant_config' not in variables:
+    variables['quant_config'] = {}
   variables = freeze(variables)
 
   return variables['params'], variables['quant_params'], \
-      variables['batch_stats'], variables['weight_size'], variables['act_size']
+      variables['batch_stats'], variables['weight_size'], variables['act_size'], variables['quant_config']
 
 
 def cross_entropy_loss(logits, labels, smoothing):
@@ -128,7 +130,7 @@ def parametric_d_xmax_is_leaf(x):
   return True
 
 
-def clip_single_leaf_params(x):
+def clip_single_leaf_params(x, quant_config):
 
   if type(x) is dict or type(x) is flax.core.frozen_dict.FrozenDict:
     if 'dynamic_range' in x and 'step_size' in x:
@@ -138,17 +140,21 @@ def clip_single_leaf_params(x):
       x['step_size'] = min_value
       x['dynamic_range'] = max_value
 
+      #print(quant_config['min_d'])
+      #print(quant_config['min_d'])
+      #print(quant_config['min_d'])
+      #print(quant_config['min_d'])
 
-      x['step_size'] = jnp.clip(x['step_size'], 2**-8 + 1e-5, 1 - 1e-5)
-      x['dynamic_range'] = jnp.clip(x['dynamic_range'], 2**-8 + 1e-5, x['max_xmax'] - 1e-5)
-      # # Ensure xmax and d do not exceed each other
-      # x['step_size'] = jnp.where(x['step_size'] > x['dynamic_range'], x['dynamic_range'], x['step_size'])
-      # x['dynamic_range'] = jnp.where(x['dynamic_range'] < x['step_size'], x['step_size'], x['dynamic_range'])
+      x['step_size'] = jnp.clip(x['step_size'], quant_config['min_d']+ 1e-5, quant_config['max_d'] - 1e-5)
+      x['dynamic_range'] = jnp.clip(x['dynamic_range'], quant_config['min_xmax'] + 1e-5, quant_config['max_xmax'] - 1e-5)
 
   return x
 
-def clip_quant_vals(params):
-  return jax.tree_util.tree_map(clip_single_leaf_params, params, is_leaf = parametric_d_xmax_is_leaf)
+def clip_quant_vals(params, quant_configs):
+  quant_configs = unfreeze(quant_configs)
+  quant_configs['placeholder'] = jnp.sum(jnp.ones((1,)))
+  quant_configs = freeze(quant_configs)
+  return jax.tree_util.tree_multimap(clip_single_leaf_params, params, quant_configs, is_leaf = parametric_d_xmax_is_leaf)
 
 
 def clip_single_leaf_grads(x, params):
@@ -167,10 +173,6 @@ def clip_quant_grads(grads, quant_params):
   return jax.tree_util.tree_multimap(clip_single_leaf_grads, grads, quant_params, is_leaf = parametric_d_xmax_is_leaf)
 
 
-# def manual_weight_decay(grads, params, rate):
-#   return jax.tree_util.tree_multimap(lambda x: )
-
-
 def train_step(state, batch, rng, learning_rate_fn, weight_decay,
                quant_target, smoothing):
   """Perform a single training step."""
@@ -182,13 +184,13 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
                                               'quant_params': quant_params,
                                               'batch_stats': state.batch_stats,
                                               'weight_size': state.weight_size,
-                                              'act_size': state.act_size},
+                                              'act_size': state.act_size,
+                                              'quant_config':state.quant_config},
                                              inputs, rng=prng, mutable=[
-        'batch_stats', 'weight_size', 'act_size', 'intermediates'],
+        'batch_stats', 'weight_size', 'act_size', 'intermediates', 'quant_config'],
         rngs={'dropout': rng})
 
     loss = jnp.mean(cross_entropy_loss(logits, targets, smoothing))
-    # weight_penalty = weight_decay * weight_decay_fn(params)
 
     # size penalty
     size_weight_penalty = 0.
@@ -206,14 +208,13 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
             size_act - quant_target.act_mb) ** 2
       elif quant_target.act_mode == 'max':
         size_act = jnp.max(jnp.array(jax.tree_util.tree_flatten(new_model_state['act_size'])[0])) / quant_target.size_div
-        size_act_penalty += quant_target.act_penalty * jax.nn.relu(
-            size_act - quant_target.act_mb) ** 2
+        size_act_penalty += quant_target.act_penalty * jax.nn.relu(size_act - quant_target.act_mb) ** 2
       else:
         raise Exception(
             'Unrecongized quant act mode, either sum or \
             max but got: ' + quant_target.act_mode)
 
-    final_loss = loss + size_act_penalty + size_weight_penalty # + weight_penalty
+    final_loss = loss + size_act_penalty + size_weight_penalty
     return final_loss, (new_model_state, logits, None, final_loss, None, size_act_penalty, size_weight_penalty, loss)
 
   step = state.step
@@ -225,10 +226,10 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
       state.params['quant_params'])
 
   # manual weight decay
+  # TODO @clee1994 remove batchnorm parameters from weight decay...
   grads = (jax.tree_util.tree_multimap(lambda x, y: x + weight_decay * y ,grads[0], state.params['params']), jax.tree_util.tree_multimap(lambda x, y: x + weight_decay * y ,grads[1], state.params['quant_params']))
 
   # Re-use same axis_name as in the call to `pmap(...train_step...)` below.
-  # jax.tree_util.tree_map(lambda x: jnp.clip(x, -2.5, 2.5),grads[0])
   grads = (grads[0], clip_quant_grads(grads[1], state.params['quant_params']))
   grads = lax.pmean(grads, axis_name='batch')
 
@@ -243,9 +244,10 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
       grads={'params': grads[0], 'quant_params': grads[1]},
       batch_stats=new_model_state['batch_stats'],
       weight_size=new_model_state['weight_size'],
-      act_size=new_model_state['act_size'])
+      act_size=new_model_state['act_size'],
+      quant_config = new_model_state['quant_config'])
 
-  new_state.params['quant_params'] = clip_quant_vals(new_state.params['quant_params'])
+  new_state.params['quant_params'] = clip_quant_vals(new_state.params['quant_params'], new_state.quant_config)
   # metrics['intermediates'] = aux[1][-6]
   metrics['final_loss'] = aux[1][-5]
   # metrics['decay'] = aux[1][-4]
@@ -253,14 +255,14 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
   metrics['size_weight_penalty'] = aux[1][-2]
   metrics['ce_loss'] = aux[1][-1]
   # metrics['logits'] = logits
-  return new_state, metrics#, grads #, (grads[0]['conv_init']['kernel'].max(), grads[0]['conv_init']['kernel'].sum(), grads[0]['conv_init']['kernel'].mean())
+  return new_state, metrics, grads #, (grads[0]['conv_init']['kernel'].max(), grads[0]['conv_init']['kernel'].sum(), grads[0]['conv_init']['kernel'].mean())
 
 
 def eval_step(state, batch, size_div, smoothing):
   variables = {'params': state.params['params'],
                'quant_params': state.params['quant_params'],
                'batch_stats': state.batch_stats,
-               'weight_size': state.weight_size, 'act_size': state.act_size, }
+               'weight_size': state.weight_size, 'act_size': state.act_size, 'quant_config':state.quant_config }
   logits, new_state = state.apply_fn(
       variables,
       batch['image'],
@@ -277,6 +279,7 @@ class TrainState(train_state.TrainState):
   batch_stats: Any
   weight_size: Any
   act_size: Any
+  quant_config: Any
 
 
 def restore_checkpoint(state, workdir):
@@ -307,7 +310,7 @@ def create_train_state(rng, config: ml_collections.ConfigDict,
                        model, image_size, learning_rate_fn):
   """Create initial training state."""
 
-  params, quant_params, batch_stats, weight_size, act_size = initialized(
+  params, quant_params, batch_stats, weight_size, act_size, quant_config = initialized(
       rng, image_size, model)
   if config.optimizer == 'rmsprop':
     tx = optax.rmsprop(
@@ -339,5 +342,6 @@ def create_train_state(rng, config: ml_collections.ConfigDict,
       batch_stats=batch_stats,
       weight_size=weight_size,
       act_size=act_size,
+      quant_config = quant_config,
   )
   return state

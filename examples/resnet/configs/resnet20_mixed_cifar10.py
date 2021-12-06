@@ -33,13 +33,13 @@ def get_config():
 
   config.optimizer = 'sgd'
   config.learning_rate = .01
-  config.lr_boundaries_scale = None #{'80': .1, '120': .1}
+  config.lr_boundaries_scale = {'80': .1, '120': .1}
   config.warmup_epochs = 5.
   config.momentum = 0.9
   config.batch_size = 128
   config.weight_decay = 0.0002
   config.nesterov = False
-  config.smoothing = .1
+  config.smoothing = .0
 
   config.num_epochs = 160.0
   config.log_every_steps = 1
@@ -48,7 +48,7 @@ def get_config():
   config.cache = True
   config.half_precision = False
 
-  config.pretrained =  '/tmp/clem0055/best' #'../../pretrained_resnet/resnet20_cifar10.h5'
+  config.pretrained =  '../../pretrained_resnet/resnet20_cifar10.h5'
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.
@@ -59,8 +59,8 @@ def get_config():
 
   config.quant_target.weight_mb = 70.1
   config.quant_target.weight_penalty = .1
-  config.quant_target.act_mode = 'max'
-  config.quant_target.act_mb = 8.1
+  config.quant_target.act_mode = 'sum'
+  config.quant_target.act_mb = 92.1 # 8.1
   config.quant_target.act_penalty = .1
   config.quant_target.size_div = 8. * 1024.  # 8_000 # mb or kb
 

@@ -331,7 +331,7 @@ class parametric_d_xmax(nn.Module):
 
     @jax.custom_vjp
     def ceilpass(x):
-      return jnp.ceil(x - self.ceil_tolerance)
+      return jnp.ceil(x) # - self.ceil_tolerance)
 
     def ceilpass_fwd(x):
       return ceilpass(x), (None,)
@@ -346,9 +346,14 @@ class parametric_d_xmax(nn.Module):
     else:
       num_levels = 2 ** self.bits - 1
 
+    
+    xmax_max = self.variable('quant_config', 'max_xmax', lambda x: float(self.xmax_max), (1,))
+    xmax_min = self.variable('quant_config', 'min_xmax', lambda x: float(self.xmax_min), (1,))
+    d_max = self.variable('quant_config', 'max_d', lambda x: float(self.d_max), (1,))
+    d_min = self.variable('quant_config', 'min_d', lambda x: float(self.d_min), (1,))
+
     # Intialize step size. Step size only changes when init is called or apply
     # with mutable = ['quant_params'].
-    xmax_max = self.variable('quant_params', 'max_xmax', lambda x: float(self.xmax_max), (1,))
     d = self.variable('quant_params', 'step_size', jnp.ones, (1,))
     xmax = self.variable(
         'quant_params', 'dynamic_range', jnp.ones, (1,))
@@ -440,9 +445,9 @@ class parametric_d_xmax(nn.Module):
 
       return g * mask, jnp.sum(g * g_d * mask), jnp.sum(g * g_xmax)
 
-    #quant.defvjp(quant_fwd, quant_bwd)
+    quant.defvjp(quant_fwd, quant_bwd)
 
-    #return quant(x, d, xmax)
+    # return quant(x, d, xmax)
     if sign:
       xmin = -xmax
     else:

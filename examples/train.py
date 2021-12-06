@@ -164,21 +164,23 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     state = model.load_model_fn(state, config.pretrained)
 
   # Reinitialize quant params.
-  init_batch = next(train_iter)['image'][0, :, :, :, :]
+  # TODO @clee1994 change back to train_iter
+  init_batch = next(eval_iter)['image'][0, :, :, :, :]
   rng, rng1, rng2 = jax.random.split(rng, 3)
   _, new_state = state.apply_fn({'params': state.params['params'],
                                  'quant_params': state.params['quant_params'],
-                                 'batch_stats': state.batch_stats}, init_batch,
+                                 'batch_stats': state.batch_stats, 'quant_config': {}}, init_batch,
                                 rng=rng1,
                                 mutable=['batch_stats', 'quant_params',
-                                         'weight_size', 'act_size'],
+                                         'weight_size', 'act_size', 'quant_config'],
                                 rngs={'dropout': rng2})
   state = TrainState.create(apply_fn=state.apply_fn,
                             params={'params': state.params['params'],
                                     'quant_params': new_state['quant_params']},
                             tx=state.tx, batch_stats=state.batch_stats,
                             weight_size=state.weight_size,
-                            act_size=state.act_size)
+                            act_size=state.act_size,
+                            quant_config=new_state['quant_config'])
 
   if len(state.weight_size) != 0:
     logging.info('Initial Network Weight Size in kB: ' + str(jnp.sum(jnp.array(
@@ -246,19 +248,19 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   #     size_div=config.quant_target.size_div,
   #     smoothing=config.smoothing)
 
-  # Initial Accurcay
-  eval_metrics = []
-  eval_best = 0.
-  for _ in range(steps_per_eval):
-    eval_batch = next(eval_iter)
-    metrics = p_eval_step(state, eval_batch)
-    eval_metrics.append(metrics)
-  # eval_metrics = common_utils.get_metrics(eval_metrics)
-  # Debug
-  eval_metrics = common_utils.stack_forest(eval_metrics)
-  summary = jax.tree_map(lambda x: jnp.mean(x), eval_metrics)
-  logging.info('Initial, loss: %.10f, accuracy: %.10f',
-               summary['loss'], summary['accuracy'] * 100)
+  # # Initial Accurcay
+  # eval_metrics = []
+  # eval_best = 0.
+  # for _ in range(steps_per_eval):
+  #   eval_batch = next(eval_iter)
+  #   metrics = p_eval_step(state, eval_batch)
+  #   eval_metrics.append(metrics)
+  # # eval_metrics = common_utils.get_metrics(eval_metrics)
+  # # Debug
+  # eval_metrics = common_utils.stack_forest(eval_metrics)
+  # summary = jax.tree_map(lambda x: jnp.mean(x), eval_metrics)
+  # logging.info('Initial, loss: %.10f, accuracy: %.10f',
+  #              summary['loss'], summary['accuracy'] * 100)
 
   train_metrics = []
   hooks = []
@@ -273,8 +275,31 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
     
     
-    state, metrics = p_train_step(state, batch, rng_list[1:])
+    state, metrics, grads = p_train_step(state, batch, rng_list[1:])
     
+    # # Debug
+    # state, metrics = p_train_step(
+    #     state, {'image': batch['image'][0, :, :, :],
+    #             'label': batch['label'][0]}, rng_list[2])
+
+
+    #print(metrics['size_act_penalty'][0])
+
+
+    # c = str(state.params['quant_params']['parametric_d_xmax_0']['dynamic_range'][0])
+    # d = str(state.params['quant_params']['parametric_d_xmax_0']['step_size'][0])
+
+    # e = str(grads[1]['parametric_d_xmax_0']['dynamic_range'][0])
+    # f = str(grads[1]['parametric_d_xmax_0']['step_size'][0])
+
+    # import pdb; pdb.set_trace() 
+    # c1 = str(state.params['quant_params']['ResNetBlock_0']['parametric_d_xmax_0']['dynamic_range'][0])
+    # d1 = str(state.params['quant_params']['ResNetBlock_0']['parametric_d_xmax_0']['step_size'][0])
+
+    # e1 = str(grads[1]['ResNetBlock_0']['parametric_d_xmax_0']['dynamic_range'][0])
+    # f1 = str(grads[1]['ResNetBlock_0']['parametric_d_xmax_0']['step_size'][0])
+
+    # print(c+','+d+','+e+','+f + ',' + c1 +','+d1+','+e1+','+f1)
 
     for h in hooks:
       h(step)
