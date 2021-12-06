@@ -42,7 +42,7 @@ def get_config():
   config.smoothing = .0
 
   config.num_epochs = 160.0
-  config.log_every_steps = 1
+  config.log_every_steps = 100
   config.num_devices = 1
 
   config.cache = True
