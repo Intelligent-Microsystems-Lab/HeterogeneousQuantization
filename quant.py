@@ -331,7 +331,7 @@ class parametric_d_xmax(nn.Module):
 
     @jax.custom_vjp
     def ceilpass(x):
-      return jnp.ceil(x - self.ceil_tolerance)
+      return jnp.ceil(x)# - self.ceil_tolerance)
 
     def ceilpass_fwd(x):
       return ceilpass(x), (None,)
