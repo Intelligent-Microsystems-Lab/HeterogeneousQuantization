@@ -313,7 +313,7 @@ class parametric_d_xmax(nn.Module):
   round_fn: Callable = round_psgd
   init_fn: Callable = max_init
   g_scale: float = 0.
-  ceil_tolerance: float = 1e-6
+  ceil_tolerance: float = 4e-8
   maxabs_w: float = None
   bitwidth_min: int = 2
 
@@ -331,7 +331,7 @@ class parametric_d_xmax(nn.Module):
 
     @jax.custom_vjp
     def ceilpass(x):
-      return jnp.ceil(x)# - self.ceil_tolerance)
+      return jnp.ceil(x - self.ceil_tolerance)
 
     def ceilpass_fwd(x):
       return ceilpass(x), (None,)
