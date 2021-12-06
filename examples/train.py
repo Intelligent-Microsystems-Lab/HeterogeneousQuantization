@@ -164,8 +164,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     state = model.load_model_fn(state, config.pretrained)
 
   # Reinitialize quant params.
-  # TODO @clee1994 change back to train_iter
-  init_batch = next(eval_iter)['image'][0, :, :, :, :]
+  init_batch = next(train_iter)['image'][0, :, :, :, :]
   rng, rng1, rng2 = jax.random.split(rng, 3)
   _, new_state = state.apply_fn({'params': state.params['params'],
                                  'quant_params': state.params['quant_params'],
@@ -248,19 +247,19 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   #     size_div=config.quant_target.size_div,
   #     smoothing=config.smoothing)
 
-  # # Initial Accurcay
-  # eval_metrics = []
-  # eval_best = 0.
-  # for _ in range(steps_per_eval):
-  #   eval_batch = next(eval_iter)
-  #   metrics = p_eval_step(state, eval_batch)
-  #   eval_metrics.append(metrics)
-  # # eval_metrics = common_utils.get_metrics(eval_metrics)
-  # # Debug
-  # eval_metrics = common_utils.stack_forest(eval_metrics)
-  # summary = jax.tree_map(lambda x: jnp.mean(x), eval_metrics)
-  # logging.info('Initial, loss: %.10f, accuracy: %.10f',
-  #              summary['loss'], summary['accuracy'] * 100)
+  # Initial Accurcay
+  eval_metrics = []
+  eval_best = 0.
+  for _ in range(steps_per_eval):
+    eval_batch = next(eval_iter)
+    metrics = p_eval_step(state, eval_batch)
+    eval_metrics.append(metrics)
+  # eval_metrics = common_utils.get_metrics(eval_metrics)
+  # Debug
+  eval_metrics = common_utils.stack_forest(eval_metrics)
+  summary = jax.tree_map(lambda x: jnp.mean(x), eval_metrics)
+  logging.info('Initial, loss: %.10f, accuracy: %.10f',
+               summary['loss'], summary['accuracy'] * 100)
 
   train_metrics = []
   hooks = []

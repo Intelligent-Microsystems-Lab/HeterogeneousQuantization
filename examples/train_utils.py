@@ -24,6 +24,21 @@ import optax
 Array = jnp.ndarray
 
 
+@jax.custom_vjp
+def max_custom_grad(x):
+  return jnp.max(x)
+
+def max_custom_grad_fwd(x):
+  return max_custom_grad(x), (x,)
+
+def max_custom_grad_bwd(res, g):
+  x, = res
+  mask = jnp.where(x == jnp.max(x), 1, 0)
+  return (g * mask,)
+
+max_custom_grad.defvjp(max_custom_grad_fwd, max_custom_grad_bwd)
+
+
 def create_model(*, model_cls, num_classes, **kwargs):
   model_dtype = jnp.float32
   return model_cls(num_classes=num_classes, dtype=model_dtype, **kwargs)
@@ -140,11 +155,6 @@ def clip_single_leaf_params(x, quant_config):
       x['step_size'] = min_value
       x['dynamic_range'] = max_value
 
-      #print(quant_config['min_d'])
-      #print(quant_config['min_d'])
-      #print(quant_config['min_d'])
-      #print(quant_config['min_d'])
-
       x['step_size'] = jnp.clip(x['step_size'], quant_config['min_d']+ 1e-5, quant_config['max_d'] - 1e-5)
       x['dynamic_range'] = jnp.clip(x['dynamic_range'], quant_config['min_xmax'] + 1e-5, quant_config['max_xmax'] - 1e-5)
 
@@ -207,7 +217,7 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
         size_act_penalty += quant_target.act_penalty * jax.nn.relu(
             size_act - quant_target.act_mb) ** 2
       elif quant_target.act_mode == 'max':
-        size_act = jnp.max(jnp.array(jax.tree_util.tree_flatten(new_model_state['act_size'])[0])) / quant_target.size_div
+        size_act = max_custom_grad(jnp.array(jax.tree_util.tree_flatten(new_model_state['act_size'])[0])) / quant_target.size_div
         size_act_penalty += quant_target.act_penalty * jax.nn.relu(size_act - quant_target.act_mb) ** 2
       else:
         raise Exception(

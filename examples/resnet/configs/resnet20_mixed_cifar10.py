@@ -59,8 +59,8 @@ def get_config():
 
   config.quant_target.weight_mb = 70.1
   config.quant_target.weight_penalty = .1
-  config.quant_target.act_mode = 'sum'
-  config.quant_target.act_mb = 92.1 # 8.1
+  config.quant_target.act_mode = 'max'
+  config.quant_target.act_mb = 8.1
   config.quant_target.act_penalty = .1
   config.quant_target.size_div = 8. * 1024.  # 8_000 # mb or kb
 
