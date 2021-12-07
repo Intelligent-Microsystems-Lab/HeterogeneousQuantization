@@ -388,10 +388,6 @@ class parametric_d_xmax(nn.Module):
     # Ensure that dynamic range is in specified range.
     xmax = jnp.clip(xmax.value, self.xmax_min, self.xmax_max)
 
-    # Ensure xmax and d do not exceed each other
-    # d = jnp.where(d > xmax, xmax, d)
-    # xmax = jnp.where(xmax < d, d, xmax)
-
     # Aux scope to compute network size on the fly.
     real_xmax = round_psgd(xmax / d, 0) * d  # for size computation
     if self.is_mutable_collection('act_size'):
@@ -423,39 +419,39 @@ class parametric_d_xmax(nn.Module):
               n_wf) * jnp.maximum((ceilpass(jnp.log2((real_xmax / d) + 1))
                                    ), self.bitwidth_min)
 
-    @jax.custom_vjp
-    def quant(x, d, xmax):
-      if sign:
-        xmin = -xmax
-      else:
-        xmin = 0.
+    # @jax.custom_vjp
+    # def quant(x, d, xmax):
+    #   if sign:
+    #     xmin = -xmax
+    #   else:
+    #     xmin = 0.
 
-      return d * jnp.round(jnp.clip(x, xmin, xmax) / d)
+    #   return d * jnp.round(jnp.clip(x, xmin, xmax) / d)
 
-    def quant_fwd(x, d, xmax):
-      return quant(x, d, xmax), (x, d, xmax)
+    # def quant_fwd(x, d, xmax):
+    #   return quant(x, d, xmax), (x, d, xmax)
 
-    def quant_bwd(res, g):
-      (x, d, xmax) = res
+    # def quant_bwd(res, g):
+    #   (x, d, xmax) = res
 
-      if sign:
-        xmin = -xmax
-      else:
-        xmin = 0.
+    #   if sign:
+    #     xmin = -xmax
+    #   else:
+    #     xmin = 0.
 
-      mask = jnp.where(jnp.logical_and((x < xmax), (x > xmin)), 1, 0)
+    #   mask = jnp.where(jnp.logical_and((x < xmax), (x > xmin)), 1, 0)
 
-      g_d = (1 / d) * (quant(x, d, xmax) - x)
+    #   g_d = (1 / d) * (quant(x, d, xmax) - x)
 
-      if sign:
-        g_xmax = jnp.where(x > xmax, 1, 0)
-        g_xmax = jnp.where(x < xmin, -1, g_xmax)
-      else:
-        g_xmax = jnp.where(x > xmax, 1, 0)
+    #   if sign:
+    #     g_xmax = jnp.where(x > xmax, 1, 0)
+    #     g_xmax = jnp.where(x < xmin, -1, g_xmax)
+    #   else:
+    #     g_xmax = jnp.where(x > xmax, 1, 0)
 
-      return g * mask, jnp.sum(g * g_d * mask), jnp.sum(g * g_xmax)
+    #   return g * mask, jnp.sum(g * g_d * mask), jnp.sum(g * g_xmax)
 
-    quant.defvjp(quant_fwd, quant_bwd)
+    # quant.defvjp(quant_fwd, quant_bwd)
 
     # return quant(x, d, xmax)
     if sign:

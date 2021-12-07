@@ -34,7 +34,7 @@ def get_config():
   config.optimizer = 'sgd'
   config.learning_rate = .001
   config.lr_boundaries_scale = None #{'80': .1, '120': .1}
-  config.warmup_epochs = 5.
+  config.warmup_epochs = 20.
   config.momentum = 0.9
   config.batch_size = 128
   config.weight_decay = 0.0002
@@ -48,7 +48,7 @@ def get_config():
   config.cache = True
   config.half_precision = False
 
-  config.pretrained = '/tmp/clem0027/best' #'../../pretrained_resnet/resnet20_cifar10.h5'
+  config.pretrained = '/tmp/clem0042/best' #'../../pretrained_resnet/resnet20_cifar10.h5'
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.

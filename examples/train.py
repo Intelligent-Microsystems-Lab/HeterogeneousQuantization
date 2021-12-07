@@ -272,8 +272,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         config.num_devices) == int else jax.local_device_count()) + 1)
     rng = rng_list[0]
 
-    old_state = state
-    state, metrics, grads = p_train_step(state, batch, rng_list[1:])
+    state, metrics = p_train_step(state, batch, rng_list[1:])
 
     for h in hooks:
       h(step)
@@ -302,8 +301,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
         if summary['accuracy'] > eval_best:
           save_checkpoint(state, workdir + '/best')
-          logging.info('!!! Saved new best model with accuracy %.4f weight\
-           size %.4f max act %.4f sum act %.4f', summary['accuracy'],
+          logging.info('!!! Saved new best model with accuracy %.4f weight'\
+            'size %.4f max act %.4f sum act %.4f', summary['accuracy'],
                        summary['weight_size'], summary['act_size_max'],
                        summary['act_size_sum'])
           eval_best = summary['accuracy']
