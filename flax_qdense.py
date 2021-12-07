@@ -170,7 +170,9 @@ class QuantDense(Module):
       bias = jnp.asarray(bias, self.dtype)
 
       if "bias" in self.config:
-        bias = self.config.bias(bits=self.bits, g_scale=self.g_scale, maxabs_w = jnp.max(jnp.abs(kernel)))(bias)
+        bias = self.config.bias(
+            bits=self.bits, g_scale=self.g_scale,
+            maxabs_w=jnp.max(jnp.abs(kernel)))(bias)
 
       y = y + bias
     return y

@@ -38,6 +38,7 @@ jobs:
       - name: Lint with flake8 
         run: |
           flake8 --ignore=W503,E111,E114 *.py
+          flake8 --ignore=W503,E111,E114 examples/*.py
           flake8 --ignore=W503,E111,E114 examples/efficientnet/*.py
           flake8 --ignore=W503,E111,E114 examples/resnet/*.py
           flake8 --ignore=W503,E111,E114 examples/small_cnn/*.py

@@ -64,14 +64,10 @@ def evaluate(config: ml_collections.ConfigDict,
   dataset_builder = tfds.builder(config.dataset, data_dir=config.tfds_data_dir)
   dataset_builder.download_and_prepare()
   if 'cifar10' in config.dataset:
-    train_iter = input_pipeline.create_input_iter_cifar10(
-        dataset_builder, local_batch_size, train=True, config=config)
     eval_iter = input_pipeline.create_input_iter_cifar10(
         dataset_builder, local_batch_size, train=False, config=config)
 
   elif 'imagenet2012' in config.dataset:
-    train_iter = input_pipeline.create_input_iter(
-        dataset_builder, local_batch_size, train=True, config=config)
     eval_iter = input_pipeline.create_input_iter(
         dataset_builder, local_batch_size, train=False, config=config)
   else:
@@ -86,22 +82,17 @@ def evaluate(config: ml_collections.ConfigDict,
   else:
     steps_per_eval = config.steps_per_eval
 
-
   model_cls = getattr(models, config.model)
   model = create_model(
       model_cls=model_cls, num_classes=config.num_classes, config=config)
-
 
   rng, subkey = jax.random.split(rng, 2)
   state = create_train_state(
       subkey, config, model, config.image_size, lambda x: x)
   state = restore_checkpoint(state, workdir)
 
-
-  #state = jax_utils.replicate(state)
   state = jax_utils.replicate(state, devices=jax.devices(
   )[:config.num_devices] if type(config.num_devices) == int else jax.devices())
-
 
   p_eval_step = jax.pmap(
       functools.partial(
@@ -132,7 +123,7 @@ def evaluate(config: ml_collections.ConfigDict,
                np.mean(time_per_epoch[1:]) * 1000,
                np.std(time_per_epoch[1:]) * 1000)
   for key, val in summary.items():
-    logging.info('%s: %.4f',key, val)
+    logging.info('%s: %.4f', key, val)
 
   # Wait until computations are done before exiting
   jax.random.normal(jax.random.PRNGKey(0), ()).block_until_ready()

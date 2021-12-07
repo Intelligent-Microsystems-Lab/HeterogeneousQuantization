@@ -46,42 +46,32 @@ class ResNetBlock(nn.Module):
   def __call__(self, x,):
     residual = x
     y = self.conv(self.filters, (3, 3), self.strides, padding=self.padding,
-                  config=self.config, quant_act_sign=False, bits=self.w_bits)(x)
+                  config=self.config, quant_act_sign=False,
+                  bits=self.w_bits)(x)
     y = self.norm()(y)
     y = self.act(y)
 
-    #self.sow('intermediates', 'x1_noquant', y)
     if 'nonl' in self.config:
       y = self.config.nonl(bits=self.a_bits)(y, sign=False)
 
-    #self.sow('intermediates', 'x1', y)
-
     y = self.conv(self.filters, (3, 3), padding=self.padding,
-                  config=self.config, bits=self.w_bits, quant_act_sign=False)(y)
+                  config=self.config, bits=self.w_bits,
+                  quant_act_sign=False)(y)
 
     if self.cifar10_flag:
       y = self.norm()(y)
     else:
       y = self.norm(scale_init=nn.initializers.zeros)(y)
 
-
-    # if 'nonl' in self.config:
-    #   y = self.config.nonl(bits=self.bits)(y, sign=False)
-    # self.sow('intermediates', 'x2', y)
-    # if self.strides != (1, 1) and self.shortcut_type == 'A':
-    #   residual = jnp.pad(residual[
-    #       :, ::2, ::2, :], ((0, 0), (0, 0), (0, 0),
-    #                         (self.filters // 4, self.filters // 4)),
-    #       "constant", constant_values=0)
     if self.shortcut_type == 'A':
       if self.strides != (1, 1):
-          # Stride
-          residual = nn.avg_pool(residual, (1, 1), self.strides)
+        # Stride
+        residual = nn.avg_pool(residual, (1, 1), self.strides)
       if x.shape[-1] != self.filters:
-          # Zero-padding to channel axis
-          ishape = residual.shape
-          zeros = jnp.zeros((ishape[:-1] + (self.filters - ishape[-1],)))
-          residual = jnp.concatenate((residual, zeros), axis=3)
+        # Zero-padding to channel axis
+        ishape = residual.shape
+        zeros = jnp.zeros((ishape[:-1] + (self.filters - ishape[-1],)))
+        residual = jnp.concatenate((residual, zeros), axis=3)
 
     if residual.shape != y.shape and self.shortcut_type == 'B':
       residual = self.conv(self.filters, (1, 1), self.strides,
@@ -91,11 +81,8 @@ class ResNetBlock(nn.Module):
       residual = self.norm(name='norm_proj')(residual)
 
     out = self.act(residual + y)
-    # out = y
-    #self.sow('intermediates', 'xs_noquant', out)
     if 'nonl' in self.config:
       out = self.config.nonl(bits=self.a_bits)(out, sign=False)
-    #self.sow('intermediates', 'xs', out)
     return out
 
 
@@ -120,12 +107,16 @@ class BottleneckResNetBlock(nn.Module):
                   quant_act_sign=False)(x)
     y = self.norm()(y)
     y = self.act(y)
+    if 'nonl' in self.config:
+      y = self.config.nonl(bits=self.a_bits)(y, sign=False)
     y = self.conv(self.filters, (3, 3), self.strides, config=self.config,
                   bits=self.w_bits, quant_act_sign=False)(y)
     y = self.norm()(y)
     y = self.act(y)
-    y = self.conv(self.filters * 4, (1, 1), config=self.config, bits=self.w_bits,
-                  quant_act_sign=False)(y)
+    if 'nonl' in self.config:
+      y = self.config.nonl(bits=self.a_bits)(y, sign=False)
+    y = self.conv(self.filters * 4, (1, 1), config=self.config,
+                  bits=self.w_bits, quant_act_sign=False)(y)
     y = self.norm(scale_init=nn.initializers.zeros)(y)
     if residual.shape != y.shape:
       residual = self.conv(self.filters * 4, (1, 1),
@@ -133,7 +124,10 @@ class BottleneckResNetBlock(nn.Module):
                            bits=self.w_bits, quant_act_sign=False)(residual)
       residual = self.norm(name='norm_proj')(residual)
 
-    return self.act(residual + y)
+    out = self.act(residual + y)
+    if 'nonl' in self.config:
+      out = self.config.nonl(bits=self.a_bits)(out, sign=False)
+    return out
 
 
 class ResNet(nn.Module):
@@ -171,11 +165,10 @@ class ResNet(nn.Module):
     x = norm(name='bn_init')(x)
     x = nn.relu(x)
     if 'post_init' in self.config.quant:
-      x = self.config.quant.post_init(bits=self.config.quant.a_bits)(x, sign=False)
-      # this_here = x
+      x = self.config.quant.post_init(
+          bits=self.config.quant.a_bits)(x, sign=False)
     if not self.cifar10_flag:
       x = nn.max_pool(x, (3, 3), strides=(2, 2), padding='SAME')
-    # self.sow('intermediates', 'stem', x)
     for i, block_size in enumerate(self.stage_sizes):
       for j in range(block_size):
         strides = (2, 2) if i > 0 and j == 0 else (1, 1)
@@ -194,14 +187,14 @@ class ResNet(nn.Module):
                            cifar10_flag=self.cifar10_flag,
                            )(x)
     if self.cifar10_flag and 'average' in self.config.quant:
-      x = self.config.quant.average(bits=self.config.quant.a_bits)(x, sign=False)
+      x = self.config.quant.average(
+          bits=self.config.quant.a_bits)(x, sign=False)
 
     x = jnp.mean(x, axis=(1, 2))
-    
-    # x = this_here[:,:2,:,0].reshape((-1,64))
-    # self.sow('intermediates', 'clem_r', x)
+
     if not self.cifar10_flag and 'average' in self.config.quant:
-      x = self.config.quant.average(bits=self.config.quant.a_bits)(x, sign=False)
+      x = self.config.quant.average(
+          bits=self.config.quant.a_bits)(x, sign=False)
     x = QuantDense(self.num_classes, dtype=self.dtype,
                    config=self.config.quant.dense, quant_act_sign=False,
                    bits=self.config.quant.w_bits,

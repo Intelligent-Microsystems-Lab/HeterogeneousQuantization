@@ -29,7 +29,6 @@ from flax.training import common_utils
 
 import jax
 import jax.numpy as jnp
-import numpy as np
 
 from jax import random
 import tensorflow as tf
@@ -94,10 +93,10 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   writer_eval = metric_writers.create_default_writer(
       logdir=workdir + '/eval', just_logging=jax.process_index() != 0)
 
-  # logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
-  # logging.info('Git commit: ' + subprocess.check_output(
-  #     ['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
-  # logging.info(config)
+  logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
+  logging.info('Git commit: ' + subprocess.check_output(
+      ['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
+  logging.info(config)
 
   rng = random.PRNGKey(config.seed)
 
@@ -143,7 +142,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
   steps_per_checkpoint = steps_per_epoch * 10
 
-  base_learning_rate = config.learning_rate #* config.batch_size / 256.
+  base_learning_rate = config.learning_rate  # * config.batch_size / 256.
 
   model_cls = getattr(models, config.model)
   model = create_model(
@@ -168,10 +167,12 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   rng, rng1, rng2 = jax.random.split(rng, 3)
   _, new_state = state.apply_fn({'params': state.params['params'],
                                  'quant_params': state.params['quant_params'],
-                                 'batch_stats': state.batch_stats, 'quant_config': {}}, init_batch,
+                                 'batch_stats': state.batch_stats,
+                                 'quant_config': {}}, init_batch,
                                 rng=rng1,
                                 mutable=['batch_stats', 'quant_params',
-                                         'weight_size', 'act_size', 'quant_config'],
+                                         'weight_size', 'act_size',
+                                         'quant_config'],
                                 rngs={'dropout': rng2})
   state = TrainState.create(apply_fn=state.apply_fn,
                             params={'params': state.params['params'],
@@ -189,19 +190,18 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         jnp.sum(jnp.array(jax.tree_util.tree_flatten(state.weight_size)[0])
                 ) / config.quant.w_bits) + ')')
   if len(state.act_size) != 0:
-    logging.info('Initial Network Activation (Sum) Size in kB: ' + str(jnp.sum(jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])) / config.quant_target.size_div
-    ) + ' init bits ' + str(config.quant.a_bits) + ' (No. Params: ' + str(
-        jnp.sum(jnp.array(
-            jax.tree_util.tree_flatten(state.act_size
-                                       )[0])) / config.quant.a_bits) + ')')
-    logging.info('Initial Network Activation (Max) Size in kB: ' + str(jnp.max(jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])) / config.quant_target.size_div
-    ) + ' init bits ' + str(config.quant.a_bits) + ' (No. Params: ' + str(
+    logging.info('Initial Network Activation (Sum) Size in kB: ' + str(
+        jnp.sum(jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])
+                ) / config.quant_target.size_div) + ' init bits ' + str(
+        config.quant.a_bits) + ' (No. Params: ' + str(jnp.sum(jnp.array(
+            jax.tree_util.tree_flatten(state.act_size)[0])
+        ) / config.quant.a_bits) + ')')
+    logging.info('Initial Network Activation (Max) Size in kB: ' + str(
         jnp.max(jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])
-                ) / config.quant.a_bits) + ')')
-
-
-  # np.sum(jax.tree_util.tree_flatten(jax.tree_util.tree_map(lambda x: np.prod(x.shape), state.params['params']))[0])
-
+                ) / config.quant_target.size_div) + ' init bits ' + str(
+        config.quant.a_bits) + ' (No. Params: ' + str(jnp.max(jnp.array(
+            jax.tree_util.tree_flatten(state.act_size)[0])
+        ) / config.quant.a_bits) + ')')
 
   state = jax_utils.replicate(state, devices=jax.devices(
   )[:config.num_devices] if type(config.num_devices) == int else jax.devices())
@@ -272,45 +272,24 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         config.num_devices) == int else jax.local_device_count()) + 1)
     rng = rng_list[0]
 
-    
-    
-    state, metrics, grads = p_train_step(state, batch, rng_list[1:])
-    
-    # # Debug
-    # state, metrics = p_train_step(
-    #     state, {'image': batch['image'][0, :, :, :],
-    #             'label': batch['label'][0]}, rng_list[2])
-
-
-    #print(metrics['size_act_penalty'][0])
-
-
-    # c = str(state.params['quant_params']['parametric_d_xmax_0']['dynamic_range'][0])
-    # d = str(state.params['quant_params']['parametric_d_xmax_0']['step_size'][0])
-
-    # e = str(grads[1]['parametric_d_xmax_0']['dynamic_range'][0])
-    # f = str(grads[1]['parametric_d_xmax_0']['step_size'][0])
-
-    # import pdb; pdb.set_trace() 
-    # c1 = str(state.params['quant_params']['ResNetBlock_0']['parametric_d_xmax_0']['dynamic_range'][0])
-    # d1 = str(state.params['quant_params']['ResNetBlock_0']['parametric_d_xmax_0']['step_size'][0])
-
-    # e1 = str(grads[1]['ResNetBlock_0']['parametric_d_xmax_0']['dynamic_range'][0])
-    # f1 = str(grads[1]['ResNetBlock_0']['parametric_d_xmax_0']['step_size'][0])
-
-    # print(c+','+d+','+e+','+f + ',' + c1 +','+d1+','+e1+','+f1)
+    state, metrics = p_train_step(state, batch, rng_list[1:])
 
     for h in hooks:
       h(step)
     if step == step_offset:
       logging.info('Initial compilation completed.')
 
-
     # evalaute when constraints are fullfilled
     if 'act_mb' in config.quant_target and 'weight_mb' in config.quant_target:
       # evaluate network size after gradients are applied.
       metrics_size = p_eval_step(state, eval_batch)
-      if metrics_size['weight_size'] <= config.quant_target.weight_mb and (config.quant_target.act_mode == 'max' and metrics_size['act_size_max'] <= config.quant_target.act_mb) or (config.quant_target.act_mode == 'sum' and metrics_size['act_size_sum'] <= config.quant_target.act_mb):
+      if ((metrics_size['weight_size'] <= config.quant_target.weight_mb
+           ) and ((config.quant_target.act_mode == 'max'
+                   ) and (
+               metrics_size['act_size_max'] <= config.quant_target.act_mb)
+      ) or ((config.quant_target.act_mode == 'sum'
+             ) and (
+              metrics_size['act_size_sum'] <= config.quant_target.act_mb))):
 
         # sync batch statistics across replicas
         eval_metrics = []
@@ -324,10 +303,12 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         # eval_metrics = common_utils.stack_forest(eval_metrics)
         summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
         if summary['accuracy'] > eval_best:
-          save_checkpoint(state, workdir+'/best')
-          logging.info('!!!! Saved new best model with accuracy %.4f weight size %.4f max act %.4f sum act %.4f', summary['accuracy'], summary['weight_size'], summary['act_size_max'], summary['act_size_sum'])
+          save_checkpoint(state, workdir + '/best')
+          logging.info('!!! Saved new best model with accuracy %.4f weight\
+           size %.4f max act %.4f sum act %.4f', summary['accuracy'],
+                       summary['weight_size'], summary['act_size_max'],
+                       summary['act_size_sum'])
           eval_best = summary['accuracy']
-
 
     if config.get('log_every_steps'):
       train_metrics.append(metrics)
@@ -365,9 +346,12 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       writer_eval.write_scalars(
           step + 1, {f'{key}': val for key, val in summary.items()})
       writer_eval.flush()
-      if 'act_mb' not in config.quant_target and 'weight_mb' not in config.quant_target and summary['accuracy'] > eval_best:
-        save_checkpoint(state, workdir+'/best')
-        logging.info('!!!! Saved new best model with accuracy %.4f', summary['accuracy'])
+      if (('act_mb' not in config.quant_target
+           ) and ('weight_mb' not in config.quant_target
+                  ) and (summary['accuracy'] > eval_best)):
+        save_checkpoint(state, workdir + '/best')
+        logging.info('!!!! Saved new best model with accuracy %.4f',
+                     summary['accuracy'])
         eval_best = summary['accuracy']
 
     if (step + 1) % steps_per_checkpoint == 0 or step + 1 == num_steps:

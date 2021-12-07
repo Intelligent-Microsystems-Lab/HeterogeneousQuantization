@@ -147,7 +147,8 @@ class QuantConv(Module):
       kernel_fwd = kernel
 
     if "act" in cfg:
-      inpt_fwd = cfg.act(bits=self.bits, g_scale=self.g_scale)(inputs, sign=self.quant_act_sign)
+      inpt_fwd = cfg.act(bits=self.bits, g_scale=self.g_scale)(
+          inputs, sign=self.quant_act_sign)
     else:
       inpt_fwd = inputs
 

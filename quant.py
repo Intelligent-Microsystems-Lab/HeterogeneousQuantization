@@ -222,7 +222,8 @@ class uniform_static(nn.Module):
     else:
       num_levels = 2 ** (self.bits) - 1
 
-    xmax = self.variable('quant_params', 'dynamic_range_no_train', jnp.ones, (1,))
+    xmax = self.variable(
+        'quant_params', 'dynamic_range_no_train', jnp.ones, (1,))
     if self.is_mutable_collection('quant_params'):
       xmax.value = self.init_fn(x, bits=self.bits, sign=sign)
       xmax.value = jnp.where(xmax.value == 0, 1., xmax.value)
@@ -307,13 +308,13 @@ class parametric_d_xmax(nn.Module):
   bits: int = 4  # here its just init bits
   act: bool = False
   xmax_min: float = 2**-8
-  xmax_max: float = 128 #2**8
+  xmax_max: float = 128  # 2**8
   d_min: float = 2**-8
   d_max: float = 1  # for MixedDNNs 1
   round_fn: Callable = round_psgd
   init_fn: Callable = max_init
   g_scale: float = 0.
-  ceil_tolerance: float = 4e-8
+  ceil_tolerance: float = 0.0  # 1e-4
   maxabs_w: float = None
   bitwidth_min: int = 2
 
@@ -341,16 +342,19 @@ class parametric_d_xmax(nn.Module):
 
     ceilpass.defvjp(ceilpass_fwd, ceilpass_bwd)
 
-    if sign:
-      num_levels = 2 ** (self.bits - 1) - 1
-    else:
-      num_levels = 2 ** self.bits - 1
+    # if sign:
+    #   num_levels = 2 ** (self.bits - 1) - 1
+    # else:
+    #   num_levels = 2 ** self.bits - 1
 
-    
-    xmax_max = self.variable('quant_config', 'max_xmax', lambda x: float(self.xmax_max), (1,))
-    xmax_min = self.variable('quant_config', 'min_xmax', lambda x: float(self.xmax_min), (1,))
-    d_max = self.variable('quant_config', 'max_d', lambda x: float(self.d_max), (1,))
-    d_min = self.variable('quant_config', 'min_d', lambda x: float(self.d_min), (1,))
+    xmax_max = self.variable('quant_config', 'max_xmax',  # noqa: F841
+                             lambda x: float(self.xmax_max), (1,))
+    xmax_min = self.variable('quant_config', 'min_xmax',  # noqa: F841
+                             lambda x: float(self.xmax_min), (1,))
+    d_max = self.variable('quant_config', 'max_d',  # noqa: F841
+                          lambda x: float(self.d_max), (1,))
+    d_min = self.variable('quant_config', 'min_d',  # noqa: F841
+                          lambda x: float(self.d_min), (1,))
 
     # Intialize step size. Step size only changes when init is called or apply
     # with mutable = ['quant_params'].
@@ -363,19 +367,20 @@ class parametric_d_xmax(nn.Module):
     bw = self.bits
     if self.is_mutable_collection('quant_params'):
       if self.act:
-        xmax.value = 2**-3 * (2. ** bw  - 1)
+        xmax.value = 2**-3 * (2. ** bw - 1)
         d.value = 2**-3
       else:
-        maxabs_w = self.maxabs_w if self.maxabs_w is not None else jnp.max(jnp.abs(inputs))
+        maxabs_w = self.maxabs_w if self.maxabs_w is not None else jnp.max(
+            jnp.abs(inputs))
         if bw > 4:
-          d.value = 2**(jnp.ceil(jnp.log2(maxabs_w/(2**(bw-1)-1))))
+          d.value = 2**(jnp.ceil(jnp.log2(maxabs_w / (2**(bw - 1) - 1))))
         else:
-          d.value = 2**(jnp.floor(jnp.log2(maxabs_w/(2**(bw-1)-1))))
+          d.value = 2**(jnp.floor(jnp.log2(maxabs_w / (2**(bw - 1) - 1))))
         xmax.value = d.value * (2 ** (bw - 1) - 1)
-      #xmax.value = jnp.clip(self.init_fn(inputs, bits=self.bits if self.init_bits is None else self.init_bits, sign=sign),
+      # xmax.value = jnp.clip(self.init_fn(inputs, bits=self.bits, sign=sign),
       #                     self.xmax_min, self.xmax_max)
-      #xmax.value = jnp.where(xmax.value == 0, 1., xmax.value)
-      #d.value =  jnp.clip(xmax.value / num_levels, self.d_min, self.d_max)
+      # xmax.value = jnp.where(xmax.value == 0, 1., xmax.value)
+      # d.value =  jnp.clip(xmax.value / num_levels, self.d_min, self.d_max)
 
     # Ensure that stepsize is in specified range (and a power of two).
     d = jnp.clip(d.value, self.d_min, self.d_max)
@@ -388,16 +393,19 @@ class parametric_d_xmax(nn.Module):
     # xmax = jnp.where(xmax < d, d, xmax)
 
     # Aux scope to compute network size on the fly.
-    real_xmax = round_psgd(xmax / d, 0) * d # for size computation
+    real_xmax = round_psgd(xmax / d, 0) * d  # for size computation
     if self.is_mutable_collection('act_size'):
 
       if self.act:
         n_wf = inputs.shape[1:]
         if sign:
           act_mb.value = np.prod(
-              n_wf) * jnp.maximum((ceilpass(jnp.log2((real_xmax / d) + 1)) + 1), self.bitwidth_min)
+              n_wf) * jnp.maximum((ceilpass(jnp.log2((real_xmax / d) + 1)
+                                            ) + 1), self.bitwidth_min)
         else:
-          act_mb.value = np.prod(n_wf) * jnp.maximum((ceilpass(jnp.log2((real_xmax / d) + 1))), self.bitwidth_min)
+          act_mb.value = np.prod(
+              n_wf) * jnp.maximum((ceilpass(jnp.log2((real_xmax / d) + 1))
+                                   ), self.bitwidth_min)
       else:
         act_mb.value = 0.
 
@@ -408,10 +416,12 @@ class parametric_d_xmax(nn.Module):
         n_wf = inputs.shape
         if sign:
           weight_mb.value = np.prod(
-              n_wf) * jnp.maximum((ceilpass(jnp.log2((real_xmax / d) + 1)) + 1), self.bitwidth_min)
+              n_wf) * jnp.maximum((ceilpass(jnp.log2((real_xmax / d) + 1)
+                                            ) + 1), self.bitwidth_min)
         else:
           weight_mb.value = np.prod(
-              n_wf) * jnp.maximum((ceilpass(jnp.log2((real_xmax / d) + 1))), self.bitwidth_min)
+              n_wf) * jnp.maximum((ceilpass(jnp.log2((real_xmax / d) + 1))
+                                   ), self.bitwidth_min)
 
     @jax.custom_vjp
     def quant(x, d, xmax):

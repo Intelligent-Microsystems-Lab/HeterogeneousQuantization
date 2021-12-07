@@ -6,9 +6,6 @@
 import ml_collections
 
 
-
-
-
 def get_config():
   """Get the default hyperparameter configuration."""
   config = ml_collections.ConfigDict()
@@ -33,7 +30,7 @@ def get_config():
 
   config.optimizer = 'sgd'
   config.learning_rate = .1
-  config.lr_boundaries_scale = None #{'80': .1, '120': .1}
+  config.lr_boundaries_scale = None  # {'80': .1, '120': .1}
   config.warmup_epochs = 5.
   config.momentum = 0.9
   config.batch_size = 128
