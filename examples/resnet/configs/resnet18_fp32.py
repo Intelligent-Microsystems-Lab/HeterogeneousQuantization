@@ -42,12 +42,12 @@ def get_config():
 
   config.num_epochs = 100.0
   config.log_every_steps = 100
+  config.num_devices = None
 
   config.cache = True
   config.half_precision = False
 
-  config.pretrained = '../../pretrained_resnet/resnet18_v2'
-  config.num_devices = None
+  config.pretrained = None  # '../../pretrained_resnet/resnet18_v2'
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.
@@ -59,7 +59,8 @@ def get_config():
 
   config.quant = ml_collections.ConfigDict()
 
-  config.quant.bits = 32
+  config.quant.a_bits = 32
+  config.quant.w_bits = 32
 
   config.quant.g_scale = 0.
 

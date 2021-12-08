@@ -126,7 +126,7 @@ class EfficientNetTest(parameterized.TestCase):
             'params': variables['params'],
             'quant_params': quant_params}, tx=tx,
         batch_stats=variables['batch_stats'],
-        weight_size={}, act_size={})
+        weight_size={}, act_size={}, quant_config={})
     state = enet_load_pretrained_weights(state, config.pretrained)
 
     # load inpt

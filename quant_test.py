@@ -7,7 +7,6 @@ from absl.testing import absltest
 from absl.testing import parameterized
 from flax.core import freeze, unfreeze
 
-
 from jax import random
 import jax
 import jax.numpy as jnp
@@ -194,6 +193,9 @@ class QuantOpsTest(parameterized.TestCase):
   def test_unique_values(
       self, x_dim, y_dim, bits, scale, quantizer
   ):
+    def quantize_pow2(v):
+      return 2 ** jnp.round(jnp.log2(v), 0)
+
     key = random.PRNGKey(8627169)
 
     key, subkey = jax.random.split(key)
@@ -204,75 +206,97 @@ class QuantOpsTest(parameterized.TestCase):
 
     key, subkey = jax.random.split(key)
     if quantizer.__name__ == 'parametric_d_xmax':
-      variables = quantizer(bits, xmax_max=scale,
-                            d_min=1e-8).init(subkey, data)
+      variables = quantizer(bits, xmax_max=2**32, d_max=2**32,
+                            d_min=-1, ).init(subkey, data)
     else:
       variables = quantizer(bits).init(subkey, data)
 
     if 'quant_params' in variables:
-      if 'step_size' in variables['quant_params']:
+      if quantizer.__name__ == 'parametric_d_xmax':
+        variables = unfreeze(variables)
+
+        if bits > 4:
+          variables['quant_params']['step_size'] = 2**(
+              jnp.ceil(jnp.log2(scale / (2**(bits - 1) - 1))))
+        else:
+          variables['quant_params']['step_size'] = 2**(
+              jnp.floor(jnp.log2(scale / (2**(bits - 1) - 1))))
+        variables['quant_params']['dynamic_range'] = scale
+        real_xmax = jnp.round(
+            scale / variables['quant_params']['step_size'], 0
+        ) * variables['quant_params']['step_size']
+        variables = freeze(variables)
+
+        data = data / scale * real_xmax
+      if quantizer.__name__ == 'parametric_d':
         variables = unfreeze(variables)
         variables['quant_params']['step_size'] = scale / (2 ** (bits - 1) - 1)
         variables = freeze(variables)
 
     if quantizer.__name__ == 'parametric_d_xmax':
-      dataq = quantizer(bits, xmax_max=scale,
-                        d_min=1e-8).apply(variables, data)
+      dataq = quantizer(bits, xmax_max=2 ** 32, d_max=2**32,
+                        d_min=-1, ).apply(variables, data)
     else:
       dataq = quantizer(bits).apply(variables, data)
 
-    self.assertEqual(
-        len(np.unique(dataq)), ((2 ** (bits - 1) - 1) * 2) + 1
-    )
+    if quantizer.__name__ == 'parametric_d_xmax':
+      self.assertEqual(
+          len(np.unique(dataq)), real_xmax / variables['quant_params'
+                                                       ]['step_size'] * 2 + 1
+      )
+    else:
+      self.assertEqual(
+          len(np.unique(dataq)), (2 ** (bits) - 1)
+      )
 
-  @parameterized.product(signed_uniform_max_scale_quant_ste_unique_data())
-  def test_parametric_d(self, x_dim, y_dim, bits, scale):
+  # @parameterized.product(signed_uniform_max_scale_quant_ste_unique_data())
+  # def test_parametric_d(self, x_dim, y_dim, bits, scale):
 
-    #
-    # DISCLAIMER: too big and and too small of a bit-width breaks unit tests.
-    #
+  #   #
+  #   # DISCLAIMER: too big and and too small of a bit-width breaks unit tests.
+  #   #
 
-    rng = random.PRNGKey(8627169)
+  #   rng = random.PRNGKey(8627169)
 
-    rng, init_rng, data_rng = jax.random.split(rng, 3)
-    data = (
-        jax.random.uniform(data_rng, (x_dim, y_dim), minval=-1, maxval=1
-                           ) * scale
-    )
+  #   rng, init_rng, data_rng = jax.random.split(rng, 3)
+  #   data = (
+  #       jax.random.uniform(data_rng, (x_dim, y_dim), minval=-1, maxval=1
+  #                          ) * scale
+  #   )
 
-    quant_fn = parametric_d(bits=bits, clip_quant_grads=False)
+  #   quant_fn = parametric_d(bits=bits)
 
-    def loss_fn(x, params):
-      logits = quant_fn.apply(params, x)
-      return jnp.sum(logits)
+  #   def loss_fn(x, params):
+  #     logits = quant_fn.apply(params, x)
+  #     return jnp.sum(logits)
 
-    params = quant_fn.init(init_rng, data)
-    grad_fn = jax.grad(loss_fn, argnums=1)
+  #   params = quant_fn.init(init_rng, data)
+  #   grad_fn = jax.grad(loss_fn, argnums=1)
 
-    num_levels = 2 ** (bits - 1) - 1
-    grad_scale = 1 / jnp.sqrt(num_levels * np.prod(data.shape) + 1e-6)
-    params_step_size = params['quant_params']['step_size']
+  #   num_levels = 2 ** (bits - 1) - 1
+  #   grad_scale = 1 / jnp.sqrt(num_levels * np.prod(data.shape) + 1e-6)
+  #   params_step_size = params['quant_params']['step_size']
 
-    # all outside upper
-    g = grad_fn(jnp.abs(data) + num_levels * params_step_size, params)
-    np.testing.assert_allclose(g['quant_params']['step_size'] / (
-        num_levels * grad_scale), x_dim * y_dim, atol=6.e-05, rtol=7e-6)
+  #   # all outside upper
+  #   g = grad_fn(jnp.abs(data) + num_levels * params_step_size, params)
+  #   np.testing.assert_allclose(g['quant_params']['step_size'] / (
+  #       num_levels * grad_scale), x_dim * y_dim, atol=6.e-05, rtol=7e-6)
 
-    # all inside on point
-    g = grad_fn(jnp.ones_like(data) * params_step_size, params)
-    # numerical tol.
-    np.testing.assert_allclose(
-        g['quant_params']['step_size'], 5e-5, atol=6.e-05)
+  #   # all inside on point
+  #   g = grad_fn(jnp.ones_like(data) * params_step_size, params)
+  #   # numerical tol.
+  #   np.testing.assert_allclose(
+  #       g['quant_params']['step_size'], 5e-5, atol=6.e-05)
 
-    # all inside full off point
-    g = grad_fn(jnp.ones_like(data) * params_step_size * .5, params)
-    np.testing.assert_allclose(jnp.abs(g['quant_params']['step_size'] / (
-        x_dim * y_dim)), .5 * grad_scale, atol=6.e-05)
+  #   # all inside full off point
+  #   g = grad_fn(jnp.ones_like(data) * params_step_size * .5, params)
+  #   np.testing.assert_allclose(jnp.abs(g['quant_params']['step_size'] / (
+  #       x_dim * y_dim)), .5 * grad_scale, atol=6.e-05)
 
-    # all outside lower
-    g = grad_fn(-jnp.abs(data) - num_levels * params_step_size, params)
-    np.testing.assert_allclose(g['quant_params']['step_size'] / (
-        num_levels * grad_scale), -x_dim * y_dim, atol=6.e-05, rtol=7e-6)
+  #   # all outside lower
+  #   g = grad_fn(-jnp.abs(data) - num_levels * params_step_size, params)
+  #   np.testing.assert_allclose(g['quant_params']['step_size'] / (
+  #       num_levels * grad_scale), -x_dim * y_dim, atol=6.e-05, rtol=7e-6)
 
   @parameterized.product(signed_uniform_max_scale_quant_ste_unique_data(
   ) + signed_uniform_max_scale_quant_ste_unique_data_ext())
@@ -291,10 +315,10 @@ class QuantOpsTest(parameterized.TestCase):
         jax.random.uniform(data_rng, (x_dim, y_dim), minval=-1, maxval=1
                            ) * scale
     )
-    data = data.at[0, 0].set(data[0, 0] + 0.01)
+    data = data.at[0, 0].set(scale - 0.001)
 
     quant_fn = parametric_d_xmax(
-        bits=bits, xmax_max=scale + 1, d_min=1e-12, clip_quant_grads=False)
+        bits=bits, xmax_max=2**16, d_min=1e-12, d_max=scale + 1)
 
     def loss_fn(x, params):
       logits = quant_fn.apply(params, x)
@@ -307,14 +331,23 @@ class QuantOpsTest(parameterized.TestCase):
     params_step_size = params['quant_params']['step_size']
     params_dynamic_range = params['quant_params']['dynamic_range']
 
+    if params_dynamic_range > scale:
+      pass
+    else:
+      data = data / scale * params_dynamic_range
+
     # Grads for Err
 
     # All inside.
     g = grad_fn_err(data, params)
-    self.assertEqual(jnp.sum(g), np.prod(data.shape) - 1)
+    self.assertEqual(jnp.round(jnp.sum(g)), np.prod(data.shape))
+
+    if params_dynamic_range > scale:
+      scale = params_dynamic_range
 
     # 10% outside upper
     g = grad_fn_err(data + .1 * scale, params)
+
     self.assertEqual(jnp.sum(g), jnp.sum(
         data + .1 * scale < params_dynamic_range))
 
