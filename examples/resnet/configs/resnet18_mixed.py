@@ -58,10 +58,10 @@ def get_config():
 
   config.quant_target = ml_collections.ConfigDict()
 
-  config.quant_target.weight_mb = 1.55
+  config.quant_target.weight_mb = 5.401
   config.quant_target.weight_penalty = .1
   config.quant_target.act_mode = 'max'
-  config.quant_target.act_mb = 0.57
+  config.quant_target.act_mb = 0.381
   config.quant_target.act_penalty = .1
   config.quant_target.size_div = 8. * 1024. * 1014.  # 8_000 # mb or kb
 
