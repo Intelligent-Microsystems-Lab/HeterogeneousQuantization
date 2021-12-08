@@ -304,7 +304,7 @@ def eval_step(state, batch, size_div, smoothing):
       mutable=['weight_size', 'act_size'])
   metrics = compute_metrics(
       logits, batch['label'], new_state, size_div, smoothing)
-  metrics['logits'] = logits
+  metrics['accuracy'] = metrics['accuracy'].mean()
   return metrics
 
 

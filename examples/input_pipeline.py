@@ -37,8 +37,8 @@ def create_input_iter_cifar10(dataset_builder, batch_size, train, config):
 def prepare_tf_data(xs, config):
   """Convert a input batch from tf Tensors to numpy arrays."""
   local_device_count = jax.local_device_count()
-  local_device_count = config.num_devices if type(
-      config.num_devices) == int else jax.local_device_count()
+  # local_device_count = config.num_devices if type(
+  #    config.num_devices) == int else jax.local_device_count()
 
   def _prepare(x):
     # Use _numpy() for zero-copy conversion between TF and NumPy.
@@ -324,7 +324,7 @@ def create_split_cifar10(dataset_builder, batch_size, train, config):
 
   if not train:
     ds = ds.repeat()
-    # ds = ds.shuffle(16 * batch_size, seed=0)
+    ds = ds.shuffle(16 * batch_size, seed=0)
 
   ds = ds.prefetch(10)
 

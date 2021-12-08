@@ -63,7 +63,7 @@ def get_config():
   config.quant_target.act_mode = 'max'
   config.quant_target.act_mb = 0.57
   config.quant_target.act_penalty = .1
-  config.quant_target.size_div = 8. * 1024. * 1014. # 8_000 # mb or kb
+  config.quant_target.size_div = 8. * 1024. * 1014.  # 8_000 # mb or kb
 
   config.quant = ml_collections.ConfigDict()
 

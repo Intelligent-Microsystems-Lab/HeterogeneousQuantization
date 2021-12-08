@@ -104,21 +104,18 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     raise ValueError('Batch size (' + str(config.batch_size) + ') must be \
       divisible by the number of devices (' + str(jax.device_count()) + ').')
 
-  local_batch_size = config.batch_size // jax.process_count()
-
   dataset_builder = tfds.builder(config.dataset, data_dir=config.tfds_data_dir)
   dataset_builder.download_and_prepare()
   if 'cifar10' in config.dataset:
     train_iter = input_pipeline.create_input_iter_cifar10(
-        dataset_builder, local_batch_size, train=True, config=config)
+        dataset_builder, config.batch_size, train=True, config=config)
     eval_iter = input_pipeline.create_input_iter_cifar10(
-        dataset_builder, local_batch_size, train=False, config=config)
-
+        dataset_builder, config.eval_batch_size, train=False, config=config)
   elif 'imagenet2012' in config.dataset:
     train_iter = input_pipeline.create_input_iter(
-        dataset_builder, local_batch_size, train=True, config=config)
+        dataset_builder, config.batch_size, train=True, config=config)
     eval_iter = input_pipeline.create_input_iter(
-        dataset_builder, local_batch_size, train=False, config=config)
+        dataset_builder, config.eval_batch_size, train=False, config=config)
   else:
     raise Exception('Unrecognized data set: ' + config.dataset)
 
@@ -136,7 +133,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   if config.steps_per_eval == -1:
     num_validation_examples = dataset_builder.info.splits[
         val_or_test].num_examples
-    steps_per_eval = num_validation_examples // config.batch_size
+    steps_per_eval = num_validation_examples // config.eval_batch_size
   else:
     steps_per_eval = config.steps_per_eval
 
@@ -205,6 +202,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
   state = jax_utils.replicate(state, devices=jax.devices(
   )[:config.num_devices] if type(config.num_devices) == int else jax.devices())
+
   # Debug note:
   # 1. Make above line a comment "state = jax_utils.replicate(state)".
   # 2. In train_util.py make all pmean commands comments.
@@ -223,7 +221,9 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       axis_name='batch',
       devices=jax.devices()[:config.num_devices
                             ] if type(config.num_devices) == int else
-      jax.devices())
+      jax.devices()
+  )
+
   p_eval_step = jax.pmap(
       functools.partial(
           eval_step,
@@ -233,7 +233,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       axis_name='batch',
       devices=jax.devices()[:config.num_devices
                             ] if type(config.num_devices) == int else
-      jax.devices())
+      jax.devices()
+  )
 
   # # Debug
   # p_train_step = functools.partial(
@@ -248,6 +249,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   #     smoothing=config.smoothing)
 
   # Initial Accurcay
+  logging.info('Start evaluating model at beginning...')
   eval_metrics = []
   eval_best = 0.
   for _ in range(steps_per_eval):
@@ -270,6 +272,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   for step, batch in zip(range(step_offset, num_steps), train_iter):
     rng_list = jax.random.split(rng, (config.num_devices if type(
         config.num_devices) == int else jax.local_device_count()) + 1)
+    rng_list = jax.random.split(rng, jax.local_device_count() + 1)
     rng = rng_list[0]
 
     state, metrics = p_train_step(state, batch, rng_list[1:])
@@ -282,7 +285,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     # evalaute when constraints are fullfilled
     if 'act_mb' in config.quant_target and 'weight_mb' in config.quant_target:
       # evaluate network size after gradients are applied.
-      metrics_size = p_eval_step(state, eval_batch)
+      metrics_size = p_eval_step(state, batch)
       weight_cond = (
           metrics_size['weight_size'] <= config.quant_target.weight_mb)
       act_cond = (((config.quant_target.act_mode == 'max') and (
