@@ -283,8 +283,12 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     if 'act_mb' in config.quant_target and 'weight_mb' in config.quant_target:
       # evaluate network size after gradients are applied.
       metrics_size = p_eval_step(state, eval_batch)
-      weight_cond = (metrics_size['weight_size'] <= config.quant_target.weight_mb)
-      act_cond = (((config.quant_target.act_mode == 'max') and (metrics_size['act_size_max'] <= config.quant_target.act_mb)) or ((config.quant_target.act_mode == 'sum') and (metrics_size['act_size_sum'] <= config.quant_target.act_mb)))
+      weight_cond = (
+          metrics_size['weight_size'] <= config.quant_target.weight_mb)
+      act_cond = (((config.quant_target.act_mode == 'max') and (
+          metrics_size['act_size_max'] <= config.quant_target.act_mb)) or (
+          (config.quant_target.act_mode == 'sum') and (
+              metrics_size['act_size_sum'] <= config.quant_target.act_mb)))
 
       if weight_cond and act_cond:
 
@@ -301,10 +305,10 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
         if summary['accuracy'] > eval_best:
           save_checkpoint(state, workdir + '/best')
-          logging.info('!!! Saved new best model with accuracy %.4f weight'\
-            'size %.4f max act %.4f sum act %.4f', summary['accuracy'],
-                       summary['weight_size'], summary['act_size_max'],
-                       summary['act_size_sum'])
+          logging.info('!!! Saved new best model with accuracy %.4f weight'
+                       'size %.4f max act %.4f sum act %.4f',
+                       summary['accuracy'], summary['weight_size'],
+                       summary['act_size_max'], summary['act_size_sum'])
           eval_best = summary['accuracy']
 
     if config.get('log_every_steps'):

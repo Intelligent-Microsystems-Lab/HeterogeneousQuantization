@@ -287,10 +287,7 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
   metrics['ce_loss'] = aux[1][-1]
   metrics['accuracy'] = metrics['accuracy'].mean()
 
-  # metrics['max_g_params'] = jnp.array(jax.tree_util.tree_flatten(jax.tree_util.tree_map(lambda x: x.max(), grads[0]))[0]).max()
-  # metrics['max_g_quant'] =  jnp.array(jax.tree_util.tree_flatten(jax.tree_util.tree_map(lambda x: x.max(), grads[1]))[0]).max()
-
-  return new_state, metrics # , grads
+  return new_state, metrics
 
 
 def eval_step(state, batch, size_div, smoothing):

@@ -33,7 +33,7 @@ def get_config():
 
   config.optimizer = 'sgd'
   config.learning_rate = .001
-  config.lr_boundaries_scale = None #{'80': .1, '120': .1}
+  config.lr_boundaries_scale = None  # {'80': .1, '120': .1}
   config.warmup_epochs = 20.
   config.momentum = 0.9
   config.batch_size = 128
@@ -48,7 +48,8 @@ def get_config():
   config.cache = True
   config.half_precision = False
 
-  config.pretrained = '/tmp/clem0042/best' #'../../pretrained_resnet/resnet20_cifar10.h5'
+  # '../../pretrained_resnet/resnet20_cifar10.h5'
+  config.pretrained = '/tmp/clem0042/best'
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.
@@ -77,13 +78,15 @@ def get_config():
   # no input quant in MixedDNN paper.
   # config.quant.stem.act = partial(parametric_d_xmax, act=True)
 
-  config.quant.post_init = partial(parametric_d_xmax, act=True, bitwidth_min = 1, xmax_max = 255)
+  config.quant.post_init = partial(
+      parametric_d_xmax, act=True, bitwidth_min=1, xmax_max=255)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
   config.quant.mbconv.weight = partial(parametric_d_xmax)
   #config.quant.mbconv.act = partial(parametric_d_xmax, act=True, init_bits = 6)
-  config.quant.mbconv.nonl = partial(parametric_d_xmax, act=True, bitwidth_min = 1, xmax_max = 255)
+  config.quant.mbconv.nonl = partial(
+      parametric_d_xmax, act=True, bitwidth_min=1, xmax_max=255)
 
   # Average quant.
   # config.quant.average = partial(parametric_d_xmax, act=True, init_bits = 6)
