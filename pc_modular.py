@@ -14,15 +14,18 @@ from flax.core import unfreeze, FrozenDict
 
 import ml_collections
 
-from jax._src.lax.lax import (
+from jax._src.lax.convolution import (
     conv_dimension_numbers,
-    padtype_to_pads,
     ConvDimensionNumbers,
     _conv_sdims,
     _conv_spec_transpose,
     _conv_general_vjp_lhs_padding,
-    rev,
     _conv_general_vjp_rhs_padding,
+)
+
+from jax._src.lax.lax import (
+    padtype_to_pads,
+    rev,
 )
 
 from flax.linen.linear import (

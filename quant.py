@@ -189,7 +189,7 @@ def gaussian_init(x, bits, sign):
   sigma = jnp.std(x)
   return jnp.where(jnp.max(x) == 0, 1 / 2**bits,
                    jnp.maximum(jnp.abs(mu - 3 * sigma),
-                   jnp.abs(mu + 3 * sigma)))
+                               jnp.abs(mu + 3 * sigma)))
 
 
 def percentile_init(x, bits, sign, perc):
