@@ -6,6 +6,8 @@
 import ml_collections
 from functools import partial
 
+from quant import parametric_d_xmax
+
 
 def get_config():
   """Get the default hyperparameter configuration."""
