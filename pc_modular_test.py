@@ -527,7 +527,7 @@ class UnitTests(parameterized.TestCase):
     np.testing.assert_almost_equal(
         np.array(err["layers_0"]),
         np.array(jnp.moveaxis(err0_ref, (0, 1, 2, 3), (0, 3, 2, 1))),
-        decimal=6,
+        decimal=5,
     )
     np.testing.assert_almost_equal(
         np.array(err["layers_1"]),
