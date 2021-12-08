@@ -11,17 +11,20 @@ import jax.numpy as jnp
 import numpy as np
 import jax
 
-from jax._src.lax.lax import (
+from jax._src.lax.convolution import (
     conv_dimension_numbers,
-    padtype_to_pads,
     ConvDimensionNumbers,
     _conv_sdims,
     _conv_spec_transpose,
     _conv_general_vjp_lhs_padding,
-    rev,
     _conv_general_vjp_rhs_padding,
     _reshape_axis_out_of,
     _reshape_axis_into,
+)
+
+from jax._src.lax.lax import (
+    padtype_to_pads,
+    rev,
 )
 
 from flax.linen.module import Module, compact
