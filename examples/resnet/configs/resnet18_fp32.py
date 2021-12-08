@@ -38,7 +38,7 @@ def get_config():
   config.batch_size = 1024
   config.weight_decay = 0.0001
   config.nesterov = True
-  config.smoothing = .0
+  config.smoothing = .1
 
   config.num_epochs = 100.0
   config.log_every_steps = 100

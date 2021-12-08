@@ -6,8 +6,6 @@
 import ml_collections
 from functools import partial
 
-from quant import parametric_d_xmax, double_mean_init
-
 
 def get_config():
   """Get the default hyperparameter configuration."""
@@ -19,16 +17,32 @@ def get_config():
   config.model = 'ResNet18'
   # `name` argument of tensorflow_datasets.builder()
   config.dataset = 'imagenet2012'
+  config.num_classes = 1000
   config.tfds_data_dir = 'gs://imagenet_clemens/tensorflow_datasets'
+  config.image_size = 224
+  config.crop_padding = 32
 
-  config.learning_rate = .01  # 0.0001
-  config.warmup_epochs = 2.0
+  # Mean and std style for pre-processing.
+  # config.mean_rgb = [0.485 * 255, 0.456 * 255, 0.406 * 255]
+  # config.stddev_rgb = [0.229 * 255, 0.224 * 255, 0.225 * 255]
+
+  # Edge models use inception-style MEAN & STDDEV for better post-quantization.
+  config.mean_rgb = [127.0, 127.0, 127.0]
+  config.stddev_rgb = [128.0, 128.0, 128.0]
+
+  config.optimizer = 'sgd'
+  config.learning_rate = 0.001
+  config.lr_boundaries_scale = None
+  config.warmup_epochs = 5.0
   config.momentum = 0.9
-  config.batch_size = 128  # 2048
+  config.batch_size = 1024
   config.weight_decay = 0.0001
+  config.nesterov = True
+  config.smoothing = .0
 
-  config.num_epochs = 100.0
+  config.num_epochs = 50.0
   config.log_every_steps = 100
+  config.num_devices = None
 
   config.cache = True
   config.half_precision = False
@@ -42,38 +56,43 @@ def get_config():
 
   config.quant_target = ml_collections.ConfigDict()
 
-  config.quant_target.weight_mb = 5.57
+  config.quant_target.weight_mb = 1.55
   config.quant_target.weight_penalty = .1
   config.quant_target.act_mode = 'max'
-  config.quant_target.act_mb = .38
+  config.quant_target.act_mb = 0.57
   config.quant_target.act_penalty = .1
+  config.quant_target.size_div = 8. * 1024. * 1014. # 8_000 # mb or kb
 
   config.quant = ml_collections.ConfigDict()
 
-  config.quant.bits = 8
+  config.quant.w_bits = 4
+  config.quant.a_bits = 6
 
   config.quant.g_scale = 0.
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
-  config.quant.stem.weight = partial(
-      parametric_d_xmax)
-  config.quant.stem.act = partial(parametric_d_xmax, act=True)
+  config.quant.stem.weight = partial(parametric_d_xmax)
+  # no input quant in MixedDNN paper.
+  # config.quant.stem.act = partial(parametric_d_xmax, act=True)
+
+  config.quant.post_init = partial(
+      parametric_d_xmax, act=True, bitwidth_min=1, xmax_max=255)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
-  config.quant.mbconv.weight = partial(
-      parametric_d_xmax)
-  config.quant.mbconv.act = partial(parametric_d_xmax, act=True)
+  config.quant.mbconv.weight = partial(parametric_d_xmax)
+  #config.quant.mbconv.act = partial(parametric_d_xmax, act=True, init_bits = 6)
+  config.quant.mbconv.nonl = partial(
+      parametric_d_xmax, act=True, bitwidth_min=1, xmax_max=255)
 
   # Average quant.
-  # config.quant.average = partial(parametric_d_xmax, bits=4, act=True)
+  # config.quant.average = partial(parametric_d_xmax, act=True, init_bits = 6)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
-  config.quant.dense.weight = partial(
-      parametric_d_xmax)
-  config.quant.dense.act = partial(parametric_d_xmax, act=True)
+  config.quant.dense.weight = partial(parametric_d_xmax)
+  # config.quant.dense.act = partial(parametric_d_xmax, act=True)
   config.quant.dense.bias = partial(parametric_d_xmax)
 
   return config
