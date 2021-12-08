@@ -61,6 +61,7 @@ class TrainTest(absltest.TestCase):
     config.model = 'EfficientNetB0'
     config.dataset = 'imagenet2012'
     config.batch_size = 1
+    config.eval_batch_size = 1
     config.num_epochs = 1
     config.num_train_steps = 1
     config.steps_per_eval = 1
@@ -94,6 +95,7 @@ class TrainTest(absltest.TestCase):
     config = config_module.get_config()
     config.model = 'ResNet18'
     config.batch_size = 1
+    config.eval_batch_size = 1
     config.num_epochs = 1
     config.num_train_steps = 1
     config.steps_per_eval = 1

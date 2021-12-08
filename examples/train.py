@@ -200,9 +200,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
             jax.tree_util.tree_flatten(state.act_size)[0])
         ) / config.quant.a_bits) + ')')
 
-  state = jax_utils.replicate(state, devices=jax.devices(
-  )[:config.num_devices] if type(config.num_devices) == int else jax.devices())
-
+  state = jax_utils.replicate(state)
   # Debug note:
   # 1. Make above line a comment "state = jax_utils.replicate(state)".
   # 2. In train_util.py make all pmean commands comments.
@@ -219,9 +217,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
           smoothing=config.smoothing
       ),
       axis_name='batch',
-      devices=jax.devices()[:config.num_devices
-                            ] if type(config.num_devices) == int else
-      jax.devices()
   )
 
   p_eval_step = jax.pmap(
@@ -231,9 +226,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
           smoothing=config.smoothing
       ),
       axis_name='batch',
-      devices=jax.devices()[:config.num_devices
-                            ] if type(config.num_devices) == int else
-      jax.devices()
   )
 
   # # Debug
@@ -270,8 +262,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   train_metrics_last_t = time.time()
   logging.info('Initial compilation, this might take some minutes...')
   for step, batch in zip(range(step_offset, num_steps), train_iter):
-    rng_list = jax.random.split(rng, (config.num_devices if type(
-        config.num_devices) == int else jax.local_device_count()) + 1)
     rng_list = jax.random.split(rng, jax.local_device_count() + 1)
     rng = rng_list[0]
 
@@ -287,14 +277,14 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       # evaluate network size after gradients are applied.
       metrics_size = p_eval_step(state, batch)
       weight_cond = (
-          metrics_size['weight_size'] <= config.quant_target.weight_mb)
-      act_cond = (((config.quant_target.act_mode == 'max') and (
-          metrics_size['act_size_max'] <= config.quant_target.act_mb)) or (
-          (config.quant_target.act_mode == 'sum') and (
-              metrics_size['act_size_sum'] <= config.quant_target.act_mb)))
+          metrics_size['weight_size'].mean() <= config.quant_target.weight_mb)
+      act_cond = (((config.quant_target.act_mode == 'max'
+                    ) and (
+          metrics_size['act_size_max'].mean() <= config.quant_target.act_mb)
+      ) or ((config.quant_target.act_mode == 'sum') and (
+          metrics_size['act_size_sum'].mean() <= config.quant_target.act_mb)))
 
       if weight_cond and act_cond:
-
         # sync batch statistics across replicas
         eval_metrics = []
         state = sync_batch_stats(state)

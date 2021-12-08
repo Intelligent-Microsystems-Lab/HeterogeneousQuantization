@@ -133,13 +133,6 @@ def create_learning_rate_fn(
   return schedule_fn
 
 
-def weight_decay_fn(params):
-  l2_params = [p for ((mod_name), p) in tree.flatten_with_path(
-      params) if 'BatchNorm' not in str(mod_name) and 'bn_init'
-      not in str(mod_name)]
-  return 0.5 * sum(jnp.sum(jnp.square(p)) for p in l2_params)
-
-
 def parametric_d_xmax_is_leaf(x):
   if type(x) is dict or type(x) is flax.core.frozen_dict.FrozenDict:
     if 'dynamic_range' in x:
@@ -198,6 +191,13 @@ def clip_quant_grads(grads, quant_params):
                                      is_leaf=parametric_d_xmax_is_leaf)
 
 
+def weight_decay_fn(params):
+  l2_params = [p for ((mod_name), p) in tree.flatten_with_path(
+      params) if 'BatchNorm' not in str(mod_name) and 'bn_init'
+      not in str(mod_name)]
+  return 0.5 * sum(jnp.sum(jnp.square(p)) for p in l2_params)
+
+
 def train_step(state, batch, rng, learning_rate_fn, weight_decay,
                quant_target, smoothing):
   """Perform a single training step."""
@@ -218,6 +218,7 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
         rngs={'dropout': rng})
 
     loss = jnp.mean(cross_entropy_loss(logits, targets, smoothing))
+    loss += weight_decay * weight_decay_fn(params)
 
     # size penalty
     size_weight_penalty = 0.
@@ -254,13 +255,6 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
   aux, grads = grad_fn(
       state.params['params'], batch['image'], batch['label'],
       state.params['quant_params'])
-
-  # manual weight decay
-  # TODO @clee1994 remove batchnorm parameters from weight decay...
-  grads = (jax.tree_util.tree_multimap(lambda x, y: x + weight_decay * y,
-           grads[0], state.params['params']),
-           jax.tree_util.tree_multimap(lambda x, y: x + weight_decay * y,
-                                       grads[1], state.params['quant_params']))
 
   # Re-use same axis_name as in the call to `pmap(...train_step...)` below.
   grads = (grads[0], clip_quant_grads(grads[1], state.params['quant_params']))

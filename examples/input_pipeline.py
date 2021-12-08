@@ -19,8 +19,7 @@ def create_input_iter(dataset_builder, batch_size, train, config):
       dataset_builder, batch_size, train=train, config=config)
   prepare_tf_data_fn = partial(prepare_tf_data, config=config)
   it = map(prepare_tf_data_fn, ds)
-  it = jax_utils.prefetch_to_device(it, 2, devices=jax.devices(
-  )[:config.num_devices] if type(config.num_devices) == int else jax.devices())
+  it = jax_utils.prefetch_to_device(it, 2)
   return it
 
 
@@ -29,8 +28,7 @@ def create_input_iter_cifar10(dataset_builder, batch_size, train, config):
       dataset_builder, batch_size, train=train, config=config)
   prepare_tf_data_fn = partial(prepare_tf_data, config=config)
   it = map(prepare_tf_data_fn, ds)
-  it = jax_utils.prefetch_to_device(it, 2, devices=jax.devices(
-  )[:config.num_devices] if type(config.num_devices) == int else jax.devices())
+  it = jax_utils.prefetch_to_device(it, 2)
   return it
 
 

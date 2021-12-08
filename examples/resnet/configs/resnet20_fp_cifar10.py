@@ -34,13 +34,13 @@ def get_config():
   config.warmup_epochs = 5.
   config.momentum = 0.9
   config.batch_size = 128
+  config.eval_batch_size = 128
   config.weight_decay = 0.0002
   config.nesterov = False
   config.smoothing = .1
 
   config.num_epochs = 160.0
   config.log_every_steps = 100
-  config.num_devices = 1
 
   config.cache = True
   config.half_precision = False
