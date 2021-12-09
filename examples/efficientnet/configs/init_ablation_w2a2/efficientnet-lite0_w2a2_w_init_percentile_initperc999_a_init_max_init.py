@@ -67,36 +67,26 @@ def get_config():
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
-  config.quant.stem.weight = partial, init_fn = partial(percentile_init,perc=99.9))
-      uniform_static)
-  config.quant.stem.act = partial, init_fn = partial(max_init))
-      uniform_static)
+  config.quant.stem.weight = partial(uniform_static, init_fn = partial(percentile_init,perc=99.9))
+  config.quant.stem.act = partial(uniform_static, init_fn = partial(max_init))
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
-  config.quant.mbconv.weight = partial, init_fn = partial(percentile_init,perc=99.9))
-      uniform_static)
-  config.quant.mbconv.act = partial, init_fn = partial(max_init))
-      uniform_static)
+  config.quant.mbconv.weight = partial(uniform_static, init_fn = partial(percentile_init,perc=99.9))
+  config.quant.mbconv.act = partial(uniform_static, init_fn = partial(max_init))
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
-  config.quant.head.weight = partial, init_fn = partial(percentile_init,perc=99.9))
-      uniform_static)
-  config.quant.head.act = partial, init_fn = partial(max_init))
-      uniform_static)
+  config.quant.head.weight = partial(uniform_static, init_fn = partial(percentile_init,perc=99.9))
+  config.quant.head.act = partial(uniform_static, init_fn = partial(max_init))
 
   # Average quant.
-  config.quant.average = partial, init_fn = partial(max_init))
-      uniform_static)
+  config.quant.average = partial(uniform_static, init_fn = partial(max_init))
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
-  config.quant.dense.weight = partial, init_fn = partial(percentile_init,perc=99.9))
-      uniform_static)
-  config.quant.dense.act = partial, init_fn = partial(max_init))
-      uniform_static)
-  config.quant.dense.bias = partial, init_fn = partial(percentile_init,perc=99.9))
-      uniform_static)
+  config.quant.dense.weight = partial(uniform_static, init_fn = partial(percentile_init,perc=99.9))
+  config.quant.dense.act = partial(uniform_static, init_fn = partial(max_init))
+  config.quant.dense.bias = partial(uniform_static, init_fn = partial(percentile_init,perc=99.9))
 
   return config
