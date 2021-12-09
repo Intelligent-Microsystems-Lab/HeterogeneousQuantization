@@ -1,12 +1,17 @@
 # Quantized ResNet
 
 ## Performance with Pretrained Weights
-|**Model** | **params** | **size FP32** | **size INT8** | **FP32 acc** | **INT8 acc** | 
-|------|-------|-------|-----|-------|------|
-|ResNet18 [ckpt](https://notredame.box.com/shared/static/5m485mqpskw5lwop1z3yfi4wsvvdjsx3.zip) | 11M | 18.61MB | 4.65MB |  [70.65%](https://tensorboard.dev/experiment/83y0Ro6lTyu2JzP16bbm7w) | 70.34% |
+|**Model** | **Dataset** | **Config** |**#Params** | **Size** | **Accuracy** |
+|------|-------|-------|-----|-------|
 
+|ResNet18 [ckpt](https://notredame.box.com/shared/static/5m485mqpskw5lwop1z3yfi4wsvvdjsx3.zip) | ImageNet | [FP32](configs/resnet18_fp32.py) | 11M | 18.61MB |  [70.75%](https://tensorboard.dev/experiment/2ClIM4T0TjOEcekcLFPXbQ) |
+|ResNet18 [ckpt](https://notredame.box.com/shared/static/5m485mqpskw5lwop1z3yfi4wsvvdjsx3.zip)| ImageNet | [INT8 PQT](configs/resnet18_w8a8.py)| 11M | 4.65MB | |
+|ResNet20 [ckpt](https://notredame.box.com/shared/static/5m485mqpskw5lwop1z3yfi4wsvvdjsx3.zip) | CIFAR10 | [FP32](configs/resnet20_fp32.py) | | | |
+|ResNet20 [ckpt](https://notredame.box.com/shared/static/5m485mqpskw5lwop1z3yfi4wsvvdjsx3.zip)| CIFAR10 | [INT8 PQT](configs/resnet20_w8a8.py)| | | |
+|ResNet20 [ckpt](https://notredame.box.com/shared/static/5m485mqpskw5lwop1z3yfi4wsvvdjsx3.zip)| CIFAR10 | [MIXED QAT](configs/resnet20_mixed.py)| | | |
 
 ## References
 
 Code based on:
 - https://github.com/google/flax/tree/main/examples
+- https://github.com/sony/ai-research-code/tree/master/mixed-precision-dnns
