@@ -42,7 +42,8 @@ def get_config():
   config.warmup_epochs = 5  # for optimizer to settle in
   config.weight_decay = 1e-5
   config.momentum = 0.9
-  config.batch_size = 512
+  config.batch_size = 256
+  config.eval_batch_size = 128
   config.smoothing = .1
 
   config.num_epochs = 350
@@ -59,7 +60,9 @@ def get_config():
 
   config.quant = ml_collections.ConfigDict()
 
-  config.quant.bits = None
+  config.quant.bits = 32
+  config.quant.a_bits = 32
+  config.quant.w_bits = 32
 
   config.quant.g_scale = 0.
 

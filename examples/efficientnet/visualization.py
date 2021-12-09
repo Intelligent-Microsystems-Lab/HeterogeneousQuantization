@@ -713,7 +713,7 @@ def table_lr(res_dict):
                      '0.001': [None, None, None, None, None, None, None],
                      '0.0001': [None, None, None, None, None, None, None], })
   df.rename(index={0: '2', 1: '3', 2: '4', 3: '5',
-            4: '6', 5: '7', 6: '8'}, inplace=True)
+                   4: '6', 5: '7', 6: '8'}, inplace=True)
   for k, v in res_dict.items():
     acc = get_best_eval(v)
     bit, lr = k.split('_')
@@ -733,7 +733,8 @@ def table_init(res_dict):
                      })
 
   df.rename(index={0: 'max', 1: 'doublemean', 2: 'gaussian',
-            3: 'p999', 4: 'p9999', 5: 'p99999', 6: 'p999999'}, inplace=True)
+                   3: 'p999', 4: 'p9999', 5: 'p99999', 6: 'p999999'},
+            inplace=True)
   for k, v in res_dict.items():
     acc = get_best_eval(v)
     w, a = k.split('_')
