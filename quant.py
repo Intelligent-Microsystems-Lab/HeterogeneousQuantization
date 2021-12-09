@@ -208,6 +208,7 @@ class uniform_static(nn.Module):
   round_fn: Callable = round_psgd
   init_fn: Callable = max_init
   g_scale: float = 0.
+  maxabs_w: float = None
 
   @nn.compact
   def __call__(self, x: Array, sign: bool = True) -> Array:
@@ -245,6 +246,7 @@ class parametric_d(nn.Module):
   init_fn: Callable = max_init
   g_scale: float = 0.
   clip_quant_grads: bool = True
+  maxabs_w: float = None
 
   # parametric homogenouse quantization
   # Based on LEARNED STEP SIZE QUANTIZATION

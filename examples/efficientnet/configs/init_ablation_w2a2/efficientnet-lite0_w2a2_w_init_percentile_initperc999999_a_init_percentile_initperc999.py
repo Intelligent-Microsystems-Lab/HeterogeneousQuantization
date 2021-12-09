@@ -36,15 +36,18 @@ def get_config():
   config.num_classes = 1000
 
   # Load pretrained weights.
-  config.pretrained = "../../../pretrained_efficientnet/efficientnet-lite0"
+  config.pretrained = "../../pretrained_efficientnet/efficientnet-lite0"
 
   config.learning_rate = 0.0001
+  config.optimizer = 'rmsprop'
+  config.lr_boundaries_scale = None
   config.warmup_epochs = 2  # for optimizer to settle in
   config.weight_decay = 1e-5
   config.momentum = 0.9
-  config.batch_size = 2048
-  config.batch_norm_epsilon = 1e-2
-
+  config.batch_size = 256
+  config.eval_batch_size = 128
+  config.smoothing = .1
+  
   config.num_epochs = 50
   config.log_every_steps = 256
 
@@ -54,6 +57,7 @@ def get_config():
   config.steps_per_eval = -1
 
   config.quant_target = ml_collections.ConfigDict()
+  config.quant_target.size_div = 8. * 1024. * 1024.
 
   config.quant = ml_collections.ConfigDict()
 
@@ -63,26 +67,36 @@ def get_config():
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
-  config.quant.stem.weight = partial(uniform_static, init_fn=partial(percentile_init, perc=99.9), init_fn=partial(percentile_init, perc=99.9999))
-  config.quant.stem.act = partial(uniform_static, init_fn=partial(percentile_init, perc=99.9999), init_fn=partial(percentile_init, perc=99.9))
+  config.quant.stem.weight = partial, init_fn = partial(percentile_init,perc=99.9999))
+      uniform_static)
+  config.quant.stem.act = partial, init_fn = partial(percentile_init,perc=99.9))
+      uniform_static)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
-  config.quant.mbconv.weight = partial(uniform_static, init_fn=partial(percentile_init, perc=99.9), init_fn=partial(percentile_init, perc=99.9999))
-  config.quant.mbconv.act = partial(uniform_static, init_fn=partial(percentile_init, perc=99.9999), init_fn=partial(percentile_init, perc=99.9))
+  config.quant.mbconv.weight = partial, init_fn = partial(percentile_init,perc=99.9999))
+      uniform_static)
+  config.quant.mbconv.act = partial, init_fn = partial(percentile_init,perc=99.9))
+      uniform_static)
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
-  config.quant.head.weight = partial(uniform_static, init_fn=partial(percentile_init, perc=99.9), init_fn=partial(percentile_init, perc=99.9999))
-  config.quant.head.act = partial(uniform_static, init_fn=partial(percentile_init, perc=99.9999), init_fn=partial(percentile_init, perc=99.9))
+  config.quant.head.weight = partial, init_fn = partial(percentile_init,perc=99.9999))
+      uniform_static)
+  config.quant.head.act = partial, init_fn = partial(percentile_init,perc=99.9))
+      uniform_static)
 
   # Average quant.
-  config.quant.average = partial(uniform_static, init_fn=partial(percentile_init, perc=99.9999), init_fn=partial(percentile_init, perc=99.9))
+  config.quant.average = partial, init_fn = partial(percentile_init,perc=99.9))
+      uniform_static)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
-  config.quant.dense.weight = partial(uniform_static, init_fn=partial(percentile_init, perc=99.9), init_fn=partial(percentile_init, perc=99.9999))
-  config.quant.dense.act = partial(uniform_static, init_fn=partial(percentile_init, perc=99.9999), init_fn=partial(percentile_init, perc=99.9))
-  config.quant.dense.bias = partial(uniform_static, init_fn=partial(percentile_init, perc=99.9), init_fn=partial(percentile_init, perc=99.9999))
+  config.quant.dense.weight = partial, init_fn = partial(percentile_init,perc=99.9999))
+      uniform_static)
+  config.quant.dense.act = partial, init_fn = partial(percentile_init,perc=99.9))
+      uniform_static)
+  config.quant.dense.bias = partial, init_fn = partial(percentile_init,perc=99.9999))
+      uniform_static)
 
   return config

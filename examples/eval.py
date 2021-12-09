@@ -91,8 +91,7 @@ def evaluate(config: ml_collections.ConfigDict,
       subkey, config, model, config.image_size, lambda x: x)
   state = restore_checkpoint(state, workdir)
 
-  state = jax_utils.replicate(state, devices=jax.devices(
-  )[:config.num_devices] if type(config.num_devices) == int else jax.devices())
+  state = jax_utils.replicate(state)
 
   p_eval_step = jax.pmap(
       functools.partial(
@@ -100,10 +99,7 @@ def evaluate(config: ml_collections.ConfigDict,
           size_div=config.quant_target.size_div,
           smoothing=config.smoothing
       ),
-      axis_name='batch',
-      devices=jax.devices()[:config.num_devices
-                            ] if type(config.num_devices) == int else
-      jax.devices())
+      axis_name='batch')
 
   logging.info('Initial compilation, this might take some minutes...')
   eval_metrics = []

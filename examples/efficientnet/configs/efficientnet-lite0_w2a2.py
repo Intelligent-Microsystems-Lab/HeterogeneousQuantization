@@ -44,12 +44,12 @@ def get_config():
   config.warmup_epochs = 2  # for optimizer to settle in
   config.weight_decay = 1e-5
   config.momentum = 0.9
-  config.batch_size = 2048
+  config.batch_size = 256
+  config.eval_batch_size = 128
   config.smoothing = .1
-
+  
   config.num_epochs = 50
   config.log_every_steps = 256
-  config.num_devices = None
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.

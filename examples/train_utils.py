@@ -162,6 +162,8 @@ def clip_single_leaf_params(x, quant_config):
 
 
 def clip_quant_vals(params, quant_configs):
+  if len(quant_configs.keys()) == 0:
+    return params
   quant_configs = unfreeze(quant_configs)
   quant_configs['placeholder'] = jnp.sum(jnp.ones((1,)))
   quant_configs = freeze(quant_configs)
