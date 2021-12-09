@@ -2,10 +2,10 @@ import subprocess
 import re
 import numpy as np
 
-base_config_name = 'efficientnet-lite0_w2a2.py'
+base_config_name = 'efficientnet/configs/efficientnet-lite0_w2a2.py'
 init_methods = ['partial(max_init)', 'partial(double_mean_init)', 'partial(gaussian_init)', 'partial(percentile_init,perc=99.9)',
                 'partial(percentile_init,perc=99.99)', 'partial(percentile_init,perc=99.999)', 'partial(percentile_init,perc=99.9999)']
-config_dir = 'init_ablation_w2a2/'
+config_dir = 'efficientnet/configs/init_ablation_w2a2/'
 
 name_rm_chars = [',', '=', '.', ')']
 num_run_scripts = 3
@@ -25,7 +25,7 @@ config_list = []
 for w_init in init_methods:
   for a_init in init_methods:
 
-    new_conf_name = config_dir + '/' + base_config_name.split('.')[0] + '_w_init_' + re.sub(
+    new_conf_name = config_dir + '/' + base_config_name.split('/')[-1].split('.')[0] + '_w_init_' + re.sub(
         '[,=.)]', '', w_init.split('(')[1]) + '_a_init_' + re.sub('[,=.)]', '', a_init.split('(')[1]) + '.py'
 
     print(new_conf_name)
