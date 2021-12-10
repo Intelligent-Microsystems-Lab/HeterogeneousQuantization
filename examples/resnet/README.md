@@ -6,7 +6,7 @@
 |ResNet18 [ckpt](https://notredame.box.com/shared/static/5m485mqpskw5lwop1z3yfi4wsvvdjsx3.zip) | ImageNet | [FP32](configs/resnet18_fp32.py) | 11M | 18.61MB |  [70.75%](https://tensorboard.dev/experiment/2ClIM4T0TjOEcekcLFPXbQ) |
 |ResNet18 [ckpt](https://notredame.box.com/shared/static/5m485mqpskw5lwop1z3yfi4wsvvdjsx3.zip)| ImageNet | [INT8 PQT](configs/resnet18_int8.py)| 11M | 11.68MB | 70.62% |
 |ResNet18 [ckpt]()| ImageNet | [INT8 QAT](configs/resnet18_int4.py)| 11M | 11.68MB | |
-|ResNet18 [ckpt](https://notredame.box.com/shared/static/5m485mqpskw5lwop1z3yfi4wsvvdjsx3.zip)| ImageNet | [INT4 PQT](configs/resnet18_int4.py)| 11M | 5.84MB |  |
+|ResNet18 [ckpt](https://notredame.box.com/shared/static/5m485mqpskw5lwop1z3yfi4wsvvdjsx3.zip)| ImageNet | [INT4 PQT](configs/resnet18_int4.py)| 11M | 5.84MB | 9.01% |
 |ResNet18 [ckpt]()| ImageNet | [INT4 QAT](configs/resnet18_int4.py)| 11M | 5.84MB | |
 |ResNet18 [ckpt]()| ImageNet | [MIXED QAT](configs/resnet18_mixed.py)| 11M | 5.40MB | |
 |ResNet20 [ckpt](https://notredame.box.com/shared/static/z1pxy1b5poz8cdarg4wgm2jp4esg0mji.zip) | CIFAR10 | [FP32](configs/resnet20_fp_cifar10.py) | 0.27M | 1072KB | [95.19%](https://tensorboard.dev/experiment/apemnH67RXeI5VvrfWl7jg/) |
