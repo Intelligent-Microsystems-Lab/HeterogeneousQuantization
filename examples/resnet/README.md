@@ -1,5 +1,7 @@
 # Quantized ResNet
 
+Note: results obtained with commit 845652fd70e3ee025d9550f6e71cb7ea207bb4f5
+
 ## Performance
 |**Model** | **Dataset** | **Config** |**#Params** | **Size** | **Accuracy** |
 |------|-------|-------|-----|-------:|------|
@@ -13,7 +15,7 @@
 |ResNet20 [ckpt](https://notredame.box.com/shared/static/z1pxy1b5poz8cdarg4wgm2jp4esg0mji.zip)| CIFAR10 | [INT8 PQT](configs/resnet20_int8_cifar10.py)| 0.27M | 268KB | 14.62% |
 |ResNet20 [ckpt](https://notredame.box.com/shared/static/3a6aw491lp5u6bv9dvz65b7o7tuh0osr.zip)| CIFAR10 | [INT8 QAT](configs/resnet20_int8_cifar10.py)| 0.27M | 268KB | [93.83%](https://tensorboard.dev/experiment/nfqozT7BQnyE08TJf9EQ2w/) |
 |ResNet20 [ckpt](https://notredame.box.com/shared/static/z1pxy1b5poz8cdarg4wgm2jp4esg0mji.zip)| CIFAR10 | [INT4 PQT](configs/resnet20_int4_cifar10.py)| 0.27M | 134KB | 13.16% |
-|ResNet20 [ckpt]()| CIFAR10 | [INT4 QAT](configs/resnet20_int4_cifar10.py)| 0.27M | 134KB | |
+|ResNet20 [ckpt](https://notredame.box.com/shared/static/gcyf44n4vdzhjsgukga07dz804cspczb.zip)| CIFAR10 | [INT4 QAT](configs/resnet20_int4_cifar10.py)| 0.27M | 134KB | [93.43%](https://tensorboard.dev/experiment/nKLF9KgWTjejSnhmvkbcXg/) |
 |ResNet20 [ckpt](https://notredame.box.com/shared/static/2ap5ckl6i77eoga07313gnwrl4vbptku.zip)| CIFAR10 | [MIXED QAT](configs/resnet20_mixed_cifar10.py)| 0.27M | 70KB | [92.47%](https://tensorboard.dev/experiment/HVNvbxQvRumHvEl3JRseLQ) |
 
 ## References
