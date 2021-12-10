@@ -62,9 +62,8 @@ from train_utils import (
 # os.environ["CLOUD_TPU_TASK_ID"] = "0"
 # os.environ["TPU_VISIBLE_DEVICES"] = "0"
 
-low, high = resource.getrlimit(resource.RLIMIT_NOFILE)
-resource.setrlimit(resource.RLIMIT_NOFILE, (high, high))
-
+# low, high = resource.getrlimit(resource.RLIMIT_NOFILE)
+# resource.setrlimit(resource.RLIMIT_NOFILE, (high, high))
 
 FLAGS = flags.FLAGS
 
@@ -87,7 +86,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   Returns:
     Final TrainState.
   """
-
   writer_train = metric_writers.create_default_writer(
       logdir=workdir + '/train', just_logging=jax.process_index() != 0)
   writer_eval = metric_writers.create_default_writer(

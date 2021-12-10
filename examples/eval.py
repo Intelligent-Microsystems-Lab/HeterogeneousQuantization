@@ -37,9 +37,8 @@ from train_utils import (
     eval_step
 )
 
-low, high = resource.getrlimit(resource.RLIMIT_NOFILE)
-resource.setrlimit(resource.RLIMIT_NOFILE, (high, high))
-
+# low, high = resource.getrlimit(resource.RLIMIT_NOFILE)
+# resource.setrlimit(resource.RLIMIT_NOFILE, (high, high))
 
 FLAGS = flags.FLAGS
 
@@ -66,7 +65,6 @@ def evaluate(config: ml_collections.ConfigDict,
   if 'cifar10' in config.dataset:
     eval_iter = input_pipeline.create_input_iter_cifar10(
         dataset_builder, local_batch_size, train=False, config=config)
-
   elif 'imagenet2012' in config.dataset:
     eval_iter = input_pipeline.create_input_iter(
         dataset_builder, local_batch_size, train=False, config=config)
