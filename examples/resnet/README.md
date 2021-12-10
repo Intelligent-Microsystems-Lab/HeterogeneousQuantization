@@ -8,7 +8,7 @@
 |ResNet18 [ckpt](https://notredame.box.com/shared/static/5m485mqpskw5lwop1z3yfi4wsvvdjsx3.zip)| ImageNet | [INT8 QAT](configs/resnet18_w8a8.py)| 11M | 11.68MB | |
 |ResNet18 [ckpt]()| ImageNet | [MIXED QAT](configs/resnet18_mixed.py)| 11M | 5.40MB | |
 |ResNet20 [ckpt](https://notredame.box.com/shared/static/z1pxy1b5poz8cdarg4wgm2jp4esg0mji.zip) | CIFAR10 | [FP32](configs/resnet20_fp_cifar10.py) | 0.27M | 1.07MB | [95.19%](https://tensorboard.dev/experiment/apemnH67RXeI5VvrfWl7jg/) |
-|ResNet20 [ckpt](https://notredame.box.com/shared/static/z1pxy1b5poz8cdarg4wgm2jp4esg0mji.zip)| CIFAR10 | [INT8 PQT](configs/resnet20_int8_cifar10.py)| 0.27M | 0.27MB | |
+|ResNet20 [ckpt](https://notredame.box.com/shared/static/z1pxy1b5poz8cdarg4wgm2jp4esg0mji.zip)| CIFAR10 | [INT8 PQT](configs/resnet20_int8_cifar10.py)| 0.27M | 0.27MB | 14.62% |
 |ResNet20 [ckpt](https://notredame.box.com/shared/static/z1pxy1b5poz8cdarg4wgm2jp4esg0mji.zip)| CIFAR10 | [INT8 QAT](configs/resnet20_int8_cifar10.py)| 0.27M | 0.27MB | |
 |ResNet20 [ckpt](https://notredame.box.com/shared/static/z1pxy1b5poz8cdarg4wgm2jp4esg0mji.zip)| CIFAR10 | [INT4 PQT](configs/resnet20_int4_cifar10.py)| 0.27M | 0.13MB | |
 |ResNet20 [ckpt]()| CIFAR10 | [INT4 QAT](configs/resnet20_int4_cifar10.py)| 0.27M | 0.13MB | |
