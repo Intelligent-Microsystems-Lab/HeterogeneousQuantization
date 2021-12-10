@@ -5,6 +5,7 @@
 
 import ml_collections
 from functools import partial
+
 from quant import uniform_static
 
 
@@ -34,11 +35,13 @@ def get_config():
   config.optimizer = 'sgd'
   config.learning_rate = 0.001
   config.lr_boundaries_scale = None
-  config.warmup_epochs = 2.0
+  config.warmup_epochs = 5.0
   config.momentum = 0.9
-  config.batch_size = 1024
+  config.batch_size = 256
+  config.eval_batch_size = 128
   config.weight_decay = 0.0001
   config.nesterov = True
+  config.smoothing = .0
 
   config.num_epochs = 50.0
   config.log_every_steps = 100
@@ -54,31 +57,39 @@ def get_config():
   config.steps_per_eval = -1
 
   config.quant_target = ml_collections.ConfigDict()
-  config.quant_target.size_div = 8. * 1024. * 1024.
+
+  config.quant_target.size_div = 8. * 1024. * 1014.  # 8_000 # mb or kb
 
   config.quant = ml_collections.ConfigDict()
 
-  config.quant.bits = 4
+  config.quant.w_bits = 8
+  config.quant.a_bits = 8
 
   config.quant.g_scale = 0.
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
   config.quant.stem.weight = partial(uniform_static)
-  config.quant.stem.act = partial(uniform_static, act=True)
+  # no input quant in MixedDNN paper.
+  # config.quant.stem.act = partial(uniform_static, act=True)
+
+  config.quant.post_init = partial(
+      uniform_static, act=True)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
   config.quant.mbconv.weight = partial(uniform_static)
-  config.quant.mbconv.act = partial(uniform_static, act=True)
+  #config.quant.mbconv.act = partial(uniform_static, act=True, init_bits = 6)
+  config.quant.mbconv.nonl = partial(
+      uniform_static, act=True)
 
   # Average quant.
-  config.quant.average = partial(uniform_static, act=True)
+  # config.quant.average = partial(uniform_static, act=True, init_bits = 6)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
   config.quant.dense.weight = partial(uniform_static)
-  config.quant.dense.act = partial(uniform_static, act=True)
+  # config.quant.dense.act = partial(uniform_static, act=True)
   config.quant.dense.bias = partial(uniform_static)
 
   return config
