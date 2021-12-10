@@ -3,7 +3,6 @@
 # Originally copied from https://github.com/google/flax/tree/main/examples
 
 import functools
-import resource
 import time
 
 from absl import app
@@ -37,6 +36,7 @@ from train_utils import (
     eval_step
 )
 
+# import resource
 # low, high = resource.getrlimit(resource.RLIMIT_NOFILE)
 # resource.setrlimit(resource.RLIMIT_NOFILE, (high, high))
 
@@ -64,10 +64,15 @@ def evaluate(config: ml_collections.ConfigDict,
   dataset_builder.download_and_prepare()
   if 'cifar10' in config.dataset:
     eval_iter = input_pipeline.create_input_iter_cifar10(
-        dataset_builder, local_batch_size, train=False, config=config)
+        dataset_builder, local_batch_size, dtype=config.dtype, train=False,
+        cache=config.cache, mean_rgb=config.mean_rgb,
+        std_rgb=config.stddev_rgb)
   elif 'imagenet2012' in config.dataset:
     eval_iter = input_pipeline.create_input_iter(
-        dataset_builder, local_batch_size, train=False, config=config)
+        dataset_builder, local_batch_size, config.image_size,
+        dtype=config.dtype, train=False, cache=config.cache,
+        mean_rgb=config.mean_rgb, std_rgb=config.stddev_rgb,
+        crop=config.crop_padding)
   else:
     raise Exception('Unrecognized data set: ' + config.dataset)
 
@@ -109,6 +114,7 @@ def evaluate(config: ml_collections.ConfigDict,
     metrics = p_eval_step(state, eval_batch)
     time_per_epoch.append(time.time() - train_metrics_last_t)
     eval_metrics.append(metrics)
+
   eval_metrics = common_utils.get_metrics(eval_metrics)
   summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
   logging.info('eval loss: %.4f, accuracy: %.2f latency: %.4f±%.4f(ms)',

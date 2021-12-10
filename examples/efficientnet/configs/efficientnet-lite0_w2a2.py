@@ -47,7 +47,7 @@ def get_config():
   config.batch_size = 256
   config.eval_batch_size = 128
   config.smoothing = .1
-  
+
   config.num_epochs = 50
   config.log_every_steps = 256
 

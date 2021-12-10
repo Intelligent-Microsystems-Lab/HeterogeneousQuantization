@@ -11,32 +11,31 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 
 from flax import jax_utils
-from functools import partial
 
 
-def create_input_iter(dataset_builder, batch_size, train, config):
+def create_input_iter(dataset_builder, batch_size, image_size, dtype, train,
+                      cache, mean_rgb, std_rgb, crop):
   ds = create_split(
-      dataset_builder, batch_size, train=train, config=config)
-  prepare_tf_data_fn = partial(prepare_tf_data, config=config)
-  it = map(prepare_tf_data_fn, ds)
+      dataset_builder, batch_size, image_size=image_size, dtype=dtype,
+      train=train, cache=cache, mean_rgb=mean_rgb, std_rgb=std_rgb, crop=crop)
+  it = map(prepare_tf_data, ds)
   it = jax_utils.prefetch_to_device(it, 2)
   return it
 
 
-def create_input_iter_cifar10(dataset_builder, batch_size, train, config):
+def create_input_iter_cifar10(dataset_builder, batch_size, dtype, train,
+                              cache, mean_rgb, std_rgb):
   ds = create_split_cifar10(
-      dataset_builder, batch_size, train=train, config=config)
-  prepare_tf_data_fn = partial(prepare_tf_data, config=config)
-  it = map(prepare_tf_data_fn, ds)
+      dataset_builder, batch_size, dtype=dtype,
+      train=train, cache=cache, mean_rgb=mean_rgb, std_rgb=std_rgb)
+  it = map(prepare_tf_data, ds)
   it = jax_utils.prefetch_to_device(it, 2)
   return it
 
 
-def prepare_tf_data(xs, config):
+def prepare_tf_data(xs):
   """Convert a input batch from tf Tensors to numpy arrays."""
   local_device_count = jax.local_device_count()
-  # local_device_count = config.num_devices if type(
-  #    config.num_devices) == int else jax.local_device_count()
 
   def _prepare(x):
     # Use _numpy() for zero-copy conversion between TF and NumPy.
@@ -44,7 +43,6 @@ def prepare_tf_data(xs, config):
 
     # reshape (host_batch_size, height, width, 3) to
     # (local_devices, device_batch_size, height, width, 3)
-
     return x.reshape((local_device_count, -1) + x.shape[1:])
 
   return jax.tree_map(_prepare, xs)
@@ -57,9 +55,7 @@ def distorted_bounding_box_crop(image_bytes,
                                 area_range=(0.05, 1.0),
                                 max_attempts=100):
   """Generates cropped_image using one of the bboxes randomly distorted.
-
   See `tf.image.sample_distorted_bounding_box` for more documentation.
-
   Args:
     image_bytes: `Tensor` of binary image data.
     bbox: `Tensor` of bounding boxes arranged `[1, num_boxes, coords]`
@@ -113,7 +109,7 @@ def _at_least_x_are_equal(a, b, x):
   return tf.greater_equal(tf.reduce_sum(match), x)
 
 
-def _decode_and_random_crop(image_bytes, config):
+def _decode_and_random_crop(image_bytes, image_size, crop):
   """Make a random crop of image_size."""
   bbox = tf.constant([0.0, 0.0, 1.0, 1.0], dtype=tf.float32, shape=[1, 1, 4])
   image = distorted_bounding_box_crop(
@@ -128,79 +124,76 @@ def _decode_and_random_crop(image_bytes, config):
 
   image = tf.cond(
       bad,
-      lambda: _decode_and_center_crop(image_bytes, config),
-      lambda: _resize(image, config.image_size))
+      lambda: _decode_and_center_crop(image_bytes, image_size, crop),
+      lambda: _resize(image, image_size))
 
   return image
 
 
-def _decode_and_center_crop(image_bytes, config):
+def _decode_and_center_crop(image_bytes, image_size, crop):
   """Crops to center of image with padding then scales image_size."""
   shape = tf.io.extract_jpeg_shape(image_bytes)
   image_height = shape[0]
   image_width = shape[1]
 
   padded_center_crop_size = tf.cast(
-      ((config.image_size / (config.image_size + config.crop_padding)
-        ) * tf.cast(tf.minimum(image_height, image_width), tf.float32)),
-      tf.int32)
+      ((image_size / (image_size + crop)) * tf.cast(tf.minimum(
+          image_height, image_width), tf.float32)), tf.int32)
 
   offset_height = ((image_height - padded_center_crop_size) + 1) // 2
   offset_width = ((image_width - padded_center_crop_size) + 1) // 2
   crop_window = tf.stack([offset_height, offset_width,
                           padded_center_crop_size, padded_center_crop_size])
   image = tf.io.decode_and_crop_jpeg(image_bytes, crop_window, channels=3)
-  image = _resize(image, config.image_size)
+  image = _resize(image, image_size)
 
   return image
 
 
-def normalize_image(image, config):
-  image -= tf.constant(config.mean_rgb, shape=[1, 1, 3], dtype=image.dtype)
-  image /= tf.constant(config.stddev_rgb, shape=[1, 1, 3], dtype=image.dtype)
+def normalize_image(image, mean_rgb, std_rgb):
+  image -= tf.constant(mean_rgb, shape=[1, 1, 3], dtype=image.dtype)
+  image /= tf.constant(std_rgb, shape=[1, 1, 3], dtype=image.dtype)
   return image
 
 
-def preprocess_for_train(image_bytes, config):
+def preprocess_for_train(image_bytes, dtype, image_size, mean_rgb, std_rgb,
+                         crop):
   """Preprocesses the given image for training.
-
   Args:
     image_bytes: `Tensor` representing an image binary of arbitrary size.
     dtype: data type of the image.
     image_size: image size.
-
   Returns:
     A preprocessed image `Tensor`.
   """
-  image = _decode_and_random_crop(image_bytes, config)
-  image = tf.reshape(image, [config.image_size, config.image_size, 3])
+  image = _decode_and_random_crop(image_bytes, image_size, crop)
+  image = tf.reshape(image, [image_size, image_size, 3])
   image = tf.image.random_flip_left_right(image)
-  image = normalize_image(image, config)
-  image = tf.image.convert_image_dtype(image, dtype=tf.float32)
+  image = normalize_image(image, mean_rgb, std_rgb)
+  image = tf.image.convert_image_dtype(image, dtype=dtype)
   return image
 
 
-def preprocess_for_eval(image_bytes, config):
+def preprocess_for_eval(image_bytes, dtype, image_size, mean_rgb, std_rgb,
+                        crop):
   """Preprocesses the given image for evaluation.
-
   Args:
     image_bytes: `Tensor` representing an image binary of arbitrary size.
     dtype: data type of the image.
     image_size: image size.
-
   Returns:
     A preprocessed image `Tensor`.
   """
-  image = _decode_and_center_crop(image_bytes, config)
-  image = tf.reshape(image, [config.image_size, config.image_size, 3])
-  image = normalize_image(image, config)
-  image = tf.image.convert_image_dtype(image, dtype=tf.float32)
+  image = _decode_and_center_crop(image_bytes, image_size, crop)
+  image = tf.reshape(image, [image_size, image_size, 3])
+  image = normalize_image(image, mean_rgb, std_rgb)
+  image = tf.image.convert_image_dtype(image, dtype=dtype)
   return image
 
 
-def create_split(dataset_builder, batch_size, train, config):
+def create_split(dataset_builder, batch_size, train, dtype,
+                 image_size, cache, mean_rgb, std_rgb, crop):
   """Creates a split from the ImageNet dataset using TensorFlow Datasets.
-
   Args:
     dataset_builder: TFDS dataset builder for ImageNet.
     batch_size: the batch size returned by the data pipeline.
@@ -224,9 +217,11 @@ def create_split(dataset_builder, batch_size, train, config):
 
   def decode_example(example):
     if train:
-      image = preprocess_for_train(example['image'], config)
+      image = preprocess_for_train(
+          example['image'], dtype, image_size, mean_rgb, std_rgb, crop)
     else:
-      image = preprocess_for_eval(example['image'], config)
+      image = preprocess_for_eval(
+          example['image'], dtype, image_size, mean_rgb, std_rgb, crop)
     return {'image': image, 'label': example['label']}
 
   ds = dataset_builder.as_dataset(split=split, decoders={
@@ -236,25 +231,26 @@ def create_split(dataset_builder, batch_size, train, config):
   options.experimental_threading.private_threadpool_size = 48
   ds = ds.with_options(options)
 
-  if config.cache:
+  if cache:
     ds = ds.cache()
 
   if train:
     ds = ds.repeat()
     ds = ds.shuffle(16 * batch_size, seed=0)
+
   ds = ds.map(decode_example, num_parallel_calls=tf.data.experimental.AUTOTUNE)
   ds = ds.batch(batch_size, drop_remainder=True)
 
   if not train:
     ds = ds.repeat()
-    ds = ds.shuffle(16 * batch_size, seed=0)
 
   ds = ds.prefetch(10)
 
   return ds
 
 
-def create_split_cifar10(dataset_builder, batch_size, train, config):
+def create_split_cifar10(dataset_builder, batch_size, train, dtype,
+                         cache, mean_rgb, std_rgb):
   """Creates a split from the CIFAR10 dataset using TensorFlow Datasets.
   Args:
     dataset_builder: TFDS dataset builder for CIFAR10.
@@ -282,18 +278,18 @@ def create_split_cifar10(dataset_builder, batch_size, train, config):
     if train:
       image = tf.io.decode_png(example["image"])
 
-      image = tf.cast(image, dtype=tf.dtypes.float32)
+      image = tf.cast(image, dtype=dtype)
       image = tf.image.pad_to_bounding_box(image, 4, 4, 40, 40)
       image = tf.image.random_crop(image, size=(32, 32, 3))
       image = tf.image.random_flip_left_right(image)
 
-      image = normalize_image(image, config)
+      image = normalize_image(image, mean_rgb, std_rgb)
 
     else:
       image = tf.io.decode_png(example["image"])
-      image = tf.cast(image, dtype=tf.dtypes.float32)
+      image = tf.cast(image, dtype=dtype)
 
-      image = normalize_image(image, config)
+      image = normalize_image(image, mean_rgb, std_rgb)
 
     return {"image": image, "label": example["label"]}
 
@@ -307,7 +303,7 @@ def create_split_cifar10(dataset_builder, batch_size, train, config):
   options.experimental_threading.private_threadpool_size = 48
   ds = ds.with_options(options)
 
-  if config.cache:
+  if cache:
     ds = ds.cache()
 
   if train:

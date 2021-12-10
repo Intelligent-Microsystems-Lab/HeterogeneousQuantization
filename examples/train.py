@@ -9,7 +9,6 @@ The data is loaded using tensorflow_datasets.
 
 
 import functools
-import resource
 import subprocess
 import time
 
@@ -62,6 +61,7 @@ from train_utils import (
 # os.environ["CLOUD_TPU_TASK_ID"] = "0"
 # os.environ["TPU_VISIBLE_DEVICES"] = "0"
 
+# import resource
 # low, high = resource.getrlimit(resource.RLIMIT_NOFILE)
 # resource.setrlimit(resource.RLIMIT_NOFILE, (high, high))
 
@@ -101,19 +101,30 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   if config.batch_size % jax.device_count() > 0:
     raise ValueError('Batch size (' + str(config.batch_size) + ') must be \
       divisible by the number of devices (' + str(jax.device_count()) + ').')
+  local_batch_size = config.batch_size // jax.process_count()
 
   dataset_builder = tfds.builder(config.dataset, data_dir=config.tfds_data_dir)
   dataset_builder.download_and_prepare()
   if 'cifar10' in config.dataset:
     train_iter = input_pipeline.create_input_iter_cifar10(
-        dataset_builder, config.batch_size, train=True, config=config)
+        dataset_builder, local_batch_size, dtype=config.dtype, train=True,
+        cache=config.cache, mean_rgb=config.mean_rgb,
+        std_rgb=config.stddev_rgb)
     eval_iter = input_pipeline.create_input_iter_cifar10(
-        dataset_builder, config.eval_batch_size, train=False, config=config)
+        dataset_builder, local_batch_size, dtype=config.dtype, train=False,
+        cache=config.cache, mean_rgb=config.mean_rgb,
+        std_rgb=config.stddev_rgb)
   elif 'imagenet2012' in config.dataset:
     train_iter = input_pipeline.create_input_iter(
-        dataset_builder, config.batch_size, train=True, config=config)
+        dataset_builder, local_batch_size, config.image_size,
+        dtype=config.dtype, train=True, cache=config.cache,
+        mean_rgb=config.mean_rgb, std_rgb=config.stddev_rgb,
+        crop=config.crop_padding)
     eval_iter = input_pipeline.create_input_iter(
-        dataset_builder, config.eval_batch_size, train=False, config=config)
+        dataset_builder, local_batch_size, config.image_size,
+        dtype=config.dtype, train=False, cache=config.cache,
+        mean_rgb=config.mean_rgb, std_rgb=config.stddev_rgb,
+        crop=config.crop_padding)
   else:
     raise Exception('Unrecognized data set: ' + config.dataset)
 
@@ -131,13 +142,13 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   if config.steps_per_eval == -1:
     num_validation_examples = dataset_builder.info.splits[
         val_or_test].num_examples
-    steps_per_eval = num_validation_examples // config.eval_batch_size
+    steps_per_eval = num_validation_examples // config.batch_size
   else:
     steps_per_eval = config.steps_per_eval
 
   steps_per_checkpoint = steps_per_epoch * 10
 
-  base_learning_rate = config.learning_rate  # * config.batch_size / 256.
+  base_learning_rate = config.learning_rate * config.batch_size / 256.
 
   model_cls = getattr(models, config.model)
   model = create_model(

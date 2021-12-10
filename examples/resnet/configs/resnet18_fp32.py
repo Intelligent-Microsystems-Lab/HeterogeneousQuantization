@@ -4,6 +4,7 @@
 """Default Hyperparameter configuration."""
 
 import ml_collections
+import jax.numpy as jnp
 from functools import partial
 
 
@@ -21,6 +22,7 @@ def get_config():
   config.tfds_data_dir = 'gs://imagenet_clemens/tensorflow_datasets'
   config.image_size = 224
   config.crop_padding = 32
+  config.dtype = jnp.float32
 
   # Mean and std style for pre-processing.
   # config.mean_rgb = [0.485 * 255, 0.456 * 255, 0.406 * 255]
@@ -35,8 +37,7 @@ def get_config():
   config.lr_boundaries_scale = None
   config.warmup_epochs = 5.0
   config.momentum = 0.9
-  config.batch_size = 256
-  config.eval_batch_size = 128
+  config.batch_size = 2048
   config.weight_decay = 0.0001
   config.nesterov = True
   config.smoothing = .1
@@ -44,7 +45,7 @@ def get_config():
   config.num_epochs = 100.0
   config.log_every_steps = 100
 
-  config.cache = True
+  config.cache = False
   config.half_precision = False
 
   config.pretrained = None  # '../../pretrained_resnet/resnet18_v2'
