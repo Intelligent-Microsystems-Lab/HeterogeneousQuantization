@@ -2,7 +2,7 @@
 
 ## Performance
 |**Model** | **Dataset** | **Config** |**#Params** | **Size** | **Accuracy** |
-|------|-------|-------|-----|-------|------|
+|------|-------|-------|-----|-------:|------|
 |ResNet18 [ckpt](https://notredame.box.com/shared/static/5m485mqpskw5lwop1z3yfi4wsvvdjsx3.zip) | ImageNet | [FP32](configs/resnet18_fp32.py) | 11M | 18.61MB |  [70.75%](https://tensorboard.dev/experiment/2ClIM4T0TjOEcekcLFPXbQ) |
 |ResNet18 [ckpt](https://notredame.box.com/shared/static/5m485mqpskw5lwop1z3yfi4wsvvdjsx3.zip)| ImageNet | [INT8 PQT](configs/resnet18_w8a8.py)| 11M | 11.68MB | |
 |ResNet18 [ckpt](https://notredame.box.com/shared/static/5m485mqpskw5lwop1z3yfi4wsvvdjsx3.zip)| ImageNet | [INT8 QAT](configs/resnet18_w8a8.py)| 11M | 11.68MB | |
