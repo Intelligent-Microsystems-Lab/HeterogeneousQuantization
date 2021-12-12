@@ -196,7 +196,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
                             else config.quant.bits) + ' (No. Params: ' + str(
         jnp.sum(jnp.array(jax.tree_util.tree_flatten(state.weight_size)[0])
                 ) / (config.quant.w_bits if 'w_bits' in config.quant
-                     else config.quant.bits) + ')'))
+                     else config.quant.bits)) + ')')
   if len(state.act_size) != 0:
     logging.info('Initial Network Activation (Sum) Size in kB: ' + str(
         jnp.sum(jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])
