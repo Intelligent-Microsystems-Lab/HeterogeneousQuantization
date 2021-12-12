@@ -33,9 +33,9 @@ def get_config():
   config.stddev_rgb = [128.0, 128.0, 128.0]
 
   config.optimizer = 'rmsprop'
-  config.learning_rate = 0.0002
+  config.learning_rate = 0.0001
   config.lr_boundaries_scale = None
-  config.warmup_epochs = 5.0
+  config.warmup_epochs = 10.0
   config.momentum = 0.9
   config.batch_size = 2048
   config.weight_decay = 0.0001
