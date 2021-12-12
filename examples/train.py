@@ -192,22 +192,22 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     logging.info('Initial Network Weight Size in kB: ' + str(jnp.sum(jnp.array(
         jax.tree_util.tree_flatten(state.weight_size
                                    )[0])) / config.quant_target.size_div
-    ) + ' init bits ' + str(config.quant.w_bits) + ' (No. Params: ' + str(
+    ) + ' init bits ' + str(config.quant.w_bits if 'w_bits' in config.quant else config.quant.bits ) + ' (No. Params: ' + str(
         jnp.sum(jnp.array(jax.tree_util.tree_flatten(state.weight_size)[0])
-                ) / config.quant.w_bits) + ')')
+                ) / config.quant.w_bits if 'w_bits' in config.quant else config.quant.bits) + ')')
   if len(state.act_size) != 0:
     logging.info('Initial Network Activation (Sum) Size in kB: ' + str(
         jnp.sum(jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])
                 ) / config.quant_target.size_div) + ' init bits ' + str(
-        config.quant.a_bits) + ' (No. Params: ' + str(jnp.sum(jnp.array(
+        config.quant.a_bits if 'a_bits' in config.quant else config.quant.bits) + ' (No. Params: ' + str(jnp.sum(jnp.array(
             jax.tree_util.tree_flatten(state.act_size)[0])
-        ) / config.quant.a_bits) + ')')
+        ) / config.quant.a_bits if 'a_bits' in config.quant else config.quant.bits) + ')')
     logging.info('Initial Network Activation (Max) Size in kB: ' + str(
         jnp.max(jnp.array(jax.tree_util.tree_flatten(state.act_size)[0])
                 ) / config.quant_target.size_div) + ' init bits ' + str(
-        config.quant.a_bits) + ' (No. Params: ' + str(jnp.max(jnp.array(
+        config.quant.a_bits if 'a_bits' in config.quant else config.quant.bits) + ' (No. Params: ' + str(jnp.max(jnp.array(
             jax.tree_util.tree_flatten(state.act_size)[0])
-        ) / config.quant.a_bits) + ')')
+        ) / config.quant.a_bits if 'a_bits' in config.quant else config.quant.bits) + ')')
 
   state = jax_utils.replicate(state)
   # Debug note:

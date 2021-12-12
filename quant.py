@@ -310,13 +310,13 @@ class parametric_d_xmax(nn.Module):
   bits: int = 4  # here its just init bits
   act: bool = False
   xmax_min: float = 2**-8
-  xmax_max: float = 128  # 2**8
+  xmax_max: float = 255
   d_min: float = 2**-8
-  d_max: float = 1  # for MixedDNNs 1
+  d_max: float = 32 # MixedDNNs 1
   round_fn: Callable = round_psgd
   init_fn: Callable = max_init
   g_scale: float = 0.
-  ceil_tolerance: float = 0.0  # 1e-4
+  ceil_tolerance: float = 0.0
   maxabs_w: float = None
   bitwidth_min: int = 2
 
@@ -344,10 +344,10 @@ class parametric_d_xmax(nn.Module):
 
     ceilpass.defvjp(ceilpass_fwd, ceilpass_bwd)
 
-    # if sign:
-    #   num_levels = 2 ** (self.bits - 1) - 1
-    # else:
-    #   num_levels = 2 ** self.bits - 1
+    if sign:
+      num_levels = 2 ** (self.bits - 1) - 1
+    else:
+      num_levels = 2 ** self.bits - 1
 
     xmax_max = self.variable('quant_config', 'max_xmax',  # noqa: F841
                              lambda x: float(self.xmax_max), (1,))
@@ -368,21 +368,24 @@ class parametric_d_xmax(nn.Module):
     weight_mb = self.variable('weight_size', 'weight_mb', jnp.ones, (1,))
     bw = self.bits
     if self.is_mutable_collection('quant_params'):
-      if self.act:
-        xmax.value = 2**-3 * (2. ** bw - 1)
-        d.value = 2**-3
-      else:
-        maxabs_w = self.maxabs_w if self.maxabs_w is not None else jnp.max(
-            jnp.abs(inputs))
-        if bw > 4:
-          d.value = 2**(jnp.ceil(jnp.log2(maxabs_w / (2**(bw - 1) - 1))))
-        else:
-          d.value = 2**(jnp.floor(jnp.log2(maxabs_w / (2**(bw - 1) - 1))))
-        xmax.value = d.value * (2 ** (bw - 1) - 1)
-      # xmax.value = jnp.clip(self.init_fn(inputs, bits=self.bits, sign=sign),
-      #                     self.xmax_min, self.xmax_max)
-      # xmax.value = jnp.where(xmax.value == 0, 1., xmax.value)
-      # d.value =  jnp.clip(xmax.value / num_levels, self.d_min, self.d_max)
+
+      # Original init from MixedDNN paper.
+      # if self.act:
+      #   xmax.value = 2**-3 * (2. ** bw - 1)
+      #   d.value = 2**-3
+      # else:
+      #   maxabs_w = self.maxabs_w if self.maxabs_w is not None else jnp.max(
+      #       jnp.abs(inputs))
+      #   if bw > 4:
+      #     d.value = 2**(jnp.ceil(jnp.log2(maxabs_w / (2**(bw - 1) - 1))))
+      #   else:
+      #     d.value = 2**(jnp.floor(jnp.log2(maxabs_w / (2**(bw - 1) - 1))))
+      #   xmax.value = d.value * (2 ** (bw - 1) - 1)
+
+      # Improved init with custom function.
+      xmax.value = self.init_fn(inputs, bits=self.bits, sign=sign)
+      xmax.value = jnp.where(xmax.value == 0, 1., xmax.value)
+      d.value = xmax.value / num_levels
 
     # Ensure that stepsize is in specified range (and a power of two).
     d = jnp.clip(d.value, self.d_min, self.d_max)
@@ -421,41 +424,6 @@ class parametric_d_xmax(nn.Module):
               n_wf) * jnp.maximum((ceilpass(jnp.log2((real_xmax / d) + 1))
                                    ), self.bitwidth_min)
 
-    # @jax.custom_vjp
-    # def quant(x, d, xmax):
-    #   if sign:
-    #     xmin = -xmax
-    #   else:
-    #     xmin = 0.
-
-    #   return d * jnp.round(jnp.clip(x, xmin, xmax) / d)
-
-    # def quant_fwd(x, d, xmax):
-    #   return quant(x, d, xmax), (x, d, xmax)
-
-    # def quant_bwd(res, g):
-    #   (x, d, xmax) = res
-
-    #   if sign:
-    #     xmin = -xmax
-    #   else:
-    #     xmin = 0.
-
-    #   mask = jnp.where(jnp.logical_and((x < xmax), (x > xmin)), 1, 0)
-
-    #   g_d = (1 / d) * (quant(x, d, xmax) - x)
-
-    #   if sign:
-    #     g_xmax = jnp.where(x > xmax, 1, 0)
-    #     g_xmax = jnp.where(x < xmin, -1, g_xmax)
-    #   else:
-    #     g_xmax = jnp.where(x > xmax, 1, 0)
-
-    #   return g * mask, jnp.sum(g * g_d * mask), jnp.sum(g * g_xmax)
-
-    # quant.defvjp(quant_fwd, quant_bwd)
-
-    # return quant(x, d, xmax)
     if sign:
       xmin = -xmax
     else:

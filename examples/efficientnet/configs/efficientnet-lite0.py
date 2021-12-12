@@ -61,8 +61,6 @@ def get_config():
   config.quant = ml_collections.ConfigDict()
 
   config.quant.bits = 32
-  config.quant.a_bits = 32
-  config.quant.w_bits = 32
 
   config.quant.g_scale = 0.
 
