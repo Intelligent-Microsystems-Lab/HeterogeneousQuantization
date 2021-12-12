@@ -17,7 +17,7 @@ def get_config():
   # `name` argument of tensorflow_datasets.builder()
   config.dataset = 'cifar10'
   config.num_classes = 10
-  config.tfds_data_dir = 'gs://imagenet_clemens/tensorflow_datasets'
+  config.tfds_data_dir = None
   config.image_size = 32
 
   # Mean and std style for pre-processing.
@@ -29,12 +29,11 @@ def get_config():
   config.stddev_rgb = [128.0, 128.0, 128.0]
 
   config.optimizer = 'sgd'
-  config.learning_rate = .1
+  config.learning_rate = .2
   config.lr_boundaries_scale = None  # {'80': .1, '120': .1}
   config.warmup_epochs = 5.
   config.momentum = 0.9
   config.batch_size = 128
-  config.eval_batch_size = 128
   config.weight_decay = 0.0002
   config.nesterov = False
   config.smoothing = .1

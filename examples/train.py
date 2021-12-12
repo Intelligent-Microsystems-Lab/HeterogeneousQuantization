@@ -107,22 +107,22 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   dataset_builder.download_and_prepare()
   if 'cifar10' in config.dataset:
     train_iter = input_pipeline.create_input_iter_cifar10(
-        dataset_builder, local_batch_size, dtype=config.dtype, train=True,
+        dataset_builder, local_batch_size, dtype=jnp.float32, train=True,
         cache=config.cache, mean_rgb=config.mean_rgb,
         std_rgb=config.stddev_rgb)
     eval_iter = input_pipeline.create_input_iter_cifar10(
-        dataset_builder, local_batch_size, dtype=config.dtype, train=False,
+        dataset_builder, local_batch_size, dtype=jnp.float32, train=False,
         cache=config.cache, mean_rgb=config.mean_rgb,
         std_rgb=config.stddev_rgb)
   elif 'imagenet2012' in config.dataset:
     train_iter = input_pipeline.create_input_iter(
         dataset_builder, local_batch_size, config.image_size,
-        dtype=config.dtype, train=True, cache=config.cache,
+        dtype=jnp.float32, train=True, cache=config.cache,
         mean_rgb=config.mean_rgb, std_rgb=config.stddev_rgb,
         crop=config.crop_padding)
     eval_iter = input_pipeline.create_input_iter(
         dataset_builder, local_batch_size, config.image_size,
-        dtype=config.dtype, train=False, cache=config.cache,
+        dtype=jnp.float32, train=False, cache=config.cache,
         mean_rgb=config.mean_rgb, std_rgb=config.stddev_rgb,
         crop=config.crop_padding)
   else:

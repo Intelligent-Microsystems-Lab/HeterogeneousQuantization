@@ -37,8 +37,7 @@ def get_config():
   config.lr_boundaries_scale = None
   config.warmup_epochs = 5.0
   config.momentum = 0.9
-  config.batch_size = 256
-  config.eval_batch_size = 128
+  config.batch_size = 2048
   config.weight_decay = 0.0001
   config.nesterov = True
   config.smoothing = .0
@@ -58,12 +57,12 @@ def get_config():
 
   config.quant_target = ml_collections.ConfigDict()
 
-  config.quant_target.weight_mb = 5.401
-  config.quant_target.weight_penalty = 1.
+  config.quant_target.weight_mb = 5401
+  config.quant_target.weight_penalty = .01
   config.quant_target.act_mode = 'max'
-  config.quant_target.act_mb = 0.381
-  config.quant_target.act_penalty = 1.
-  config.quant_target.size_div = 8. * 1024. * 1014.  # 8_000 # mb or kb
+  config.quant_target.act_mb = 381
+  config.quant_target.act_penalty = .01
+  config.quant_target.size_div = 8. * 1024.
 
   config.quant = ml_collections.ConfigDict()
 

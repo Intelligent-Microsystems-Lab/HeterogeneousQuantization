@@ -37,8 +37,7 @@ def get_config():
   config.lr_boundaries_scale = None
   config.warmup_epochs = 5.0
   config.momentum = 0.9
-  config.batch_size = 256
-  config.eval_batch_size = 128
+  config.batch_size = 2048
   config.weight_decay = 0.0001
   config.nesterov = True
   config.smoothing = .0

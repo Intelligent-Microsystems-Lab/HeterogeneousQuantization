@@ -263,20 +263,19 @@ def create_split_cifar10(dataset_builder, batch_size, train, dtype,
     A `tf.data.Dataset`.
   """
   if train:
-    train_examples = dataset_builder.info.splits["train"].num_examples
-    split_size = train_examples // jax.host_count()
-    start = jax.host_id() * split_size
-    split = "train[{}:{}]".format(start, start + split_size)
+    train_examples = dataset_builder.info.splits['train'].num_examples
+    split_size = train_examples // jax.process_count()
+    start = jax.process_index() * split_size
+    split = 'train[{}:{}]'.format(start, start + split_size)
   else:
-    validate_examples = dataset_builder.info.splits["test"].num_examples
-    split_size = validate_examples // jax.host_count()
-    start = jax.host_id() * split_size
-    split = "test[{}:{}]".format(start, start + split_size)
+    validate_examples = dataset_builder.info.splits['test'].num_examples
+    split_size = validate_examples // jax.process_count()
+    start = jax.process_index() * split_size
+    split = 'test[{}:{}]'.format(start, start + split_size)
 
   def decode_example(example):
-
     if train:
-      image = tf.io.decode_png(example["image"])
+      image = tf.io.decode_png(example['image'])
 
       image = tf.cast(image, dtype=dtype)
       image = tf.image.pad_to_bounding_box(image, 4, 4, 40, 40)
@@ -286,19 +285,16 @@ def create_split_cifar10(dataset_builder, batch_size, train, dtype,
       image = normalize_image(image, mean_rgb, std_rgb)
 
     else:
-      image = tf.io.decode_png(example["image"])
+      image = tf.io.decode_png(example['image'])
       image = tf.cast(image, dtype=dtype)
 
       image = normalize_image(image, mean_rgb, std_rgb)
 
-    return {"image": image, "label": example["label"]}
+    return {'image': image, 'label': example['label']}
 
-  ds = dataset_builder.as_dataset(
-      split=split,
-      decoders={
-          "image": tfds.decode.SkipDecoding(),
-      },
-  )
+  ds = dataset_builder.as_dataset(split=split, decoders={
+      'image': tfds.decode.SkipDecoding(),
+  })
   options = tf.data.Options()
   options.experimental_threading.private_threadpool_size = 48
   ds = ds.with_options(options)
@@ -310,14 +306,11 @@ def create_split_cifar10(dataset_builder, batch_size, train, dtype,
     ds = ds.repeat()
     ds = ds.shuffle(16 * batch_size, seed=0)
 
-  ds = ds.map(
-      decode_example, num_parallel_calls=tf.data.experimental.AUTOTUNE
-  )
+  ds = ds.map(decode_example, num_parallel_calls=tf.data.experimental.AUTOTUNE)
   ds = ds.batch(batch_size, drop_remainder=True)
 
   if not train:
     ds = ds.repeat()
-    ds = ds.shuffle(16 * batch_size, seed=0)
 
   ds = ds.prefetch(10)
 

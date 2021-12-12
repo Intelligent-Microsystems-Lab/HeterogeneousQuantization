@@ -4,7 +4,6 @@
 """Default Hyperparameter configuration."""
 
 import ml_collections
-import jax.numpy as jnp
 from functools import partial
 
 
@@ -22,7 +21,6 @@ def get_config():
   config.tfds_data_dir = 'gs://imagenet_clemens/tensorflow_datasets'
   config.image_size = 224
   config.crop_padding = 32
-  config.dtype = jnp.float32
 
   # Mean and std style for pre-processing.
   # config.mean_rgb = [0.485 * 255, 0.456 * 255, 0.406 * 255]
