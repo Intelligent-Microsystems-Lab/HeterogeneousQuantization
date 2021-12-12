@@ -33,9 +33,9 @@ def get_config():
   config.stddev_rgb = [128.0, 128.0, 128.0]
 
   config.optimizer = 'rmsprop'
-  config.learning_rate = 0.0002
+  config.learning_rate = 0.01
   config.lr_boundaries_scale = None
-  config.warmup_epochs = 5.0
+  config.warmup_epochs = 2.0
   config.momentum = 0.9
   config.batch_size = 2048
   config.weight_decay = 0.0001
@@ -66,34 +66,25 @@ def get_config():
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
-  config.quant.stem.weight = partial(
-      uniform_static, init_fn=partial(percentile_init, perc=99.99))
+  config.quant.stem.weight = partial(uniform_static, init_fn = partial(percentile_init,perc=99.99))
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
-  config.quant.mbconv.weight = partial(
-      uniform_static, init_fn=partial(percentile_init, perc=99.99))
-  config.quant.mbconv.act = partial(
-      uniform_static, init_fn=partial(gaussian_init))
+  config.quant.mbconv.weight = partial(uniform_static, init_fn = partial(percentile_init,perc=99.99))
+  config.quant.mbconv.act = partial(uniform_static, init_fn = partial(gaussian_init))
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
-  config.quant.head.weight = partial(
-      uniform_static, init_fn=partial(percentile_init, perc=99.99))
-  config.quant.head.act = partial(
-      uniform_static, init_fn=partial(gaussian_init))
+  config.quant.head.weight = partial(uniform_static, init_fn = partial(percentile_init,perc=99.99))
+  config.quant.head.act = partial(uniform_static, init_fn = partial(gaussian_init))
 
   # Average quant.
-  config.quant.average = partial(
-      uniform_static, init_fn=partial(gaussian_init))
+  config.quant.average = partial(uniform_static, init_fn = partial(gaussian_init))
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
-  config.quant.dense.weight = partial(
-      uniform_static, init_fn=partial(percentile_init, perc=99.99))
-  config.quant.dense.act = partial(
-      uniform_static, init_fn=partial(gaussian_init))
-  config.quant.dense.bias = partial(
-      uniform_static, init_fn=partial(percentile_init, perc=99.99))
+  config.quant.dense.weight = partial(uniform_static, init_fn = partial(percentile_init,perc=99.99))
+  config.quant.dense.act = partial(uniform_static, init_fn = partial(gaussian_init))
+  config.quant.dense.bias = partial(uniform_static, init_fn = partial(percentile_init,perc=99.99))
 
   return config
