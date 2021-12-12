@@ -132,7 +132,8 @@ class EfficientNetTest(parameterized.TestCase):
     # load inpt
     inpt_bytes = tf.io.read_file('../../unit_tests/efficientnet/panda.jpg')
     inpt = np.reshape(preprocess_for_eval(
-        inpt_bytes, config), (1, inpt_size, inpt_size, 3))
+        inpt_bytes, jnp.float32, config.image_size, config.mean_rgb,
+        config.stddev_rgb, config.crop_padding), (1, inpt_size, inpt_size, 3))
 
     # run inference
     rng, prng = jax.random.split(rng, 2)
