@@ -78,25 +78,25 @@ def get_config():
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
   config.quant.mbconv.weight = partial(parametric_d_xmax,
-    init_fn=gaussian_init)
+                                       init_fn=gaussian_init)
   config.quant.mbconv.act = partial(parametric_d_xmax, act=True,
-    init_fn=partial(percentile_init, perc=99.9), bitwidth_min=1)
+                                    init_fn=partial(percentile_init, perc=99.9), bitwidth_min=1)
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
   config.quant.head.weight = partial(parametric_d_xmax, init_fn=gaussian_init)
   config.quant.head.act = partial(parametric_d_xmax, act=True,
-   init_fn=partial(percentile_init, perc=99.9), bitwidth_min=1)
+                                  init_fn=partial(percentile_init, perc=99.9), bitwidth_min=1)
 
   # Average quant.
   config.quant.average = partial(parametric_d_xmax, act=True,
-    init_fn=partial(percentile_init, perc=99.9), bitwidth_min=1)
+                                 init_fn=partial(percentile_init, perc=99.9), bitwidth_min=1)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
   config.quant.dense.weight = partial(parametric_d_xmax, init_fn=gaussian_init)
   config.quant.dense.act = partial(parametric_d_xmax, act=True,
-    init_fn=partial(percentile_init, perc=99.9), bitwidth_min=1)
+                                   init_fn=partial(percentile_init, perc=99.9), bitwidth_min=1)
   config.quant.dense.bias = partial(parametric_d_xmax, init_fn=gaussian_init)
 
   return config

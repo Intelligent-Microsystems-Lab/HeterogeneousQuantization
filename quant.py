@@ -312,9 +312,9 @@ class parametric_d_xmax(nn.Module):
   xmax_min: float = 2**-8
   xmax_max: float = 255
   d_min: float = 2**-8
-  d_max: float = 32 # MixedDNNs 1
+  d_max: float = 32  # MixedDNNs 1
   round_fn: Callable = round_psgd
-  init_fn: Callable = max_init
+  init_fn: Callable = None
   g_scale: float = 0.
   ceil_tolerance: float = 0.0
   maxabs_w: float = None
@@ -369,23 +369,24 @@ class parametric_d_xmax(nn.Module):
     bw = self.bits
     if self.is_mutable_collection('quant_params'):
 
-      # Original init from MixedDNN paper.
-      # if self.act:
-      #   xmax.value = 2**-3 * (2. ** bw - 1)
-      #   d.value = 2**-3
-      # else:
-      #   maxabs_w = self.maxabs_w if self.maxabs_w is not None else jnp.max(
-      #       jnp.abs(inputs))
-      #   if bw > 4:
-      #     d.value = 2**(jnp.ceil(jnp.log2(maxabs_w / (2**(bw - 1) - 1))))
-      #   else:
-      #     d.value = 2**(jnp.floor(jnp.log2(maxabs_w / (2**(bw - 1) - 1))))
-      #   xmax.value = d.value * (2 ** (bw - 1) - 1)
-
-      # Improved init with custom function.
-      xmax.value = self.init_fn(inputs, bits=self.bits, sign=sign)
-      xmax.value = jnp.where(xmax.value == 0, 1., xmax.value)
-      d.value = xmax.value / num_levels
+      if self.init_fn is None:
+        # Original init from MixedDNN paper.
+        if self.act:
+          xmax.value = 2**-3 * (2. ** bw - 1)
+          d.value = 2**-3
+        else:
+          maxabs_w = self.maxabs_w if self.maxabs_w is not None else jnp.max(
+              jnp.abs(inputs))
+          if bw > 4:
+            d.value = 2**(jnp.ceil(jnp.log2(maxabs_w / (2**(bw - 1) - 1))))
+          else:
+            d.value = 2**(jnp.floor(jnp.log2(maxabs_w / (2**(bw - 1) - 1))))
+          xmax.value = d.value * (2 ** (bw - 1) - 1)
+      else:
+        # Improved init with custom function.
+        xmax.value = self.init_fn(inputs, bits=self.bits, sign=sign)
+        xmax.value = jnp.where(xmax.value == 0, 1., xmax.value)
+        d.value = xmax.value / num_levels
 
     # Ensure that stepsize is in specified range (and a power of two).
     d = jnp.clip(d.value, self.d_min, self.d_max)
