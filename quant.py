@@ -1,3 +1,7 @@
+# IMSL Lab - University of Notre Dame
+# Author: Clemens JS Schaefer
+# Quantization functions.
+
 import jax
 import numpy as np
 import jax.numpy as jnp
@@ -22,25 +26,7 @@ def get_noise(x: Array, percentage: float, rng: PRNGKey) -> Array:
 # Rounding with different backward passes
 #
 
-# psgd https://arxiv.org/abs/2005.11035 (like)
-@jax.custom_vjp
-def round_psgd(x, scale, off=False):
-  return jnp.where(off, x, jnp.round(x))
-
-
-def round_psgd_fwd(x, scale, off=False):
-  return round_psgd(x, scale, off=off), (x, scale)
-
-
-def round_psgd_bwd(res, g):
-  (x, scale) = res
-
-  return (g * (1 + scale * jnp.sign(g) * jnp.abs((x - jnp.round(x)))), None,
-          None)
-
-
-round_psgd.defvjp(round_psgd_fwd, round_psgd_bwd)
-
+# Type 1: approximations of rounding.
 
 # ewgs https://arxiv.org/pdf/2104.00903.pdf
 @jax.custom_vjp
@@ -73,12 +59,58 @@ def round_tanh_fwd(x, scale, off=False):
 def round_tanh_bwd(res, g):
   (x, scale) = res
 
-  # 4 is a parameter to scale the softness/steepness.
-  return (g * (1 + scale * jnp.sign(g) * jax.nn.tanh((x - jnp.round(x)
-                                                      ) * 4.)), None, None)
+  # a parameter to scale the softness/steepness.
+  alpha = 4
+  return (g * (1 + scale * .5 * jnp.sign(g) * jax.nn.tanh((x - jnp.round(x)
+                                                           ) * alpha)), None,
+          None)
 
 
 round_tanh.defvjp(round_tanh_fwd, round_tanh_bwd)
+
+
+@jax.custom_vjp
+def round_invtanh(x, scale, off=False):
+  return jnp.where(off, x, jnp.round(x))
+
+
+def round_invtanh_fwd(x, scale, off=False):
+  return round_invtanh(x, scale, off=off), (x, scale)
+
+
+def round_invtanh_bwd(res, g):
+  (x, scale) = res
+
+  # parameter to scale the softness/steepness.
+  alpha = 1.9
+  return (g * (1 + scale * jnp.sign(g) * .5 / jnp.arctanh(alpha / 2
+                                                          ) * jnp.arctanh(
+      (x - jnp.round(x)) * alpha)), None, None)
+
+
+round_invtanh.defvjp(round_invtanh_fwd, round_invtanh_bwd)
+
+# Type 2: Gradients pushing towards quantization state.
+
+
+# psgd https://arxiv.org/abs/2005.11035 (like)
+@jax.custom_vjp
+def round_psgd(x, scale, off=False):
+  return jnp.where(off, x, jnp.round(x))
+
+
+def round_psgd_fwd(x, scale, off=False):
+  return round_psgd(x, scale, off=off), (x, scale)
+
+
+def round_psgd_bwd(res, g):
+  (x, scale) = res
+
+  return (g * (1 + scale * jnp.sign(g) * jnp.abs((x - jnp.round(x)))), None,
+          None)
+
+
+round_psgd.defvjp(round_psgd_fwd, round_psgd_bwd)
 
 
 @jax.custom_vjp
