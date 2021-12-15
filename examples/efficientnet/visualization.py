@@ -813,11 +813,13 @@ def plot_comparison(name):
 
   plot_line(ax, enet0_lr_best)
 
-  plot_line(ax, enet0_dynamic_lsq)
+
+  ax.plot(1.246, 0.6442, marker='x', label="Mixed EfficientNet0", ms=20, markeredgewidth=5, linewidth=5)
+  #plot_line(ax, enet0_dynamic_lsq)
 
   # plot_mixed(ax, enet0_mixed)
-  plot_mixed(ax, enet0_mixed_8)
-  plot_mixed(ax, enet0_mixed_4)
+  #plot_mixed(ax, enet0_mixed_8)
+  #plot_mixed(ax, enet0_mixed_4)
 
   ax.set_xlabel("Network Size (MB)", fontsize=font_size, fontweight='bold')
   ax.set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
