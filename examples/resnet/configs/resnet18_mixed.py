@@ -33,7 +33,7 @@ def get_config():
   config.stddev_rgb = [128.0, 128.0, 128.0]
 
   config.optimizer = 'sgd'
-  config.learning_rate = 0.002
+  config.learning_rate = 0.0002
   config.lr_boundaries_scale = None
   config.warmup_epochs = 5.0
   config.momentum = 0.9
