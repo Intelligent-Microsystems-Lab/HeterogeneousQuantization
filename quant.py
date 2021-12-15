@@ -342,9 +342,9 @@ class parametric_d_xmax(nn.Module):
   bits: int = 4  # here its just init bits
   act: bool = False
   xmax_min: float = 2**-8
-  xmax_max: float = 128
+  xmax_max: float = 127
   d_min: float = 2**-8
-  d_max: float = 8  # MixedDNNs 1
+  d_max: float = 1
   round_fn: Callable = round_psgd
   init_fn: Callable = None
   g_scale: float = 0.
