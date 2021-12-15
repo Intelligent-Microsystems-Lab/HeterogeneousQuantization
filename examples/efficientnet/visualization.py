@@ -814,7 +814,7 @@ def plot_comparison(name):
   plot_line(ax, enet0_lr_best)
 
 
-  ax.plot(1.246, 0.6442, marker='x', label="Mixed EfficientNet0", ms=20, markeredgewidth=5, linewidth=5)
+  ax.plot(1.246, 1-0.6442, marker='x', label="Mixed EfficientNet0", ms=20, markeredgewidth=5, linewidth=5, color='red')
   #plot_line(ax, enet0_dynamic_lsq)
 
   # plot_mixed(ax, enet0_mixed)
