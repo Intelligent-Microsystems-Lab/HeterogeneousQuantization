@@ -6,7 +6,7 @@
 
 import ml_collections
 from functools import partial
-from quant import uniform_static, percentile_init
+from quant import uniform_static, percentile_init, gaussian_init
 
 
 def get_config():
