@@ -34,7 +34,7 @@ def get_config():
   config.num_classes = 1000
 
   # Load pretrained weights.
-  config.pretrained = "../../pretrained_efficientnet/efficientnet-lite0"
+  config.pretrained = None #"../../pretrained_efficientnet/efficientnet-lite0"
 
   config.optimizer = 'rmsprop'
   config.learning_rate = 0.016  # 0.0001
@@ -42,7 +42,7 @@ def get_config():
   config.warmup_epochs = 5  # for optimizer to settle in
   config.weight_decay = 1e-5
   config.momentum = 0.9
-  config.batch_size = 256
+  config.batch_size = 2048
   config.eval_batch_size = 128
   config.smoothing = .1
 
