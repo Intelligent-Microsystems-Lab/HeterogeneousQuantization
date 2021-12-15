@@ -37,7 +37,7 @@ def get_config():
   config.lr_boundaries_scale = None
   config.warmup_epochs = 10.0
   config.momentum = 0.9
-  config.batch_size = 2048
+  config.batch_size = 1024
   config.weight_decay = 0.0001
   config.nesterov = True
   config.smoothing = .1
@@ -80,23 +80,23 @@ def get_config():
   config.quant.mbconv.weight = partial(parametric_d_xmax,
                                        init_fn=gaussian_init)
   config.quant.mbconv.act = partial(parametric_d_xmax, act=True,
-                                    init_fn=partial(percentile_init, perc=99.9), bitwidth_min=1)
+                                    init_fn=partial(percentile_init, perc=99.9), bitwidth_min=1, xmax_max=255)
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
   config.quant.head.weight = partial(parametric_d_xmax, init_fn=gaussian_init)
   config.quant.head.act = partial(parametric_d_xmax, act=True,
-                                  init_fn=partial(percentile_init, perc=99.9), bitwidth_min=1)
+                                  init_fn=partial(percentile_init, perc=99.9), bitwidth_min=1, xmax_max=255)
 
   # Average quant.
   config.quant.average = partial(parametric_d_xmax, act=True,
-                                 init_fn=partial(percentile_init, perc=99.9), bitwidth_min=1)
+                                 init_fn=partial(percentile_init, perc=99.9), bitwidth_min=1, xmax_max=255)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
   config.quant.dense.weight = partial(parametric_d_xmax, init_fn=gaussian_init)
   config.quant.dense.act = partial(parametric_d_xmax, act=True,
-                                   init_fn=partial(percentile_init, perc=99.9), bitwidth_min=1)
+                                   init_fn=partial(percentile_init, perc=99.9), bitwidth_min=1, xmax_max=255)
   config.quant.dense.bias = partial(parametric_d_xmax, init_fn=gaussian_init)
 
   return config
