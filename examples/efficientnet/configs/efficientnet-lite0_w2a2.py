@@ -38,7 +38,7 @@ def get_config():
   config.warmup_epochs = 2.0
   config.momentum = 0.9
   config.batch_size = 2048
-  config.weight_decay = 0.0001
+  config.weight_decay = 1e-5
   config.nesterov = True
   config.smoothing = .1
 
