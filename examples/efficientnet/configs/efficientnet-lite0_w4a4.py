@@ -55,7 +55,6 @@ def get_config():
   config.num_train_steps = -1
   config.steps_per_eval = -1
 
-
   config.quant_target = ml_collections.ConfigDict()
   config.quant_target.size_div = 8. * 1024.
 

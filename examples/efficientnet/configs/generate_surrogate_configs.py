@@ -2,7 +2,7 @@ import subprocess
 import re
 import numpy as np
 
-base_config_name = 'efficientnet/configs/efficientnet-lite0_w3a3_optinit.py'
+base_config_name = 'efficientnet/configs/efficientnet-lite0_w3a3.py'
 round_methods = ['round_ewgs', 'round_tanh', 'round_invtanh']
 scale_factors = [1e-1, 1e-3, 1e-5]
 config_dir = 'efficientnet/configs/surrogate_ablation_w3a3'

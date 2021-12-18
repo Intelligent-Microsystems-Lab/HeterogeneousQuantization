@@ -263,8 +263,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     eval_batch = next(eval_iter)
     metrics = p_eval_step(state, eval_batch)
     eval_metrics.append(metrics)
-  # eval_metrics = common_utils.get_metrics(eval_metrics)
-  # Debug
   eval_metrics = common_utils.stack_forest(eval_metrics)
   summary = jax.tree_map(lambda x: jnp.mean(x), eval_metrics)
   logging.info('Initial, loss: %.10f, accuracy: %.10f',
@@ -281,6 +279,11 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     rng = rng_list[0]
 
     state, metrics = p_train_step(state, batch, rng_list[1:])
+
+    # # Debug
+    # state, metrics = p_train_step(
+    #     state, {'image': batch['image'][0, :, :, :] * 0 + 1,
+    #             'label': batch['label'][0] * 0 + 1}, rng_list[2])
 
     for h in hooks:
       h(step)
