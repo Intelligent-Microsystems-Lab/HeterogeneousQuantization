@@ -353,8 +353,6 @@ enet0_mixed_8 = {
 
 
 enet0_mixed_4 = {
-    0.5: 'hN9VIxi7QoqbyvymbO2dJQ',
-    0.75: 'R6v7VidcREWgLrLjcbW2CQ',
     1.0: 'vOXeFEPKQlOu71Imk6NIbg',
     1.25: 'Ue7qJd3kRWGAF2l2HWlOEw',
     1.5: 'wv32wt6vTDmjcGaWzXy9Yw',
@@ -621,21 +619,21 @@ competitors = {
         # no first and last layer quant
     },
 
-    'hawqv2_squeeze': {
-        # https://arxiv.org/abs/1911.03852
-        'eval_err': [1 - 0.6838],
-        'size_mb': np.array([1.07]),
-        'name': 'HAWQ-V2 SqueezeNext',
-        'alpha': 1.,
-    },
+    # 'hawqv2_squeeze': {
+    #     # https://arxiv.org/abs/1911.03852
+    #     'eval_err': [1 - 0.6838],
+    #     'size_mb': np.array([1.07]),
+    #     'name': 'HAWQ-V2 SqueezeNext',
+    #     'alpha': 1.,
+    # },
 
-    'hawqv2_inceptionv3': {
-        # https://arxiv.org/abs/1911.03852
-        'eval_err': [1 - 0.7568],
-        'size_mb': np.array([7.57]),
-        'name': 'HAWQ-V2 Inception-V3',
-        'alpha': 1.,
-    },
+    # 'hawqv2_inceptionv3': {
+    #     # https://arxiv.org/abs/1911.03852
+    #     'eval_err': [1 - 0.7568],
+    #     'size_mb': np.array([7.57]),
+    #     'name': 'HAWQ-V2 Inception-V3',
+    #     'alpha': 1.,
+    # },
 
     'mixed_resnet18': {
         # https://arxiv.org/abs/1905.11452
@@ -653,21 +651,21 @@ competitors = {
         'alpha': .15,
     },
 
-    'haq_mobilev2': {
-        # https://arxiv.org/pdf/1811.08886.pdf
-        'eval_err': [1 - 0.6675, 1 - 0.7090, 1 - 0.7147],
-        'size_mb': np.array([.95, 1.38, 1.79]),
-        'name': 'HAQ MobileNetV2',
-        'alpha': 1.,
-    },
+    # 'haq_mobilev2': {
+    #     # https://arxiv.org/pdf/1811.08886.pdf
+    #     'eval_err': [1 - 0.6675, 1 - 0.7090, 1 - 0.7147],
+    #     'size_mb': np.array([.95, 1.38, 1.79]),
+    #     'name': 'HAQ MobileNetV2',
+    #     'alpha': 1.,
+    # },
 
-    'haq_resnet50': {
-        # https://arxiv.org/pdf/1811.08886.pdf
-        'eval_err': [1 - 0.7063, 1 - 0.7530, 1 - 0.7614],
-        'size_mb': np.array([6.30, 9.22, 12.14]),
-        'name': 'HAQ ResNet50',
-        'alpha': 1.,
-    },
+    # 'haq_resnet50': {
+    #     # https://arxiv.org/pdf/1811.08886.pdf
+    #     'eval_err': [1 - 0.7063, 1 - 0.7530, 1 - 0.7614],
+    #     'size_mb': np.array([6.30, 9.22, 12.14]),
+    #     'name': 'HAQ ResNet50',
+    #     'alpha': 1.,
+    # },
 }
 
 
@@ -813,14 +811,16 @@ def plot_comparison(name):
 
   plot_line(ax, enet0_lr_best)
 
-  ax.plot(1.246, 1 - 0.6442, marker='x', label="Mixed EfficientNet0",
+  xv = [1.1886465, 1.337227313, 1.485808125, 1.634388938, 1.78296975, 2.080131375, 2.228712188, 2.377293, 2.525873813, 2.674454625, 2.823035438, 2.97161625]
+  yv = [0.6473, 0.4253, 0.3882, 0.3739, 0.3638, 0.3314, 0.3241, 0.3184, 0.3068, 0.286, 0.2812, 0.2795]
+  ax.plot(xv, yv, marker='x', label="Mixed EfficientNet0",
           ms=20, markeredgewidth=5, linewidth=5, color='red')
   # plot_line(ax, enet0_dynamic_lsq)
 
   # plot_mixed(ax, enet0_mixed)
   # plot_mixed(ax, enet0_mixed_8)
   # plot_mixed(ax, enet0_mixed_4)
-
+  ax.set_xscale('log')
   ax.set_xlabel("Network Size (MB)", fontsize=font_size, fontweight='bold')
   ax.set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
   plt.legend(

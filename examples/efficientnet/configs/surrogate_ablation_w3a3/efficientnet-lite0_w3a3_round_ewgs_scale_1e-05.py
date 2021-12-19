@@ -33,7 +33,7 @@ def get_config():
   config.stddev_rgb = [128.0, 128.0, 128.0]
 
   config.optimizer = 'rmsprop'
-  config.learning_rate = 0.01
+  config.learning_rate = 0.00125
   config.lr_boundaries_scale = None
   config.warmup_epochs = 2.0
   config.momentum = 0.9
@@ -66,34 +66,25 @@ def get_config():
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
-  config.quant.stem.weight = partial(
-      uniform_static, init_fn=partial(gaussian_init), round_fn=round_ewgs)
+  config.quant.stem.weight = partial(uniform_static, init_fn=partial(gaussian_init), round_fn = round_ewgs)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
-  config.quant.mbconv.weight = partial(
-      uniform_static, init_fn=partial(gaussian_init), round_fn=round_ewgs)
-  config.quant.mbconv.act = partial(uniform_static, act=True, init_fn=partial(
-      percentile_init, perc=99.9), round_fn=round_ewgs)
+  config.quant.mbconv.weight = partial(uniform_static, init_fn=partial(gaussian_init), round_fn = round_ewgs)
+  config.quant.mbconv.act = partial(uniform_static, act=True, init_fn=partial(percentile_init, perc=99.9), round_fn = round_ewgs)
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
-  config.quant.head.weight = partial(
-      uniform_static, init_fn=partial(gaussian_init), round_fn=round_ewgs)
-  config.quant.head.act = partial(uniform_static, act=True, init_fn=partial(
-      percentile_init, perc=99.9), round_fn=round_ewgs)
+  config.quant.head.weight = partial(uniform_static, init_fn=partial(gaussian_init), round_fn = round_ewgs)
+  config.quant.head.act = partial(uniform_static, act=True, init_fn=partial(percentile_init, perc=99.9), round_fn = round_ewgs)
 
   # Average quant.
-  config.quant.average = partial(uniform_static, act=True, init_fn=partial(
-      percentile_init, perc=99.9), round_fn=round_ewgs)
+  config.quant.average = partial(uniform_static, act=True, init_fn=partial(percentile_init, perc=99.9), round_fn = round_ewgs)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
-  config.quant.dense.weight = partial(
-      uniform_static, init_fn=partial(gaussian_init), round_fn=round_ewgs)
-  config.quant.dense.act = partial(uniform_static, act=True, init_fn=partial(
-      percentile_init, perc=99.9), round_fn=round_ewgs)
-  config.quant.dense.bias = partial(
-      uniform_static, init_fn=partial(gaussian_init), round_fn=round_ewgs)
+  config.quant.dense.weight = partial(uniform_static, init_fn=partial(gaussian_init), round_fn = round_ewgs)
+  config.quant.dense.act = partial(uniform_static, act=True, init_fn=partial(percentile_init, perc=99.9), round_fn = round_ewgs)
+  config.quant.dense.bias = partial(uniform_static, init_fn=partial(gaussian_init), round_fn = round_ewgs)
 
   return config
