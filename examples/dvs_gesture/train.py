@@ -20,7 +20,8 @@ from clu import periodic_actions
 
 from flax import jax_utils
 
-import input_pipeline
+from flax.training import train_state
+#import input_pipeline
 import models
 
 from flax.training import common_utils
@@ -32,6 +33,7 @@ from jax import random
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
+import optax
 
 import ml_collections
 from ml_collections import config_flags
@@ -39,13 +41,12 @@ from ml_collections import config_flags
 
 import torchneuromorphic.dvs_gestures.dvsgestures_dataloaders as dataset
 
-
+import sys
 sys.path.append("..")
 from train_utils import ( # noqa: E402
     TrainState,
     create_model,
     create_learning_rate_fn,
-    create_train_state,
     restore_checkpoint,
     train_step,
     eval_step,
@@ -64,6 +65,53 @@ config_flags.DEFINE_config_file(
     lock_config=True)
 
 
+
+def initialized(key, image_size, model):
+  input_shape = (1, 1, image_size, image_size, 2)
+  key, rng = jax.random.split(key, 2)
+
+  @jax.jit
+  def init(*args):
+    return model.init(*args, rng=rng, train=False)
+  variables = init({'params': key}, jnp.ones(input_shape, model.dtype))
+
+  return variables['params']#, variables['batch_stats']
+
+
+def create_train_state(rng, config: ml_collections.ConfigDict,
+                       model, image_size, learning_rate_fn):
+  """Create initial training state."""
+
+  params = initialized(rng, image_size, model)
+  if config.optimizer == 'rmsprop':
+    tx = optax.rmsprop(
+        learning_rate=learning_rate_fn,
+        decay=0.9,
+        momentum=config.momentum,
+        eps=0.001,
+    )
+  elif config.optimizer == 'sgd':
+    tx = optax.sgd(
+        learning_rate=learning_rate_fn,
+        momentum=config.momentum,
+        nesterov=config.nesterov,
+    )
+  elif config.optimizer == 'adam':
+    tx = optax.adam(
+        learning_rate=learning_rate_fn,
+    )
+  else:
+    raise Exception('Unknown optimizer in config: ' + config.optimizer)
+
+
+  state = train_state.TrainState.create(
+      apply_fn=model.apply,
+      params={'params':params, 'quant_params':{}},
+      tx=tx,
+      #batch_stats=batch_stats,
+  )
+  return state
+
 def train_and_evaluate(config: ml_collections.ConfigDict,
                        workdir: str) -> TrainState:
   """Execute model training and evaluation loop.
@@ -78,10 +126,10 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   writer_eval = metric_writers.create_default_writer(
       logdir=workdir + '/eval', just_logging=jax.process_index() != 0)
 
-  logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
-  logging.info('Git commit: ' + subprocess.check_output(
-      ['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
-  logging.info(config)
+  # logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
+  # logging.info('Git commit: ' + subprocess.check_output(
+  #     ['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
+  # logging.info(config)
 
   rng = random.PRNGKey(config.seed)
 
@@ -123,8 +171,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       config, base_learning_rate, steps_per_epoch)
 
   rng, subkey = jax.random.split(rng, 2)
-  state = create_train_state(
-      subkey, config, model, config.image_size, learning_rate_fn)
+  state = create_train_state(subkey, config, model, config.image_size, learning_rate_fn)
   state = restore_checkpoint(state, workdir)
   # step_offset > 0 if restarting from checkpoint
   step_offset = int(state.step)
@@ -169,18 +216,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   #     size_div=config.quant_target.size_div,
   #     smoothing=config.smoothing)
 
-  # Initial Accurcay
-  logging.info('Start evaluating model at beginning...')
-  eval_metrics = []
-  eval_best = 0.
-  for _ in range(steps_per_eval):
-    eval_batch = next(eval_iter)
-    metrics = p_eval_step(state, eval_batch)
-    eval_metrics.append(metrics)
-  eval_metrics = common_utils.stack_forest(eval_metrics)
-  summary = jax.tree_map(lambda x: jnp.mean(x), eval_metrics)
-  logging.info('Initial, loss: %.10f, accuracy: %.10f',
-               summary['loss'], summary['accuracy'] * 100)
 
   train_metrics = []
   hooks = []
@@ -192,7 +227,14 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     rng_list = jax.random.split(rng, jax.local_device_count() + 1)
     rng = rng_list[0]
 
+    
+    
+    batch = {'image' : jnp.moveaxis(jnp.array(batch[0]), (0,1,2,3,4), (1,0,4,3,2)  ), 'label': jnp.argwhere(jnp.array(batch[1][:,0,:]) == 1)[:,1]}
+    orig_shape = batch['image'].shape
+    batch['image'] = batch['image'].reshape(jax.local_device_count(), orig_shape[0], -1, orig_shape[2], orig_shape[3], orig_shape[4])
+    batch['label'] = batch['label'].reshape(jax.local_device_count(), -1)
     state, metrics = p_train_step(state, batch, rng_list[1:])
+    import pdb; pdb.set_trace()
 
     # # Debug
     # state, metrics = p_train_step(
@@ -241,9 +283,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       writer_eval.write_scalars(
           step + 1, {f'{key}': val for key, val in summary.items()})
       writer_eval.flush()
-      if (('act_mb' not in config.quant_target
-           ) and ('weight_mb' not in config.quant_target
-                  ) and (summary['accuracy'] > eval_best)):
+      if summary['accuracy'] > eval_best:
         save_checkpoint(state, workdir + '/best')
         logging.info('!!!! Saved new best model with accuracy %.4f',
                      summary['accuracy'])

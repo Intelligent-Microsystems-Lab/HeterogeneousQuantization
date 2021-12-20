@@ -14,13 +14,14 @@ def get_config():
   config.seed = 203853699
 
   # As defined in the `models` module.
-  config.model = 'SNN'
+  config.model = 'SpikingConvNet0'
 
   config.dataset = 'DVSGesture'
   config.data_dir = '../../../data_dvs_gesture/dvs_gestures_build19.hdf5'
   config.chunk_size_train = 1800
   config.chunk_size_test = 500
   config.dt = 1000
+  config.image_size = 32
 
   config.num_classes = 11
 
@@ -33,6 +34,7 @@ def get_config():
   config.batch_size = 72
   config.eval_batch_size = 128
   config.smoothing = .1
+  config.nesterov = True
 
   config.num_epochs = 50
   config.log_every_steps = 5
