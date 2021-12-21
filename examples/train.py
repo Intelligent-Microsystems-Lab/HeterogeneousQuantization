@@ -161,9 +161,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   rng, subkey = jax.random.split(rng, 2)
   state = create_train_state(
       subkey, config, model, config.image_size, learning_rate_fn)
-  state = restore_checkpoint(state, workdir)
-  # step_offset > 0 if restarting from checkpoint
-  step_offset = int(state.step)
 
   # Pre load weights.
   if config.pretrained and step_offset == 0:
@@ -215,6 +212,11 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
             jax.tree_util.tree_flatten(state.act_size)[0])
         ) / (config.quant.a_bits if 'a_bits' in config.quant else
              config.quant.bits)) + ')')
+
+
+  state = restore_checkpoint(state, workdir)
+  # step_offset > 0 if restarting from checkpoint
+  step_offset = int(state.step)
 
   state = jax_utils.replicate(state)
   # Debug note:
