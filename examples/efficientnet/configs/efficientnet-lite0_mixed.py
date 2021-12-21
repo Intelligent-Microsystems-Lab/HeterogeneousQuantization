@@ -46,7 +46,7 @@ def get_config():
   config.finetune.num_epochs = 5.0
   config.finetune.learning_rate = 0.0001
 
-  config.num_epochs =  50
+  config.num_epochs = 50
   config.log_every_steps = 256
 
   config.cache = True
