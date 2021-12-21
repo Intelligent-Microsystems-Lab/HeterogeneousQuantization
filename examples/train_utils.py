@@ -324,7 +324,7 @@ def save_checkpoint(state, workdir):
     # get train state from the first replica
     state = jax.device_get(jax.tree_map(lambda x: x[0], state))
     step = int(state.step)
-    checkpoints.save_checkpoint(workdir, state, step, keep=3)
+    checkpoints.save_checkpoint(workdir, state, step, keep=3, overwrite=True)
 
 
 # pmean only works inside pmap because it needs an axis name.
