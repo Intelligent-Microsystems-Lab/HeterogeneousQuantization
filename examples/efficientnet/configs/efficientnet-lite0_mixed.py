@@ -42,7 +42,11 @@ def get_config():
   config.nesterov = True
   config.smoothing = .1
 
-  config.num_epochs = 50
+  config.finetune = ml_collections.ConfigDict()
+  config.finetune.num_epochs = 5
+  config.finetune.learning_rate = 0.0001
+
+  config.num_epochs =  50
   config.log_every_steps = 256
 
   config.cache = True
@@ -63,7 +67,7 @@ def get_config():
   config.quant_target.act_mb = 3600.0
   config.quant_target.act_penalty = .0001
   config.quant_target.size_div = 8. * 1024.
-  config.quant_target.eval_start = 61000  # 31050
+  config.quant_target.eval_start = 0  # 61000  # 31050
 
   config.quant = ml_collections.ConfigDict()
 

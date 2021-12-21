@@ -201,7 +201,7 @@ def weight_decay_fn(params):
 
 
 def train_step(state, batch, rng, learning_rate_fn, weight_decay,
-               quant_target, smoothing):
+               quant_target, smoothing, no_quant_params=False):
   """Perform a single training step."""
   rng, prng = jax.random.split(rng, 2)
 
@@ -261,6 +261,10 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
   # Re-use same axis_name as in the call to `pmap(...train_step...)` below.
   grads = (grads[0], clip_quant_grads(grads[1], state.params['quant_params']))
   grads = lax.pmean(grads, axis_name='batch')
+
+  if no_quant_params:
+    grads = (grads[0], jax.tree_util.tree_map(
+        lambda x: jnp.zeros_like(x), grads[1]))
 
   new_model_state, logits, _, _, _, _ = aux[1]
 
