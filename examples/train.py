@@ -87,7 +87,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   Returns:
     Final TrainState.
   """
-  import pdb; pdb.set_trace()
   writer_train = metric_writers.create_default_writer(
       logdir=workdir + '/train', just_logging=jax.process_index() != 0)
   writer_eval = metric_writers.create_default_writer(
