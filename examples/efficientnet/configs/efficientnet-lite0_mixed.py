@@ -43,7 +43,7 @@ def get_config():
   config.smoothing = .1
 
   config.finetune = ml_collections.ConfigDict()
-  config.finetune.num_epochs = 5
+  config.finetune.num_epochs = 5.0
   config.finetune.learning_rate = 0.0001
 
   config.num_epochs =  50
