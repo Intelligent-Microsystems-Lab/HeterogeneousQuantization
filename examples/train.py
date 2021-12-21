@@ -163,7 +163,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       subkey, config, model, config.image_size, learning_rate_fn)
 
   # Pre load weights.
-  if config.pretrained and step_offset == 0:
+  if config.pretrained:
     state = model.load_model_fn(state, config.pretrained)
 
   # Reinitialize quant params.
