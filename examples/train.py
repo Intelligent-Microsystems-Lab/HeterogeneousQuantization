@@ -409,7 +409,9 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     hooks += [periodic_actions.Profile(num_profile_steps=5, logdir=workdir)]
   train_metrics_last_t = time.time()
   logging.info('Initial compilation, this might take some minutes...')
-  for step, batch in zip(range(step, step + steps_per_epoch * config.finetune.num_epochs), train_iter):
+  for step, batch in zip(range(
+      step, step + steps_per_epoch * config.finetune.num_epochs),
+          train_iter):
     rng_list = jax.random.split(rng, jax.local_device_count() + 1)
     rng = rng_list[0]
 
