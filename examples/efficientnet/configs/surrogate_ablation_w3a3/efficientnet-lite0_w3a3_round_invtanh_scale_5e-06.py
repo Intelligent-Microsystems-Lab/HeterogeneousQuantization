@@ -66,25 +66,34 @@ def get_config():
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
-  config.quant.stem.weight = partial(uniform_static, init_fn=partial(gaussian_init), round_fn = round_invtanh)
+  config.quant.stem.weight = partial(
+      uniform_static, init_fn=partial(gaussian_init), round_fn=round_invtanh)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
-  config.quant.mbconv.weight = partial(uniform_static, init_fn=partial(gaussian_init), round_fn = round_invtanh)
-  config.quant.mbconv.act = partial(uniform_static, act=True, init_fn=partial(percentile_init, perc=99.9), round_fn = round_invtanh)
+  config.quant.mbconv.weight = partial(
+      uniform_static, init_fn=partial(gaussian_init), round_fn=round_invtanh)
+  config.quant.mbconv.act = partial(uniform_static, act=True, init_fn=partial(
+      percentile_init, perc=99.9), round_fn=round_invtanh)
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
-  config.quant.head.weight = partial(uniform_static, init_fn=partial(gaussian_init), round_fn = round_invtanh)
-  config.quant.head.act = partial(uniform_static, act=True, init_fn=partial(percentile_init, perc=99.9), round_fn = round_invtanh)
+  config.quant.head.weight = partial(
+      uniform_static, init_fn=partial(gaussian_init), round_fn=round_invtanh)
+  config.quant.head.act = partial(uniform_static, act=True, init_fn=partial(
+      percentile_init, perc=99.9), round_fn=round_invtanh)
 
   # Average quant.
-  config.quant.average = partial(uniform_static, act=True, init_fn=partial(percentile_init, perc=99.9), round_fn = round_invtanh)
+  config.quant.average = partial(uniform_static, act=True, init_fn=partial(
+      percentile_init, perc=99.9), round_fn=round_invtanh)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
-  config.quant.dense.weight = partial(uniform_static, init_fn=partial(gaussian_init), round_fn = round_invtanh)
-  config.quant.dense.act = partial(uniform_static, act=True, init_fn=partial(percentile_init, perc=99.9), round_fn = round_invtanh)
-  config.quant.dense.bias = partial(uniform_static, init_fn=partial(gaussian_init), round_fn = round_invtanh)
+  config.quant.dense.weight = partial(
+      uniform_static, init_fn=partial(gaussian_init), round_fn=round_invtanh)
+  config.quant.dense.act = partial(uniform_static, act=True, init_fn=partial(
+      percentile_init, perc=99.9), round_fn=round_invtanh)
+  config.quant.dense.bias = partial(
+      uniform_static, init_fn=partial(gaussian_init), round_fn=round_invtanh)
 
   return config
