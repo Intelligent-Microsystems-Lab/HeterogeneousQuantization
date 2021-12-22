@@ -66,34 +66,25 @@ def get_config():
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
-  config.quant.stem.weight = partial, round_fn = partial(round_invtanh, alpha_scale = 0.875) )
-      uniform_static, init_fn=partial(gaussian_init))
+  config.quant.stem.weight = partial(uniform_static, init_fn=partial(gaussian_init), round_fn = partial(round_invtanh, alpha_scale = 0.875) )
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
-  config.quant.mbconv.weight = partial, round_fn = partial(round_invtanh, alpha_scale = 0.875) )
-      uniform_static, init_fn=partial(gaussian_init))
-  config.quant.mbconv.act = partial, round_fn = partial(round_invtanh, alpha_scale = 0.875) )
-      uniform_static, act=True, init_fn=partial(percentile_init, perc=99.9))
+  config.quant.mbconv.weight = partial(uniform_static, init_fn=partial(gaussian_init), round_fn = partial(round_invtanh, alpha_scale = 0.875) )
+  config.quant.mbconv.act = partial(uniform_static, act=True, init_fn=partial(percentile_init, perc=99.9), round_fn = partial(round_invtanh, alpha_scale = 0.875) )
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
-  config.quant.head.weight = partial, round_fn = partial(round_invtanh, alpha_scale = 0.875) )
-      uniform_static, init_fn=partial(gaussian_init))
-  config.quant.head.act = partial, round_fn = partial(round_invtanh, alpha_scale = 0.875) )
-      uniform_static, act=True, init_fn=partial(percentile_init, perc=99.9))
+  config.quant.head.weight = partial(uniform_static, init_fn=partial(gaussian_init), round_fn = partial(round_invtanh, alpha_scale = 0.875) )
+  config.quant.head.act = partial(uniform_static, act=True, init_fn=partial(percentile_init, perc=99.9), round_fn = partial(round_invtanh, alpha_scale = 0.875) )
 
   # Average quant.
-  config.quant.average = partial, round_fn = partial(round_invtanh, alpha_scale = 0.875) )
-      uniform_static, act=True, init_fn=partial(percentile_init, perc=99.9))
+  config.quant.average = partial(uniform_static, act=True, init_fn=partial(percentile_init, perc=99.9), round_fn = partial(round_invtanh, alpha_scale = 0.875) )
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
-  config.quant.dense.weight = partial, round_fn = partial(round_invtanh, alpha_scale = 0.875) )
-      uniform_static, init_fn=partial(gaussian_init))
-  config.quant.dense.act = partial, round_fn = partial(round_invtanh, alpha_scale = 0.875) )
-      uniform_static, act=True, init_fn=partial(percentile_init, perc=99.9))
-  config.quant.dense.bias = partial, round_fn = partial(round_invtanh, alpha_scale = 0.875) )
-      uniform_static, init_fn=partial(gaussian_init))
+  config.quant.dense.weight = partial(uniform_static, init_fn=partial(gaussian_init), round_fn = partial(round_invtanh, alpha_scale = 0.875) )
+  config.quant.dense.act = partial(uniform_static, act=True, init_fn=partial(percentile_init, perc=99.9), round_fn = partial(round_invtanh, alpha_scale = 0.875) )
+  config.quant.dense.bias = partial(uniform_static, init_fn=partial(gaussian_init), round_fn = partial(round_invtanh, alpha_scale = 0.875) )
 
   return config
