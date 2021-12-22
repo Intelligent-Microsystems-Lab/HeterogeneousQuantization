@@ -63,7 +63,7 @@ def round_tanh_bwd(res, g):
   alpha = 4 * alpha_scale
   return (g * (1 + scale * .5 * jnp.sign(g) * jax.nn.tanh((x - jnp.round(x)
                                                            ) * alpha)), None,
-          None)
+          None, None)
 
 
 round_tanh.defvjp(round_tanh_fwd, round_tanh_bwd)
@@ -85,7 +85,7 @@ def round_invtanh_bwd(res, g):
   alpha = 1.9 * alpha_scale
   return (g * (1 + scale * jnp.sign(g) * .5 / jnp.arctanh(alpha / 2
                                                           ) * jnp.arctanh(
-      (x - jnp.round(x)) * alpha)), None, None)
+      (x - jnp.round(x)) * alpha)), None, None, None)
 
 
 round_invtanh.defvjp(round_invtanh_fwd, round_invtanh_bwd)
