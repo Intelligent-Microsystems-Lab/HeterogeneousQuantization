@@ -48,19 +48,19 @@ round_ewgs.defvjp(round_ewgs_fwd, round_ewgs_bwd)
 
 
 @jax.custom_vjp
-def round_tanh(x, scale, off=False):
+def round_tanh(x, scale, off=False, alpha_scale=1.):
   return jnp.where(off, x, jnp.round(x))
 
 
-def round_tanh_fwd(x, scale, off=False):
-  return round_tanh(x, scale, off=off), (x, scale)
+def round_tanh_fwd(x, scale, off=False, alpha_scale=1.):
+  return round_tanh(x, scale, off=off), (x, scale, alpha_scale)
 
 
 def round_tanh_bwd(res, g):
-  (x, scale) = res
+  (x, scale, alpha_scale) = res
 
   # a parameter to scale the softness/steepness.
-  alpha = 4
+  alpha = 4 * alpha_scale
   return (g * (1 + scale * .5 * jnp.sign(g) * jax.nn.tanh((x - jnp.round(x)
                                                            ) * alpha)), None,
           None)
@@ -70,19 +70,19 @@ round_tanh.defvjp(round_tanh_fwd, round_tanh_bwd)
 
 
 @jax.custom_vjp
-def round_invtanh(x, scale, off=False):
+def round_invtanh(x, scale, off=False, alpha_scale=1.):
   return jnp.where(off, x, jnp.round(x))
 
 
-def round_invtanh_fwd(x, scale, off=False):
-  return round_invtanh(x, scale, off=off), (x, scale)
+def round_invtanh_fwd(x, scale, off=False, alpha_scale=1.):
+  return round_invtanh(x, scale, off=off), (x, scale, alpha_scale)
 
 
 def round_invtanh_bwd(res, g):
-  (x, scale) = res
+  (x, scale, alpha_scale) = res
 
   # parameter to scale the softness/steepness.
-  alpha = 1.9
+  alpha = 1.9 * alpha_scale
   return (g * (1 + scale * jnp.sign(g) * .5 / jnp.arctanh(alpha / 2
                                                           ) * jnp.arctanh(
       (x - jnp.round(x)) * alpha)), None, None)
