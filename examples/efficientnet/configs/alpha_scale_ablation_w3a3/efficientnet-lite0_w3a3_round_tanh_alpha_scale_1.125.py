@@ -63,6 +63,7 @@ def get_config():
   config.quant.bits = 3
 
   config.quant.g_scale = 5e-3
+
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
   config.quant.stem.weight = partial, round_fn = partial(round_tanh, alpha_scale = 1.125) )
