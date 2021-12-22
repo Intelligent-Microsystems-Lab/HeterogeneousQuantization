@@ -1,0 +1,4 @@
+python3 train.py --workdir=../../efficientnet-lite0_w3a3_round_invtanh_alpha_scale_0.875 --config=efficientnet/configs/alpha_scale_ablation_w3a3/efficientnet-lite0_w3a3_round_invtanh_alpha_scale_0.875.py
+python3 train.py --workdir=../../efficientnet-lite0_w3a3_round_invtanh_alpha_scale_0.75 --config=efficientnet/configs/alpha_scale_ablation_w3a3/efficientnet-lite0_w3a3_round_invtanh_alpha_scale_0.75.py
+python3 train.py --workdir=../../efficientnet-lite0_w3a3_round_invtanh_alpha_scale_0.625 --config=efficientnet/configs/alpha_scale_ablation_w3a3/efficientnet-lite0_w3a3_round_invtanh_alpha_scale_0.625.py
+python3 train.py --workdir=../../efficientnet-lite0_w3a3_round_invtanh_alpha_scale_0.5 --config=efficientnet/configs/alpha_scale_ablation_w3a3/efficientnet-lite0_w3a3_round_invtanh_alpha_scale_0.5.py
