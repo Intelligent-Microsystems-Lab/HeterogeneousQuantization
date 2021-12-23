@@ -4,11 +4,11 @@ import numpy as np
 
 base_config_name = 'efficientnet/configs/efficientnet-lite0_w3a3.py'
 round_methods = ['round_tanh', 'round_invtanh']
-scale_factors = [1.5, 1.375, 1.25, 1.125, 0.875, 0.75, 0.625, .5]
+scale_factors = [1.0, .9, .8, .7, .6, .5, .4, .3, .2, 1., 0.]
 config_dir = 'efficientnet/configs/alpha_scale_ablation_w3a3'
 
 name_rm_chars = [',', '=', '.', ')']
-num_run_scripts = 3
+num_run_scripts = 4
 
 with open(base_config_name) as f:
   base_config = f.readlines()
