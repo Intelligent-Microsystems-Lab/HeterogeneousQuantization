@@ -60,10 +60,12 @@ def round_tanh_bwd(res, g):
   (x, scale, alpha_scale) = res
 
   # a parameter to scale the softness/steepness.
-  alpha = 4 * alpha_scale
-  return (g * (1 + scale * .5 * jnp.sign(g) * jax.nn.tanh((x - jnp.round(x)
-                                                           ) * alpha)), None,
-          None, None)
+  alpha = 4
+  tanh_coeff = (1 + scale * .5 * jnp.sign(g) *
+                jax.nn.tanh((x - jnp.round(x)) * alpha))
+  ewgs_coeff = (1 + scale * jnp.sign(g) * (x - jnp.round(x)))
+  return (g * (tanh_coeff * alpha_scale + ewgs_coeff * (1 - alpha_scale)),
+          None, None, None)
 
 
 round_tanh.defvjp(round_tanh_fwd, round_tanh_bwd)
@@ -82,10 +84,12 @@ def round_invtanh_bwd(res, g):
   (x, scale, alpha_scale) = res
 
   # parameter to scale the softness/steepness.
-  alpha = 1.9 * alpha_scale
-  return (g * (1 + scale * jnp.sign(g) * .5 / jnp.arctanh(alpha / 2
-                                                          ) * jnp.arctanh(
-      (x - jnp.round(x)) * alpha)), None, None, None)
+  alpha = 1.9
+
+  inv_tanh_coeff = (1 + scale * jnp.sign(g) * .5 /
+                    jnp.arctanh(alpha / 2) * jnp.arctanh((x - jnp.round(x)) * alpha))
+  ewgs_coeff = (1 + scale * jnp.sign(g) * (x - jnp.round(x)))
+  return (g * (inv_tanh_coeff * alpha_scale + ewgs_coeff * (1 - alpha_scale)), None, None, None)
 
 
 round_invtanh.defvjp(round_invtanh_fwd, round_invtanh_bwd)
