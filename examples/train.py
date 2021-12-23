@@ -387,9 +387,18 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   state = restore_checkpoint(state, workdir + '/best ')
 
   base_learning_rate = config.finetune.learning_rate * config.batch_size / 256.
-  learning_rate_fn = optax.cosine_decay_schedule(
+
+  warmup_fn = optax.linear_schedule(
+      init_value=0., end_value=base_learning_rate,
+      transition_steps=steps_per_epoch * 1)
+
+  cosine_fn = optax.cosine_decay_schedule(
       init_value=base_learning_rate,
-      decay_steps=config.finetune.num_epochs * steps_per_epoch)
+      decay_steps=(config.finetune.num_epochs - 1) * steps_per_epoch)
+
+  learning_rate_fn = optax.join_schedules(
+      schedules=[warmup_fn, cosine_fn],
+      boundaries=[steps_per_epoch * 1])
 
   state = jax_utils.replicate(state)
   p_train_step = jax.pmap(
