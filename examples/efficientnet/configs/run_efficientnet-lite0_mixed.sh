@@ -3,7 +3,8 @@
 MAX_ACT=920.0
 SUM_WEIGHT=595.0
 
-for SIZE in 1 1.25 1.5 1.75 2 2.25 2.5 2.75 3.0
+# 1 1.25 1.5 1.75
+for SIZE in 2 2.25 2.5 2.75 3.0
 do
 
   ACT_TARGET=$(echo "$MAX_ACT*$SIZE" | bc -l)
