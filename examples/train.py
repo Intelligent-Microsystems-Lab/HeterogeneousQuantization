@@ -76,6 +76,101 @@ config_flags.DEFINE_config_file(
     lock_config=True)
 
 
+
+def finetune_nn(state, train_iter, eval_iter, config, finetune_config, workdir, eval_best, steps_per_epoch, rng):
+  state = restore_checkpoint(state, workdir + '/best ')
+
+  base_learning_rate = finetune_config.learning_rate * config.batch_size / 256.
+
+  warmup_fn = optax.linear_schedule(
+      init_value=0., end_value=base_learning_rate,
+      transition_steps=steps_per_epoch * 1)
+
+  cosine_fn = optax.cosine_decay_schedule(
+      init_value=base_learning_rate,
+      decay_steps=(finetune_config.num_epochs - 1) * steps_per_epoch)
+
+  learning_rate_fn = optax.join_schedules(
+      schedules=[warmup_fn, cosine_fn],
+      boundaries=[steps_per_epoch * 1])
+
+  state = jax_utils.replicate(state)
+  p_train_step = jax.pmap(
+      functools.partial(
+          train_step,
+          learning_rate_fn=learning_rate_fn,
+          weight_decay=config.weight_decay,
+          quant_target=config.quant_target,
+          smoothing=config.smoothing,
+          no_quant_params=True,
+      ),
+      axis_name='batch',
+  )
+
+  train_metrics = []
+  hooks = []
+  if jax.process_index() == 0:
+    hooks += [periodic_actions.Profile(num_profile_steps=5, logdir=workdir)]
+  train_metrics_last_t = time.time()
+  logging.info('Initial compilation, this might take some minutes...')
+  for step, batch in zip(range(
+      int(step), int(step + steps_per_epoch * config.finetune.num_epochs)),
+          train_iter):
+    rng_list = jax.random.split(rng, jax.local_device_count() + 1)
+    rng = rng_list[0]
+
+    state, metrics = p_train_step(state, batch, rng_list[1:])
+
+    for h in hooks:
+      h(step)
+
+    if config.get('log_every_steps'):
+      train_metrics.append(metrics)
+      if (step + 1) % config.log_every_steps == 0:
+        train_metrics = common_utils.get_metrics(train_metrics)
+        summary = {
+            f'{k}': v
+            for k, v in jax.tree_map(lambda x: x.mean(), train_metrics).items()
+        }
+        summary['steps_per_second'] = config.log_every_steps / (
+            time.time() - train_metrics_last_t)
+        writer_train.write_scalars(step + 1, summary)
+        writer_train.flush()
+        train_metrics = []
+        train_metrics_last_t = time.time()
+
+    if (step + 1) % steps_per_epoch == 0:
+      epoch = (step + 1) // steps_per_epoch
+      eval_metrics = []
+
+      # sync batch statistics across replicas
+      state = sync_batch_stats(state)
+      for _ in range(steps_per_eval):
+        eval_batch = next(eval_iter)
+        metrics = p_eval_step(state, eval_batch)
+        eval_metrics.append(metrics)
+      eval_metrics = common_utils.get_metrics(eval_metrics)
+      summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
+      logging.info('eval epoch: %d, loss: %.4f, accuracy: %.2f',
+                   epoch, summary['loss'], summary['accuracy'] * 100)
+      writer_eval.write_scalars(
+          step + 1, {f'{key}': val for key, val in summary.items()})
+      writer_eval.flush()
+      if summary['accuracy'] > eval_best:
+        save_checkpoint(state, workdir + '/best/finetune')
+        logging.info('!!!! Saved new best model with accuracy %.4f',
+                     summary['accuracy'])
+        eval_best = summary['accuracy']
+
+    if (step + 1) % steps_per_checkpoint == 0 or step + 1 == num_steps:
+      state = sync_batch_stats(state)
+      save_checkpoint(state, workdir)
+
+  return state, rng
+
+
+
+
 def train_and_evaluate(config: ml_collections.ConfigDict,
                        workdir: str) -> TrainState:
   """Execute model training and evaluation loop.
@@ -217,6 +312,15 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   # step_offset > 0 if restarting from checkpoint
   step_offset = int(state.step)
 
+  # 
+  # pre bit width search finetune
+  #
+  if 'pretraining' in config:
+    # eval best at 2.0
+    # no model saved as best, because constraints not fullfilled
+    state, rng = finetune_nn(state, train_iter, eval_iter, config, config.pretraining, workdir, 2.0, steps_per_epoch, rng)
+
+
   state = jax_utils.replicate(state)
   # Debug note:
   # 1. Make above line a comment "state = jax_utils.replicate(state)".
@@ -269,6 +373,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   summary = jax.tree_map(lambda x: jnp.mean(x), eval_metrics)
   logging.info('Initial, loss: %.10f, accuracy: %.10f',
                summary['loss'], summary['accuracy'] * 100)
+
 
   train_metrics = []
   hooks = []
@@ -375,106 +480,15 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       state = sync_batch_stats(state)
       save_checkpoint(state, workdir)
 
-  if 'finetune' not in config:
-    # Wait until computations are done before exiting
-    jax.random.normal(jax.random.PRNGKey(0), ()).block_until_ready()
-    return state
-
   #
-  # Fine Tuning without bit width adjustment
+  # Finetuning without bit width adjustment
   #
-  state = jax_utils.unreplicate(state)
-  state = restore_checkpoint(state, workdir + '/best ')
-
-  base_learning_rate = config.finetune.learning_rate * config.batch_size / 256.
-
-  warmup_fn = optax.linear_schedule(
-      init_value=0., end_value=base_learning_rate,
-      transition_steps=steps_per_epoch * 1)
-
-  cosine_fn = optax.cosine_decay_schedule(
-      init_value=base_learning_rate,
-      decay_steps=(config.finetune.num_epochs - 1) * steps_per_epoch)
-
-  learning_rate_fn = optax.join_schedules(
-      schedules=[warmup_fn, cosine_fn],
-      boundaries=[steps_per_epoch * 1])
-
-  state = jax_utils.replicate(state)
-  p_train_step = jax.pmap(
-      functools.partial(
-          train_step,
-          learning_rate_fn=learning_rate_fn,
-          weight_decay=config.weight_decay,
-          quant_target=config.quant_target,
-          smoothing=config.smoothing,
-          no_quant_params=True,
-      ),
-      axis_name='batch',
-  )
-
-  train_metrics = []
-  hooks = []
-  if jax.process_index() == 0:
-    hooks += [periodic_actions.Profile(num_profile_steps=5, logdir=workdir)]
-  train_metrics_last_t = time.time()
-  logging.info('Initial compilation, this might take some minutes...')
-  for step, batch in zip(range(
-      int(step), int(step + steps_per_epoch * config.finetune.num_epochs)),
-          train_iter):
-    rng_list = jax.random.split(rng, jax.local_device_count() + 1)
-    rng = rng_list[0]
-
-    state, metrics = p_train_step(state, batch, rng_list[1:])
-
-    for h in hooks:
-      h(step)
-
-    if config.get('log_every_steps'):
-      train_metrics.append(metrics)
-      if (step + 1) % config.log_every_steps == 0:
-        train_metrics = common_utils.get_metrics(train_metrics)
-        summary = {
-            f'{k}': v
-            for k, v in jax.tree_map(lambda x: x.mean(), train_metrics).items()
-        }
-        summary['steps_per_second'] = config.log_every_steps / (
-            time.time() - train_metrics_last_t)
-        writer_train.write_scalars(step + 1, summary)
-        writer_train.flush()
-        train_metrics = []
-        train_metrics_last_t = time.time()
-
-    if (step + 1) % steps_per_epoch == 0:
-      epoch = (step + 1) // steps_per_epoch
-      eval_metrics = []
-
-      # sync batch statistics across replicas
-      state = sync_batch_stats(state)
-      for _ in range(steps_per_eval):
-        eval_batch = next(eval_iter)
-        metrics = p_eval_step(state, eval_batch)
-        eval_metrics.append(metrics)
-      eval_metrics = common_utils.get_metrics(eval_metrics)
-      summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
-      logging.info('eval epoch: %d, loss: %.4f, accuracy: %.2f',
-                   epoch, summary['loss'], summary['accuracy'] * 100)
-      writer_eval.write_scalars(
-          step + 1, {f'{key}': val for key, val in summary.items()})
-      writer_eval.flush()
-      if summary['accuracy'] > eval_best:
-        save_checkpoint(state, workdir + '/best/finetune')
-        logging.info('!!!! Saved new best model with accuracy %.4f',
-                     summary['accuracy'])
-        eval_best = summary['accuracy']
-
-    if (step + 1) % steps_per_checkpoint == 0 or step + 1 == num_steps:
-      state = sync_batch_stats(state)
-      save_checkpoint(state, workdir)
+  if 'finetune' in config:
+    state = jax_utils.unreplicate(state)
+    state, _ = finetune_nn(state, train_iter, eval_iter, config, config.finetune, workdir, eval_best, steps_per_epoch, rng)
 
   # Wait until computations are done before exiting
   jax.random.normal(jax.random.PRNGKey(0), ()).block_until_ready()
-
   return state
 
 

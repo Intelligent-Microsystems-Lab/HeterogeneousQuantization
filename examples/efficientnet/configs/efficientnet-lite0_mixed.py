@@ -42,6 +42,10 @@ def get_config():
   config.nesterov = True
   config.smoothing = .1
 
+  config.pretraining = ml_collections.ConfigDict()
+  config.pretraining.num_epochs = 15.0
+  config.pretraining.learning_rate = 0.01
+
   config.finetune = ml_collections.ConfigDict()
   config.finetune.num_epochs = 10.0
   config.finetune.learning_rate = 0.0001
