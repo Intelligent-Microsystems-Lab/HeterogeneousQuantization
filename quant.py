@@ -26,9 +26,28 @@ def get_noise(x: Array, percentage: float, rng: PRNGKey) -> Array:
 # Rounding with different backward passes
 #
 
+@jax.custom_vjp
+def round_gaussian_noise(x, scale, off=False):
+  return jnp.where(off, x, jnp.round(x))
+
+
+def round_gaussian_noise_fwd(x, scale, off=False):
+  return round_gaussian_noise(x, scale), (x, scale)
+
+
+def round_gaussian_noise_bwd(res, g):
+  (x, scale) = res
+  key = jax.random.PRNGKey(np.random.randint(0, 100000))
+  return (g * (1 + jax.random.normal(key, shape=g.shape) * scale), None, None)
+
+
+round_gaussian_noise.defvjp(round_gaussian_noise_fwd, round_gaussian_noise_bwd)
+
 # Type 1: approximations of rounding.
 
 # ewgs https://arxiv.org/pdf/2104.00903.pdf
+
+
 @jax.custom_vjp
 def round_ewgs(x, scale, off=False):
   return jnp.where(off, x, jnp.round(x))
@@ -61,8 +80,8 @@ def round_tanh_bwd(res, g):
 
   # a parameter to scale the softness/steepness.
   alpha = 4
-  tanh_coeff = (1 + scale * .5 * jnp.sign(g) *
-                jax.nn.tanh((x - jnp.round(x)) * alpha))
+  tanh_coeff = (1 + scale * .5 * jnp.sign(g) * jax.nn.tanh(
+      (x - jnp.round(x)) * alpha))
   ewgs_coeff = (1 + scale * jnp.sign(g) * (x - jnp.round(x)))
   return (g * (tanh_coeff * alpha_scale + ewgs_coeff * (1 - alpha_scale)),
           None, None, None)
@@ -86,10 +105,12 @@ def round_invtanh_bwd(res, g):
   # parameter to scale the softness/steepness.
   alpha = 1.9
 
-  inv_tanh_coeff = (1 + scale * jnp.sign(g) * .5 /
-                    jnp.arctanh(alpha / 2) * jnp.arctanh((x - jnp.round(x)) * alpha))
+  inv_tanh_coeff = (1 + scale * jnp.sign(g) * .5 / jnp.arctanh(
+      alpha / 2) * jnp.arctanh(
+      (x - jnp.round(x)) * alpha))
   ewgs_coeff = (1 + scale * jnp.sign(g) * (x - jnp.round(x)))
-  return (g * (inv_tanh_coeff * alpha_scale + ewgs_coeff * (1 - alpha_scale)), None, None, None)
+  return (g * (inv_tanh_coeff * alpha_scale + ewgs_coeff * (1 - alpha_scale)
+               ), None, None, None)
 
 
 round_invtanh.defvjp(round_invtanh_fwd, round_invtanh_bwd)
