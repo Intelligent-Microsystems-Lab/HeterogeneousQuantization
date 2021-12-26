@@ -76,8 +76,9 @@ config_flags.DEFINE_config_file(
     lock_config=True)
 
 
-
-def finetune_nn(state, train_iter, eval_iter, config, finetune_config, workdir, eval_best, steps_per_epoch, rng):
+def finetune_nn(state, train_iter, eval_iter, config, finetune_config,
+                workdir, eval_best, steps_per_epoch, rng, step, writer_train,
+                writer_eval, steps_per_eval):
   state = restore_checkpoint(state, workdir + '/best ')
 
   base_learning_rate = finetune_config.learning_rate * config.batch_size / 256.
@@ -103,6 +104,15 @@ def finetune_nn(state, train_iter, eval_iter, config, finetune_config, workdir, 
           quant_target=config.quant_target,
           smoothing=config.smoothing,
           no_quant_params=True,
+      ),
+      axis_name='batch',
+  )
+
+  p_eval_step = jax.pmap(
+      functools.partial(
+          eval_step,
+          size_div=config.quant_target.size_div,
+          smoothing=config.smoothing
       ),
       axis_name='batch',
   )
@@ -162,13 +172,8 @@ def finetune_nn(state, train_iter, eval_iter, config, finetune_config, workdir, 
                      summary['accuracy'])
         eval_best = summary['accuracy']
 
-    if (step + 1) % steps_per_checkpoint == 0 or step + 1 == num_steps:
-      state = sync_batch_stats(state)
-      save_checkpoint(state, workdir)
-
+  state = jax_utils.unreplicate(state)
   return state, rng
-
-
 
 
 def train_and_evaluate(config: ml_collections.ConfigDict,
@@ -312,14 +317,18 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   # step_offset > 0 if restarting from checkpoint
   step_offset = int(state.step)
 
-  # 
+  #
   # pre bit width search finetune
   #
   if 'pretraining' in config:
     # eval best at 2.0
     # no model saved as best, because constraints not fullfilled
-    state, rng = finetune_nn(state, train_iter, eval_iter, config, config.pretraining, workdir, 2.0, steps_per_epoch, rng)
-
+    state, rng = finetune_nn(state, train_iter, eval_iter, config,
+                             config.pretraining, workdir, 2.0, steps_per_epoch,
+                             rng, 0, writer_train, writer_eval, steps_per_eval)
+    steps_pretrain = steps_per_epoch * config.pretraining.num_epochs
+  else:
+    steps_pretrain = 0
 
   state = jax_utils.replicate(state)
   # Debug note:
@@ -374,14 +383,14 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   logging.info('Initial, loss: %.10f, accuracy: %.10f',
                summary['loss'], summary['accuracy'] * 100)
 
-
   train_metrics = []
   hooks = []
   if jax.process_index() == 0:
     hooks += [periodic_actions.Profile(num_profile_steps=5, logdir=workdir)]
   train_metrics_last_t = time.time()
   logging.info('Initial compilation, this might take some minutes...')
-  for step, batch in zip(range(step_offset, num_steps), train_iter):
+  for step, batch in zip(range(int(step_offset + steps_pretrain),
+                               int(num_steps + steps_pretrain)), train_iter):
     rng_list = jax.random.split(rng, jax.local_device_count() + 1)
     rng = rng_list[0]
 
@@ -485,7 +494,10 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   #
   if 'finetune' in config:
     state = jax_utils.unreplicate(state)
-    state, _ = finetune_nn(state, train_iter, eval_iter, config, config.finetune, workdir, eval_best, steps_per_epoch, rng)
+    state, _ = finetune_nn(state, train_iter, eval_iter, config,
+                           config.finetune, workdir, eval_best,
+                           steps_per_epoch, rng, step, writer_train,
+                           writer_eval, steps_per_eval)
 
   # Wait until computations are done before exiting
   jax.random.normal(jax.random.PRNGKey(0), ()).block_until_ready()
