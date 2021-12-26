@@ -9,7 +9,7 @@ do
 
   ACT_TARGET=$(echo "$MAX_ACT*$SIZE" | bc -l)
   WEIGHT_TARGET=$(echo "$SUM_WEIGHT*$SIZE" | bc -l)
-  BITS=$(echo "scale=0; ($SIZE+.5)/1 + 2" | bc -l)
+  BITS=$(echo "scale=0; ($SIZE)/1 + 2" | bc -l)
 
   rm -rf ../../efficientnet-lite0_mixed_${SIZE}
   mkdir ../../efficientnet-lite0_mixed_${SIZE}
