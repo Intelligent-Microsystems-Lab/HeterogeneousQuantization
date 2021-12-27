@@ -79,8 +79,6 @@ config_flags.DEFINE_config_file(
 def finetune_nn(state, train_iter, eval_iter, config, finetune_config,
                 workdir, eval_best, steps_per_epoch, rng, step, writer_train,
                 writer_eval, steps_per_eval):
-  state = restore_checkpoint(state, workdir + '/best ')
-
   base_learning_rate = finetune_config.learning_rate * config.batch_size / 256.
 
   warmup_fn = optax.linear_schedule(
@@ -494,6 +492,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   #
   if 'finetune' in config:
     state = jax_utils.unreplicate(state)
+    state = restore_checkpoint(state, workdir + '/best ')
     state, _ = finetune_nn(state, train_iter, eval_iter, config,
                            config.finetune, workdir, eval_best,
                            steps_per_epoch, rng, step, writer_train,
