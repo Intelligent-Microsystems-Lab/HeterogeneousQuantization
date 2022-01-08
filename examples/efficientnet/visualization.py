@@ -794,6 +794,7 @@ def plot_comparison(name):
     tick.label1.set_fontweight('bold')
 
   # Competitors.
+  # add PROFIT numbers (https://arxiv.org/pdf/2008.04693.pdf)
   for competitor_name, competitor_data in competitors.items():
     ax.plot(competitor_data['size_mb'], competitor_data['eval_err'],
             label=competitor_data['name'],
