@@ -9,15 +9,19 @@ import jax
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
+import logging
 
 from flax import jax_utils
 
+import autoaugment
+
 
 def create_input_iter(dataset_builder, batch_size, image_size, dtype, train,
-                      cache, mean_rgb, std_rgb, crop):
+                      cache, mean_rgb, std_rgb, crop, augment_name):
   ds = create_split(
       dataset_builder, batch_size, image_size=image_size, dtype=dtype,
-      train=train, cache=cache, mean_rgb=mean_rgb, std_rgb=std_rgb, crop=crop)
+      train=train, cache=cache, mean_rgb=mean_rgb, std_rgb=std_rgb, crop=crop,
+      augment_name=augment_name)
   it = map(prepare_tf_data, ds)
   it = jax_utils.prefetch_to_device(it, 2)
   return it
@@ -157,7 +161,7 @@ def normalize_image(image, mean_rgb, std_rgb):
 
 
 def preprocess_for_train(image_bytes, dtype, image_size, mean_rgb, std_rgb,
-                         crop):
+                         crop, augment_name=None):
   """Preprocesses the given image for training.
   Args:
     image_bytes: `Tensor` representing an image binary of arbitrary size.
@@ -169,6 +173,24 @@ def preprocess_for_train(image_bytes, dtype, image_size, mean_rgb, std_rgb,
   image = _decode_and_random_crop(image_bytes, image_size, crop)
   image = tf.reshape(image, [image_size, image_size, 3])
   image = tf.image.random_flip_left_right(image)
+
+  if augment_name:
+    logging.info('Apply AutoAugment policy %s', augment_name)
+    input_image_type = image.dtype
+    image = tf.clip_by_value(image, 0.0, 255.0)
+    image = tf.cast(image, dtype=tf.uint8)
+
+    if augment_name == 'autoaugment':
+      logging.info('Apply AutoAugment policy %s', augment_name)
+      image = autoaugment.distort_image_with_autoaugment(image, 'v0')
+    elif augment_name == 'randaugment':
+      image = autoaugment.distort_image_with_randaugment(
+          image, 2, 10)
+    else:
+      raise ValueError('Invalid value for augment_name: %s' % (augment_name))
+
+    image = tf.cast(image, dtype=input_image_type)
+
   image = normalize_image(image, mean_rgb, std_rgb)
   image = tf.image.convert_image_dtype(image, dtype=dtype)
   return image
@@ -192,7 +214,7 @@ def preprocess_for_eval(image_bytes, dtype, image_size, mean_rgb, std_rgb,
 
 
 def create_split(dataset_builder, batch_size, train, dtype,
-                 image_size, cache, mean_rgb, std_rgb, crop):
+                 image_size, cache, mean_rgb, std_rgb, crop, augment_name):
   """Creates a split from the ImageNet dataset using TensorFlow Datasets.
   Args:
     dataset_builder: TFDS dataset builder for ImageNet.
@@ -218,7 +240,8 @@ def create_split(dataset_builder, batch_size, train, dtype,
   def decode_example(example):
     if train:
       image = preprocess_for_train(
-          example['image'], dtype, image_size, mean_rgb, std_rgb, crop)
+          example['image'], dtype, image_size, mean_rgb, std_rgb, crop,
+          augment_name)
     else:
       image = preprocess_for_eval(
           example['image'], dtype, image_size, mean_rgb, std_rgb, crop)
