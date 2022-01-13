@@ -3,12 +3,16 @@ import re
 import numpy as np
 
 base_config_name = 'efficientnet/configs/efficientnet-lite0_w3a3.py'
-round_methods = ['round_ewgs', 'round_tanh', 'round_invtanh']
-scale_factors = [1e-2, 5e-3, 5e-4, 1e-4, 5e-4, 5e-5, 5e-6, 1e-6]
-config_dir = 'efficientnet/configs/surrogate_ablation_w3a3'
+#round_methods = ['round_ewgs', 'round_tanh', 'round_invtanh']
+#scale_factors = [1e-2, 5e-3, 5e-4, 1e-4, 5e-4, 5e-5, 5e-6, 1e-6]
+
+round_methods = ['round_psgd']
+scale_factors = [2., 1., 1e-1, 1e-2, 1e-3, 1e-4]
+
+config_dir = 'efficientnet/configs/surrogate_ablation_psgd_w3a3'
 
 name_rm_chars = [',', '=', '.', ')']
-num_run_scripts = 3
+num_run_scripts = 1
 
 with open(base_config_name) as f:
   base_config = f.readlines()

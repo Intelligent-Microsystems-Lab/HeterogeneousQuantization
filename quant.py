@@ -131,7 +131,8 @@ def round_psgd_fwd(x, scale, off=False):
 def round_psgd_bwd(res, g):
   (x, scale) = res
 
-  return (g * (1 + scale * jnp.sign(g) * jnp.abs((x - jnp.round(x)))), None,
+  shift = .0 # 0. -.25 -.5 -1. 
+  return (g * (1 + scale * (jnp.abs((x - jnp.round(x))) + shift ) ), None,
           None)
 
 

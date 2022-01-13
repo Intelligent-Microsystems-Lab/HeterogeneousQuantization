@@ -17,7 +17,8 @@ from quant import (  # noqa: E402
 
     round_ewgs,
     round_tanh,
-    round_invtanh
+    round_invtanh,
+    round_psgd,
 )
 
 
@@ -85,10 +86,11 @@ def vis_surrogate(sur_fn):
              "../../figures/quant_grad_" + sur_fn.__name__ + ".png")
 
 
-vis_surrogate(passthrough)
-vis_surrogate(round_ewgs)
-vis_surrogate(round_tanh)
-vis_surrogate(round_invtanh)
+# vis_surrogate(passthrough)
+# vis_surrogate(round_ewgs)
+# vis_surrogate(round_tanh)
+# vis_surrogate(round_invtanh)
+vis_surrogate(round_psgd)
 
 
 # MixedPrecision DNN visualization -- Surrogate
@@ -127,7 +129,7 @@ def vis_surrogate_mixed(sur_fn):
              "../../figures/mixed_surrogate_" + sur_fn.__name__ + ".png")
 
 
-vis_surrogate_mixed(passthrough)
-vis_surrogate_mixed(round_ewgs)
-vis_surrogate_mixed(round_tanh)
-vis_surrogate_mixed(round_invtanh)
+# vis_surrogate_mixed(passthrough)
+# vis_surrogate_mixed(round_ewgs)
+# vis_surrogate_mixed(round_tanh)
+# vis_surrogate_mixed(round_invtanh)
