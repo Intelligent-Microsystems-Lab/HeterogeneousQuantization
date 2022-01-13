@@ -448,7 +448,7 @@ class parametric_d_xmax(nn.Module):
 
     # Ensure that stepsize is in specified range (and a power of two).
     d = jnp.clip(d.value, self.d_min, self.d_max)
-    d = quantize_pow2(d)
+    # d = quantize_pow2(d)
     # Ensure that dynamic range is in specified range.
     xmax = jnp.clip(xmax.value, self.xmax_min, self.xmax_max)
 
