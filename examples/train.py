@@ -326,8 +326,9 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     # eval best at 200.0
     # no model saved as best, because constraints not fullfilled
     state, rng = finetune_nn(state, train_iter, eval_iter, config,
-                             config.pretraining, workdir, 200.0, steps_per_epoch,
-                             rng, 0, writer_train, writer_eval, steps_per_eval)
+                             config.pretraining, workdir, 200.0,
+                             steps_per_epoch, rng, 0, writer_train,
+                             writer_eval, steps_per_eval)
     steps_pretrain = steps_per_epoch * config.pretraining.num_epochs
   else:
     steps_pretrain = 0
@@ -442,7 +443,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
                          summary['accuracy'], summary['weight_size'],
                          summary['act_size_max'], summary['act_size_sum'])
             eval_best = summary['accuracy']
-
 
     if config.get('log_every_steps'):
       train_metrics.append(metrics)
