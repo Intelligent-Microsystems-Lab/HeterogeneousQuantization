@@ -83,15 +83,19 @@ def finetune_nn(state, train_iter, eval_iter, config, finetune_config,
 
   warmup_fn = optax.linear_schedule(
       init_value=0., end_value=base_learning_rate,
-      transition_steps=steps_per_epoch * 1)
+      transition_steps=steps_per_epoch * 2)
 
   cosine_fn = optax.cosine_decay_schedule(
       init_value=base_learning_rate,
-      decay_steps=(finetune_config.num_epochs - 1) * steps_per_epoch)
+      decay_steps=(finetune_config.num_epochs - 2) * steps_per_epoch)
 
   learning_rate_fn = optax.join_schedules(
       schedules=[warmup_fn, cosine_fn],
-      boundaries=[steps_per_epoch * 1])
+      boundaries=[steps_per_epoch * 2])
+
+  # remove quant target for pure finetuning/pretraining
+  quant_target = ml_collections.ConfigDict()
+  quant_target.size_div = 8. * 1024.
 
   state = jax_utils.replicate(state)
   p_train_step = jax.pmap(
@@ -99,7 +103,7 @@ def finetune_nn(state, train_iter, eval_iter, config, finetune_config,
           train_step,
           learning_rate_fn=learning_rate_fn,
           weight_decay=config.weight_decay,
-          quant_target=config.quant_target,
+          quant_target=quant_target,
           smoothing=config.smoothing,
           no_quant_params=True,
       ),
@@ -109,7 +113,7 @@ def finetune_nn(state, train_iter, eval_iter, config, finetune_config,
   p_eval_step = jax.pmap(
       functools.partial(
           eval_step,
-          size_div=config.quant_target.size_div,
+          size_div=quant_target.size_div,
           smoothing=config.smoothing
       ),
       axis_name='batch',
@@ -190,7 +194,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   writer_eval = metric_writers.create_default_writer(
       logdir=workdir + '/eval', just_logging=jax.process_index() != 0)
 
-  logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
+  # logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
   logging.info('Git commit: ' + subprocess.check_output(
       ['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
   logging.info(config)
@@ -319,10 +323,10 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   # pre bit width search finetune
   #
   if 'pretraining' in config:
-    # eval best at 2.0
+    # eval best at 200.0
     # no model saved as best, because constraints not fullfilled
     state, rng = finetune_nn(state, train_iter, eval_iter, config,
-                             config.pretraining, workdir, 2.0, steps_per_epoch,
+                             config.pretraining, workdir, 200.0, steps_per_epoch,
                              rng, 0, writer_train, writer_eval, steps_per_eval)
     steps_pretrain = steps_per_epoch * config.pretraining.num_epochs
   else:
@@ -371,7 +375,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   # Initial Accurcay
   logging.info('Start evaluating model at beginning...')
   eval_metrics = []
-  eval_best = 0.
+  eval_best = -1.
   for _ in range(steps_per_eval):
     eval_batch = next(eval_iter)
     metrics = p_eval_step(state, eval_batch)
@@ -439,6 +443,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
                          summary['act_size_max'], summary['act_size_sum'])
             eval_best = summary['accuracy']
 
+
     if config.get('log_every_steps'):
       train_metrics.append(metrics)
       if (step + 1) % config.log_every_steps == 0:
@@ -490,10 +495,10 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   #
   # Finetuning without bit width adjustment
   #
-  if 'finetune' in config:
+  if ('finetune' in config) and (eval_best != -1):
     state = jax_utils.unreplicate(state)
-    state = restore_checkpoint(state, workdir + '/best ')
-    state, _ = finetune_nn(state, train_iter, eval_iter, config,
+    best_state_restored = restore_checkpoint(state, workdir + '/best')
+    state, _ = finetune_nn(best_state_restored, train_iter, eval_iter, config,
                            config.finetune, workdir, eval_best,
                            steps_per_epoch, rng, step, writer_train,
                            writer_eval, steps_per_eval)
