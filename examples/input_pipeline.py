@@ -186,7 +186,7 @@ def preprocess_for_train(image_bytes, dtype, image_size, mean_rgb, std_rgb,
     elif 'randaugment' in augment_name:
       _, num_layers, magnitude = augment_name.split('_')
       image = autoaugment.distort_image_with_randaugment(
-          image, num_layers, magnitude)
+          image, int(num_layers), int(magnitude))
     else:
       raise ValueError('Invalid value for augment_name: %s' % (augment_name))
 
