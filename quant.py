@@ -133,7 +133,7 @@ def round_psgd_bwd(res, g):
 
   rel_shift = .0  # 0. -.25 -.5 -1.
   abs_shift = .0
-  
+
   return (g * (1 + scale * (jnp.abs((x - jnp.round(x))) * rel_shift) + abs_shift), None,
           None)
 

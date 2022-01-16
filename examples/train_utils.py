@@ -196,8 +196,8 @@ def clip_quant_grads(grads, quant_params):
 def weight_decay_fn(params):
   l2_params = [p for ((mod_name), p) in tree.flatten_with_path(
       params) if 'BatchNorm' not in str(mod_name) and 'bn_init'
-      not in str(mod_name) and 'stem_bn' not in str(mod_name)
-      and 'head_bn' not in str(mod_name)]
+      not in str(mod_name) and 'stem_bn' not in str(mod_name) and
+      'head_bn' not in str(mod_name)]
   return 0.5 * sum(jnp.sum(jnp.square(p)) for p in l2_params)
 
 
