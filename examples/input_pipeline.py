@@ -174,7 +174,7 @@ def preprocess_for_train(image_bytes, dtype, image_size, mean_rgb, std_rgb,
   image = tf.reshape(image, [image_size, image_size, 3])
   image = tf.image.random_flip_left_right(image)
 
-  if augment_name:
+  if augment_name != 'plain':
     logging.info('Apply AutoAugment policy %s', augment_name)
     input_image_type = image.dtype
     image = tf.clip_by_value(image, 0.0, 255.0)
