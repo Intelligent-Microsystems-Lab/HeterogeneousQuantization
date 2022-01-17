@@ -1,5 +1,5 @@
 
-for CONFIG in 1_30 2_30 3_30
+for CONFIG in 1_1 2_1 3_1
 do
 
   rm -rf ../../efficientnet-lite0_randaug_${CONFIG}
