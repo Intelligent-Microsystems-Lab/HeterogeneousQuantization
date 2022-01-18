@@ -112,7 +112,7 @@ def evaluate(config: ml_collections.ConfigDict,
   rng, rng1, rng2 = jax.random.split(rng, 3)
   _, new_state = state.apply_fn({'params': state.params['params'],
                                  'quant_params': state.params['quant_params'],
-                                 'batch_stats' : state.batch_stats,
+                                 'batch_stats': state.batch_stats,
                                  'quant_config': {}}, init_batch,
                                 rng=rng1,
                                 mutable=['batch_stats', 'quant_params',
