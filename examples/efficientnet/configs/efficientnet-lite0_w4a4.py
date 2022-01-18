@@ -31,9 +31,10 @@ def get_config():
   # Edge models use inception-style MEAN & STDDEV for better post-quantization.
   config.mean_rgb = [127.0, 127.0, 127.0]
   config.stddev_rgb = [128.0, 128.0, 128.0]
+  config.augment_name = 'plain'
 
   config.optimizer = 'rmsprop'
-  config.learning_rate = 0.01
+  config.learning_rate = 0.00125
   config.lr_boundaries_scale = None
   config.warmup_epochs = 2.0
   config.momentum = 0.9
