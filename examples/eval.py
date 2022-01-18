@@ -64,16 +64,25 @@ def evaluate(config: ml_collections.ConfigDict,
   dataset_builder = tfds.builder(config.dataset, data_dir=config.tfds_data_dir)
   dataset_builder.download_and_prepare()
   if 'cifar10' in config.dataset:
+    train_iter = input_pipeline.create_input_iter_cifar10(
+        dataset_builder, local_batch_size, dtype=jnp.float32, train=True,
+        cache=config.cache, mean_rgb=config.mean_rgb,
+        std_rgb=config.stddev_rgb)
     eval_iter = input_pipeline.create_input_iter_cifar10(
         dataset_builder, local_batch_size, dtype=jnp.float32, train=False,
         cache=config.cache, mean_rgb=config.mean_rgb,
         std_rgb=config.stddev_rgb)
   elif 'imagenet2012' in config.dataset:
+    train_iter = input_pipeline.create_input_iter(
+        dataset_builder, local_batch_size, config.image_size,
+        dtype=jnp.float32, train=True, cache=config.cache,
+        mean_rgb=config.mean_rgb, std_rgb=config.stddev_rgb,
+        crop=config.crop_padding, augment_name=config.augment_name)
     eval_iter = input_pipeline.create_input_iter(
         dataset_builder, local_batch_size, config.image_size,
         dtype=jnp.float32, train=False, cache=config.cache,
         mean_rgb=config.mean_rgb, std_rgb=config.stddev_rgb,
-        crop=config.crop_padding)
+        crop=config.crop_padding, augment_name=config.augment_name)
   else:
     raise Exception('Unrecognized data set: ' + config.dataset)
 
@@ -93,6 +102,31 @@ def evaluate(config: ml_collections.ConfigDict,
   rng, subkey = jax.random.split(rng, 2)
   state = create_train_state(
       subkey, config, model, config.image_size, lambda x: x)
+
+  # Pre load weights.
+  if config.pretrained:
+    state = model.load_model_fn(state, config.pretrained)
+
+  # Reinitialize quant params.
+  init_batch = next(train_iter)['image'][0, :, :, :, :]
+  rng, rng1, rng2 = jax.random.split(rng, 3)
+  _, new_state = state.apply_fn({'params': state.params['params'],
+                                 'quant_params': state.params['quant_params'],
+                                 'batch_stats' : state.batch_stats,
+                                 'quant_config': {}}, init_batch,
+                                rng=rng1,
+                                mutable=['batch_stats', 'quant_params',
+                                         'weight_size', 'act_size',
+                                         'quant_config'],
+                                rngs={'dropout': rng2})
+  state = TrainState.create(apply_fn=state.apply_fn,
+                            params={'params': state.params['params'],
+                                    'quant_params': new_state['quant_params']},
+                            tx=state.tx, batch_stats=state.batch_stats,
+                            weight_size=state.weight_size,
+                            act_size=state.act_size,
+                            quant_config=new_state['quant_config'])
+
   state = restore_checkpoint(state, workdir)
 
   state = jax_utils.replicate(state)
