@@ -102,7 +102,9 @@ def finetune_nn(state, train_iter, eval_iter, config, finetune_config,
       functools.partial(
           train_step,
           learning_rate_fn=learning_rate_fn,
+          decay_strength_fn=None,
           weight_decay=config.weight_decay,
+          step_offset=0,
           quant_target=quant_target,
           smoothing=config.smoothing,
           no_quant_params=True,
@@ -260,6 +262,10 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   learning_rate_fn = create_learning_rate_fn(
       config, base_learning_rate, steps_per_epoch)
 
+  decay_strength_fn = optax.cosine_decay_schedule(
+      init_value=1,
+      decay_steps=config.num_epochs * steps_per_epoch)
+
   rng, subkey = jax.random.split(rng, 2)
   state = create_train_state(
       subkey, config, model, config.image_size, learning_rate_fn)
@@ -345,6 +351,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       functools.partial(
           train_step,
           learning_rate_fn=learning_rate_fn,
+          decay_strength_fn=decay_strength_fn,
+          step_offset=steps_pretrain,
           weight_decay=config.weight_decay,
           quant_target=config.quant_target,
           smoothing=config.smoothing

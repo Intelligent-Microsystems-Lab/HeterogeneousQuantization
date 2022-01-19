@@ -201,8 +201,9 @@ def weight_decay_fn(params):
   return 0.5 * sum(jnp.sum(jnp.square(p)) for p in l2_params)
 
 
-def train_step(state, batch, rng, learning_rate_fn, weight_decay,
-               quant_target, smoothing, no_quant_params=False):
+def train_step(state, batch, rng, learning_rate_fn, decay_strength_fn,
+               step_offset, weight_decay, quant_target, smoothing,
+               no_quant_params=False):
   """Perform a single training step."""
   rng, prng = jax.random.split(rng, 2)
 
@@ -227,20 +228,23 @@ def train_step(state, batch, rng, learning_rate_fn, weight_decay,
     size_weight_penalty = 0.
     size_act_penalty = 0.
     if hasattr(quant_target, 'weight_mb'):
+      penalty_strength = 1 - decay_strength_fn(step - step_offset)
       size_weight = jnp.sum(jnp.array(jax.tree_util.tree_flatten(
           new_model_state['weight_size'])[0])) / quant_target.size_div
-      size_weight_penalty += quant_target.weight_penalty * jax.nn.relu(
-          size_weight - quant_target.weight_mb) ** 2
+      size_weight_penalty += penalty_strength * quant_target.weight_penalty * \
+          jax.nn.relu(size_weight - quant_target.weight_mb) ** 2
     if hasattr(quant_target, 'act_mb'):
       if quant_target.act_mode == 'sum':
+        penalty_strength = 1 - decay_strength_fn(step - step_offset)
         size_act = jnp.sum(jnp.array(jax.tree_util.tree_flatten(
             new_model_state['act_size'])[0])) / quant_target.size_div
-        size_act_penalty += quant_target.act_penalty * jax.nn.relu(
-            size_act - quant_target.act_mb) ** 2
+        size_act_penalty += penalty_strength * quant_target.act_penalty * \
+            jax.nn.relu(size_act - quant_target.act_mb) ** 2
       elif quant_target.act_mode == 'max':
+        penalty_strength = 1 - decay_strength_fn(step - step_offset)
         size_act = max_custom_grad(jnp.array(jax.tree_util.tree_flatten(
             new_model_state['act_size'])[0])) / quant_target.size_div
-        size_act_penalty += quant_target.act_penalty * \
+        size_act_penalty += penalty_strength * quant_target.act_penalty * \
             jax.nn.relu(size_act - quant_target.act_mb) ** 2
       else:
         raise Exception(
