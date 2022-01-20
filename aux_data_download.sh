@@ -36,3 +36,7 @@ wget https://notredame.box.com/shared/static/75qdzq728n4a7qovtkujax0dxicwzrtv.h5
 
 wget https://notredame.box.com/shared/static/z1pxy1b5poz8cdarg4wgm2jp4esg0mji.zip -O  ../pretrained_resnet/resnet20_cifar10.zip
 unzip ../pretrained_resnet/resnet20_cifar10.zip -d ../pretrained_resnet
+
+
+wget https://notredame.box.com/shared/static/rys28uy4o85hu1sntzmkcfo1mffd79ub.zip -O  ../pretrained_efficientnet/enet-lite0_best.zip
+unzip ../pretrained_efficientnet/enet-lite0_best.zip -d ../pretrained_efficientnet
