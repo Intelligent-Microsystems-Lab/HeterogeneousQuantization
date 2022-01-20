@@ -4,6 +4,7 @@
 import tensorflow as tf
 from flax.core import freeze, unfreeze
 from flax.training import train_state
+from flax.training import checkpoints
 import jax.numpy as jnp
 
 from typing import Any
@@ -23,6 +24,9 @@ def test_shapes(shape1, shape2, name):
 
 
 def enet_load_pretrained_weights(state, location):
+  if 'best' in location:
+    return checkpoints.restore_checkpoint(location, state)
+
   tf_vars = tf.train.list_variables(location)
   general_params = unfreeze(state.params)
   params = unfreeze(state.params['params'])
