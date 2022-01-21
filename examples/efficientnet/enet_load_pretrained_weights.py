@@ -25,7 +25,16 @@ def test_shapes(shape1, shape2, name):
 
 def enet_load_pretrained_weights(state, location):
   if 'best' in location:
-    return checkpoints.restore_checkpoint(location, state)
+    fp_state = checkpoints.restore_checkpoint(location, None)
+    return TrainState.create(
+        apply_fn=state.apply_fn,
+        params={'params': fp_state['params']['params'],
+                'quant_params': state.params['quant_params']},
+        tx=state.tx,
+        batch_stats=fp_state['batch_stats'],
+        weight_size=state.weight_size,
+        act_size=state.act_size,
+    )
 
   tf_vars = tf.train.list_variables(location)
   general_params = unfreeze(state.params)
