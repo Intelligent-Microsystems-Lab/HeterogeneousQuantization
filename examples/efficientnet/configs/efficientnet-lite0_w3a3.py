@@ -67,19 +67,12 @@ def get_config():
   config.quant.g_scale = 0.
 
   # Conv for stem layer.
-  # available modes
-  # - cc (both types of channels)
-  # - c1 (first channel)
-  # - c2 (second channel)
-  # - f (full)
   config.quant.stem = ml_collections.ConfigDict()
-  # config.quant.stem.mode = 'cc-f'  # weight first, second activation
   config.quant.stem.weight = partial(
       uniform_static, init_fn=partial(gaussian_init))
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
-  # config.quant.mbconv.mode = 'cc-c'
   config.quant.mbconv.weight = partial(
       uniform_static, init_fn=partial(gaussian_init))
   config.quant.mbconv.act = partial(
@@ -87,20 +80,17 @@ def get_config():
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
-  # config.quant.head.mode = 'cc-c'
   config.quant.head.weight = partial(
       uniform_static, init_fn=partial(gaussian_init))
   config.quant.head.act = partial(
       uniform_static, act=True, init_fn=partial(percentile_init, perc=99.9))
 
   # Average quant.
-  # config.quant.mode = 'cc-c'
   config.quant.average = partial(
       uniform_static, act=True, init_fn=partial(percentile_init, perc=99.9))
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
-  # config.quant.dense.mode = 'cc-c'
   config.quant.dense.weight = partial(
       uniform_static, init_fn=partial(gaussian_init))
   config.quant.dense.act = partial(

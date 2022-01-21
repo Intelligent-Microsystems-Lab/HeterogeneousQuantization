@@ -361,7 +361,6 @@ class EfficientNet(nn.Module):
 
     x = jnp.mean(x, axis=(1, 2))
     if 'average' in self.config.quant:
-      # TODO: @clee1994 do granular quant.
       x = self.config.quant.average(
           g_scale=self.config.quant.g_scale, bits=self.config.quant.bits
       )(x, sign=False)

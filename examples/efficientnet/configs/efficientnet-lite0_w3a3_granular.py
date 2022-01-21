@@ -68,13 +68,11 @@ def get_config():
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
-  # config.quant.stem.mode = 'cc-f'  # weight first, second activation
   config.quant.stem.weight = partial(
       uniform_static, init_fn=partial(gaussian_init, axis=(0, 1, 2)))
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
-  # config.quant.mbconv.mode = 'cc-c'
   config.quant.mbconv.weight = partial(
       uniform_static, init_fn=partial(gaussian_init, axis=(0, 1, 2)))
   config.quant.mbconv.act = partial(
@@ -82,7 +80,6 @@ def get_config():
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
-  # config.quant.head.mode = 'cc-c'
   config.quant.head.weight = partial(
       uniform_static, init_fn=partial(gaussian_init, axis=(0, 1, 2)))
   config.quant.head.act = partial(
