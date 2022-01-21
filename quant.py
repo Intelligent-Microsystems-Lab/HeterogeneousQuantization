@@ -236,25 +236,25 @@ round_multi_gaussian.defvjp(round_multi_gaussian_fwd, round_multi_gaussian_bwd)
 #
 
 
-def max_init(x, bits, sign):
-  return jnp.where(jnp.max(x) == 0, 1 / 2**bits, jnp.max(jnp.abs(x)))
+def max_init(x, bits, sign, axis=None):
+  return jnp.where(jnp.max(x) == 0, 1 / 2**bits, jnp.max(jnp.abs(x),
+                                                         axis=axis))
 
 
-def double_mean_init(x, bits, sign):
-  return jnp.where(jnp.max(x) == 0, 1 / 2**bits, 2 * jnp.mean(jnp.abs(x)))
+# def double_mean_init(x, bits, sign):
+#   return jnp.where(jnp.max(x) == 0, 1 / 2**bits, 2 * jnp.mean(jnp.abs(x)))
 
 
-def gaussian_init(x, bits, sign):
-  mu = jnp.mean(x)
-  sigma = jnp.std(x)
+def gaussian_init(x, bits, sign, axis=None):
+  mu = jnp.mean(x, axis=axis)
+  sigma = jnp.std(x, axis=axis)
+  return jnp.where(jnp.max(x) == 0, 1 / 2**bits, jnp.maximum(jnp.abs(
+      mu - 3 * sigma), jnp.abs(mu + 3 * sigma)))
+
+
+def percentile_init(x, bits, sign, perc, axis=None):
   return jnp.where(jnp.max(x) == 0, 1 / 2**bits,
-                   jnp.maximum(jnp.abs(mu - 3 * sigma),
-                               jnp.abs(mu + 3 * sigma)))
-
-
-def percentile_init(x, bits, sign, perc):
-  return jnp.where(jnp.max(x) == 0, 1 / 2**bits,
-                   jnp.percentile(jnp.abs(x), perc))
+                   jnp.percentile(jnp.abs(x), perc, axis=axis))
 
 
 #
@@ -289,14 +289,16 @@ class uniform_static(nn.Module):
       xmax.value = self.init_fn(x, bits=self.bits, sign=sign)
       xmax.value = jnp.where(xmax.value == 0, 1., xmax.value)
 
+    # clip x
     if sign:
-      xmin = -xmax.value
+      x = x / xmax.value
+      x = jnp.clip(x, -1., 1.) * xmax.value
     else:
-      xmin = 0.
+      x = x / xmax.value
+      x = jnp.clip(x, 0., 1.) * xmax.value
 
     scale = xmax.value / num_levels
-    return self.round_fn(jnp.clip(x, xmin, xmax.value) / scale,
-                         self.g_scale) * scale
+    return self.round_fn(x / scale, self.g_scale) * scale
 
 
 class parametric_d(nn.Module):

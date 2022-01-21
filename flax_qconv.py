@@ -144,6 +144,49 @@ class QuantConv(Module):
 
     # Quantization has to be done here to use Flax convenience functions for
     # parameters.
+    # if "mode" in cfg:
+    #   modes = cfg.mode.split('-')
+    # else:
+    #   modes = ['f', 'f']
+
+    # if "weight" in cfg:
+    #   if modes[0] == 'f':
+    #     kernel_fwd = cfg.weight(bits=self.bits, g_scale=self.g_scale)(kernel)
+    #   elif modes[0] == 'cc':
+    #     kernel_fwd = kernel
+    #     for i in range(kernel.shape[-1]):
+    #       for j in range(kernel.shape[-2]):
+    #         kernel_fwd.at[:, :, j, i].set(cfg.weight(
+    #             bits=self.bits, g_scale=self.g_scale)(kernel[:, :, j, i]))
+    #   elif modes[0] == 'c1':
+    #     kernel_fwd = kernel
+    #     for i in range(kernel.shape[-2]):
+    #       kernel_fwd.at[:, :, i, :].set(cfg.weight(
+    #           bits=self.bits, g_scale=self.g_scale)(kernel[:, :, i, :]))
+    #   elif modes[0] == 'c2':
+    #     kernel_fwd = kernel
+    #     for i in range(kernel.shape[-1]):
+    #       kernel_fwd.at[:, :, :, i].set(cfg.weight(
+    #           bits=self.bits, g_scale=self.g_scale)(kernel[:, :, :, i]))
+    #   else:
+    #     raise Exception("Unknown split type:" + modes[0])
+    # else:
+    #   kernel_fwd = kernel
+
+    # if "act" in cfg:
+    #   if modes[1] == 'f':
+    #     inpt_fwd = cfg.act(bits=self.bits, g_scale=self.g_scale)(
+    #         inputs, sign=self.quant_act_sign)
+    #   elif modes[1] == 'c':
+    #     inpt_fwd = inputs
+    #     for i in range(inputs.shape[-1]):
+    #       inpt_fwd.at[:, :, :, i].set(cfg.weight(
+    #           bits=self.bits, g_scale=self.g_scale)(inputs[:, :, :, i]))
+    #   else:
+    #     raise Exception("Unknown split type:" + modes[1])
+    # else:
+    #   inpt_fwd = inputs
+
     if "weight" in cfg:
       kernel_fwd = cfg.weight(bits=self.bits, g_scale=self.g_scale)(kernel)
     else:
