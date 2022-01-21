@@ -76,27 +76,27 @@ def get_config():
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
-  config.quant.stem.weight = partial(uniform_static, init_fn = max_init)
+  config.quant.stem.weight = partial(uniform_static, init_fn=max_init)
   # no input quant in MixedDNN paper.
   # config.quant.stem.act = partial(parametric_d_xmax, act=True)
 
   config.quant.post_init = partial(
-      uniform_static, act=True, init_fn = max_init)
+      uniform_static, act=True, init_fn=max_init)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
-  config.quant.mbconv.weight = partial(uniform_static, init_fn = max_init)
+  config.quant.mbconv.weight = partial(uniform_static, init_fn=max_init)
   #config.quant.mbconv.act = partial(parametric_d_xmax, act=True, init_bits = 6)
   config.quant.mbconv.nonl = partial(
-      uniform_static, act=True, init_fn = max_init)
+      uniform_static, act=True, init_fn=max_init)
 
   # Average quant.
   # config.quant.average = partial(parametric_d_xmax, act=True, init_bits = 6)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
-  config.quant.dense.weight = partial(uniform_static, init_fn = max_init)
+  config.quant.dense.weight = partial(uniform_static, init_fn=max_init)
   # config.quant.dense.act = partial(parametric_d_xmax, act=True)
-  config.quant.dense.bias = partial(uniform_static, init_fn = max_init)
+  config.quant.dense.bias = partial(uniform_static, init_fn=max_init)
 
   return config

@@ -464,12 +464,14 @@ class parametric_d_xmax(nn.Module):
         n_wf = inputs.shape[1:]
         if sign:
           act_mb.value = np.prod(
-              n_wf) * jnp.maximum((ceilpass(jnp.log2((real_xmax / d) + 1)
-                                            ) + 1), self.bitwidth_min)
+              n_wf) * jnp.mean(jnp.maximum((ceilpass(jnp.log2(
+                  (real_xmax / d) + 1)
+              ) + 1), self.bitwidth_min))
         else:
           act_mb.value = np.prod(
-              n_wf) * jnp.maximum((ceilpass(jnp.log2((real_xmax / d) + 1))
-                                   ), self.bitwidth_min)
+              n_wf) * jnp.mean(jnp.maximum((ceilpass(jnp.log2(
+                  (real_xmax / d) + 1))
+              ), self.bitwidth_min))
       else:
         act_mb.value = 0.
 
@@ -480,15 +482,21 @@ class parametric_d_xmax(nn.Module):
         n_wf = inputs.shape
         if sign:
           weight_mb.value = np.prod(
-              n_wf) * jnp.maximum((ceilpass(jnp.log2((real_xmax / d) + 1)
-                                            ) + 1), self.bitwidth_min)
+              n_wf) * jnp.mean(jnp.maximum((ceilpass(jnp.log2(
+                  (real_xmax / d) + 1)
+              ) + 1), self.bitwidth_min))
         else:
           weight_mb.value = np.prod(
-              n_wf) * jnp.maximum((ceilpass(jnp.log2((real_xmax / d) + 1))
-                                   ), self.bitwidth_min)
+              n_wf) * jnp.mean(jnp.maximum((ceilpass(jnp.log2(
+                  (real_xmax / d) + 1))
+              ), self.bitwidth_min))
 
+    # clip x
     if sign:
-      xmin = -xmax
+      x = x / xmax
+      x = jnp.clip(x, -1., 1.) * xmax
     else:
-      xmin = 0.
-    return d * self.round_fn(jnp.clip(x, xmin, xmax) / d, self.g_scale)
+      x = x / xmax
+      x = jnp.clip(x, 0., 1.) * xmax
+
+    return d * self.round_fn(x / d, self.g_scale)
