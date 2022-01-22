@@ -197,8 +197,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       logdir=workdir + '/eval', just_logging=jax.process_index() != 0)
 
   logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
-  # logging.info('Git commit: ' + subprocess.check_output(
-  #     ['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
+  logging.info('Git commit: ' + subprocess.check_output(
+      ['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
   logging.info(config)
 
   rng = random.PRNGKey(config.seed)
@@ -262,9 +262,13 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   learning_rate_fn = create_learning_rate_fn(
       config, base_learning_rate, steps_per_epoch)
 
-  decay_strength_fn = optax.cosine_decay_schedule(
-      init_value=1,
-      decay_steps=config.num_epochs * steps_per_epoch)
+  warmup_fn = optax.linear_schedule(
+      init_value=0.01, end_value=1,
+      transition_steps=0.5 * config.num_epochs * steps_per_epoch)
+  constant_fn = optax.constant_schedule(1)
+  decay_strength_fn = optax.join_schedules(
+      schedules=[warmup_fn, constant_fn],
+      boundaries=[0.5 * config.num_epochs * steps_per_epoch])
 
   rng, subkey = jax.random.split(rng, 2)
   state = create_train_state(

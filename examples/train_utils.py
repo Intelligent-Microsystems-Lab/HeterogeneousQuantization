@@ -228,11 +228,13 @@ def train_step(state, batch, rng, learning_rate_fn, decay_strength_fn,
     size_weight_penalty = 0.
     size_act_penalty = 0.
     if hasattr(quant_target, 'weight_mb'):
-      penalty_strength = 1 - decay_strength_fn(step - step_offset)
+      penalty_strength = decay_strength_fn(step - step_offset)
       size_weight = jnp.sum(jnp.array(jax.tree_util.tree_flatten(
           new_model_state['weight_size'])[0])) / quant_target.size_div
       size_weight_penalty += penalty_strength * quant_target.weight_penalty * \
           jax.nn.relu(size_weight - quant_target.weight_mb) ** 2
+    else:
+      penalty_strength = 0.
     if hasattr(quant_target, 'act_mb'):
       if quant_target.act_mode == 'sum':
         penalty_strength = 1 - decay_strength_fn(step - step_offset)
@@ -250,9 +252,11 @@ def train_step(state, batch, rng, learning_rate_fn, decay_strength_fn,
         raise Exception(
             'Unrecongized quant act mode, either sum or \
             max but got: ' + quant_target.act_mode)
+    else:
+      penalty_strength = 0.
 
     final_loss = loss + size_act_penalty + size_weight_penalty
-    return final_loss, (new_model_state, logits, final_loss,
+    return final_loss, (new_model_state, logits, penalty_strength, final_loss,
                         size_act_penalty, size_weight_penalty, loss)
 
   step = state.step
@@ -286,6 +290,7 @@ def train_step(state, batch, rng, learning_rate_fn, decay_strength_fn,
 
   new_state.params['quant_params'] = clip_quant_vals(
       new_state.params['quant_params'], new_state.quant_config)
+  metrics['penalty_strength'] = aux[1][-5]
   metrics['final_loss'] = aux[1][-4]
   metrics['size_act_penalty'] = aux[1][-3]
   metrics['size_weight_penalty'] = aux[1][-2]
