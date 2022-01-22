@@ -275,7 +275,7 @@ def train_step(state, batch, rng, learning_rate_fn, decay_strength_fn,
     grads = (grads[0], jax.tree_util.tree_map(
         lambda x: jnp.zeros_like(x), grads[1]))
 
-  new_model_state, logits, _, _, _, _ = aux[1]
+  new_model_state, logits, _, _, _, _, _ = aux[1]
 
   metrics = compute_metrics(
       logits, batch['label'], new_model_state, quant_target.size_div,
