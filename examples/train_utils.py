@@ -237,13 +237,13 @@ def train_step(state, batch, rng, learning_rate_fn, decay_strength_fn,
       penalty_strength = 0.
     if hasattr(quant_target, 'act_mb'):
       if quant_target.act_mode == 'sum':
-        penalty_strength = 1 - decay_strength_fn(step - step_offset)
+        penalty_strength = decay_strength_fn(step - step_offset)
         size_act = jnp.sum(jnp.array(jax.tree_util.tree_flatten(
             new_model_state['act_size'])[0])) / quant_target.size_div
         size_act_penalty += penalty_strength * quant_target.act_penalty * \
             jax.nn.relu(size_act - quant_target.act_mb) ** 2
       elif quant_target.act_mode == 'max':
-        penalty_strength = 1 - decay_strength_fn(step - step_offset)
+        penalty_strength = decay_strength_fn(step - step_offset)
         size_act = max_custom_grad(jnp.array(jax.tree_util.tree_flatten(
             new_model_state['act_size'])[0])) / quant_target.size_div
         size_act_penalty += penalty_strength * quant_target.act_penalty * \
