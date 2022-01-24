@@ -91,25 +91,25 @@ def get_config():
   config.quant.mbconv.weight = partial(
       parametric_d_xmax, init_fn=partial(gaussian_init, axis=(0, 1, 2)), bitwidth_min=1)
   config.quant.mbconv.act = partial(parametric_d_xmax, act=True, init_fn=partial(
-      gaussian_init, axis=(0, 1, 2)), bitwidth_min=1, d_max=8)
+      gaussian_init), bitwidth_min=1, d_max=8)
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
   config.quant.head.weight = partial(
       parametric_d_xmax, init_fn=partial(gaussian_init, axis=(0, 1, 2)), bitwidth_min=1)
   config.quant.head.act = partial(parametric_d_xmax, act=True, init_fn=partial(
-      gaussian_init, axis=(0, 1, 2)), bitwidth_min=1, d_max=8)
+      gaussian_init), bitwidth_min=1, d_max=8)
 
   # Average quant.
   config.quant.average = partial(parametric_d_xmax, act=True, init_fn=partial(
-      gaussian_init, axis=(0,)), bitwidth_min=1, d_max=8)
+      gaussian_init), bitwidth_min=1, d_max=8)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
   config.quant.dense.weight = partial(
-      parametric_d_xmax, init_fn=partial(gaussian_init, axis=(0,)), bitwidth_min=1)
+      parametric_d_xmax, init_fn=partial(gaussian_init), bitwidth_min=1)
   config.quant.dense.act = partial(parametric_d_xmax, act=True, init_fn=partial(
-      gaussian_init, axis=(0,)), bitwidth_min=1, d_max=8)
+      gaussian_init), bitwidth_min=1, d_max=8)
   config.quant.dense.bias = partial(
       parametric_d_xmax, init_fn=gaussian_init, bitwidth_min=1)
 
