@@ -411,7 +411,12 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     rng_list = jax.random.split(rng, jax.local_device_count() + 1)
     rng = rng_list[0]
 
-    state, metrics = p_train_step(state, batch, rng_list[1:])
+    if (step + 1) % config.quant_target.update_every == 0:
+      state, metrics = p_train_step(state, batch, rng_list[1:],
+                                    no_quant_params=False)
+    else:
+      state, metrics = p_train_step(state, batch, rng_list[1:],
+                                    no_quant_params=True)
 
     # # Debug
     # state, metrics = p_train_step(
