@@ -296,7 +296,7 @@ def translate_x(image, pixels, replace):
   zero = tf.constant([0], dtype='float32')
   translation_matrix = tf.reshape(
       tf.concat([one, zero, -pixels, zero, one,
-                zero, zero, zero, one], axis=0),
+                 zero, zero, zero, one], axis=0),
       [3, 3])
 
   return apply_matrix_to_single_image(image, translation_matrix)
