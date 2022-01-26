@@ -78,7 +78,7 @@ config_flags.DEFINE_config_file(
 
 def finetune_nn(state, train_iter, eval_iter, config, finetune_config,
                 workdir, eval_best, steps_per_epoch, rng, step, writer_train,
-                writer_eval, steps_per_eval):
+                writer_eval, steps_per_eval, save_dir):
   base_learning_rate = finetune_config.learning_rate * config.batch_size / 256.
 
   warmup_fn = optax.linear_schedule(
@@ -171,7 +171,7 @@ def finetune_nn(state, train_iter, eval_iter, config, finetune_config,
           step + 1, {f'{key}': val for key, val in summary.items()})
       writer_eval.flush()
       if summary['accuracy'] > eval_best:
-        save_checkpoint(state, workdir + '/best/finetune')
+        save_checkpoint(state, save_dir)
         logging.info('!!!! Saved new best model with accuracy %.4f',
                      summary['accuracy'])
         eval_best = summary['accuracy']
@@ -336,9 +336,11 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     # eval best at 200.0
     # no model saved as best, because constraints not fullfilled
     state, rng = finetune_nn(state, train_iter, eval_iter, config,
-                             config.pretraining, workdir, 200.0,
+                             config.pretraining, workdir, 0.,
                              steps_per_epoch, rng, 0, writer_train,
-                             writer_eval, steps_per_eval)
+                             writer_eval, steps_per_eval,
+                             workdir + '/pretraining/')
+    state = restore_checkpoint(state, workdir + '/pretraining/')
     steps_pretrain = steps_per_epoch * config.pretraining.num_epochs
   else:
     steps_pretrain = 0
@@ -513,7 +515,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     state, _ = finetune_nn(best_state_restored, train_iter, eval_iter, config,
                            config.finetune, workdir, eval_best,
                            steps_per_epoch, rng, step, writer_train,
-                           writer_eval, steps_per_eval)
+                           writer_eval, steps_per_eval, workdir + '/finetune')
 
   # Wait until computations are done before exiting
   jax.random.normal(jax.random.PRNGKey(0), ()).block_until_ready()

@@ -64,7 +64,7 @@ def get_config():
 
   config.quant.bits = 3
 
-  config.quant.g_scale = 5e-3 / 3 # 3 std = 5e-3
+  config.quant.g_scale = 5e-3 / 3  # 3 std = 5e-3
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
