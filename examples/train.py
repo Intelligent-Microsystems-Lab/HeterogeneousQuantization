@@ -353,7 +353,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   # 4. Swtich train and eval metrics lines.
   # 5. Uncomment JIT configs at the top.
 
-  p_train_step = jax.pmap(
+  p_train_step_quant = jax.pmap(
       functools.partial(
           train_step,
           learning_rate_fn=learning_rate_fn,
@@ -361,7 +361,21 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
           step_offset=steps_pretrain,
           weight_decay=config.weight_decay,
           quant_target=config.quant_target,
-          smoothing=config.smoothing
+          smoothing=config.smoothing,
+          quant_params=True,
+      ),
+      axis_name='batch',
+  )
+  p_train_step_nq = jax.pmap(
+      functools.partial(
+          train_step,
+          learning_rate_fn=learning_rate_fn,
+          decay_strength_fn=decay_strength_fn,
+          step_offset=steps_pretrain,
+          weight_decay=config.weight_decay,
+          quant_target=config.quant_target,
+          smoothing=config.smoothing,
+          quant_params=False,
       ),
       axis_name='batch',
   )
@@ -412,11 +426,9 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     rng = rng_list[0]
 
     if (step + 1) % config.quant_target.update_every == 0:
-      state, metrics = p_train_step(state, batch, rng_list[1:],
-                                    no_quant_params=False)
+      state, metrics = p_train_step_quant(state, batch, rng_list[1:])
     else:
-      state, metrics = p_train_step(state, batch, rng_list[1:],
-                                    no_quant_params=True)
+      state, metrics = p_train_step_nq(state, batch, rng_list[1:])
 
     # # Debug
     # state, metrics = p_train_step(
