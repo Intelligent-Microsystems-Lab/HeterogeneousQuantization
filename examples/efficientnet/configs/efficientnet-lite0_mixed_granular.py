@@ -74,6 +74,7 @@ def get_config():
   config.quant_target.act_penalty = .0001
   config.quant_target.size_div = 8. * 1000.
   config.quant_target.eval_start = 61000  # 31050
+  config.quant_target.update_every = 1
 
   config.quant = ml_collections.ConfigDict()
 

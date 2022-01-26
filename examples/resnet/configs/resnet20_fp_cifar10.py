@@ -52,7 +52,8 @@ def get_config():
   config.steps_per_eval = -1
 
   config.quant_target = ml_collections.ConfigDict()
-  config.quant_target.size_div = 8. * 1024.
+  config.quant_target.size_div = 8. * 1000.
+  config.quant_target.update_every = 1
 
   config.quant = ml_collections.ConfigDict()
 
