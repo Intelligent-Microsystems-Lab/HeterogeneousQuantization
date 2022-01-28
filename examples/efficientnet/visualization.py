@@ -744,7 +744,7 @@ def plot_surrogate():
       frameon=False,
       prop={'weight': 'bold', 'size': font_size}
   )
-  ax.set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
+  ax.set_ylabel("Eval Accuracy (%)", fontsize=font_size, fontweight='bold')
   plt.tight_layout()
   plt.savefig('figures/surrogate_grads.png')
   plt.close()
