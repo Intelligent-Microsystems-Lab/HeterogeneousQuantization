@@ -95,7 +95,7 @@ def finetune_nn(state, train_iter, eval_iter, config, finetune_config,
 
   # remove quant target for pure finetuning/pretraining
   quant_target = ml_collections.ConfigDict()
-  quant_target.size_div = 8. * 1024.
+  quant_target.size_div = 8. * 1000.
 
   state = jax_utils.replicate(state)
   p_train_step = jax.pmap(
