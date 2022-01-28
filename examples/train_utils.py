@@ -206,6 +206,7 @@ def train_step(state, batch, rng, learning_rate_fn, decay_strength_fn,
                b_quant_params=True):
   """Perform a single training step."""
   rng, prng = jax.random.split(rng, 2)
+  step = state.step
 
   def loss_fn(params, inputs, targets, quant_params):
     """loss function used for training."""
@@ -259,7 +260,6 @@ def train_step(state, batch, rng, learning_rate_fn, decay_strength_fn,
     return final_loss, (new_model_state, logits, penalty_strength, final_loss,
                         size_act_penalty, size_weight_penalty, loss)
 
-  step = state.step
   lr = learning_rate_fn(step)
 
   grad_fn = jax.value_and_grad(loss_fn, argnums=[0, 3], has_aux=True)

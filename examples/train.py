@@ -91,11 +91,12 @@ def finetune_nn(state, train_iter, eval_iter, config, finetune_config,
 
   learning_rate_fn = optax.join_schedules(
       schedules=[warmup_fn, cosine_fn],
-      boundaries=[steps_per_epoch * 2])
+      boundaries=[step + steps_per_epoch * 2])
 
   # remove quant target for pure finetuning/pretraining
   quant_target = ml_collections.ConfigDict()
   quant_target.size_div = 8. * 1000.
+  config.quant_target.update_every = 1
 
   state = jax_utils.replicate(state)
   p_train_step = jax.pmap(
@@ -332,7 +333,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   #
   # pre bit width search finetune
   #
-  if 'pretraining' in config:
+  if ('pretraining' in config) and (step_offset == 0):
     # eval best at 200.0
     # no model saved as best, because constraints not fullfilled
     state, rng = finetune_nn(state, train_iter, eval_iter, config,
