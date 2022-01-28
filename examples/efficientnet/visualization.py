@@ -669,6 +669,87 @@ competitors = {
 }
 
 
+surrogate_grads = ["STE,Gaussian_Noise,Tanh,EWGS_5e-3",
+                   "0.656400,0.658000,0.666200,0.665500",
+                   "0.655400,0.653300,0.658500,0.663400",
+                   "0.661100,0.656100,0.656100,0.660500",
+                   "0.654300,0.668300,0.663100,0.665700",
+                   "0.657900,0.660500,0.664600,0.664200",
+                   "0.654900,0.661000,0.661300,0.662600",
+                   "0.657100,0.656200,0.665000,0.665500",
+                   "0.661100,0.652500,0.660200,0.666500",
+                   "0.662900,0.659500,0.661300,0.659700",
+                   "0.658400,0.654500,0.661000,0.658700",
+                   "0.660200,0.659300,,0.663900",
+                   "0.657900,0.664400,,0.667800",
+                   "0.658500,,,0.662800",
+                   "0.657100,0.658400,,0.666800",
+                   "0.652000,,,0.666500",
+                   "0.653600,0.657600,,0.657900",
+                   "0.653300,0.660500,,0.662900",
+                   "0.656600,0.660800,,0.666300",
+                   "0.658200,0.657100,,0.655300",
+                   "0.661300,0.650700,,0.671500", ]
+
+
+def plot_surrogate():
+  names = [x.split('_')[0] for x in surrogate_grads[0].split(',')]
+  data = np.array([x.split(',') for x in surrogate_grads[1:]])
+  y = [float(x) * 100 if x != '' else np.nan for x in data.flatten(order='F')]
+  x = np.repeat(np.arange(len(names)) + 1, 20)
+  base_x = np.arange(len(names)) + 1
+
+  np_data = np.array(
+      [float(x) * 100 if x != '' else np.nan for x in data.flatten('F')
+       ]).reshape((-1, 20))
+  mu = np.nanmean(np_data, axis=1)
+  sigma = np.nanstd(np_data, axis=1)
+
+  font_size = 26
+
+  fig, ax = plt.subplots(figsize=(12, 9))
+
+  ax.spines["top"].set_visible(False)
+  ax.spines["right"].set_visible(False)
+
+  ax.xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
+  ax.yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
+
+  for axis in ['top', 'bottom', 'left', 'right']:
+    ax.spines[axis].set_linewidth(5)
+
+  for tick in ax.xaxis.get_major_ticks():
+    tick.label1.set_fontweight('bold')
+  for tick in ax.yaxis.get_major_ticks():
+    tick.label1.set_fontweight('bold')
+
+  ax.scatter(x / 2, y, marker='x', linewidths=5,
+             s=180, color='blue', label='Observations')
+
+  ax.scatter(base_x / 2, mu, marker='_', linewidths=5,
+             s=840, color='red', label='Mean')
+
+  ax.scatter(base_x / 2, mu + sigma, marker='_', linewidths=5,
+             s=840, color='green', label='Std. Dev.')
+
+  ax.scatter(base_x / 2, mu - sigma, marker='_',
+             linewidths=5, s=840, color='green')
+
+  plt.xticks(base_x / 2, names, rotation='horizontal')
+
+  plt.legend(
+      bbox_to_anchor=(0.5, 1.2),
+      loc="upper center",
+      ncol=3,
+      frameon=False,
+      prop={'weight': 'bold', 'size': font_size}
+  )
+  ax.set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
+  plt.tight_layout()
+  plt.savefig('figures/surrogate_grads.png')
+  plt.close()
+
+
 def get_best_eval(experiment_id):
   experiment = tb.data.experimental.ExperimentFromDev(experiment_id)
 
@@ -880,24 +961,25 @@ if __name__ == '__main__':
       "This notebook requires TensorBoard 2.3 or later."
   print("TensorBoard version: ", tb.__version__)
 
+  plot_surrogate()
   plot_comparison('figures/overview.png')
 
-  # df_dynamic_lr = table(enet0_dynamic_lr)
-  df_static_lr = table_lr(enet0_static_lr)
-  df_static_init_4b = table_init(enet0_static_init_4b)
-  df_static_init_3b = table_init(enet0_static_init_3b)
+  # # df_dynamic_lr = table(enet0_dynamic_lr)
+  # df_static_lr = table_lr(enet0_static_lr)
+  # df_static_init_4b = table_init(enet0_static_init_4b)
+  # df_static_init_3b = table_init(enet0_static_init_3b)
 
-  # print("Dynamic Quant")
-  # print(df_dynamic_lr.to_csv())
+  # # print("Dynamic Quant")
+  # # print(df_dynamic_lr.to_csv())
 
-  print("LR Static Quant")
-  print(df_static_lr.to_csv())
+  # print("LR Static Quant")
+  # print(df_static_lr.to_csv())
 
-  print("Init Static Quant 4b")
-  print(df_static_init_4b.to_csv())
+  # print("Init Static Quant 4b")
+  # print(df_static_init_4b.to_csv())
 
-  print("Init Static Quant 3b")
-  print(df_static_init_3b.to_csv())
+  # print("Init Static Quant 3b")
+  # print(df_static_init_3b.to_csv())
 
   # plot_bits_vs_acc([enet0_dynamic_init_max, enet0_dynamic_init_double_mean,
   #                   enet0_dynamic_init_gaussian], 'figures/dynamic_init.png')
