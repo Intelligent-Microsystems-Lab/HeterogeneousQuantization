@@ -106,9 +106,44 @@ def compute_metrics(logits, labels, state, size_div, smoothing):
   return metrics
 
 
+def create_penalty_fn(config: ml_collections.ConfigDict, steps_per_epoch: int):
+  epoch_counter = 0
+  regimes = []
+  transition_points = []
+
+  if 'pretraining' in config:
+    regimes.append(optax.constant_schedule(0.))
+    transition_points.append(
+        epoch_counter + config.pretraining.num_epochs * steps_per_epoch)
+    epoch_counter += config.pretraining.num_epochs * steps_per_epoch
+
+  # ramp up
+  regimes.append(optax.linear_schedule(
+      init_value=0.01, end_value=1,
+      transition_steps=0.5 * config.num_epochs * steps_per_epoch))
+  transition_points.append(epoch_counter + 0.5 * config.num_epochs
+                           * steps_per_epoch)
+  epoch_counter += 0.5 * config.num_epochs * steps_per_epoch
+
+  # constant
+  regimes.append(optax.constant_schedule(1))
+  transition_points.append(epoch_counter + 0.5 * config.num_epochs
+                           * steps_per_epoch)
+  epoch_counter += 0.5 * config.num_epochs * steps_per_epoch
+
+  if 'finetune' in config:
+    regimes.append(optax.constant_schedule(0.))
+    transition_points.append(
+        epoch_counter + config.finetune.num_epochs * steps_per_epoch)
+    epoch_counter += config.finetune.num_epochs * steps_per_epoch
+
+  return optax.join_schedules(
+      schedules=regimes,
+      boundaries=transition_points)
+
+
 def create_learning_rate_fn(
         config: ml_collections.ConfigDict,
-        base_learning_rate: float,
         steps_per_epoch: int):
   """Create learning rate schedule."""
   if config.lr_boundaries_scale is not None:
@@ -116,25 +151,104 @@ def create_learning_rate_fn(
         k) * steps_per_epoch: v for k, v in config.lr_boundaries_scale.items()}
     )
   else:
-    cosine_epochs = max(config.num_epochs - config.warmup_epochs, 1)
-    cosine_fn = optax.cosine_decay_schedule(
-        init_value=base_learning_rate,
-        decay_steps=cosine_epochs * steps_per_epoch)
+    epoch_counter = 0
+    regimes = []
+    transition_points = []
 
-    if config.warmup_epochs != 0.:
-      warmup_fn = optax.linear_schedule(
-          init_value=0., end_value=base_learning_rate,
-          transition_steps=config.warmup_epochs * steps_per_epoch)
-      schedule_fn = optax.join_schedules(
-          schedules=[warmup_fn, cosine_fn],
-          boundaries=[config.warmup_epochs * steps_per_epoch])
-    else:
-      schedule_fn = cosine_fn
+    if 'pretraining' in config:
+      base_learning_rate = (config.pretraining.learning_rate
+                            * config.batch_size / 256.)
+
+      # warm up
+      if 'warmup_epochs' in config.pretraining:
+        regimes.append(
+            optax.linear_schedule(
+                init_value=0., end_value=base_learning_rate,
+                transition_steps=(config.pretraining.warmup_epochs
+                                  * steps_per_epoch))
+        )
+        transition_points.append(
+            epoch_counter + config.pretraining.warmup_epochs * steps_per_epoch)
+        epoch_counter += config.pretraining.warmup_epochs * steps_per_epoch
+
+      # cosine
+      regimes.append(
+          optax.cosine_decay_schedule(
+              init_value=base_learning_rate,
+              decay_steps=(config.pretraining.num_epochs
+                           - config.pretraining.warmup_epochs)
+              * steps_per_epoch)
+      )
+      transition_points.append(epoch_counter + (config.pretraining.num_epochs
+                               - config.pretraining.warmup_epochs)
+                               * steps_per_epoch)
+      epoch_counter += (config.pretraining.num_epochs
+                        - config.pretraining.warmup_epochs) * steps_per_epoch
+
+    base_learning_rate = config.learning_rate * config.batch_size / 256.
+
+    # warm up
+    if 'warmup_epochs' in config:
+      regimes.append(
+          optax.linear_schedule(
+              init_value=0., end_value=base_learning_rate,
+              transition_steps=config.warmup_epochs * steps_per_epoch)
+      )
+      transition_points.append(
+          epoch_counter + config.warmup_epochs * steps_per_epoch)
+      epoch_counter += config.warmup_epochs * steps_per_epoch
+
+    # cosine
+    regimes.append(
+        optax.cosine_decay_schedule(
+            init_value=base_learning_rate,
+            decay_steps=((config.num_epochs - config.warmup_epochs)
+                         * steps_per_epoch))
+    )
+    transition_points.append(
+        epoch_counter + (config.num_epochs - config.warmup_epochs)
+        * steps_per_epoch)
+    epoch_counter += (config.num_epochs
+                      - config.warmup_epochs) * steps_per_epoch
+
+    if 'finetune' in config:
+      base_learning_rate = (config.finetune.learning_rate
+                            * config.batch_size / 256.)
+
+      # warm up
+      if 'warmup_epochs' in config.finetune:
+        regimes.append(
+            optax.linear_schedule(
+                init_value=0., end_value=base_learning_rate,
+                transition_steps=(config.finetune.warmup_epochs
+                                  * steps_per_epoch))
+        )
+        transition_points.append(
+            epoch_counter + config.finetune.warmup_epochs * steps_per_epoch)
+        epoch_counter += config.finetune.warmup_epochs * steps_per_epoch
+
+      # cosine
+      regimes.append(
+          optax.cosine_decay_schedule(
+              init_value=base_learning_rate,
+              decay_steps=(config.finetune.num_epochs
+                           - config.finetune.warmup_epochs) * steps_per_epoch)
+      )
+      transition_points.append(
+          epoch_counter + (config.finetune.num_epochs
+                           - config.finetune.warmup_epochs) * steps_per_epoch)
+      epoch_counter += (config.finetune.num_epochs
+                        - config.finetune.warmup_epochs) * steps_per_epoch
+
+    schedule_fn = optax.join_schedules(
+        schedules=regimes,
+        boundaries=transition_points)
+
   return schedule_fn
 
 
 def parametric_d_xmax_is_leaf(x):
-  if type(x) is dict or type(x) is flax.core.frozen_dict.FrozenDict:
+  if isinstance(x, dict) or isinstance(x, flax.core.frozen_dict.FrozenDict):
     if 'dynamic_range' in x:
       return True
     return False
@@ -143,7 +257,7 @@ def parametric_d_xmax_is_leaf(x):
 
 def clip_single_leaf_params(x, quant_config):
 
-  if type(x) is dict or type(x) is flax.core.frozen_dict.FrozenDict:
+  if isinstance(x, dict) or isinstance(x, flax.core.frozen_dict.FrozenDict):
     if 'dynamic_range' in x and 'step_size' in x:
 
       min_value = jnp.minimum(x['step_size'], x['dynamic_range'] - 1e-5)
@@ -173,7 +287,7 @@ def clip_quant_vals(params, quant_configs):
 
 
 def clip_single_leaf_grads(x, params):
-  if type(x) is dict or type(x) is flax.core.frozen_dict.FrozenDict:
+  if isinstance(x, dict) or isinstance(x, flax.core.frozen_dict.FrozenDict):
     if 'dynamic_range' in x and 'step_size' in x:
       x['dynamic_range'] = jnp.clip(
           x['dynamic_range'], -params['step_size'], +params['step_size'])
@@ -201,9 +315,9 @@ def weight_decay_fn(params):
   return 0.5 * sum(jnp.sum(jnp.square(p)) for p in l2_params)
 
 
-def train_step(state, batch, rng, learning_rate_fn, decay_strength_fn,
-               step_offset, weight_decay, quant_target, smoothing,
-               b_quant_params=True):
+def train_step(state, batch, rng, b_quant_params, learning_rate_fn,
+               decay_strength_fn, weight_decay, quant_target,
+               smoothing,):
   """Perform a single training step."""
   rng, prng = jax.random.split(rng, 2)
   step = state.step
@@ -229,7 +343,7 @@ def train_step(state, batch, rng, learning_rate_fn, decay_strength_fn,
     size_weight_penalty = 0.
     size_act_penalty = 0.
     if hasattr(quant_target, 'weight_mb'):
-      penalty_strength = decay_strength_fn(step - step_offset)
+      penalty_strength = decay_strength_fn(step)
       size_weight = jnp.sum(jnp.array(jax.tree_util.tree_flatten(
           new_model_state['weight_size'])[0])) / quant_target.size_div
       size_weight_penalty += penalty_strength * quant_target.weight_penalty * \
@@ -238,13 +352,13 @@ def train_step(state, batch, rng, learning_rate_fn, decay_strength_fn,
       penalty_strength = 0.
     if hasattr(quant_target, 'act_mb'):
       if quant_target.act_mode == 'sum':
-        penalty_strength = decay_strength_fn(step - step_offset)
+        penalty_strength = decay_strength_fn(step)
         size_act = jnp.sum(jnp.array(jax.tree_util.tree_flatten(
             new_model_state['act_size'])[0])) / quant_target.size_div
         size_act_penalty += penalty_strength * quant_target.act_penalty * \
             jax.nn.relu(size_act - quant_target.act_mb) ** 2
       elif quant_target.act_mode == 'max':
-        penalty_strength = decay_strength_fn(step - step_offset)
+        penalty_strength = decay_strength_fn(step)
         size_act = max_custom_grad(jnp.array(jax.tree_util.tree_flatten(
             new_model_state['act_size'])[0])) / quant_target.size_div
         size_act_penalty += penalty_strength * quant_target.act_penalty * \
@@ -271,9 +385,12 @@ def train_step(state, batch, rng, learning_rate_fn, decay_strength_fn,
   grads = (grads[0], clip_quant_grads(grads[1], state.params['quant_params']))
   grads = lax.pmean(grads, axis_name='batch')
 
-  if not b_quant_params:
-    grads = (grads[0], jax.tree_util.tree_map(
-        lambda x: jnp.zeros_like(x), grads[1]))
+  # if not b_quant_params:
+  # grads = (grads[0], jax.tree_util.tree_map(
+  #     lambda x: jnp.zeros_like(x), grads[1]))
+
+  grads = (grads[0], jax.tree_util.tree_map(
+      lambda x: x * b_quant_params, grads[1]))
 
   new_model_state, logits, _, _, _, _, _ = aux[1]
 

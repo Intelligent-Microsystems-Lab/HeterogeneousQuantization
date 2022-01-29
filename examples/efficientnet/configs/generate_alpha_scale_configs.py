@@ -35,11 +35,11 @@ for round_fn in round_methods:
         if 'from quant import' in line:
           f.write(line[:-1] + ', ' + round_fn + '\n')
         elif '.act =' in line or '.average =' in line or '.weight =' in line or '.bias =' in line:
-          f.write(line[:-2] + ', round_fn = partial(' + round_fn +
-                  ', alpha_scale = ' + str(scale_v) + ') )\n')
+          f.write(line[:-2] + ', round_fn = partial(' + round_fn
+                  + ', alpha_scale = ' + str(scale_v) + ') )\n')
         elif 'g_scale' in line:
-          f.write('  config.quant.g_scale = ' +
-                  ('5e-3' if round_fn == 'round_tanh' else '1e-2') + '\n')
+          f.write('  config.quant.g_scale = '
+                  + ('5e-3' if round_fn == 'round_tanh' else '1e-2') + '\n')
         else:
           f.write(line)
 
@@ -51,5 +51,5 @@ for idx, conf in enumerate(config_list):
       f.write('')
 
   with open(config_dir + '/run_round_ablation_' + str(i) + '.sh', 'a+') as f:
-    f.write('python3 train.py --workdir=../../' +
-            conf.split('/')[3][:-3] + ' --config=' + conf + '\n')
+    f.write('python3 train.py --workdir=../../'
+            + conf.split('/')[3][:-3] + ' --config=' + conf + '\n')

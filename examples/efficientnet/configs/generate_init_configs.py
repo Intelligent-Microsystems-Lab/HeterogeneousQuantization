@@ -55,5 +55,5 @@ for idx, conf in enumerate(config_list):
       f.write('')
 
   with open(config_dir + '/run_init_ablation_' + str(i) + '.sh', 'a+') as f:
-    f.write('python3 train.py --workdir=/home/clemens/' +
-            conf.split('/')[-1][:-3] + ' --config=' + conf + '\n')
+    f.write('python3 train.py --workdir=/home/clemens/'
+            + conf.split('/')[-1][:-3] + ' --config=' + conf + '\n')

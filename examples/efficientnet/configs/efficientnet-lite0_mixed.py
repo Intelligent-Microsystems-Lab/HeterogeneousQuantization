@@ -44,10 +44,12 @@ def get_config():
   config.smoothing = .1
 
   config.pretraining = ml_collections.ConfigDict()
+  config.pretraining.warmup_epochs = 2.0
   config.pretraining.num_epochs = 50.0
   config.pretraining.learning_rate = 0.00125
 
   config.finetune = ml_collections.ConfigDict()
+  config.finetune.warmup_epochs = 2.0
   config.finetune.num_epochs = 10.0
   config.finetune.learning_rate = 0.0000125
 
@@ -70,7 +72,7 @@ def get_config():
   config.quant_target.weight_mb = 1731.0
   config.quant_target.weight_penalty = .0001
   config.quant_target.act_mode = 'sum'
-  config.quant_target.act_mb = 2505.0
+  config.quant_target.act_mb = 2523.0  # 2505.0
   config.quant_target.act_penalty = .0001
   config.quant_target.size_div = 8. * 1000.
   config.quant_target.eval_start = 61000  # 31050
