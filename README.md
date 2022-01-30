@@ -1,5 +1,11 @@
 # Heterogenous Quantization
 
+## Running the Code
+```
+cd examples
+python3 train.py --workdir=/my/fav/dir --config=efficientnet/configs/efficientnet-lite0_mixed.py
+```
+
 ## Methods
 
 ### Pretraining
