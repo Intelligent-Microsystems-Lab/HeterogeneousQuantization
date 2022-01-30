@@ -1,15 +1,22 @@
-# Training SNNs
+# Heterogenous Quantization
 
+## Methods
 
-## Running on CRC GPU
+### Pretraining
 
-```
-module load python cuda/11.2 tensorflow/2.6
-export XLA_FLAGS="--xla_gpu_cuda_data_dir=/afs/crc.nd.edu/x86_64_linux/c/cuda/11.2"
-```
+### Alternating Phases
+
+### Penalty Scheduling
+
+### Gradient Scaling
+
+### Finetuning
+
+### Granular Quantization
 
 ## References
 
-Whittington JCR, Bogacz R (2017) An Approximation of the Error Backpropagation Algorithm in a Predictive Coding Network with Local Hebbian Synaptic Plasticity. Neural Comput 29:1229-1262
-
-Millidge, B., Tschantz, A., & Buckley, C. L. (2020). Predictive coding approximates backprop along arbitrary computation graphs. arXiv preprint arXiv:2006.04182.
+- Uhlich, Stefan, et al. "Mixed precision dnns: All you need is a good parametrization." arXiv preprint arXiv:1905.11452 (2019).
+- Lee, Junghyup, Dohyung Kim, and Bumsub Ham. "Network Quantization with Element-wise Gradient Scaling." Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. 2021.
+- Kim, Jangho, KiYoon Yoo, and Nojun Kwak. "Position-based scaled gradient for model quantization and pruning." arXiv preprint arXiv:2005.11035 (2020).
+- Darvish Rouhani, Bita, et al. "Pushing the limits of narrow precision inferencing at cloud scale with microsoft floating point." Advances in Neural Information Processing Systems 33 (2020).
