@@ -45,7 +45,7 @@ def get_config():
 
   config.pretraining = ml_collections.ConfigDict()
   config.pretraining.warmup_epochs = 2.0
-  config.pretraining.num_epochs = 50.0
+  config.pretraining.num_epochs = 25.0
   config.pretraining.learning_rate = 0.00125
 
   config.finetune = ml_collections.ConfigDict()
