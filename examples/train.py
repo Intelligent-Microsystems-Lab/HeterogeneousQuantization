@@ -290,6 +290,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
                                int(num_steps)), train_iter):
 
     if step == reload_for_finetune:
+      if eval_best == -1.:
+        raise Exception('No checkpoint found with constraints fullfilled...')
       state = jax_utils.unreplicate(state)
       state = restore_checkpoint(state, workdir + '/best')
       state = jax_utils.replicate(state)
@@ -327,10 +329,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
     # evalaute when constraints are fullfilled
     if 'act_mb' in config.quant_target and 'weight_mb' in config.quant_target:
-      if (evaled_steps + 1) % 5 == 0:
-        # step > config.quant_target.eval_start:
+      if step > config.quant_target.eval_start:
         # evaluate network size after gradients are applied.
-        evaled_steps += 1
         metrics_size = p_eval_step(state, batch)
         weight_cond = (
             metrics_size['weight_size'].mean() <= config.quant_target.weight_mb
@@ -341,26 +341,27 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         ) or ((config.quant_target.act_mode == 'sum') and (
             metrics_size['act_size_sum'].mean() <= config.quant_target.act_mb)
         ))
-
         if weight_cond and act_cond:
-          # sync batch statistics across replicas
-          eval_metrics = []
-          state = sync_batch_stats(state)
-          for _ in range(steps_per_eval):
-            eval_batch = next(eval_iter)
-            size_metrics = p_eval_step(state, eval_batch)
-            eval_metrics.append(size_metrics)
-          eval_metrics = common_utils.get_metrics(eval_metrics)
-          # # Debug
-          # eval_metrics = common_utils.stack_forest(eval_metrics)
-          summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
-          if summary['accuracy'] > eval_best:
-            save_checkpoint(state, workdir + '/best')
-            logging.info('!!! Saved new best model with accuracy %.4f weight'
-                         'size %.4f max act %.4f sum act %.4f',
-                         summary['accuracy'], summary['weight_size'],
-                         summary['act_size_max'], summary['act_size_sum'])
-            eval_best = summary['accuracy']
+          evaled_steps += 1
+          if (evaled_steps % 5) == 0:
+            eval_metrics = []
+            # sync batch statistics across replicas
+            state = sync_batch_stats(state)
+            for _ in range(steps_per_eval):
+              eval_batch = next(eval_iter)
+              size_metrics = p_eval_step(state, eval_batch)
+              eval_metrics.append(size_metrics)
+            eval_metrics = common_utils.get_metrics(eval_metrics)
+            # # Debug
+            # eval_metrics = common_utils.stack_forest(eval_metrics)
+            summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
+            if summary['accuracy'] > eval_best:
+              save_checkpoint(state, workdir + '/best')
+              logging.info('!!! Saved new best model with accuracy %.4f weight'
+                           'size %.4f max act %.4f sum act %.4f',
+                           summary['accuracy'], summary['weight_size'],
+                           summary['act_size_max'], summary['act_size_sum'])
+              eval_best = summary['accuracy']
 
     if config.get('log_every_steps'):
       train_metrics.append(metrics)
