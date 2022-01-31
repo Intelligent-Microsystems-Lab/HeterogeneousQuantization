@@ -142,6 +142,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     if 'finetune' in config:
       num_steps += int(steps_per_epoch * config.finetune.num_epochs)
   else:
+    reload_for_finetune = config.num_train_steps + 1
     num_steps = config.num_train_steps
 
   val_or_test = "validation" if "imagenet" in config.dataset else "test"
