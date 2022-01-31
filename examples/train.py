@@ -122,7 +122,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         mean_rgb=config.mean_rgb, std_rgb=config.stddev_rgb,
         crop=config.crop_padding, augment_name=config.augment_name)
     eval_iter = input_pipeline.create_input_iter(
-        dataset_builder, local_batch_size, config.image_size,
+        dataset_builder, config.eval_batch_size, config.image_size,
         dtype=jnp.float32, train=False, cache=config.cache,
         mean_rgb=config.mean_rgb, std_rgb=config.stddev_rgb,
         crop=config.crop_padding, augment_name=config.augment_name)
@@ -135,8 +135,10 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
   if config.num_train_steps == -1:
     num_steps = int(steps_per_epoch * config.num_epochs)
+    reload_for_finetune = num_steps + 1
     if 'pretraining' in config:
       num_steps += int(steps_per_epoch * config.pretraining.num_epochs)
+      reload_for_finetune = num_steps + 1
     if 'finetune' in config:
       num_steps += int(steps_per_epoch * config.finetune.num_epochs)
   else:
@@ -267,6 +269,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   logging.info('Start evaluating model at beginning...')
   eval_metrics = []
   eval_best = -1.
+  evaled_steps = 0
   for _ in range(steps_per_eval):
     eval_batch = next(eval_iter)
     metrics = p_eval_step(state, eval_batch)
@@ -284,6 +287,13 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   logging.info('Initial compilation, this might take some minutes...')
   for step, batch in zip(range(int(step_offset),
                                int(num_steps)), train_iter):
+
+    if step == reload_for_finetune:
+      state = jax_utils.unreplicate(state)
+      state = restore_checkpoint(state, workdir + '/best')
+      state = jax_utils.replicate(state)
+      logging.info('Starting finetuning, restored best checkpoint...')
+
     rng_list = jax.random.split(rng, jax.local_device_count() + 1)
     rng = rng_list[0]
 
@@ -316,8 +326,10 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
     # evalaute when constraints are fullfilled
     if 'act_mb' in config.quant_target and 'weight_mb' in config.quant_target:
-      if step > config.quant_target.eval_start:
+      if (evaled_steps + 1) % 5 == 0:
+        # step > config.quant_target.eval_start:
         # evaluate network size after gradients are applied.
+        evaled_steps += 1
         metrics_size = p_eval_step(state, batch)
         weight_cond = (
             metrics_size['weight_size'].mean() <= config.quant_target.weight_mb
