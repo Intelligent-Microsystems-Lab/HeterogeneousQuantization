@@ -311,8 +311,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         b_quant = jnp.zeros((jax.local_device_count(),))
 
     if 'finetune' in config:
-      if step > (config.num_epochs + config.pretraining.num_epochs
-                 ) * steps_per_epoch:
+      if step >= reload_for_finetune:
         b_quant = jnp.zeros((jax.local_device_count(),))
 
     state, metrics = p_train_step(state, batch, rng_list[1:], b_quant)
@@ -329,7 +328,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
     # evalaute when constraints are fullfilled
     if 'act_mb' in config.quant_target and 'weight_mb' in config.quant_target:
-      if step > config.quant_target.eval_start:
+      if (step >= (config.pretraining.num_epochs * steps_per_epoch)) and (
+              step < reload_for_finetune):
         # evaluate network size after gradients are applied.
         metrics_size = p_eval_step(state, batch)
         weight_cond = (
@@ -399,9 +399,10 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       writer_eval.write_scalars(
           step + 1, {f'{key}': val for key, val in summary.items()})
       writer_eval.flush()
-      if (('act_mb' not in config.quant_target
-           ) and ('weight_mb' not in config.quant_target
-                  ) and (summary['accuracy'] > eval_best)):
+      if (((('act_mb' not in config.quant_target
+             ) and ('weight_mb' not in config.quant_target
+                    )) or (step > reload_for_finetune)) and (
+              summary['accuracy'] > eval_best)):
         save_checkpoint(state, workdir + '/best')
         logging.info('!!!! Saved new best model with accuracy %.4f',
                      summary['accuracy'])
