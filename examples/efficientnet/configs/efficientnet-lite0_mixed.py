@@ -73,7 +73,7 @@ def get_config():
   config.quant_target.weight_mb = 1731.0
   config.quant_target.weight_penalty = .0001
   config.quant_target.act_mode = 'sum'
-  config.quant_target.act_mb = 2523.0  # 2505.0
+  config.quant_target.act_mb = 2524.0  # 2505.0
   config.quant_target.act_penalty = .0001
   config.quant_target.size_div = 8. * 1000.
   config.quant_target.eval_start = 61000  # 31050
