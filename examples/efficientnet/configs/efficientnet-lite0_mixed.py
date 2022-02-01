@@ -51,7 +51,7 @@ def get_config():
 
   config.finetune = ml_collections.ConfigDict()
   config.finetune.warmup_epochs = 2.0
-  config.finetune.num_epochs = 10.0
+  config.finetune.num_epochs = 20.0
   config.finetune.learning_rate = 0.0000125
 
   config.num_epochs = 50
