@@ -343,7 +343,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         ))
         if weight_cond and act_cond:
           evaled_steps += 1
-          if (evaled_steps % 5) == 0:
+          if (evaled_steps % 1) == 0:
             eval_metrics = []
             # sync batch statistics across replicas
             state = sync_batch_stats(state)
