@@ -81,7 +81,7 @@ def get_config():
 
   config.quant = ml_collections.ConfigDict()
 
-  config.quant.bits = 3
+  config.quant.bits = 4
 
   config.quant.g_scale = 0.
 
