@@ -43,6 +43,25 @@ def round_gaussian_noise_bwd(res, g):
 
 round_gaussian_noise.defvjp(round_gaussian_noise_fwd, round_gaussian_noise_bwd)
 
+
+@jax.custom_vjp
+def round_uniform_noise(x, scale, off=False):
+  return jnp.where(off, x, jnp.round(x))
+
+
+def round_uniform_noise_fwd(x, scale, off=False):
+  return round_uniform_noise(x, scale), (x, scale)
+
+
+def round_uniform_noise_bwd(res, g):
+  (x, scale) = res
+  key = jax.random.PRNGKey(np.random.randint(0, 100000))
+  return (g * (1 + jax.random.uniform(key, shape=g.shape, minval=-.5,
+                                      maxval=.5) * scale), None, None)
+
+
+round_uniform_noise.defvjp(round_uniform_noise_fwd, round_uniform_noise_bwd)
+
 # Type 1: approximations of rounding.
 
 # ewgs https://arxiv.org/pdf/2104.00903.pdf
