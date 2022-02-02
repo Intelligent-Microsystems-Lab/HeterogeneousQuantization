@@ -122,7 +122,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         mean_rgb=config.mean_rgb, std_rgb=config.stddev_rgb,
         crop=config.crop_padding, augment_name=config.augment_name)
     eval_iter = input_pipeline.create_input_iter(
-        dataset_builder, config.eval_batch_size, config.image_size,
+        dataset_builder, local_batch_size, config.image_size,
         dtype=jnp.float32, train=False, cache=config.cache,
         mean_rgb=config.mean_rgb, std_rgb=config.stddev_rgb,
         crop=config.crop_padding, augment_name=config.augment_name)
