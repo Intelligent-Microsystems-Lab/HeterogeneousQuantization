@@ -220,7 +220,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     state = TrainState.create(
         apply_fn=state.apply_fn,
         params={'params': pre_state['params']['params'],
-                'quant_params': pre_state.params['quant_params']},
+                'quant_params': pre_state.params['params']['quant_params']},
         tx=state.tx,
         batch_stats=pre_state['batch_stats'],
         weight_size=pre_state.weight_size,
