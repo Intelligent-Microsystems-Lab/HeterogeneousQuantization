@@ -50,7 +50,7 @@ def get_config():
   config.cache = True
 
   # Load pretrained weights.
-  config.pretrained = "gs://imagenet_clemens/enet_homogenous/efficientnet-lite0_bits_3/best"
+  config.pretrained = "gs://imagenet_clemens/enet_homogenous/efficientnet-lite0_bits_5/best"
   # "../../pretrained_efficientnet/enet-lite0_best"
   # "../../pretrained_efficientnet/efficientnet-lite0"
 
