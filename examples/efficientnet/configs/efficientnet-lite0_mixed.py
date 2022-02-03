@@ -52,7 +52,7 @@ def get_config():
   # Load pretrained weights.
   config.pretrained = None  # "../../pretrained_efficientnet/enet-lite0_best"
   # "../../pretrained_efficientnet/efficientnet-lite0"
-  config.pretrained_quant = "gs://imagenet_clemens/enet_homogenous/efficientnet-lite0_bits_3/best"
+  config.pretrained_quant = "gs://imagenet_clemens/enet_homogenous/efficientnet-lite0_bits_4/best"
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.
