@@ -86,6 +86,26 @@ round_ewgs.defvjp(round_ewgs_fwd, round_ewgs_bwd)
 
 
 @jax.custom_vjp
+def round_acos(x, scale, off=False):
+  return jnp.where(off, x, jnp.round(x))
+
+
+def round_acos_fwd(x, scale, off=False):
+  return round_acos(x, scale), (x, scale)
+
+
+def round_acos_bwd(res, g):
+  (x, scale) = res
+
+  modulator = .5 * jnp.sin(jnp.pi * (x - jnp.round(x)))
+
+  return (g * (1 + scale * modulator), None, None)
+
+
+round_acos.defvjp(round_acos_fwd, round_acos_bwd)
+
+
+@jax.custom_vjp
 def round_tanh(x, scale, off=False, alpha_scale=1.):
   return jnp.where(off, x, jnp.round(x))
 

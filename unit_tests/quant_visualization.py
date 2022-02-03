@@ -16,6 +16,7 @@ from quant import (  # noqa: E402
     parametric_d_xmax,
 
     round_ewgs,
+    round_acos,
     round_tanh,
     round_invtanh,
     round_psgd,
@@ -88,9 +89,10 @@ def vis_surrogate(sur_fn):
 
 # vis_surrogate(passthrough)
 # vis_surrogate(round_ewgs)
-# vis_surrogate(round_tanh)
+vis_surrogate(round_tanh)
+vis_surrogate(round_acos)
 # vis_surrogate(round_invtanh)
-vis_surrogate(round_psgd)
+# vis_surrogate(round_psgd)
 
 
 # MixedPrecision DNN visualization -- Surrogate
