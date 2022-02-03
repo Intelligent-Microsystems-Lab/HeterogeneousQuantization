@@ -60,10 +60,8 @@ def get_config():
 
   config.quant_target = ml_collections.ConfigDict()
 
-  config.quant_target.weight_mb = .0
   config.quant_target.weight_penalty = .0
   config.quant_target.act_mode = 'sum'
-  config.quant_target.act_mb = .0
   config.quant_target.act_penalty = .0
   config.quant_target.size_div = 8. * 1000.
   config.quant_target.eval_start = .0
