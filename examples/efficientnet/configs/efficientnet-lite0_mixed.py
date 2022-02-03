@@ -44,23 +44,14 @@ def get_config():
   config.nesterov = True
   config.smoothing = .1
 
-  config.pretraining = ml_collections.ConfigDict()
-  config.pretraining.warmup_epochs = 2.0
-  config.pretraining.num_epochs = 25.0
-  config.pretraining.learning_rate = 0.00125
-
-  config.finetune = ml_collections.ConfigDict()
-  config.finetune.warmup_epochs = 2.0
-  config.finetune.num_epochs = 20.0
-  config.finetune.learning_rate = 0.0000125
-
   config.num_epochs = 50
   config.log_every_steps = 256
 
   config.cache = True
 
   # Load pretrained weights.
-  config.pretrained = "../../pretrained_efficientnet/enet-lite0_best"
+  config.pretrained = "gs://imagenet_clemens/enet_homogenous/efficientnet-lite0_bits_4/best"
+  # "../../pretrained_efficientnet/enet-lite0_best"
   # "../../pretrained_efficientnet/efficientnet-lite0"
 
   # If num_train_steps==-1 then the number of training steps is calculated from

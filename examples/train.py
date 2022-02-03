@@ -135,14 +135,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
   if config.num_train_steps == -1:
     num_steps = int(steps_per_epoch * config.num_epochs)
-    reload_for_finetune = num_steps + 1
-    if 'pretraining' in config:
-      num_steps += int(steps_per_epoch * config.pretraining.num_epochs)
-      reload_for_finetune = num_steps + 1
-    if 'finetune' in config:
-      num_steps += int(steps_per_epoch * config.finetune.num_epochs)
   else:
-    reload_for_finetune = config.num_train_steps + 1
     num_steps = config.num_train_steps
 
   val_or_test = "validation" if "imagenet" in config.dataset else "test"
@@ -289,14 +282,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   for step, batch in zip(range(int(step_offset),
                                int(num_steps)), train_iter):
 
-    if step == reload_for_finetune:
-      if eval_best == -1.:
-        raise Exception('No checkpoint found with constraints fullfilled...')
-      state = jax_utils.unreplicate(state)
-      state = restore_checkpoint(state, workdir + '/best')
-      state = jax_utils.replicate(state)
-      logging.info('Starting finetuning, restored best checkpoint...')
-
     rng_list = jax.random.split(rng, jax.local_device_count() + 1)
     rng = rng_list[0]
 
@@ -305,14 +290,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       b_quant = jnp.ones((jax.local_device_count(),))
     else:
       b_quant = jnp.zeros((jax.local_device_count(),))
-
-    if 'pretraining' in config:
-      if step < config.pretraining.num_epochs * steps_per_epoch:
-        b_quant = jnp.zeros((jax.local_device_count(),))
-
-    if 'finetune' in config:
-      if step >= reload_for_finetune:
-        b_quant = jnp.zeros((jax.local_device_count(),))
 
     state, metrics = p_train_step(state, batch, rng_list[1:], b_quant)
 
@@ -328,40 +305,38 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
     # evalaute when constraints are fullfilled
     if 'act_mb' in config.quant_target and 'weight_mb' in config.quant_target:
-      if (step >= (config.pretraining.num_epochs * steps_per_epoch)) and (
-              step < reload_for_finetune):
-        # evaluate network size after gradients are applied.
-        metrics_size = p_eval_step(state, batch)
-        weight_cond = (
-            metrics_size['weight_size'].mean() <= config.quant_target.weight_mb
-        )
-        act_cond = (((config.quant_target.act_mode == 'max'
-                      ) and (
-            metrics_size['act_size_max'].mean() <= config.quant_target.act_mb)
-        ) or ((config.quant_target.act_mode == 'sum') and (
-            metrics_size['act_size_sum'].mean() <= config.quant_target.act_mb)
-        ))
-        if weight_cond and act_cond:
-          evaled_steps += 1
-          if (evaled_steps % 1) == 0:
-            eval_metrics = []
-            # sync batch statistics across replicas
-            state = sync_batch_stats(state)
-            for _ in range(steps_per_eval):
-              eval_batch = next(eval_iter)
-              size_metrics = p_eval_step(state, eval_batch)
-              eval_metrics.append(size_metrics)
-            eval_metrics = common_utils.get_metrics(eval_metrics)
-            # # Debug
-            # eval_metrics = common_utils.stack_forest(eval_metrics)
-            summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
-            if summary['accuracy'] > eval_best:
-              save_checkpoint(state, workdir + '/best')
-              logging.info('!!! Saved new best model with accuracy %.4f weight'
-                           'size %.4f max act %.4f sum act %.4f',
-                           summary['accuracy'], summary['weight_size'],
-                           summary['act_size_max'], summary['act_size_sum'])
-              eval_best = summary['accuracy']
+      # evaluate network size after gradients are applied.
+      metrics_size = p_eval_step(state, batch)
+      weight_cond = (
+          metrics_size['weight_size'].mean() <= config.quant_target.weight_mb
+      )
+      act_cond = (((config.quant_target.act_mode == 'max'
+                    ) and (
+          metrics_size['act_size_max'].mean() <= config.quant_target.act_mb)
+      ) or ((config.quant_target.act_mode == 'sum') and (
+          metrics_size['act_size_sum'].mean() <= config.quant_target.act_mb)
+      ))
+      if weight_cond and act_cond:
+        evaled_steps += 1
+        if (evaled_steps % 5) == 0:
+          eval_metrics = []
+          # sync batch statistics across replicas
+          state = sync_batch_stats(state)
+          for _ in range(steps_per_eval):
+            eval_batch = next(eval_iter)
+            size_metrics = p_eval_step(state, eval_batch)
+            eval_metrics.append(size_metrics)
+          eval_metrics = common_utils.get_metrics(eval_metrics)
+          # # Debug
+          # eval_metrics = common_utils.stack_forest(eval_metrics)
+          summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
+          if summary['accuracy'] > eval_best:
+            save_checkpoint(state, workdir + '/best')
+            logging.info('!!! Saved new best model with accuracy %.4f weight'
+                         'size %.4f max act %.4f sum act %.4f',
+                         summary['accuracy'], summary['weight_size'],
+                         summary['act_size_max'], summary['act_size_sum'])
+            eval_best = summary['accuracy']
 
     if config.get('log_every_steps'):
       train_metrics.append(metrics)
@@ -401,7 +376,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       writer_eval.flush()
       if (((('act_mb' not in config.quant_target
              ) and ('weight_mb' not in config.quant_target
-                    )) or (step > reload_for_finetune)) and (
+                    ))) and (
               summary['accuracy'] > eval_best)):
         save_checkpoint(state, workdir + '/best')
         logging.info('!!!! Saved new best model with accuracy %.4f',

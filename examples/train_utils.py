@@ -111,12 +111,6 @@ def create_penalty_fn(config: ml_collections.ConfigDict, steps_per_epoch: int):
   regimes = []
   transition_points = []
 
-  if 'pretraining' in config:
-    regimes.append(optax.constant_schedule(0.))
-    transition_points.append(
-        epoch_counter + config.pretraining.num_epochs * steps_per_epoch)
-    epoch_counter += config.pretraining.num_epochs * steps_per_epoch
-
   # ramp up
   regimes.append(optax.linear_schedule(
       init_value=0.01, end_value=1,
@@ -130,12 +124,6 @@ def create_penalty_fn(config: ml_collections.ConfigDict, steps_per_epoch: int):
   transition_points.append(epoch_counter + 0.5 * config.num_epochs
                            * steps_per_epoch)
   epoch_counter += 0.5 * config.num_epochs * steps_per_epoch
-
-  if 'finetune' in config:
-    regimes.append(optax.constant_schedule(0.))
-    transition_points.append(
-        epoch_counter + config.finetune.num_epochs * steps_per_epoch)
-    epoch_counter += config.finetune.num_epochs * steps_per_epoch
 
   return optax.join_schedules(
       schedules=regimes,
@@ -154,36 +142,6 @@ def create_learning_rate_fn(
     epoch_counter = 0
     regimes = []
     transition_points = []
-
-    if 'pretraining' in config:
-      base_learning_rate = (config.pretraining.learning_rate
-                            * config.batch_size / 256.)
-
-      # warm up
-      if 'warmup_epochs' in config.pretraining:
-        regimes.append(
-            optax.linear_schedule(
-                init_value=0., end_value=base_learning_rate,
-                transition_steps=(config.pretraining.warmup_epochs
-                                  * steps_per_epoch))
-        )
-        transition_points.append(
-            epoch_counter + config.pretraining.warmup_epochs * steps_per_epoch)
-        epoch_counter += config.pretraining.warmup_epochs * steps_per_epoch
-
-      # cosine
-      regimes.append(
-          optax.cosine_decay_schedule(
-              init_value=base_learning_rate,
-              decay_steps=(config.pretraining.num_epochs
-                           - config.pretraining.warmup_epochs)
-              * steps_per_epoch)
-      )
-      transition_points.append(epoch_counter + (config.pretraining.num_epochs
-                               - config.pretraining.warmup_epochs)
-                               * steps_per_epoch)
-      epoch_counter += (config.pretraining.num_epochs
-                        - config.pretraining.warmup_epochs) * steps_per_epoch
 
     base_learning_rate = config.learning_rate * config.batch_size / 256.
 
@@ -210,35 +168,6 @@ def create_learning_rate_fn(
         * steps_per_epoch)
     epoch_counter += (config.num_epochs
                       - config.warmup_epochs) * steps_per_epoch
-
-    if 'finetune' in config:
-      base_learning_rate = (config.finetune.learning_rate
-                            * config.batch_size / 256.)
-
-      # warm up
-      if 'warmup_epochs' in config.finetune:
-        regimes.append(
-            optax.linear_schedule(
-                init_value=0., end_value=base_learning_rate,
-                transition_steps=(config.finetune.warmup_epochs
-                                  * steps_per_epoch))
-        )
-        transition_points.append(
-            epoch_counter + config.finetune.warmup_epochs * steps_per_epoch)
-        epoch_counter += config.finetune.warmup_epochs * steps_per_epoch
-
-      # cosine
-      regimes.append(
-          optax.cosine_decay_schedule(
-              init_value=base_learning_rate,
-              decay_steps=(config.finetune.num_epochs
-                           - config.finetune.warmup_epochs) * steps_per_epoch)
-      )
-      transition_points.append(
-          epoch_counter + (config.finetune.num_epochs
-                           - config.finetune.warmup_epochs) * steps_per_epoch)
-      epoch_counter += (config.finetune.num_epochs
-                        - config.finetune.warmup_epochs) * steps_per_epoch
 
     schedule_fn = optax.join_schedules(
         schedules=regimes,
