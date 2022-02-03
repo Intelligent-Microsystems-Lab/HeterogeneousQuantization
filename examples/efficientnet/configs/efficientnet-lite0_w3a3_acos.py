@@ -50,6 +50,7 @@ def get_config():
 
   # Load pretrained weights.
   config.pretrained = "../../pretrained_efficientnet/enet-lite0_best"
+  config.pretrained_quant = None
   # "../../pretrained_efficientnet/efficientnet-lite0"
 
   # If num_train_steps==-1 then the number of training steps is calculated from
