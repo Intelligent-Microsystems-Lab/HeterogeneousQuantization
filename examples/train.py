@@ -25,6 +25,7 @@ import input_pipeline
 import models
 
 from flax.training import common_utils
+from flax.training import checkpoints
 
 import jax
 import jax.numpy as jnp
