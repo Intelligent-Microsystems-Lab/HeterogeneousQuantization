@@ -215,7 +215,16 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
              config.quant.bits)) + ')')
 
   if config.pretrained_quant:
-    state = restore_checkpoint(state, config.pretrained_quant)
+    pre_state = checkpoints.restore_checkpoint(config.pretrained_quant, None)
+    state = TrainState.create(
+        apply_fn=state.apply_fn,
+        params={'params': pre_state['params']['params'],
+                'quant_params': pre_state.params['quant_params']},
+        tx=state.tx,
+        batch_stats=pre_state['batch_stats'],
+        weight_size=pre_state.weight_size,
+        act_size=pre_state.act_size,
+    )
 
   state = restore_checkpoint(state, workdir)
   # step_offset > 0 if restarting from checkpoint
