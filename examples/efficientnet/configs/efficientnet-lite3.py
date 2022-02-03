@@ -35,6 +35,7 @@ def get_config():
 
   # Load pretrained weights.
   config.pretrained = "../../pretrained_efficientnet/efficientnet-lite3"
+  config.pretrained_quant = None
 
   config.optimizer = 'rmsprop'
   config.learning_rate = 0.016  # 0.0001
