@@ -214,6 +214,9 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         ) / (config.quant.a_bits if 'a_bits' in config.quant else
              config.quant.bits)) + ')')
 
+  if config.pretrained_quant:
+    state = restore_checkpoint(state, config.pretrained_quant)
+
   state = restore_checkpoint(state, workdir)
   # step_offset > 0 if restarting from checkpoint
   step_offset = int(state.step)
