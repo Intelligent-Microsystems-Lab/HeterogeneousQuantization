@@ -34,7 +34,7 @@ def get_config():
   config.augment_name = 'plain'
 
   config.optimizer = 'rmsprop'
-  config.learning_rate = 0.00125
+  config.learning_rate = 0.0000125 #  0.00125
   config.lr_boundaries_scale = None
   config.warmup_epochs = 2.0
   config.momentum = 0.9
