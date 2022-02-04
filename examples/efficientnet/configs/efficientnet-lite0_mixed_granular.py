@@ -36,20 +36,13 @@ def get_config():
   config.optimizer = 'rmsprop'
   config.learning_rate = 0.0000125  # 0.0001
   config.lr_boundaries_scale = None
-  config.warmup_epochs = 10.0
+  config.warmup_epochs = 2.0
   config.momentum = 0.9
   config.batch_size = 1024
+  config.eval_batch_size = 4096
   config.weight_decay = 0.00005
   config.nesterov = True
   config.smoothing = .1
-
-  config.pretraining = ml_collections.ConfigDict()
-  config.pretraining.num_epochs = 15.0
-  config.pretraining.learning_rate = 0.00125
-
-  config.finetune = ml_collections.ConfigDict()
-  config.finetune.num_epochs = 10.0
-  config.finetune.learning_rate = 0.0001
 
   config.num_epochs = 50
   config.log_every_steps = 256
@@ -57,8 +50,9 @@ def get_config():
   config.cache = True
 
   # Load pretrained weights.
-  config.pretrained = "../../pretrained_efficientnet/enet-lite0_best"
+  config.pretrained = None  # "../../pretrained_efficientnet/enet-lite0_best"
   # "../../pretrained_efficientnet/efficientnet-lite0"
+  config.pretrained_quant = "gs://imagenet_clemens/enet-lite0_pre/efficientnet-lite0_mixed_bits_5"
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.
@@ -70,11 +64,11 @@ def get_config():
   config.quant_target.weight_mb = 1731.0
   config.quant_target.weight_penalty = .0001
   config.quant_target.act_mode = 'sum'
-  config.quant_target.act_mb = 2505.0
+  config.quant_target.act_mb = 2524.0  # 2505.0
   config.quant_target.act_penalty = .0001
   config.quant_target.size_div = 8. * 1000.
   config.quant_target.eval_start = 61000  # 31050
-  config.quant_target.update_every = 1
+  config.quant_target.update_every = 5
 
   config.quant = ml_collections.ConfigDict()
 
