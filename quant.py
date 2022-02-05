@@ -22,6 +22,23 @@ def get_noise(x: Array, percentage: float, rng: PRNGKey) -> Array:
   )
 
 
+@jax.custom_vjp
+def round_ste(x, scale, off=False):
+  return jnp.where(off, x, jnp.round(x))
+
+
+def round_ste_fwd(x, scale, off=False):
+  return round_ste(x, scale), (x, scale)
+
+
+def round_ste_bwd(res, g):
+  (x, scale) = res
+  return (g, None, None)
+
+
+round_ste.defvjp(round_ste_fwd, round_ste_bwd)
+
+
 #
 # Rounding with different backward passes
 #
