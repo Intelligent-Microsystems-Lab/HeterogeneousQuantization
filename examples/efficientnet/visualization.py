@@ -304,6 +304,7 @@ enet0_mixed = {
 
 
 enet0_lr_best = {
+    2: '',
     3: '9nwVcMdPRRGJtjDjrZpCeg',
     4: 'kX80UjhnQxWdwEdzQDTNzQ',
     5: 'KMwHB3liQM2WR7jSzE7nNQ',
@@ -668,6 +669,15 @@ competitors = {
     # },
 }
 
+sur_grads_tb = {"STE" : "YZvB0grsQBi37EVBD7mI1Q",
+"Gaussian" : "gNXpasOlQuavXt7UzAlFnw",
+"Uniform": "mOKsq40BQX2KDflZYW7t9w",
+"PSGD" : "v1KWCVXPSKuxlHW2jF7FjA",
+"EWGS" : "DDH4jzTqRluvOFgUEXzYvw",
+"Tanh" : "IVFE3f5mSNuPiL0AT44Z0Q",
+"InvTanh" : "xsO3b5FoQNKe5w2roo666w",
+"Acos" : "jOGi7zWKSEy6R3ZA1bty9A",
+}
 
 sur_grads = ["STE,Gaussian,Uniform,PSGD,EWGS,Tanh,InvTanh,Acos",
              "0.65640,0.65800,0.66260,0.65710,0.66550,0.66620,0.67090,0.65770",
@@ -691,6 +701,22 @@ sur_grads = ["STE,Gaussian,Uniform,PSGD,EWGS,Tanh,InvTanh,Acos",
              "0.65820,0.65710,0.65450,0.65760,0.65530,0.65980,0.66520,0.66060",
              "0.66130,0.65070,0.65660,0.65840,0.67150,0.66540,0.66390,0.65610",
              ]
+
+
+def get_times_rel_ste():
+
+  experiment = tb.data.experimental.ExperimentFromDev(sur_grads_tb['STE'])
+
+  try:
+    df = experiment.get_scalars()
+  except grpc.RpcError as rpc_error:
+    print('Couldn\'t fetch experiment: ' + experiment_id + ' got \
+        error: ' + str(rpc_error))
+    return None
+
+  import pdb; pdb.set_trace()
+  data = df[df['run'] == 'eval']
+  return data[data['tag'] == 'accuracy']['value'].max()
 
 
 def plot_surrogate():
@@ -737,6 +763,9 @@ def plot_surrogate():
              linewidths=5, s=840, color='green')
 
   plt.xticks(base_x / 2, names, rotation='horizontal')
+
+  times = get_times_rel_ste()
+
 
   plt.legend(
       bbox_to_anchor=(0.5, 1.2),
