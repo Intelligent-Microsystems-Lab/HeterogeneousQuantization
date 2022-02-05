@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 import tensorboard as tb
 from packaging import version
 import grpc
@@ -669,15 +670,15 @@ competitors = {
     # },
 }
 
-sur_grads_tb = {"STE" : "YZvB0grsQBi37EVBD7mI1Q",
-"Gaussian" : "gNXpasOlQuavXt7UzAlFnw",
-"Uniform": "mOKsq40BQX2KDflZYW7t9w",
-"PSGD" : "v1KWCVXPSKuxlHW2jF7FjA",
-"EWGS" : "DDH4jzTqRluvOFgUEXzYvw",
-"Tanh" : "IVFE3f5mSNuPiL0AT44Z0Q",
-"InvTanh" : "xsO3b5FoQNKe5w2roo666w",
-"Acos" : "jOGi7zWKSEy6R3ZA1bty9A",
-}
+sur_grads_tb = {"STE": "g3EVmBo2Q46JQlyLfzzfkg",
+                "Gaussian": "kg86vUopRXWjfVZ9mY1DwQ",
+                "Uniform": "7czMCk7rQN2t8Hzc5xkNRA",
+                "PSGD": "9xzZuWVxQ3GUOqBzBD2i7g",
+                "EWGS": "x4O1lzXmRbOyAxV7JtoE1g",
+                "Tanh": "fExUVAqnQMWlA2uqbPLN8A",
+                "InvTanh": "NxmL7DdIREOOWiJVGJB1Qg",
+                "Acos": "gvma2fO9RAOrrPLNmHVuwg",
+                }
 
 sur_grads = ["STE,Gaussian,Uniform,PSGD,EWGS,Tanh,InvTanh,Acos",
              "0.65640,0.65800,0.66260,0.65710,0.66550,0.66620,0.67090,0.65770",
@@ -705,18 +706,26 @@ sur_grads = ["STE,Gaussian,Uniform,PSGD,EWGS,Tanh,InvTanh,Acos",
 
 def get_times_rel_ste():
 
-  experiment = tb.data.experimental.ExperimentFromDev(sur_grads_tb['STE'])
+  times_list = []
+  names_list = []
 
-  try:
-    df = experiment.get_scalars()
-  except grpc.RpcError as rpc_error:
-    print('Couldn\'t fetch experiment: ' + experiment_id + ' got \
-        error: ' + str(rpc_error))
-    return None
+  for key, value in sur_grads_tb.items():
+    experiment = tb.data.experimental.ExperimentFromDev(value)
 
-  import pdb; pdb.set_trace()
-  data = df[df['run'] == 'eval']
-  return data[data['tag'] == 'accuracy']['value'].max()
+    try:
+      df = experiment.get_scalars()
+    except grpc.RpcError as rpc_error:
+      print('Couldn\'t fetch experiment: ' + value + ' got \
+          error: ' + str(rpc_error))
+      return None
+
+    data = df[df['run'] == 'train']
+    times = data[data['tag'] == 'steps_per_second']['value']
+    times = times[times > times.mean()]  # discarding first step and eval steps
+    times_list.append(1 / times.mean())
+    names_list.append(key)
+
+  return 1 - times_list[0] / np.array(times_list)
 
 
 def plot_surrogate():
@@ -734,21 +743,7 @@ def plot_surrogate():
 
   font_size = 23
 
-  fig, ax = plt.subplots(figsize=(15, 9))
-
-  ax.spines["top"].set_visible(False)
-  ax.spines["right"].set_visible(False)
-
-  ax.xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
-  ax.yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
-
-  for axis in ['top', 'bottom', 'left', 'right']:
-    ax.spines[axis].set_linewidth(5)
-
-  for tick in ax.xaxis.get_major_ticks():
-    tick.label1.set_fontweight('bold')
-  for tick in ax.yaxis.get_major_ticks():
-    tick.label1.set_fontweight('bold')
+  fig, ax = plt.subplots(figsize=(16.5, 8.5))
 
   ax.scatter(x / 2, y, marker='x', linewidths=5,
              s=180, color='blue', label='Observations')
@@ -762,19 +757,63 @@ def plot_surrogate():
   ax.scatter(base_x / 2, mu - sigma, marker='_',
              linewidths=5, s=840, color='green')
 
-  plt.xticks(base_x / 2, names, rotation='horizontal')
+  plt.xticks(base_x / 2 + .1, names, rotation='horizontal')
 
-  times = get_times_rel_ste()
-
+  handles, labels = ax.get_legend_handles_labels()
+  handles.append(mpatches.Patch(color='m', label='Compute Overhead'))
 
   plt.legend(
+      handles=handles,
       bbox_to_anchor=(0.5, 1.2),
       loc="upper center",
-      ncol=3,
+      ncol=4,
       frameon=False,
       prop={'weight': 'bold', 'size': font_size}
   )
+
+  times = get_times_rel_ste()
+  # times = np.array([0.00000000e+00, 4.57459557e-01, 4.45819267e-01,
+  #     2.40027758e-04,
+  #     1.25836929e-02, 1.25226535e-01, 1.49267876e-01, 1.08655595e-01])
+
+  ax2 = ax.twinx()
+  ax2.bar(base_x / 2 + .2, times * 100, width=.1,
+          color='m', edgecolor='black', linewidth=3.)
+  ax2.set_yscale('log')
+
+  ax.spines["top"].set_visible(False)
+  # ax.spines["right"].set_visible(False)
+
+  ax.xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
+  ax.yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
+
+  for axis in ['top', 'bottom', 'left', 'right']:
+    ax.spines[axis].set_linewidth(5)
+
+  for tick in ax.xaxis.get_major_ticks():
+    tick.label1.set_fontweight('bold')
+  for tick in ax.yaxis.get_major_ticks():
+    tick.label1.set_fontweight('bold')
+
+  ax2.spines["top"].set_visible(False)
+  # ax2.spines["right"].set_visible(False)
+
+  ax2.xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
+  ax2.yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
+
+  for axis in ['top', 'bottom', 'left', 'right']:
+    ax2.spines[axis].set_linewidth(5)
+
+  for tick in ax2.xaxis.get_major_ticks():
+    tick.label1.set_fontweight('bold')
+  for tick in ax2.yaxis.get_major_ticks():
+    tick.label1.set_fontweight('bold')
+
+  [label.set_fontweight('bold') for label in ax2.get_yticklabels()]
+
   ax.set_ylabel("Eval Accuracy (%)", fontsize=font_size, fontweight='bold')
+  ax2.set_ylabel("Compute Overhead w.r.t. STE (log %)",
+                 fontsize=font_size, fontweight='bold')
   plt.tight_layout()
   plt.savefig('figures/surrogate_grads.png')
   plt.close()
@@ -992,7 +1031,7 @@ if __name__ == '__main__':
   print("TensorBoard version: ", tb.__version__)
 
   plot_surrogate()
-  plot_comparison('figures/overview.png')
+  # plot_comparison('figures/overview.png')
 
   # # df_dynamic_lr = table(enet0_dynamic_lr)
   # df_static_lr = table_lr(enet0_static_lr)
