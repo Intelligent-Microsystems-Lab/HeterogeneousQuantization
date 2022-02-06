@@ -637,21 +637,21 @@ competitors = {
     #     'alpha': 1.,
     # },
 
-    'mixed_resnet18': {
-        # https://arxiv.org/abs/1905.11452
-        'eval_err': [0.2992],
-        'size_mb': np.array([5.4]),
-        'name': 'Mixed Precision DNNs ResNet18',
-        'alpha': .15,
-    },
+    # 'mixed_resnet18': {
+    #     # https://arxiv.org/abs/1905.11452
+    #     'eval_err': [0.2992],
+    #     'size_mb': np.array([5.4]),
+    #     'name': 'Mixed Precision DNNs ResNet18',
+    #     'alpha': .15,
+    # },
 
-    'mixed_mobilev2': {
-        # https://arxiv.org/abs/1905.11452
-        'eval_err': [0.3026],
-        'size_mb': np.array([1.55]),
-        'name': 'Mixed Precision DNNs MobileNetV2',
-        'alpha': .15,
-    },
+    # 'mixed_mobilev2': {
+    #     # https://arxiv.org/abs/1905.11452
+    #     'eval_err': [0.3026],
+    #     'size_mb': np.array([1.55]),
+    #     'name': 'Mixed Precision DNNs MobileNetV2',
+    #     'alpha': .15,
+    # },
 
     # 'haq_mobilev2': {
     #     # https://arxiv.org/pdf/1811.08886.pdf
@@ -771,10 +771,10 @@ def plot_surrogate():
       prop={'weight': 'bold', 'size': font_size}
   )
 
-  times = get_times_rel_ste()
-  # times = np.array([0.00000000e+00, 4.57459557e-01, 4.45819267e-01,
-  #     2.40027758e-04,
-  #     1.25836929e-02, 1.25226535e-01, 1.49267876e-01, 1.08655595e-01])
+  # times = get_times_rel_ste()
+  times = np.array([0.00000000e+00, 4.57459557e-01, 4.45819267e-01,
+                    2.40027758e-04, 1.25836929e-02, 1.25226535e-01, 1.49267876e-01,
+                    1.08655595e-01])
 
   ax2 = ax.twinx()
   ax2.bar(base_x / 2 + .2, times * 100, width=.1,
@@ -962,11 +962,15 @@ def plot_comparison(name):
 
   plot_line(ax, enet0_lr_best)
 
-  xv = [1.1886465, 1.337227313, 1.485808125, 1.634388938, 1.78296975,
-        2.080131375, 2.228712188, 2.377293, 2.525873813, 2.674454625,
-        2.823035438, 2.97161625]
-  yv = [0.6473, 0.4253, 0.3882, 0.3739, 0.3638, 0.3314,
-        0.3241, 0.3184, 0.3068, 0.286, 0.2812, 0.2795]
+  # xv = [1.1886465, 1.337227313, 1.485808125, 1.634388938, 1.78296975,
+  #       2.080131375, 2.228712188, 2.377293, 2.525873813, 2.674454625,
+  #       2.823035438, 2.97161625]
+  # yv = [0.6473, 0.4253, 0.3882, 0.3739, 0.3638, 0.3314,
+  #       0.3241, 0.3184, 0.3068, 0.286, 0.2812, 0.2795]
+
+  xv = 577.0 * np.array([2.25, 2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0])
+  yv = 1 - np.array([0.5492, 0.5864, 0.6286, 0.6758,
+                    0.6888, 0.6891, 0.7135, 0.7241])
   ax.plot(xv, yv, marker='x', label="Mixed EfficientNet0",
           ms=20, markeredgewidth=5, linewidth=5, color='red')
   # plot_line(ax, enet0_dynamic_lsq)
@@ -1031,7 +1035,7 @@ if __name__ == '__main__':
   print("TensorBoard version: ", tb.__version__)
 
   plot_surrogate()
-  # plot_comparison('figures/overview.png')
+  plot_comparison('figures/overview.png')
 
   # # df_dynamic_lr = table(enet0_dynamic_lr)
   # df_static_lr = table_lr(enet0_static_lr)
