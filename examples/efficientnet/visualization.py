@@ -604,6 +604,7 @@ competitors = {
     },
 
     'qil_resnet18': {
+        # We did not quantize the first and the last layers as was done in
         # https://arxiv.org/abs/1808.05779
         'eval_err': [1 - 0.704, 1 - 0.701, 1 - 0.692, 1 - 0.657],
         'size_mb': np.array([5, 4, 3, 1]) * 11679912 / 8_000_000,
@@ -613,6 +614,7 @@ competitors = {
     },
 
     'qil_resnet34': {
+    # We did not quantize the first and the last layers as was done in
         # https://arxiv.org/abs/1808.05779
         'eval_err': [1 - 0.737, 1 - 0.737, 1 - 0.731, 1 - 0.706],
         'size_mb': np.array([5, 4, 3, 1]) * 25557032 / 8_000_000,
@@ -968,7 +970,7 @@ def plot_comparison(name):
   # yv = [0.6473, 0.4253, 0.3882, 0.3739, 0.3638, 0.3314,
   #       0.3241, 0.3184, 0.3068, 0.286, 0.2812, 0.2795]
 
-  xv = 577.0 * np.array([2.25, 2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0])
+  xv = 0.577 * np.array([2.25, 2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0])
   yv = 1 - np.array([0.5492, 0.5864, 0.6286, 0.6758,
                     0.6888, 0.6891, 0.7135, 0.7241])
   ax.plot(xv, yv, marker='x', label="Mixed EfficientNet0",
