@@ -599,6 +599,15 @@ competitors = {
         'alpha': .25,
     },
 
+
+    'psgd_resnet18': {
+        # https://arxiv.org/pdf/2005.11035.pdf
+        'eval_err': np.array([1 - 0.7013, 1 - 0.6951, 1 - 0.6345]) * 100,
+        'size_mb': np.array([8, 6, 4]) * 11679912 / 8_000_000,
+        'name': 'PSGD ResNet18',
+        'alpha': .25,
+    },
+
     'ewgs_resnet34': {
         # https://arxiv.org/abs/2104.00903
         'eval_err': np.array([1 - 0.615, 1 - 0.714, 1 - 0.733,
