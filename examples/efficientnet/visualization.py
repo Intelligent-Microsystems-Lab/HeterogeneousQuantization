@@ -533,7 +533,7 @@ competitors = {
         'eval_err': [1 - 0.722, 1 - 0.753, 1 - 0.765, 1 - 0.767],
         'size_mb': np.array([2, 3, 4, 5]) * 25636712 / 8_000_000,
         'name': 'PACT ResNet50',
-        'alpha': 1.,
+        'alpha': .25,
         # no first and last layer quant
     },
 
@@ -542,7 +542,7 @@ competitors = {
         'eval_err': [1 - 0.644, 1 - 0.681, 1 - 0.692, 1 - 0.698],
         'size_mb': np.array([2, 3, 4, 5]) * 11679912 / 8_000_000,
         'name': 'PACT ResNet18',
-        'alpha': .15,
+        'alpha': .25,
         # no first and last layer quant
     },
 
@@ -551,7 +551,7 @@ competitors = {
         'eval_err': [1 - 0.6139, 1 - 0.6884, 1 - 0.7125],
         'size_mb': np.array([4, 5, 6]) * 3300000 / 8_000_000,
         'name': 'PACT MobileNetV2',
-        'alpha': .15,
+        'alpha': .25,
     },
 
     'dsq_resnet18': {
@@ -559,7 +559,7 @@ competitors = {
         'eval_err': [1 - 0.6517, 1 - 0.6866, 1 - 0.6956],
         'size_mb': np.array([2, 3, 4]) * 11679912 / 8_000_000,
         'name': 'DSQ ResNet18',
-        'alpha': .15,
+        'alpha': .25,
     },
 
     'lsq_resnet18': {
@@ -567,7 +567,7 @@ competitors = {
         'eval_err': [1 - 0.676, 1 - 0.702, 1 - 0.711, 1 - 0.711],
         'size_mb': np.array([2, 3, 4, 8]) * 11679912 / 8_000_000,
         'name': 'LSQ ResNet18',
-        'alpha': .15,
+        'alpha': .25,
     },
 
     'lsqp_resnet18': {
@@ -575,7 +575,7 @@ competitors = {
         'eval_err': [1 - 0.668, 1 - 0.694, 1 - 0.708],
         'size_mb': np.array([2, 3, 4]) * 11679912 / 8_000_000,
         'name': 'LSQ+ ResNet18',
-        'alpha': .15,
+        'alpha': .25,
     },
 
     'lsqp_enet0': {
@@ -584,7 +584,7 @@ competitors = {
         # number might be incorrect
         'size_mb': np.array([2, 3, 4]) * 5330571 / 8_000_000,
         'name': 'LSQ+ EfficientNet-B0',
-        'alpha': 1.,
+        'alpha': .25,
     },
 
     'ewgs_resnet18': {
@@ -592,7 +592,7 @@ competitors = {
         'eval_err': [1 - 0.553, 1 - 0.67, 1 - 0.697, 1 - 0.706],
         'size_mb': np.array([1, 2, 3, 4]) * 11679912 / 8_000_000,
         'name': 'EWGS ResNet18',
-        'alpha': .15,
+        'alpha': .25,
     },
 
     'ewgs_resnet34': {
@@ -600,26 +600,26 @@ competitors = {
         'eval_err': [1 - 0.615, 1 - 0.714, 1 - 0.733, 1 - 0.739],
         'size_mb': np.array([1, 2, 3, 4]) * 25557032 / 8_000_000,
         'name': 'EWGS ResNet34',
-        'alpha': .15,
+        'alpha': .25,
     },
 
     'qil_resnet18': {
         # We did not quantize the first and the last layers as was done in
         # https://arxiv.org/abs/1808.05779
         'eval_err': [1 - 0.704, 1 - 0.701, 1 - 0.692, 1 - 0.657],
-        'size_mb': np.array([5, 4, 3, 1]) * 11679912 / 8_000_000,
+        'size_mb': np.array([5, 4, 3, 2]) * 11679912 / 8_000_000,
         'name': 'QIL ResNet18',
-        'alpha': .15,
+        'alpha': .25,
         # no first and last layer quant
     },
 
     'qil_resnet34': {
-    # We did not quantize the first and the last layers as was done in
+        # We did not quantize the first and the last layers as was done in
         # https://arxiv.org/abs/1808.05779
         'eval_err': [1 - 0.737, 1 - 0.737, 1 - 0.731, 1 - 0.706],
-        'size_mb': np.array([5, 4, 3, 1]) * 25557032 / 8_000_000,
+        'size_mb': np.array([5, 4, 3, 2]) * 25557032 / 8_000_000,
         'name': 'QIL ResNet34',
-        'alpha': .15,
+        'alpha': .25,
         # no first and last layer quant
     },
 
@@ -775,8 +775,8 @@ def plot_surrogate():
 
   # times = get_times_rel_ste()
   times = np.array([0.00000000e+00, 4.57459557e-01, 4.45819267e-01,
-                    2.40027758e-04, 1.25836929e-02, 1.25226535e-01, 1.49267876e-01,
-                    1.08655595e-01])
+                    2.40027758e-04, 1.25836929e-02, 1.25226535e-01,
+                    1.49267876e-01, 1.08655595e-01])
 
   ax2 = ax.twinx()
   ax2.bar(base_x / 2 + .2, times * 100, width=.1,
