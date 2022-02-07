@@ -20,7 +20,7 @@ enets_fp = {
 }
 
 enets_int8 = {
-    'label': 'EfficientNets INT8 (0-4)',
+    'label': 'EfficientNet-Lite INT8',
     # 'color': 'g',
     4652008: 'L2wx6i0dRly0LTG3sA9qpg',
     5416680: 'oXPvlPrSQkKyZlivUrby7w',
@@ -981,6 +981,7 @@ def plot_comparison(name):
   # plot_mixed(ax, enet0_mixed_8)
   # plot_mixed(ax, enet0_mixed_4)
   ax.set_xscale('log')
+  plt.xticks([1, 2, 5, 10], ['1', '2', '5', '10'])
   ax.set_xlabel("Network Size (MB)", fontsize=font_size, fontweight='bold')
   ax.set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
   plt.legend(
