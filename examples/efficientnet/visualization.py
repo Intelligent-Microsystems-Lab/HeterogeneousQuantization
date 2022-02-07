@@ -622,7 +622,8 @@ competitors = {
     'qil_resnet34': {
         # We did not quantize the first and the last layers as was done in
         # https://arxiv.org/abs/1808.05779
-        'eval_err': np.array([1 - 0.737, 1 - 0.737, 1 - 0.731, 1 - 0.706]),
+        'eval_err': np.array([1 - 0.737, 1 - 0.737, 1 - 0.731,
+                              1 - 0.706]) * 100,
         'size_mb': np.array([5, 4, 3, 2]) * 25557032 / 8_000_000,
         'name': 'QIL ResNet34',
         'alpha': .25,
