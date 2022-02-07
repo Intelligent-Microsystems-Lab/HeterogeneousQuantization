@@ -530,7 +530,8 @@ competitors = {
 
     'pact_resnet50': {
         # https://arxiv.org/pdf/1805.06085.pdf
-        'eval_err': [1 - 0.722, 1 - 0.753, 1 - 0.765, 1 - 0.767],
+        'eval_err': np.array([1 - 0.722, 1 - 0.753, 1 - 0.765,
+                              1 - 0.767]) * 100,
         'size_mb': np.array([2, 3, 4, 5]) * 25636712 / 8_000_000,
         'name': 'PACT ResNet50',
         'alpha': .25,
@@ -539,7 +540,8 @@ competitors = {
 
     'pact_resnet18': {
         # https://arxiv.org/pdf/1805.06085.pdf
-        'eval_err': [1 - 0.644, 1 - 0.681, 1 - 0.692, 1 - 0.698],
+        'eval_err': np.array([1 - 0.644, 1 - 0.681, 1 - 0.692,
+                              1 - 0.698]) * 100,
         'size_mb': np.array([2, 3, 4, 5]) * 11679912 / 8_000_000,
         'name': 'PACT ResNet18',
         'alpha': .25,
@@ -548,7 +550,7 @@ competitors = {
 
     'pact_mobilev2': {
         # https://arxiv.org/pdf/1811.08886.pdf
-        'eval_err': [1 - 0.6139, 1 - 0.6884, 1 - 0.7125],
+        'eval_err': np.array([1 - 0.6139, 1 - 0.6884, 1 - 0.7125]) * 100,
         'size_mb': np.array([4, 5, 6]) * 3300000 / 8_000_000,
         'name': 'PACT MobileNetV2',
         'alpha': .25,
@@ -556,7 +558,7 @@ competitors = {
 
     'dsq_resnet18': {
         # https://arxiv.org/abs/1908.05033
-        'eval_err': [1 - 0.6517, 1 - 0.6866, 1 - 0.6956],
+        'eval_err': np.array([1 - 0.6517, 1 - 0.6866, 1 - 0.6956]) * 100,
         'size_mb': np.array([2, 3, 4]) * 11679912 / 8_000_000,
         'name': 'DSQ ResNet18',
         'alpha': .25,
@@ -564,7 +566,8 @@ competitors = {
 
     'lsq_resnet18': {
         # https://arxiv.org/abs/1902.08153
-        'eval_err': [1 - 0.676, 1 - 0.702, 1 - 0.711, 1 - 0.711],
+        'eval_err': np.array([1 - 0.676, 1 - 0.702, 1 - 0.711,
+                              1 - 0.711]) * 100,
         'size_mb': np.array([2, 3, 4, 8]) * 11679912 / 8_000_000,
         'name': 'LSQ ResNet18',
         'alpha': .25,
@@ -572,7 +575,7 @@ competitors = {
 
     'lsqp_resnet18': {
         # https://arxiv.org/abs/2004.09576
-        'eval_err': [1 - 0.668, 1 - 0.694, 1 - 0.708],
+        'eval_err': np.array([1 - 0.668, 1 - 0.694, 1 - 0.708]) * 100,
         'size_mb': np.array([2, 3, 4]) * 11679912 / 8_000_000,
         'name': 'LSQ+ ResNet18',
         'alpha': .25,
@@ -580,7 +583,7 @@ competitors = {
 
     'lsqp_enet0': {
         # https://arxiv.org/abs/2004.09576
-        'eval_err': [1 - 0.491, 1 - 0.699, 1 - 0.738],
+        'eval_err': np.array([1 - 0.491, 1 - 0.699, 1 - 0.738]) * 100,
         # number might be incorrect
         'size_mb': np.array([2, 3, 4]) * 5330571 / 8_000_000,
         'name': 'LSQ+ EfficientNet-B0',
@@ -589,7 +592,8 @@ competitors = {
 
     'ewgs_resnet18': {
         # https://arxiv.org/abs/2104.00903
-        'eval_err': [1 - 0.553, 1 - 0.67, 1 - 0.697, 1 - 0.706],
+        'eval_err': np.array([1 - 0.553, 1 - 0.67, 1 - 0.697,
+                              1 - 0.706]) * 100,
         'size_mb': np.array([1, 2, 3, 4]) * 11679912 / 8_000_000,
         'name': 'EWGS ResNet18',
         'alpha': .25,
@@ -597,7 +601,8 @@ competitors = {
 
     'ewgs_resnet34': {
         # https://arxiv.org/abs/2104.00903
-        'eval_err': [1 - 0.615, 1 - 0.714, 1 - 0.733, 1 - 0.739],
+        'eval_err': np.array([1 - 0.615, 1 - 0.714, 1 - 0.733,
+                              1 - 0.739]) * 100,
         'size_mb': np.array([1, 2, 3, 4]) * 25557032 / 8_000_000,
         'name': 'EWGS ResNet34',
         'alpha': .25,
@@ -606,7 +611,8 @@ competitors = {
     'qil_resnet18': {
         # We did not quantize the first and the last layers as was done in
         # https://arxiv.org/abs/1808.05779
-        'eval_err': [1 - 0.704, 1 - 0.701, 1 - 0.692, 1 - 0.657],
+        'eval_err': np.array([1 - 0.704, 1 - 0.701, 1 - 0.692,
+                              1 - 0.657]) * 100,
         'size_mb': np.array([5, 4, 3, 2]) * 11679912 / 8_000_000,
         'name': 'QIL ResNet18',
         'alpha': .25,
@@ -616,7 +622,7 @@ competitors = {
     'qil_resnet34': {
         # We did not quantize the first and the last layers as was done in
         # https://arxiv.org/abs/1808.05779
-        'eval_err': [1 - 0.737, 1 - 0.737, 1 - 0.731, 1 - 0.706],
+        'eval_err': np.array([1 - 0.737, 1 - 0.737, 1 - 0.731, 1 - 0.706]),
         'size_mb': np.array([5, 4, 3, 2]) * 25557032 / 8_000_000,
         'name': 'QIL ResNet34',
         'alpha': .25,
@@ -907,6 +913,9 @@ def plot_line(ax, res_dict):
         y.append(1 - acc_temp)
         x.append(key * res_dict['params'] / 8_000_000)
 
+  print(res_dict['label'])
+  print(x)
+  print(y)
   ax.plot(x, y, marker='x', label=label, ms=20, markeredgewidth=5, linewidth=5)
 
 
@@ -955,14 +964,24 @@ def plot_comparison(name):
 
   # Our own.
   # plot_line(ax, enets_fp32_t2)
-  plot_line(ax, enets_int8)
+  # plot_line(ax, enets_int8)
+  ax.plot([4.652008, 5.41668, 6.092072, 8.197096, 13.006568],
+          np.array([0.2452799677848816, 0.2303873896598816, 0.2221272587776184,
+                    0.2054443359375, 0.1907958984375]) * 100, marker='x',
+          label='EfficientNet-Lite0-4 INT8', ms=20, markeredgewidth=5,
+          linewidth=5)
 
   # plot_line(ax, enet0_dynamic_init_double_mean_t2)
   # plot_line(ax, enet0_static_init_double_mean_t2)
   # plot_line(ax, enet0_dynamic_init_gaussian_t2)
   # plot_line(ax, enet0_static_init_gaussian_t2)
 
-  plot_line(ax, enet0_lr_best)
+  ax.plot([1.744503, 2.326004, 2.907505, 3.489006, 4.070507, 4.652008],
+          np.array([0.36395263671875, 0.2801310420036316, 0.2576497197151184,
+                    0.2494099736213684, 0.2458088994026184,
+                    0.2452799677848816]) * 100, marker='x',
+          label='EfficientNet-Lite0 (3-8 Bits)', ms=20, markeredgewidth=5,
+          linewidth=5)
 
   # xv = [1.1886465, 1.337227313, 1.485808125, 1.634388938, 1.78296975,
   #       2.080131375, 2.228712188, 2.377293, 2.525873813, 2.674454625,
@@ -971,8 +990,8 @@ def plot_comparison(name):
   #       0.3241, 0.3184, 0.3068, 0.286, 0.2812, 0.2795]
 
   xv = 0.577 * np.array([2.25, 2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0])
-  yv = 1 - np.array([0.5492, 0.5864, 0.6286, 0.6758,
-                    0.6888, 0.6891, 0.7135, 0.7241])
+  yv = 100 - np.array([0.5492, 0.5864, 0.6286, 0.6758,
+                       0.6888, 0.6891, 0.7135, 0.7241]) * 100
   ax.plot(xv, yv, marker='x', label="Mixed EfficientNet0",
           ms=20, markeredgewidth=5, linewidth=5, color='red')
   # plot_line(ax, enet0_dynamic_lsq)
@@ -981,7 +1000,8 @@ def plot_comparison(name):
   # plot_mixed(ax, enet0_mixed_8)
   # plot_mixed(ax, enet0_mixed_4)
   ax.set_xscale('log')
-  plt.xticks([1.5, 2, 3, 5, 10], ['1.5', '2', '3', '5', '10'])
+  plt.xticks([1.5, 2, 3, 4, 5, 6, 7, 8, 9, 10], [
+             '1.5', '2', '3', '4', '5', '6', '7', '8', '9', '10'])
   ax.set_xlabel("Network Size (MB)", fontsize=font_size, fontweight='bold')
   ax.set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
   plt.legend(
