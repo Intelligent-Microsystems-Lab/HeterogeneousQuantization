@@ -981,7 +981,7 @@ def plot_comparison(name):
   # plot_mixed(ax, enet0_mixed_8)
   # plot_mixed(ax, enet0_mixed_4)
   ax.set_xscale('log')
-  plt.xticks([1, 2, 5, 10], ['1', '2', '5', '10'])
+  plt.xticks([1.5, 2, 3, 5, 10], ['1.5', '2', '3', '5', '10'])
   ax.set_xlabel("Network Size (MB)", fontsize=font_size, fontweight='bold')
   ax.set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
   plt.legend(
