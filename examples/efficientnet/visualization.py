@@ -297,7 +297,7 @@ sur_grads = ["STE,Gaussian,Uniform,PSGD,EWGS,Tanh,InvTanh,Acos",
              ]
 
 
-sur_grads_mixed = ["ste_psgd,ste_ewgs,ste_invtanh,psgd_ste,ewgs_ste,invtanh_ste,acos_ste,invtanh_ewgs,psgd_invtanh,ewgs_invtanh",
+sur_grads_mixed = ["STE_PSGD,STE_EWGS,STE_InvTanh,PSGD_STE,EWGS_STE,InvTanh_STE,Acos_STE,InvTanh_EWGS,PSGD_InvTanh,EWGS_InvTanh",
 "0.6605,0.6577,0.6589,0.6554,0.6673,0.6628,0.6585,0.6582,0.6649,0.6619",
 "0.6548,0.6519,0.6564,0.6574,0.6562,0.6616,0.6582,0.6616,0.6569,0.6654",
 "0.6621,0.6584,0.6598,0.6611,0.6657,0.6642,0.6589,0.6639,0.6634,0.6657",
@@ -562,6 +562,7 @@ def plot_comparison(name):
 
 def plot_surrogate_mix():
   names = sur_grads_mixed[0].split(',')  # [x.split('_')[0] for x in sur_grads_mixed[0].split(',')]
+  names = ['A: ' + x.split('_')[0] + ' W: ' + x.split('_')[1] for x in names]
   data = np.stack([x.split(',') for x in sur_grads_mixed[1:]])
   y = [float(x) * 100 if x != '' else np.nan for x in data.flatten(order='F')]
   x = np.repeat(np.arange(len(names)) + 1, 20)
@@ -643,6 +644,7 @@ def plot_surrogate_mix():
 
   [label.set_fontweight('bold') for label in ax2.get_yticklabels()]
 
+  plt.xticks(rotation = 45)
   ax.set_ylabel("Eval Accuracy (%)", fontsize=font_size, fontweight='bold')
   ax2.set_ylabel("Compute Overhead w.r.t. STE (log %)",
                  fontsize=font_size, fontweight='bold')
