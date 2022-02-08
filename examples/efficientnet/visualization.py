@@ -340,7 +340,7 @@ def get_times_rel_ste():
     times_list.append(1 / times.mean())
     names_list.append(key)
 
-  return 1 - times_list[0] / np.array(times_list)
+  return times_list# 1 - times_list[0] / np.array(times_list)
 
 
 def plot_surrogate():
@@ -558,11 +558,46 @@ def plot_comparison(name):
   plt.close()
 
 
+sur_grads_mixed_tb = {
+'STE_PSGD': '2c6z1WUlSyGfxbkNenD9cA',
+'STE_EWGS': 'PI0wmaaNSZqCNfXqsqSk7A',
+'STE_InvTanh': 'xdQtJvCeRl6HavRpCjsbeg',
+'PSGD_STE': 'kJBi3rklT4uEnzAzESATqg',
+'EWGS_STE': 'A5OrYLJNS7SybC1FLjCWUQ',
+'InvTanh_STE': 'PQFx6n8FQECgVzLVV5dMGw',
+'Acos_STE': 'wF4mfk4lQSq14OHGWjJPlA',
+'InvTanh_EWGS': '2k1wt76LTvimNWo07GtQlQ',
+'PSGD_InvTanh': 'qj3Eow1uRxWWqaz0gKXW6Q',
+'EWGS_InvTanh': 'vJyM25oIRbGcKSDueA3dAg',
+}
 
+def get_times_rel_ste_mixed(ste_val):
+
+  times_list = []
+  names_list = []
+
+  for key, value in sur_grads_mixed_tb.items():
+    experiment = tb.data.experimental.ExperimentFromDev(value)
+
+    try:
+      df = experiment.get_scalars()
+    except grpc.RpcError as rpc_error:
+      print('Couldn\'t fetch experiment: ' + value + ' got \
+          error: ' + str(rpc_error))
+      return None
+
+    data = df[df['run'] == 'train']
+    times = data[data['tag'] == 'steps_per_second']['value']
+    times = times[times > times.mean()]  # discarding first step and eval steps
+    times_list.append(1 / times.mean())
+    names_list.append(key)
+
+  return 1 - ste_val / np.array(times_list)
 
 def plot_surrogate_mix():
+
   names = sur_grads_mixed[0].split(',')  # [x.split('_')[0] for x in sur_grads_mixed[0].split(',')]
-  names = ['A: ' + x.split('_')[0] + ' W: ' + x.split('_')[1] for x in names]
+  names = ['W: ' + x.split('_')[0] + ' A: ' + x.split('_')[1] for x in names]
   data = np.stack([x.split(',') for x in sur_grads_mixed[1:]])
   y = [float(x) * 100 if x != '' else np.nan for x in data.flatten(order='F')]
   x = np.repeat(np.arange(len(names)) + 1, 20)
@@ -590,13 +625,12 @@ def plot_surrogate_mix():
   ax.scatter(base_x / 2, mu - sigma, marker='_',
              linewidths=5, s=840, color='green')
 
+
+  plt.axhline(y=65.741000, color='orange', linestyle='--', label = 'STE')
   plt.xticks(base_x / 2 + .1, names, rotation='horizontal')
 
-  handles, labels = ax.get_legend_handles_labels()
-  handles.append(mpatches.Patch(color='m', label='Compute Overhead'))
 
   plt.legend(
-      handles=handles,
       bbox_to_anchor=(0.5, 1.2),
       loc="upper center",
       ncol=4,
@@ -604,16 +638,7 @@ def plot_surrogate_mix():
       prop={'weight': 'bold', 'size': font_size}
   )
 
-  # times = get_times_rel_ste()
-  # times = np.array([0.00000000e+00, 4.57459557e-01, 4.45819267e-01,
-  #                  2.40027758e-04, 1.25836929e-02, 1.25226535e-01,
-  #                  1.49267876e-01, 1.08655595e-01])
-
-  ax2 = ax.twinx()
-  #ax2.bar(base_x / 2 + .2, times * 100, width=.1,
-  #        color='m', edgecolor='black', linewidth=3.)
-  #ax2.set_yscale('log')
-
+ 
   ax.spines["top"].set_visible(False)
   # ax.spines["right"].set_visible(False)
 
@@ -628,26 +653,13 @@ def plot_surrogate_mix():
   for tick in ax.yaxis.get_major_ticks():
     tick.label1.set_fontweight('bold')
 
-  ax2.spines["top"].set_visible(False)
-  # ax2.spines["right"].set_visible(False)
 
-  ax2.xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
-  ax2.yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
+  # [label.set_fontweight('bold') for label in ax.get_yticklabels()]
 
-  for axis in ['top', 'bottom', 'left', 'right']:
-    ax2.spines[axis].set_linewidth(5)
-
-  for tick in ax2.xaxis.get_major_ticks():
-    tick.label1.set_fontweight('bold')
-  for tick in ax2.yaxis.get_major_ticks():
-    tick.label1.set_fontweight('bold')
-
-  [label.set_fontweight('bold') for label in ax2.get_yticklabels()]
-
-  plt.xticks(rotation = 45)
+  # plt.xticks(rotation = 45)
   ax.set_ylabel("Eval Accuracy (%)", fontsize=font_size, fontweight='bold')
-  ax2.set_ylabel("Compute Overhead w.r.t. STE (log %)",
-                 fontsize=font_size, fontweight='bold')
+  #ax2.set_ylabel("Compute Overhead w.r.t. STE (log %)",
+  #               fontsize=font_size, fontweight='bold')
   plt.tight_layout()
   plt.savefig('figures/surrogate_grads_mixed.png')
   plt.close()
