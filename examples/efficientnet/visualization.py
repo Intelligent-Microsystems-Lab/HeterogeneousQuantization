@@ -626,8 +626,8 @@ def plot_surrogate_mix():
              linewidths=5, s=840, color='green')
 
 
-  plt.axhline(y=65.741000, color='orange', linestyle='--', label = 'STE')
-  plt.xticks(base_x / 2 + .1, names, rotation='horizontal')
+  plt.axhline(y=65.741000, color='orange', linestyle='--', label = 'STE', linewidths=5)
+  plt.xticks(base_x / 2 + .1, names, rotation=45)
 
 
   plt.legend(
