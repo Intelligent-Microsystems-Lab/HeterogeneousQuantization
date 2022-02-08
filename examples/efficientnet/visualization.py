@@ -613,21 +613,21 @@ def plot_surrogate_mix():
 
   fig, ax = plt.subplots(figsize=(16.5, 11.5))
 
-  ax.scatter(x / 2, y, marker='x', linewidths=5,
+  ax.scatter(x / 4, y, marker='x', linewidths=5,
              s=180, color='blue', label='Observations')
 
-  ax.scatter(base_x / 2, mu, marker='_', linewidths=5,
+  ax.scatter(base_x / 4, mu, marker='_', linewidths=5,
              s=840, color='red', label='Mean')
 
-  ax.scatter(base_x / 2, mu + sigma, marker='_', linewidths=5,
+  ax.scatter(base_x / 4, mu + sigma, marker='_', linewidths=5,
              s=840, color='green', label='Std. Dev.')
 
-  ax.scatter(base_x / 2, mu - sigma, marker='_',
+  ax.scatter(base_x / 4, mu - sigma, marker='_',
              linewidths=5, s=840, color='green')
 
 
   plt.axhline(y=65.741000, color='orange', linestyle='--', label = 'STE', linewidth=5)
-  plt.xticks(base_x / 2, names, rotation=45, horizontalalignment='right')
+  plt.xticks(base_x / 4, names, rotation=45, horizontalalignment='right')
 
 
   plt.legend(
