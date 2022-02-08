@@ -204,7 +204,7 @@ competitors = {
         # 'size_mb': np.array([8, 5, 4]) * 3300000 / 8_000_000,
 
 
-        'eval_err': np.array([1 - 0.7125, 1 - 0.6884, 1 - 0.6139]) * 100,
+        'eval_err': np.array([1 - 0.6139, 1 - 0.6884,  1 - 0.7125]) * 100,
         'size_mb': np.array([4, 5, 8]) * 3300000 / 8_000_000,
         'name': 'PROFIT MNasNet-A1',
         'alpha': .25,
