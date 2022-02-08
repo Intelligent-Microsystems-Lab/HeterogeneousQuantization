@@ -611,7 +611,7 @@ def plot_surrogate_mix():
 
   font_size = 23
 
-  fig, ax = plt.subplots(figsize=(16.5, 8.5))
+  fig, ax = plt.subplots(figsize=(16.5, 11.5))
 
   ax.scatter(x / 2, y, marker='x', linewidths=5,
              s=180, color='blue', label='Observations')
@@ -627,7 +627,7 @@ def plot_surrogate_mix():
 
 
   plt.axhline(y=65.741000, color='orange', linestyle='--', label = 'STE', linewidth=5)
-  plt.xticks(base_x / 2, names, rotation=45)
+  plt.xticks(base_x / 2, names, rotation=45, horizontalalignment='right')
 
 
   plt.legend(
@@ -640,7 +640,7 @@ def plot_surrogate_mix():
 
  
   ax.spines["top"].set_visible(False)
-  # ax.spines["right"].set_visible(False)
+  ax.spines["right"].set_visible(False)
 
   ax.xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
   ax.yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
