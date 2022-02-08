@@ -558,6 +558,7 @@ def plot_comparison(name):
   plt.close()
 
 
+# not used, runtime difference to STE looks odd.
 sur_grads_mixed_tb = {
 'STE_PSGD': '2c6z1WUlSyGfxbkNenD9cA',
 'STE_EWGS': 'PI0wmaaNSZqCNfXqsqSk7A',
@@ -571,28 +572,6 @@ sur_grads_mixed_tb = {
 'EWGS_InvTanh': 'vJyM25oIRbGcKSDueA3dAg',
 }
 
-def get_times_rel_ste_mixed(ste_val):
-
-  times_list = []
-  names_list = []
-
-  for key, value in sur_grads_mixed_tb.items():
-    experiment = tb.data.experimental.ExperimentFromDev(value)
-
-    try:
-      df = experiment.get_scalars()
-    except grpc.RpcError as rpc_error:
-      print('Couldn\'t fetch experiment: ' + value + ' got \
-          error: ' + str(rpc_error))
-      return None
-
-    data = df[df['run'] == 'train']
-    times = data[data['tag'] == 'steps_per_second']['value']
-    times = times[times > times.mean()]  # discarding first step and eval steps
-    times_list.append(1 / times.mean())
-    names_list.append(key)
-
-  return 1 - ste_val / np.array(times_list)
 
 def plot_surrogate_mix():
 
@@ -613,6 +592,8 @@ def plot_surrogate_mix():
 
   fig, ax = plt.subplots(figsize=(16.5, 11.5))
 
+  ax.axhline(y=65.741000, color='orange', linestyle='--', label = 'STE', linewidth=5)
+
   ax.scatter(x / 4, y, marker='x', linewidths=5,
              s=180, color='blue', label='Observations')
 
@@ -626,7 +607,7 @@ def plot_surrogate_mix():
              linewidths=5, s=840, color='green')
 
 
-  plt.axhline(y=65.741000, color='orange', linestyle='--', label = 'STE', linewidth=5)
+  
   plt.xticks(base_x / 4, names, rotation=45, horizontalalignment='right')
 
 
