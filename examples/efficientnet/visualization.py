@@ -500,7 +500,7 @@ def plot_line(ax, res_dict):
 def plot_comparison(name):
   font_size = 23
 
-  fig, ax = plt.subplots(figsize=(20.5, 10.5))
+  fig, ax = plt.subplots(figsize=(24.5, 12.5))
 
   ax.spines["top"].set_visible(False)
   ax.spines["right"].set_visible(False)
