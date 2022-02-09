@@ -615,6 +615,8 @@ def plot_surrogate_mix():
 
   ax.axhline(y=65.741000, color='orange', linestyle='--', label = 'STE', linewidth=5)
 
+  ax.axhline(y=66.37000, color='purple', linestyle='--', label = 'EWGS', linewidth=5)
+
   
   plt.xticks(base_x / 4, names, rotation=45, horizontalalignment='right')
 
