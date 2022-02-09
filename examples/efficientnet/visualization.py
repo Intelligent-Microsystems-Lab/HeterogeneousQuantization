@@ -94,10 +94,11 @@ competitors = {
     },
 
     'lsqp_enet0': {
+        # this is efficient-b0 not lite (!)
         # https://arxiv.org/abs/2004.09576
         'eval_err': np.array([1 - 0.491, 1 - 0.699, 1 - 0.738]) * 100,
         # number might be incorrect
-        'size_mb': np.array([2, 3, 4]) * 4609992 / 8_000_000 + 0.16806400,
+        'size_mb': np.array([2, 3, 4]) * 5246532 / 8_000_000 + 0.16806400,
         'name': 'LSQ+ EfficientNet-B0',
         'alpha': .25,
     },
