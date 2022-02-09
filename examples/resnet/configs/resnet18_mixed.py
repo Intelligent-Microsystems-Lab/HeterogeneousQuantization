@@ -1,19 +1,19 @@
 # IMSL Lab - University of Notre Dame
 # Author: Clemens JS Schaefer
 # Originally copied from https://github.com/google/flax/tree/main/examples
+
 """Default Hyperparameter configuration."""
 
 import ml_collections
 from functools import partial
-
-from quant import parametric_d_xmax
+from quant import parametric_d_xmax, gaussian_init, percentile_init
 
 
 def get_config():
   """Get the default hyperparameter configuration."""
   config = ml_collections.ConfigDict()
 
-  config.seed = 1349194
+  config.seed = 203853699
 
   # As defined in the `models` module.
   config.model = 'ResNet18'
@@ -31,24 +31,28 @@ def get_config():
   # Edge models use inception-style MEAN & STDDEV for better post-quantization.
   config.mean_rgb = [127.0, 127.0, 127.0]
   config.stddev_rgb = [128.0, 128.0, 128.0]
+  config.augment_name = 'plain'
 
-  config.optimizer = 'sgd'
-  config.learning_rate = 0.0002
+  config.optimizer = 'rmsprop'
+  config.learning_rate = 0.0000125  # 0.0001
   config.lr_boundaries_scale = None
-  config.warmup_epochs = 5.0
+  config.warmup_epochs = 2.0
   config.momentum = 0.9
-  config.batch_size = 2048
-  config.weight_decay = 0.0001
+  config.batch_size = 1024
+  config.eval_batch_size = 4096
+  config.weight_decay = 0.00001
   config.nesterov = True
-  config.smoothing = .0
+  config.smoothing = .1
 
-  config.num_epochs = 50.0
-  config.log_every_steps = 100
+  config.num_epochs = 50
+  config.log_every_steps = 256
 
   config.cache = True
-  config.half_precision = False
 
-  config.pretrained = '../../pretrained_resnet/resnet18_v2'
+  # Load pretrained weights.
+  config.pretrained = None  # "../../pretrained_efficientnet/enet-lite0_best"
+  # "../../pretrained_efficientnet/efficientnet-lite0"
+  config.pretrained_quant = "gs://imagenet_clemens/resnet18_pre/resnet18_mixed_bits_5"
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.
@@ -57,45 +61,48 @@ def get_config():
 
   config.quant_target = ml_collections.ConfigDict()
 
-  config.quant_target.weight_mb = 5401
-  config.quant_target.weight_penalty = .005
-  config.quant_target.act_mode = 'max'
-  config.quant_target.act_mb = 381
-  config.quant_target.act_penalty = .005
+  config.quant_target.weight_mb = 4380.0
+  config.quant_target.weight_penalty = .0001
+  config.quant_target.act_mode = 'sum'
+  config.quant_target.act_mb = 763.0
+  config.quant_target.act_penalty = .0001
   config.quant_target.size_div = 8. * 1000.
-  config.quant_target.eval_start = 31050
-  config.quant_target.update_every = 1
+  config.quant_target.eval_start = 61000  # 31050
+  config.quant_target.update_every = 20  # every x steps d and xmax are updated
 
   config.quant = ml_collections.ConfigDict()
 
+  config.quant.a_bits = 4
   config.quant.w_bits = 4
-  config.quant.a_bits = 6
 
   config.quant.g_scale = 0.
 
+
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
-  config.quant.stem.weight = partial(parametric_d_xmax)
-  # no input quant in MixedDNN paper.
-  # config.quant.stem.act = partial(parametric_d_xmax, act=True)
-
-  config.quant.post_init = partial(
-      parametric_d_xmax, act=True, bitwidth_min=1, xmax_max=255)
+  config.quant.stem.weight = partial(
+      parametric_d_xmax, init_fn=gaussian_init, bitwidth_min=1)
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
-  config.quant.mbconv.weight = partial(parametric_d_xmax)
-  #config.quant.mbconv.act = partial(parametric_d_xmax, act=True, init_bits = 6)
-  config.quant.mbconv.nonl = partial(
-      parametric_d_xmax, act=True, bitwidth_min=1, xmax_max=255)
+  config.quant.mbconv.weight = partial(
+      parametric_d_xmax, init_fn=gaussian_init, bitwidth_min=1)
+  config.quant.mbconv.act = partial(parametric_d_xmax, act=True, init_fn=partial(
+      percentile_init, perc=99.9), bitwidth_min=1, d_max=8)
 
   # Average quant.
-  # config.quant.average = partial(parametric_d_xmax, act=True, init_bits = 6)
+  config.quant.average = partial(parametric_d_xmax, act=True, init_fn=partial(
+      percentile_init, perc=99.9), bitwidth_min=1, d_max=8)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
-  config.quant.dense.weight = partial(parametric_d_xmax)
-  # config.quant.dense.act = partial(parametric_d_xmax, act=True)
-  config.quant.dense.bias = partial(parametric_d_xmax)
+  config.quant.dense.weight = partial(
+      parametric_d_xmax, init_fn=gaussian_init, bitwidth_min=1)
+  config.quant.dense.act = partial(parametric_d_xmax, act=True, init_fn=partial(
+      percentile_init, perc=99.9), bitwidth_min=1, d_max=8)
+  config.quant.dense.bias = partial(
+      parametric_d_xmax, init_fn=gaussian_init, bitwidth_min=1)
+
+
 
   return config
