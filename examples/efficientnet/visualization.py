@@ -45,7 +45,7 @@ competitors = {
         # https://arxiv.org/pdf/1805.06085.pdf
         'eval_err': np.array([1 - 0.722, 1 - 0.753, 1 - 0.765,
                               1 - 0.767]) * 100,
-        'size_mb': np.array([2, 3, 4, 5]) * 25636712 / 8_000_000,
+        'size_mb': np.array([2, 3, 4, 5]) * 25503912 / 8_000_000 + 0.21248000,
         'name': 'PACT ResNet50',
         'alpha': .25,
         # no first and last layer quant
@@ -54,7 +54,7 @@ competitors = {
         # https://arxiv.org/pdf/1805.06085.pdf
         'eval_err': np.array([1 - 0.644, 1 - 0.681, 1 - 0.692,
                               1 - 0.698]) * 100,
-        'size_mb': np.array([2, 3, 4, 5]) * 11679912 / 8_000_000,
+        'size_mb': np.array([2, 3, 4, 5]) * 11679912 / 8_000_000 + 0.03840000,
         'name': 'PACT ResNet18',
         'alpha': .25,
         # no first and last layer quant
@@ -63,7 +63,7 @@ competitors = {
     'pact_mobilev2': {
         # https://arxiv.org/pdf/1811.08886.pdf
         'eval_err': np.array([1 - 0.6139, 1 - 0.6884, 1 - 0.7125]) * 100,
-        'size_mb': np.array([4, 5, 6]) * 3300000 / 8_000_000,
+        'size_mb': np.array([4, 5, 6]) * 3472041 / 8_000_000 + 0.13644800,
         'name': 'PACT MobileNetV2',
         'alpha': .25,
     },
@@ -71,7 +71,7 @@ competitors = {
     'dsq_resnet18': {
         # https://arxiv.org/abs/1908.05033
         'eval_err': np.array([1 - 0.6517, 1 - 0.6866, 1 - 0.6956]) * 100,
-        'size_mb': np.array([2, 3, 4]) * 11679912 / 8_000_000,
+        'size_mb': np.array([2, 3, 4]) * 11679912 / 8_000_000 + 0.03840000,
         'name': 'DSQ ResNet18',
         'alpha': .25,
     },
@@ -80,7 +80,7 @@ competitors = {
         # https://arxiv.org/abs/1902.08153
         'eval_err': np.array([1 - 0.676, 1 - 0.702, 1 - 0.711,
                               1 - 0.711]) * 100,
-        'size_mb': np.array([2, 3, 4, 8]) * 11679912 / 8_000_000,
+        'size_mb': np.array([2, 3, 4, 8]) * 11679912 / 8_000_000 + 0.03840000,
         'name': 'LSQ ResNet18',
         'alpha': .25,
     },
@@ -88,7 +88,7 @@ competitors = {
     'lsqp_resnet18': {
         # https://arxiv.org/abs/2004.09576
         'eval_err': np.array([1 - 0.668, 1 - 0.694, 1 - 0.708]) * 100,
-        'size_mb': np.array([2, 3, 4]) * 11679912 / 8_000_000,
+        'size_mb': np.array([2, 3, 4]) * 11679912 / 8_000_000 + 0.03840000,
         'name': 'LSQ+ ResNet18',
         'alpha': .25,
     },
@@ -97,7 +97,7 @@ competitors = {
         # https://arxiv.org/abs/2004.09576
         'eval_err': np.array([1 - 0.491, 1 - 0.699, 1 - 0.738]) * 100,
         # number might be incorrect
-        'size_mb': np.array([2, 3, 4]) * 5330571 / 8_000_000,
+        'size_mb': np.array([2, 3, 4]) * 4609992 / 8_000_000 + 0.16806400,
         'name': 'LSQ+ EfficientNet-B0',
         'alpha': .25,
     },
@@ -106,7 +106,7 @@ competitors = {
         # https://arxiv.org/abs/2104.00903
         'eval_err': np.array([1 - 0.553, 1 - 0.67, 1 - 0.697,
                               1 - 0.706]) * 100,
-        'size_mb': np.array([1, 2, 3, 4]) * 11679912 / 8_000_000,
+        'size_mb': np.array([1, 2, 3, 4]) * 11679912 / 8_000_000 + 0.03840000,
         'name': 'EWGS ResNet18',
         'alpha': .25,
     },
@@ -118,7 +118,7 @@ competitors = {
         # 'size_mb': np.array([8, 6, 4]) * 11679912 / 8_000_000,
 
         'eval_err': np.array([1 - 0.6345, 1 - 0.6951, 1 - 0.7013,]) * 100,
-        'size_mb': np.array([4, 6, 8]) * 11679912 / 8_000_000,
+        'size_mb': np.array([4, 6, 8]) * 11679912 / 8_000_000 + 0.03840000,
         'name': 'PSGD ResNet18',
         'alpha': .25,
     },
@@ -127,7 +127,7 @@ competitors = {
         # https://arxiv.org/abs/2104.00903
         'eval_err': np.array([1 - 0.615, 1 - 0.714, 1 - 0.733,
                               1 - 0.739]) * 100,
-        'size_mb': np.array([1, 2, 3, 4]) * 25557032 / 8_000_000,
+        'size_mb': np.array([1, 2, 3, 4]) * 21780648 / 8_000_000 + 0.06809600,
         'name': 'EWGS ResNet34',
         'alpha': .25,
     },
@@ -141,7 +141,7 @@ competitors = {
 
 
         'eval_err': np.array([1 - 0.657,  1 - 0.692, 1 - 0.701, 1 - 0.704,]) * 100,
-        'size_mb': np.array([2, 3, 4, 5]) * 11679912 / 8_000_000,
+        'size_mb': np.array([2, 3, 4, 5]) * 11679912 / 8_000_000 + 0.03840000,
         'name': 'QIL ResNet18*',
         'alpha': .25,
         # no first and last layer quant
@@ -156,7 +156,7 @@ competitors = {
 
 
         'eval_err': np.array([1 - 0.706, 1 - 0.731, 1 - 0.737, 1 - 0.737,]) * 100,
-        'size_mb': np.array([2, 3, 4, 5]) * 25557032 / 8_000_000,
+        'size_mb': np.array([2, 3, 4, 5]) * 21780648 / 8_000_000 + 0.06809600,
         'name': 'QIL ResNet34*',
         'alpha': .25,
         # no first and last layer quant
@@ -169,7 +169,7 @@ competitors = {
 
 
         'eval_err': np.array([1 - 0.6139, 1 - 0.6884, 1 - 0.7125, ]) * 100,
-        'size_mb': np.array([4, 5, 8]) * 3300000 / 8_000_000,
+        'size_mb': np.array([4, 5, 8]) * 4211113 / 8_000_000 + 0.08755200,
         'name': 'PROFIT MobileNetV1',
         'alpha': .25,
     },
@@ -181,7 +181,7 @@ competitors = {
 
 
         'eval_err': np.array([1 - 0.6139, 1 - 0.6884, 1 - 0.7125]) * 100,
-        'size_mb': np.array([4, 5, 8]) * 3300000 / 8_000_000,
+        'size_mb': np.array([4, 5, 8]) * 3506153 / 8_000_000 + 0.13644800,
         'name': 'PROFIT MobileNetV2',
         'alpha': .25,
     },
@@ -193,7 +193,7 @@ competitors = {
 
 
         'eval_err': np.array([1 - 0.6139, 1 - 0.6884, 1 - 0.7125,]) * 100,
-        'size_mb': np.array([4, 5, 8]) * 3300000 / 8_000_000,
+        'size_mb': np.array([4, 5, 8]) * 5459913 / 8_000_000 + 0.09760000,
         'name': 'PROFIT MobileNetV3',
         'alpha': .25,
     },
@@ -205,7 +205,7 @@ competitors = {
 
 
         'eval_err': np.array([1 - 0.6139, 1 - 0.6884,  1 - 0.7125]) * 100,
-        'size_mb': np.array([4, 5, 8]) * 3300000 / 8_000_000,
+        'size_mb': np.array([4, 5, 8]) * 3853550 / 8_000_000 + 0.13395200,
         'name': 'PROFIT MNasNet-A1',
         'alpha': .25,
     },
@@ -214,6 +214,7 @@ competitors = {
 
 competitors_bigger_act = {
     'hawqv2_squeeze': {
+        # activation bits 8 (uniform)
         # https://arxiv.org/abs/1911.03852
         'eval_err': [1 - 0.6838],
         'size_mb': np.array([1.07]),
@@ -231,6 +232,7 @@ competitors_bigger_act = {
     # },
 
     'mixed_resnet18': {
+        # activation budget 380 KB against 
         # https://arxiv.org/abs/1905.11452
         'eval_err': [0.2992],
         'size_mb': np.array([5.4]),
@@ -239,6 +241,7 @@ competitors_bigger_act = {
     },
 
     'mixed_mobilev2': {
+        # activation budget 570 KB against 
         # https://arxiv.org/abs/1905.11452
         'eval_err': [0.3026],
         'size_mb': np.array([1.55]),
@@ -247,6 +250,7 @@ competitors_bigger_act = {
     },
 
     'haq_mobilev2': {
+        # 
         # https://arxiv.org/pdf/1811.08886.pdf
         'eval_err': [1 - 0.6675, 1 - 0.7090, 1 - 0.7147],
         'size_mb': np.array([.95, 1.38, 1.79]),
@@ -255,6 +259,7 @@ competitors_bigger_act = {
     },
 
     'haq_resnet50': {
+        # not sure what weight budget is ...
         # https://arxiv.org/pdf/1811.08886.pdf
         'eval_err': [1 - 0.7063, 1 - 0.7530, 1 - 0.7614],
         'size_mb': np.array([6.30, 9.22, 12.14]),
@@ -592,7 +597,7 @@ def plot_surrogate_mix():
 
   fig, ax = plt.subplots(figsize=(16.5, 11.5))
 
-  ax.axhline(y=65.741000, color='orange', linestyle='--', label = 'STE', linewidth=5)
+
 
   ax.scatter(x / 4, y, marker='x', linewidths=5,
              s=180, color='blue', label='Observations')
@@ -606,6 +611,7 @@ def plot_surrogate_mix():
   ax.scatter(base_x / 4, mu - sigma, marker='_',
              linewidths=5, s=840, color='green')
 
+  ax.axhline(y=65.741000, color='orange', linestyle='--', label = 'STE', linewidth=5)
 
   
   plt.xticks(base_x / 4, names, rotation=45, horizontalalignment='right')
