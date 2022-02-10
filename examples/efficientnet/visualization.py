@@ -482,6 +482,7 @@ def plot_surrogate_mix():
   data = np.genfromtxt('figures/surrogate_mixed.csv',
                        delimiter=',', names=True)
   names = data.dtype.names
+  names = ['W: ' + x.split('_')[0] + ' A: ' + x.split('_')[1] for x in names]
   data = np.genfromtxt('figures/surrogate_mixed.csv',
                        delimiter=',', skip_header=1) * 100
   y = data.flatten(order='F')
