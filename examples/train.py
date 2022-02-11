@@ -188,6 +188,20 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
                             act_size=state.act_size,
                             quant_config=new_state['quant_config'])
 
+  if config.pretrained_quant:
+    pre_state = checkpoints.restore_checkpoint(config.pretrained_quant, state)
+    state = TrainState.create(
+        apply_fn=state.apply_fn,
+        params={'params': pre_state.params['params'],
+                'quant_params': pre_state.params['quant_params']},
+        tx=state.tx,
+        batch_stats=pre_state.batch_stats,
+        weight_size=pre_state.weight_size,
+        act_size=pre_state.act_size,
+        quant_config=state.quant_config,
+    )
+
+
   if len(state.weight_size) != 0:
     logging.info('Initial Network Weight Size in kB: ' + str(jnp.sum(jnp.array(
         jax.tree_util.tree_flatten(state.weight_size
@@ -214,19 +228,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
             jax.tree_util.tree_flatten(state.act_size)[0])
         ) / (config.quant.a_bits if 'a_bits' in config.quant else
              config.quant.bits)) + ')')
-
-  if config.pretrained_quant:
-    pre_state = checkpoints.restore_checkpoint(config.pretrained_quant, state)
-    state = TrainState.create(
-        apply_fn=state.apply_fn,
-        params={'params': pre_state.params['params'],
-                'quant_params': pre_state.params['quant_params']},
-        tx=state.tx,
-        batch_stats=pre_state.batch_stats,
-        weight_size=pre_state.weight_size,
-        act_size=pre_state.act_size,
-        quant_config=state.quant_config,
-    )
 
   state = restore_checkpoint(state, workdir)
   # step_offset > 0 if restarting from checkpoint
