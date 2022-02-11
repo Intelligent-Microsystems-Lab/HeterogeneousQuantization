@@ -201,7 +201,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         quant_config=state.quant_config,
     )
 
-
   if len(state.weight_size) != 0:
     logging.info('Initial Network Weight Size in kB: ' + str(jnp.sum(jnp.array(
         jax.tree_util.tree_flatten(state.weight_size

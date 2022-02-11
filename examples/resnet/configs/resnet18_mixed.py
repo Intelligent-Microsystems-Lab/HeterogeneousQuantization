@@ -77,7 +77,6 @@ def get_config():
 
   config.quant.g_scale = 0.
 
-
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
   config.quant.stem.weight = partial(
@@ -102,7 +101,5 @@ def get_config():
       percentile_init, perc=99.9), bitwidth_min=1, d_max=8)
   config.quant.dense.bias = partial(
       parametric_d_xmax, init_fn=gaussian_init, bitwidth_min=1)
-
-
 
   return config
