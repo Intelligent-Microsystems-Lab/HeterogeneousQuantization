@@ -466,7 +466,7 @@ def plot_comparison(name):
   plt.legend(
       bbox_to_anchor=(0,1.02,1,0.2),
       loc="lower left",
-      ncol=5,
+      ncol=4,
       mode="expand",
       borderaxespad=0,
       frameon=False,
