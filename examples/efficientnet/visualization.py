@@ -468,6 +468,7 @@ def plot_comparison(name):
       loc="lower left",
       ncol=5,
       mode="expand",
+      borderaxespad=0,
       frameon=False,
       prop={'weight': 'bold', 'size': font_size}
   )
