@@ -374,25 +374,25 @@ def plot_bits(config: ml_collections.ConfigDict, workdir: str):
         ax[0].bar(pos, v[0], color=v[3], label=color_to_label[v[3]])
         pos += 1
 
-    pos = 1
-    for k, v in enet_xmax.items():
-      skip = False
-      for iu in omit:
-        if iu in k:
-          skip = True
-      if not skip:
-        ax[1].bar(pos, v[0], color=v[2], label=color_to_label[v[2]])
-        pos += 1
+    # pos = 1
+    # for k, v in enet_xmax.items():
+    #   skip = False
+    #   for iu in omit:
+    #     if iu in k:
+    #       skip = True
+    #   if not skip:
+    #     ax[1].bar(pos, v[0], color=v[2], label=color_to_label[v[2]])
+    #     pos += 1
 
-    pos = 1
-    for k, v in enet_d.items():
-      skip = False
-      for iu in omit:
-        if iu in k:
-          skip = True
-      if not skip:
-        ax[2].bar(pos, v[0], color=v[2], label=color_to_label[v[2]])
-        pos += 1
+    # pos = 1
+    # for k, v in enet_d.items():
+    #   skip = False
+    #   for iu in omit:
+    #     if iu in k:
+    #       skip = True
+    #   if not skip:
+    #     ax[2].bar(pos, v[0], color=v[2], label=color_to_label[v[2]])
+    #     pos += 1
 
     ax[2].set_xlabel("#quantization", fontsize=font_size, fontweight='bold')
     ax[2].set_ylabel("step size", fontsize=font_size, fontweight='bold')
@@ -403,8 +403,8 @@ def plot_bits(config: ml_collections.ConfigDict, workdir: str):
 
     handles, labels = plt.gca().get_legend_handles_labels()
     by_label = OrderedDict(zip(labels, handles))
-    plt.legend(by_label.values(), by_label.keys(), bbox_to_anchor=(1.04, 0),
-               loc="lower left", borderaxespad=0, ncol=1,
+    plt.legend(by_label.values(), by_label.keys(), bbox_to_anchor=(0,1.02,1,0.2),
+               loc="lower left", borderaxespad=0, ncol=5, mode='expand',
                frameon=False,
                prop={'weight': 'bold', 'size': font_size})
 
@@ -413,8 +413,8 @@ def plot_bits(config: ml_collections.ConfigDict, workdir: str):
     plt.close()
 
   plot_fig([], 'efficientnet/figures/bitwidths_all.png')
-  plot_fig(['/act'], 'efficientnet/figures/bitwidths_w.png')
-  plot_fig(['/weight', '/bias'], 'efficientnet/figures/bitwidths_a.png')
+  #plot_fig(['/act'], 'efficientnet/figures/bitwidths_w.png')
+  #plot_fig(['/weight', '/bias'], 'efficientnet/figures/bitwidths_a.png')
 
 
 def main(argv):

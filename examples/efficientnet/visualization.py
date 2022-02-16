@@ -439,12 +439,24 @@ def plot_comparison(name):
           label='EfficientNet-Lite0 (3-8 Bits)', ms=20, markeredgewidth=5,
           linewidth=5)
 
-  xv = 0.577 * np.array([2.25, 2.5, 2.75, 3.0, 3.25,
-                        3.5, 3.75, 4.0]) + 0.16806400 / 2
-  yv = 100 - np.array([0.5492, 0.5864, 0.6286, 0.6758,
-                       0.6888, 0.6891, 0.7135, 0.7241]) * 100
-  ax.plot(xv, yv, marker='x', label="Mixed EfficientNet-Lite0",
+  # 
+
+
+
+  xv = np.array([1.294680054, 1.700428101, 1.832848022, 2.013916138, 2.142487061, 2.306124023]) + 0.16806400 / 2
+  yv = 100 - np.array([0.6106770635, 0.679361999, 0.6814778447, 0.6925455928 ,0.7124023438, 0.7234700322]) * 100
+  ax.plot(xv, yv, marker='x', label="Mixed EfficientNet-Lite0 STE",
           ms=20, markeredgewidth=5, linewidth=5, color='red')
+
+  xv = np.array([1.153934082, 1.294906128, 1.417925903, 1.719146118, 1.874620117, 1.982543091, 2.144371094, 2.290263916]) + 0.16806400 / 2
+  yv = 100 - np.array([0.46598, 0.607747376, 0.654622376, 0.6850585938, 0.693033874, 0.7049153447, 0.7202148438, 0.7312825322]) * 100
+  ax.plot(xv, yv, marker='x', label="Mixed EfficientNet-Lite0 Gradient Scaling",
+          ms=20, markeredgewidth=5, linewidth=5, color='green')
+
+  xv = np.array([2.919978271, 3.278890381, 3.50227417, 3.538114014, 4.284223145, 4.539738281, 4.855490234, 5.462999512, 5.81514502]) + 0.03840000 / 2
+  yv = 100 - np.array([0.5455729365, 0.5716145635, 0.6126301885, 0.6258137822, 0.6560872197, 0.6430664063, 0.6513671875, 0.6647135615, 0.6805012822]) * 100
+  ax.plot(xv, yv, marker='x', label="Mixed ResNet18 STE",
+          ms=20, markeredgewidth=5, linewidth=5, color='violet')
 
   ax.set_xscale('log')
   plt.xticks([1.5, 2, 3, 4, 5, 6, 7, 8, 9, 10], [
@@ -452,9 +464,10 @@ def plot_comparison(name):
   ax.set_xlabel("Network Size (MB)", fontsize=font_size, fontweight='bold')
   ax.set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
   plt.legend(
-      bbox_to_anchor=(1., 1.),
-      loc="upper left",
-      ncol=1,
+      bbox_to_anchor=(0,1.02,1,0.2),
+      loc="lower left",
+      ncol=5,
+      mode="expand",
       frameon=False,
       prop={'weight': 'bold', 'size': font_size}
   )
