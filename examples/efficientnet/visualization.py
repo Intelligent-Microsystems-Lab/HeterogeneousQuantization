@@ -185,7 +185,7 @@ competitors_bigger_act = {
         'eval_err': np.array([0.2992])*100,
         'size_mb': np.array([5.4]),
         'name': 'Mixed Precision DNNs ResNet18',
-        'alpha': .15,
+        'alpha': 1,
     },
 
     'mixed_mobilev2': {
@@ -194,7 +194,7 @@ competitors_bigger_act = {
         'eval_err': np.array([0.3026])*100,
         'size_mb': np.array([1.55]),
         'name': 'Mixed Precision DNNs MobileNetV2',
-        'alpha': .15,
+        'alpha': 1.,
     },
 
     'haq_mobilev2': {
@@ -544,7 +544,7 @@ def plot_comparison2(name):
   plt.legend(
       bbox_to_anchor=(0,1.02,1,0.2),
       loc="lower left",
-      ncol=4,
+      ncol=3,
       mode="expand",
       borderaxespad=0,
       frameon=False,
