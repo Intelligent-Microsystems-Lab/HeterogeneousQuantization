@@ -164,7 +164,7 @@ competitors_bigger_act = {
     'hawqv2_squeeze': {
         # activation bits 8 (uniform)
         # https://arxiv.org/abs/1911.03852
-        'eval_err': [1 - 0.6838],
+        'eval_err': np.array([1 - 0.6838])*100,
         'size_mb': np.array([1.07]),
         'name': 'HAWQ-V2 SqueezeNext',
         'alpha': 1.,
@@ -182,7 +182,7 @@ competitors_bigger_act = {
     'mixed_resnet18': {
         # activation budget 380 KB against
         # https://arxiv.org/abs/1905.11452
-        'eval_err': [0.2992],
+        'eval_err': np.array([0.2992])*100,
         'size_mb': np.array([5.4]),
         'name': 'Mixed Precision DNNs ResNet18',
         'alpha': .15,
@@ -191,7 +191,7 @@ competitors_bigger_act = {
     'mixed_mobilev2': {
         # activation budget 570 KB against
         # https://arxiv.org/abs/1905.11452
-        'eval_err': [0.3026],
+        'eval_err': np.array([0.3026])*100,
         'size_mb': np.array([1.55]),
         'name': 'Mixed Precision DNNs MobileNetV2',
         'alpha': .15,
@@ -200,7 +200,7 @@ competitors_bigger_act = {
     'haq_mobilev2': {
         # not sure what weight budget is ...
         # https://arxiv.org/pdf/1811.08886.pdf
-        'eval_err': [1 - 0.6675, 1 - 0.7090, 1 - 0.7147],
+        'eval_err': np.array([1 - 0.6675, 1 - 0.7090, 1 - 0.7147])*100,
         'size_mb': np.array([.95, 1.38, 1.79]),
         'name': 'HAQ MobileNetV2',
         'alpha': 1.,
@@ -209,7 +209,7 @@ competitors_bigger_act = {
     'haq_resnet50': {
         # not sure what weight budget is ...
         # https://arxiv.org/pdf/1811.08886.pdf
-        'eval_err': [1 - 0.7063, 1 - 0.7530, 1 - 0.7614],
+        'eval_err': np.array([1 - 0.7063, 1 - 0.7530, 1 - 0.7614])*100,
         'size_mb': np.array([6.30, 9.22, 12.14]),
         'name': 'HAQ ResNet50',
         'alpha': 1.,
@@ -524,12 +524,12 @@ def plot_comparison2(name):
 
 
 
-  xv = np.array([1268.692017, 1437.639038, 1574.033081, 1702.221069, 1865.83606, 1986.667114, 2126.347412, 2267.265381]) + 0.16806400 / 2
+  xv = np.array([1268.692017, 1437.639038, 1574.033081, 1702.221069, 1865.83606, 1986.667114, 2126.347412, 2267.265381])/1000 + 0.16806400 / 2
   yv = 100 - np.array([0.6778971553, 0.6868489385, 0.6979166865, 0.7075195313, 0.706705749, 0.719075501, 0.7220051885, 0.7236328125]) * 100
   ax.plot(xv, yv, marker='x', label="Mixed EfficientNet-Lite0 INT4",
           ms=20, markeredgewidth=5, linewidth=5, color='red')
 
-  xv = np.array([1271.812012, 1440.932129, 1577.504028, 1664.144897, 1828.402222, 1880.366089, 2146.508057, 2294.529053]) + 0.16806400 / 2
+  xv = np.array([1271.812012, 1440.932129, 1577.504028, 1664.144897, 1828.402222, 1880.366089, 2146.508057, 2294.529053])/1000 + 0.16806400 / 2
   yv = 100 - np.array([0.693033874, 0.7003580928, 0.70703125, 0.7194010615, 0.7309570313, 0.7298176885, 0.7355143428, 0.7364909053]) * 100
   ax.plot(xv, yv, marker='x', label="Mixed EfficientNet-Lite0 INT8",
           ms=20, markeredgewidth=5, linewidth=5, color='green')
