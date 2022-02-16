@@ -14,7 +14,7 @@ competitors = {
                               1 - 0.767]) * 100,
         'size_mb': np.array([2, 3, 4, 5
                              ]) * 25503912 / 8_000_000 + 0.21248000 / 2,
-        'name': 'PACT ResNet50',
+        'name': 'PACT ResNet50*',
         'alpha': .25,
         # no first and last layer quant
     },
@@ -24,7 +24,7 @@ competitors = {
                               1 - 0.698]) * 100,
         'size_mb': np.array([2, 3, 4, 5
                              ]) * 11679912 / 8_000_000 + 0.03840000 / 2,
-        'name': 'PACT ResNet18',
+        'name': 'PACT ResNet18*',
         'alpha': .25,
         # no first and last layer quant
     },
@@ -34,7 +34,7 @@ competitors = {
         'eval_err': np.array([1 - 0.6139, 1 - 0.6884, 1 - 0.7125]) * 100,
         'size_mb': np.array([4, 5, 6
                              ]) * 3472041 / 8_000_000 + 0.13644800 / 2,
-        'name': 'PACT MobileNetV2',
+        'name': 'PACT MobileNetV2*',
         'alpha': .25,
     },
 
@@ -43,7 +43,7 @@ competitors = {
         'eval_err': np.array([1 - 0.6517, 1 - 0.6866, 1 - 0.6956]) * 100,
         'size_mb': np.array([2, 3, 4
                              ]) * 11679912 / 8_000_000 + 0.03840000 / 2,
-        'name': 'DSQ ResNet18',
+        'name': 'DSQ ResNet18*',
         'alpha': .25,
     },
 
@@ -53,15 +53,16 @@ competitors = {
                               1 - 0.711]) * 100,
         'size_mb': np.array([2, 3, 4, 8
                              ]) * 11679912 / 8_000_000 + 0.03840000 / 2,
-        'name': 'LSQ ResNet18',
+        'name': 'LSQ ResNet18*',
         'alpha': .25,
     },
 
     'lsqp_resnet18': {
         # https://arxiv.org/abs/2004.09576
+        # they claim to be a natural extension... so also first and last?
         'eval_err': np.array([1 - 0.668, 1 - 0.694, 1 - 0.708]) * 100,
         'size_mb': np.array([2, 3, 4]) * 11679912 / 8_000_000 + 0.03840000 / 2,
-        'name': 'LSQ+ ResNet18',
+        'name': 'LSQ+ ResNet18*',
         'alpha': .25,
     },
 
@@ -71,7 +72,7 @@ competitors = {
         'eval_err': np.array([1 - 0.491, 1 - 0.699, 1 - 0.738]) * 100,
         # number might be incorrect
         'size_mb': np.array([2, 3, 4]) * 5246532 / 8_000_000 + 0.16806400 / 2,
-        'name': 'LSQ+ EfficientNet-B0',
+        'name': 'LSQ+ EfficientNet-B0*',
         'alpha': .25,
     },
 
@@ -81,7 +82,7 @@ competitors = {
                               1 - 0.706]) * 100,
         'size_mb': np.array([1, 2, 3, 4
                              ]) * 11679912 / 8_000_000 + 0.03840000 / 2,
-        'name': 'EWGS ResNet18',
+        'name': 'EWGS ResNet18*',
         'alpha': .25,
     },
 
@@ -100,7 +101,7 @@ competitors = {
                               1 - 0.739]) * 100,
         'size_mb': np.array([1, 2, 3, 4
                              ]) * 21780648 / 8_000_000 + 0.06809600 / 2,
-        'name': 'EWGS ResNet34',
+        'name': 'EWGS ResNet34*',
         'alpha': .25,
     },
 
@@ -164,7 +165,7 @@ competitors_bigger_act = {
     'hawqv2_squeeze': {
         # activation bits 8 (uniform)
         # https://arxiv.org/abs/1911.03852
-        'eval_err': np.array([1 - 0.6838])*100,
+        'eval_err': np.array([1 - 0.6838]) * 100,
         'size_mb': np.array([1.07]),
         'name': 'HAWQ-V2 SqueezeNext',
         'alpha': 1.,
@@ -182,7 +183,7 @@ competitors_bigger_act = {
     'mixed_resnet18': {
         # activation budget 380 KB against
         # https://arxiv.org/abs/1905.11452
-        'eval_err': np.array([0.2992])*100,
+        'eval_err': np.array([0.2992]) * 100,
         'size_mb': np.array([5.4]),
         'name': 'Mixed Precision DNNs ResNet18',
         'alpha': 1,
@@ -191,25 +192,23 @@ competitors_bigger_act = {
     'mixed_mobilev2': {
         # activation budget 570 KB against
         # https://arxiv.org/abs/1905.11452
-        'eval_err': np.array([0.3026])*100,
+        'eval_err': np.array([0.3026]) * 100,
         'size_mb': np.array([1.55]),
         'name': 'Mixed Precision DNNs MobileNetV2',
         'alpha': 1.,
     },
 
     'haq_mobilev2': {
-        # not sure what weight budget is ...
         # https://arxiv.org/pdf/1811.08886.pdf
-        'eval_err': np.array([1 - 0.6675, 1 - 0.7090, 1 - 0.7147])*100,
+        'eval_err': np.array([1 - 0.6675, 1 - 0.7090, 1 - 0.7147]) * 100,
         'size_mb': np.array([.95, 1.38, 1.79]),
         'name': 'HAQ MobileNetV2',
         'alpha': 1.,
     },
 
     'haq_resnet50': {
-        # not sure what weight budget is ...
         # https://arxiv.org/pdf/1811.08886.pdf
-        'eval_err': np.array([1 - 0.7063, 1 - 0.7530, 1 - 0.7614])*100,
+        'eval_err': np.array([1 - 0.7063, 1 - 0.7530, 1 - 0.7614]) * 100,
         'size_mb': np.array([6.30, 9.22, 12.14]),
         'name': 'HAQ ResNet50',
         'alpha': 1.,
@@ -439,22 +438,30 @@ def plot_comparison(name):
           label='EfficientNet-Lite0 (3-8 Bits)', ms=20, markeredgewidth=5,
           linewidth=5)
 
-  # 
-
-
-
-  xv = np.array([1.294680054, 1.700428101, 1.832848022, 2.013916138, 2.142487061, 2.306124023]) + 0.16806400 / 2
-  yv = 100 - np.array([0.6106770635, 0.679361999, 0.6814778447, 0.6925455928 ,0.7124023438, 0.7234700322]) * 100
+  xv = np.array([1.294680054, 1.700428101, 1.832848022,
+                2.013916138, 2.142487061, 2.306124023]) + 0.16806400 / 2
+  yv = 100 - np.array([0.6106770635, 0.679361999, 0.6814778447,
+                      0.6925455928, 0.7124023438, 0.7234700322]) * 100
   ax.plot(xv, yv, marker='x', label="Mixed EfficientNet-Lite0 STE",
           ms=20, markeredgewidth=5, linewidth=5, color='red')
 
-  xv = np.array([1.153934082, 1.294906128, 1.417925903, 1.719146118, 1.874620117, 1.982543091, 2.144371094, 2.290263916]) + 0.16806400 / 2
-  yv = 100 - np.array([0.46598, 0.607747376, 0.654622376, 0.6850585938, 0.693033874, 0.7049153447, 0.7202148438, 0.7312825322]) * 100
-  ax.plot(xv, yv, marker='x', label="Mixed EfficientNet-Lite0 Gradient Scaling",
+  xv = np.array([1.153934082, 1.294906128, 1.417925903, 1.719146118,
+                1.874620117, 1.982543091, 2.144371094, 2.290263916]
+                ) + 0.16806400 / 2
+  yv = 100 - np.array([0.46598, 0.607747376, 0.654622376, 0.6850585938,
+                      0.693033874, 0.7049153447, 0.7202148438, 0.7312825322]
+                      ) * 100
+  ax.plot(xv, yv, marker='x',
+          label="Mixed EfficientNet-Lite0 Gradient Scaling",
           ms=20, markeredgewidth=5, linewidth=5, color='green')
 
-  xv = np.array([2.919978271, 3.278890381, 3.50227417, 3.538114014, 4.284223145, 4.539738281, 4.855490234, 5.462999512, 5.81514502]) + 0.03840000 / 2
-  yv = 100 - np.array([0.5455729365, 0.5716145635, 0.6126301885, 0.6258137822, 0.6560872197, 0.6430664063, 0.6513671875, 0.6647135615, 0.6805012822]) * 100
+  xv = np.array([2.919978271, 3.278890381, 3.50227417, 3.538114014,
+                 4.284223145,
+                4.539738281, 4.855490234, 5.462999512, 5.81514502]
+                ) + 0.03840000 / 2
+  yv = 100 - np.array([0.5455729365, 0.5716145635, 0.6126301885, 0.6258137822,
+                      0.6560872197, 0.6430664063, 0.6513671875, 0.6647135615,
+                      0.6805012822]) * 100
   ax.plot(xv, yv, marker='x', label="Mixed ResNet18 STE",
           ms=20, markeredgewidth=5, linewidth=5, color='violet')
 
@@ -464,7 +471,7 @@ def plot_comparison(name):
   ax.set_xlabel("Network Size (MB)", fontsize=font_size, fontweight='bold')
   ax.set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
   plt.legend(
-      bbox_to_anchor=(0,1.02,1,0.2),
+      bbox_to_anchor=(0, 1.02, 1, 0.2),
       loc="lower left",
       ncol=4,
       mode="expand",
@@ -520,21 +527,24 @@ def plot_comparison2(name):
           label='EfficientNet-Lite0 (3-8 Bits)', ms=20, markeredgewidth=5,
           linewidth=5)
 
-  # 
-
-
-
-  xv = np.array([1268.692017, 1437.639038, 1574.033081, 1702.221069, 1865.83606, 1986.667114, 2126.347412, 2267.265381])/1000 + 0.16806400 / 2
-  yv = 100 - np.array([0.6778971553, 0.6868489385, 0.6979166865, 0.7075195313, 0.706705749, 0.719075501, 0.7220051885, 0.7236328125]) * 100
+  xv = np.array([1268.692017, 1437.639038, 1574.033081, 1702.221069,
+                 1865.83606,
+                1986.667114, 2126.347412, 2267.265381]) / 1000 + 0.16806400 / 2
+  yv = 100 - np.array([0.6778971553, 0.6868489385, 0.6979166865, 0.7075195313,
+                      0.706705749, 0.719075501, 0.7220051885, 0.7236328125]
+                      ) * 100
   ax.plot(xv, yv, marker='x', label="Mixed EfficientNet-Lite0 INT4",
           ms=20, markeredgewidth=5, linewidth=5, color='red')
 
-  xv = np.array([1271.812012, 1440.932129, 1577.504028, 1664.144897, 1828.402222, 1880.366089, 2146.508057, 2294.529053])/1000 + 0.16806400 / 2
-  yv = 100 - np.array([0.693033874, 0.7003580928, 0.70703125, 0.7194010615, 0.7309570313, 0.7298176885, 0.7355143428, 0.7364909053]) * 100
+  xv = np.array([1271.812012, 1440.932129, 1577.504028, 1664.144897,
+                 1828.402222,
+                1880.366089, 2146.508057, 2294.529053]
+                ) / 1000 + 0.16806400 / 2
+  yv = 100 - np.array([0.693033874, 0.7003580928, 0.70703125, 0.7194010615,
+                      0.7309570313, 0.7298176885, 0.7355143428, 0.7364909053]
+                      ) * 100
   ax.plot(xv, yv, marker='x', label="Mixed EfficientNet-Lite0 INT8",
           ms=20, markeredgewidth=5, linewidth=5, color='green')
-
-
 
   ax.set_xscale('log')
   plt.xticks([1.5, 2, 3, 4, 5, 6, 7, 8, 9, 10], [
@@ -542,7 +552,7 @@ def plot_comparison2(name):
   ax.set_xlabel("Network Size (MB)", fontsize=font_size, fontweight='bold')
   ax.set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
   plt.legend(
-      bbox_to_anchor=(0,1.02,1,0.2),
+      bbox_to_anchor=(0, 1.02, 1, 0.2),
       loc="lower left",
       ncol=3,
       mode="expand",
@@ -553,7 +563,6 @@ def plot_comparison2(name):
   plt.tight_layout()
   plt.savefig(name)
   plt.close()
-
 
 
 # not used, runtime difference to STE looks odd.
@@ -647,4 +656,3 @@ if __name__ == '__main__':
   plot_surrogate_mix()
   plot_comparison('figures/overview.png')
   plot_comparison2('figures/overview_act.png')
-  # plot_comparison_bigger_act('figures/overview_bigger_act.png')

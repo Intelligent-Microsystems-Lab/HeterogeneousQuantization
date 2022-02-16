@@ -403,7 +403,8 @@ def plot_bits(config: ml_collections.ConfigDict, workdir: str):
 
     handles, labels = plt.gca().get_legend_handles_labels()
     by_label = OrderedDict(zip(labels, handles))
-    plt.legend(by_label.values(), by_label.keys(), bbox_to_anchor=(0,1.02,1,0.2),
+    plt.legend(by_label.values(), by_label.keys(),
+               bbox_to_anchor=(0, 1.02, 1, 0.2),
                loc="lower left", borderaxespad=0, ncol=5, mode='expand',
                frameon=False,
                prop={'weight': 'bold', 'size': font_size})
@@ -413,8 +414,8 @@ def plot_bits(config: ml_collections.ConfigDict, workdir: str):
     plt.close()
 
   plot_fig([], 'efficientnet/figures/bitwidths_all.png')
-  #plot_fig(['/act'], 'efficientnet/figures/bitwidths_w.png')
-  #plot_fig(['/weight', '/bias'], 'efficientnet/figures/bitwidths_a.png')
+  # plot_fig(['/act'], 'efficientnet/figures/bitwidths_w.png')
+  # plot_fig(['/weight', '/bias'], 'efficientnet/figures/bitwidths_a.png')
 
 
 def main(argv):

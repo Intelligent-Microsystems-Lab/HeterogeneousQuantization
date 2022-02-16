@@ -51,7 +51,7 @@ def get_config():
 
   # Load pretrained weights.
   config.pretrained = None
-  config.pretrained_quant =  "../../efficientnet-lite0_ewgs_invtanh_mixed_2.00"
+  config.pretrained_quant = "../../efficientnet-lite0_ewgs_invtanh_mixed_2.00"
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.
