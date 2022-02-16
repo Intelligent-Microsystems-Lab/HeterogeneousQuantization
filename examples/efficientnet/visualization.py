@@ -477,6 +477,85 @@ def plot_comparison(name):
   plt.close()
 
 
+def plot_comparison2(name):
+  font_size = 23
+
+  fig, ax = plt.subplots(figsize=(24.5, 12.5))
+
+  ax.spines["top"].set_visible(False)
+  ax.spines["right"].set_visible(False)
+
+  ax.xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
+  ax.yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
+
+  for axis in ['top', 'bottom', 'left', 'right']:
+    ax.spines[axis].set_linewidth(5)
+
+  for tick in ax.xaxis.get_major_ticks():
+    tick.label1.set_fontweight('bold')
+  for tick in ax.yaxis.get_major_ticks():
+    tick.label1.set_fontweight('bold')
+
+  # Competitors.
+  for competitor_name, competitor_data in competitors_bigger_act.items():
+    ax.plot(competitor_data['size_mb'], competitor_data['eval_err'],
+            label=competitor_data['name'],
+            marker='.', ms=20, markeredgewidth=5, linewidth=5,
+            alpha=competitor_data['alpha'])
+
+  # Our own.
+  ax.plot(np.array([4609992, 5363016, 6033976, 8120424, 12894200]
+                   ) * 8 / 8_000_000 + np.array([0.16806400, 0.21465600,
+                                                 0.23238400,
+                                                 0.30668800, 0.44947200]) / 2,
+          np.array([0.2452799677848816, 0.2303873896598816, 0.2221272587776184,
+                    0.2054443359375, 0.1907958984375]) * 100, marker='x',
+          label='EfficientNet-Lite0-4 INT8', ms=20, markeredgewidth=5,
+          linewidth=5)
+
+  ax.plot(0.5762490000 * np.array([3, 4, 5, 6, 7, 8]) + 0.16806400 / 2,
+          np.array([0.36395263671875, 0.2801310420036316, 0.2576497197151184,
+                    0.2494099736213684, 0.2458088994026184,
+                    0.2452799677848816]) * 100, marker='x',
+          label='EfficientNet-Lite0 (3-8 Bits)', ms=20, markeredgewidth=5,
+          linewidth=5)
+
+  # 
+
+
+
+  xv = np.array([1268.692017, 1437.639038, 1574.033081, 1702.221069, 1865.83606, 1986.667114, 2126.347412, 2267.265381]) + 0.16806400 / 2
+  yv = 100 - np.array([0.6778971553, 0.6868489385, 0.6979166865, 0.7075195313, 0.706705749, 0.719075501, 0.7220051885, 0.7236328125]) * 100
+  ax.plot(xv, yv, marker='x', label="Mixed EfficientNet-Lite0 INT4",
+          ms=20, markeredgewidth=5, linewidth=5, color='red')
+
+  xv = np.array([1271.812012, 1440.932129, 1577.504028, 1664.144897, 1828.402222, 1880.366089, 2146.508057, 2294.529053]) + 0.16806400 / 2
+  yv = 100 - np.array([0.693033874, 0.7003580928, 0.70703125, 0.7194010615, 0.7309570313, 0.7298176885, 0.7355143428, 0.7364909053]) * 100
+  ax.plot(xv, yv, marker='x', label="Mixed EfficientNet-Lite0 INT8",
+          ms=20, markeredgewidth=5, linewidth=5, color='green')
+
+
+
+  ax.set_xscale('log')
+  plt.xticks([1.5, 2, 3, 4, 5, 6, 7, 8, 9, 10], [
+             '1.5', '2', '3', '4', '5', '6', '7', '8', '9', '10'])
+  ax.set_xlabel("Network Size (MB)", fontsize=font_size, fontweight='bold')
+  ax.set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
+  plt.legend(
+      bbox_to_anchor=(0,1.02,1,0.2),
+      loc="lower left",
+      ncol=4,
+      mode="expand",
+      borderaxespad=0,
+      frameon=False,
+      prop={'weight': 'bold', 'size': font_size}
+  )
+  plt.tight_layout()
+  plt.savefig(name)
+  plt.close()
+
+
+
 # not used, runtime difference to STE looks odd.
 sur_grads_mixed_tb = {
     'STE_PSGD': '2c6z1WUlSyGfxbkNenD9cA',
@@ -567,4 +646,5 @@ if __name__ == '__main__':
   plot_surrogate()
   plot_surrogate_mix()
   plot_comparison('figures/overview.png')
+  plot_comparison2('figures/overview_act.png')
   # plot_comparison_bigger_act('figures/overview_bigger_act.png')
