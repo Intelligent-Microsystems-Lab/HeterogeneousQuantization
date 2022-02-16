@@ -168,25 +168,27 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   if config.pretrained:
     state = model.load_model_fn(state, config.pretrained)
 
-  # Reinitialize quant params.
-  init_batch = next(train_iter)['image'][0, :, :, :, :]
-  rng, rng1, rng2 = jax.random.split(rng, 3)
-  _, new_state = state.apply_fn({'params': state.params['params'],
-                                 'quant_params': state.params['quant_params'],
-                                 'batch_stats': state.batch_stats,
-                                 'quant_config': {}}, init_batch,
-                                rng=rng1,
-                                mutable=['batch_stats', 'quant_params',
-                                         'weight_size', 'act_size',
-                                         'quant_config'],
-                                rngs={'dropout': rng2})
-  state = TrainState.create(apply_fn=state.apply_fn,
-                            params={'params': state.params['params'],
-                                    'quant_params': new_state['quant_params']},
-                            tx=state.tx, batch_stats=state.batch_stats,
-                            weight_size=state.weight_size,
-                            act_size=state.act_size,
-                            quant_config=new_state['quant_config'])
+    # Reinitialize quant params.
+    init_batch = next(train_iter)['image'][0, :, :, :, :]
+    rng, rng1, rng2 = jax.random.split(rng, 3)
+    _, new_state = state.apply_fn({'params': state.params['params'],
+                                   'quant_params':
+                                   state.params['quant_params'],
+                                   'batch_stats': state.batch_stats,
+                                   'quant_config': {}}, init_batch,
+                                  rng=rng1,
+                                  mutable=['batch_stats', 'quant_params',
+                                           'weight_size', 'act_size',
+                                           'quant_config'],
+                                  rngs={'dropout': rng2})
+    state = TrainState.create(apply_fn=state.apply_fn,
+                              params={'params': state.params['params'],
+                                      'quant_params': new_state['quant_params']
+                                      },
+                              tx=state.tx, batch_stats=state.batch_stats,
+                              weight_size=state.weight_size,
+                              act_size=state.act_size,
+                              quant_config=new_state['quant_config'])
 
   if config.pretrained_quant:
     pre_state = checkpoints.restore_checkpoint(config.pretrained_quant, state)

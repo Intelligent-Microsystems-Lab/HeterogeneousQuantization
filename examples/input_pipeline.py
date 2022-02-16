@@ -9,7 +9,6 @@ import jax
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
-import logging
 
 from flax import jax_utils
 

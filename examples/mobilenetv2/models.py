@@ -12,7 +12,7 @@ import sys
 
 from functools import partial
 import ml_collections
-from typing import Any, Callable, Sequence, Tuple, Union, Iterable, Optional, List
+from typing import Any, Tuple, Optional
 
 import jax
 from flax import linen as nn
@@ -26,8 +26,8 @@ from batchnorm import BatchNorm  # noqa: E402
 
 ModuleDef = Any
 Array = Any
-default_kernel_init = partial(variance_scaling, 2.0, "fan_out", "truncated_normal")
-
+default_kernel_init = partial(
+    variance_scaling, 2.0, "fan_out", "truncated_normal")
 
 
 def _make_divisible(v, divisor, min_value=None):
@@ -64,33 +64,32 @@ class InvertedResidual(nn.Module):
   conv: ModuleDef
   config: dict = ml_collections.FrozenConfigDict({})
   bits: int = 8
-  
 
   @nn.compact
   def __call__(self, x: Array, train: bool = True,) -> Array:
 
     residual = x
-    assert self.stride in [(1,1), (2,2)]
+    assert self.stride in [(1, 1), (2, 2)]
 
     hidden_dim = int(round(x.shape[3] * self.expand_ratio))
-    use_res_connect = self.stride == 1 and x.shape[3] == self.oup
-
 
     if self.expand_ratio != 1:
       # pw
-      x = self.conv(hidden_dim, (1,1),  config=self.config,)(x)
+      x = self.conv(hidden_dim, (1, 1), padding=(
+          (0, 0), (0, 0)), config=self.config,)(x)
       x = self.norm()(x)
       x = jax.nn.relu6(x)
 
     # dw
-    x = self.conv(hidden_dim, (3,3), config=self.config, feature_group_count = hidden_dim)(x)
+    x = self.conv(hidden_dim, (3, 3), padding=((1, 1), (1, 1)),
+                  config=self.config, feature_group_count=hidden_dim)(x)
     x = self.norm()(x)
     x = jax.nn.relu6(x)
 
     # pw-linear
-    x = self.conv(self.oup, (1,1), config=self.config,)(x)
+    x = self.conv(self.oup, (1, 1), padding=(
+        (0, 0), (0, 0)), config=self.config,)(x)
     x = self.norm()(x)
-
 
     if self.stride == 1 and x.shape[3] == self.oup:
       x += residual
@@ -98,81 +97,84 @@ class InvertedResidual(nn.Module):
     return x
 
 
-
 class MobileNetV2(nn.Module):
   """MobileNetV2."""
   num_classes: int = 1000,
   width_mult: float = 1.0,
   inverted_residual_setting: Optional[Tuple[Tuple[int]]] = (
-          # t, c, n, s
-          (1, 16, 1, (1, 1)),
-          (6, 24, 2, (2, 2)),
-          (6, 32, 3, (2, 2)),
-          (6, 64, 4, (2, 2)),
-          (6, 96, 3, (1, 1)),
-          (6, 160, 3, (2, 2)),
-          (6, 320, 1, (1, 1)),
-      )
+      # t, c, n, s
+      (1, 16, 1, (1, 1)),
+      (6, 24, 2, (2, 2)),
+      (6, 32, 3, (2, 2)),
+      (6, 64, 4, (2, 2)),
+      (6, 96, 3, (1, 1)),
+      (6, 160, 3, (2, 2)),
+      (6, 320, 1, (1, 1)),
+  )
   round_nearest: int = 8
   config: dict = ml_collections.FrozenConfigDict({})
   dtype: Any = jnp.float32
 
-
   @nn.compact
   def __call__(self, x: Array, train: bool = True, rng: Any = None) -> Array:
 
-    conv = partial(QuantConv, padding='SAME', use_bias=False, dtype=self.dtype, bits=self.config.quant.bits, kernel_init = default_kernel_init(),)
+    conv = partial(QuantConv, padding='SAME', use_bias=False, dtype=self.dtype,
+                   bits=self.config.quant.bits,
+                   kernel_init=default_kernel_init(),)
     norm = partial(BatchNorm,
-                   scale_init = nn.initializers.ones,
-                   bias_init = nn.initializers.zeros,
+                   scale_init=nn.initializers.ones,
+                   bias_init=nn.initializers.zeros,
                    use_running_average=not train,
                    momentum=.9,
                    epsilon=1e-5,
                    dtype=self.dtype)
 
     # only check the first element, assuming user knows t,c,n,s are required
-    if len(self.inverted_residual_setting) == 0 or len(self.inverted_residual_setting[0]) != 4:
+    if len(self.inverted_residual_setting) == 0 or len(
+            self.inverted_residual_setting[0]) != 4:
       raise ValueError("inverted_residual_setting should be non-empty "
-                         "or a 4-element list, got {}".format(self.inverted_residual_setting))
-
+                       "or a 4-element list, got {}".format(
+                           self.inverted_residual_setting))
 
     input_channel = 32
     last_channel = 1280
 
     # building first layer
-    input_channel = _make_divisible(input_channel * self.width_mult, self.round_nearest)
-    last_channel = _make_divisible(last_channel * max(1.0, self.width_mult), self.round_nearest)
+    input_channel = _make_divisible(
+        input_channel * self.width_mult, self.round_nearest)
+    last_channel = _make_divisible(
+        last_channel * max(1.0, self.width_mult), self.round_nearest)
 
-
-    x = conv(features = input_channel, kernel_size = (3,3), strides = (2,2), padding='SAME',
-             name='stem_conv', config=self.config.quant.stem,
-             bits=self.config.quant.bits, quant_act_sign=False)(x)
+    x = conv(features=input_channel, kernel_size=(3, 3), strides=(2, 2),
+             padding=((1, 1), (1, 1)),
+             name='stem_conv',
+             config=self.config.quant.stem,
+             bits=self.config.quant.bits,
+             )(x)
     x = norm(name='stem_bn')(x)
     x = jax.nn.relu6(x)
-
 
     # building inverted residual blocks
     for t, c, n, s in self.inverted_residual_setting:
       output_channel = _make_divisible(c * self.width_mult, self.round_nearest)
       for i in range(n):
-        stride = s if i == 0 else (1,1)
+        stride = s if i == 0 else (1, 1)
         x = InvertedResidual(
-          oup = output_channel,
-          stride = stride,
-          expand_ratio = t,
-          norm = norm,
-          conv = conv,
-          config= self.config.quant.invertedresidual,
-          bits = self.config.quant.bits)(x)
-
+            oup=output_channel,
+            stride=stride,
+            expand_ratio=t,
+            norm=norm,
+            conv=conv,
+            config=self.config.quant.invertedresidual,
+            bits=self.config.quant.bits)(x)
 
     # building last several layers
-    x = conv(last_channel, (1,1),
-             name='head_conv', config=self.config.quant.head,
+    x = conv(last_channel, (1, 1), strides=(1, 1),
+             name='head_conv', padding=((0, 0), (0, 0)),
+             config=self.config.quant.head,
              bits=self.config.quant.bits)(x)
     x = norm(name='head_bn')(x)
     x = jax.nn.relu6(x)
-
 
     if 'average' in self.config.quant:
       x = self.config.quant.average(
@@ -185,19 +187,17 @@ class MobileNetV2(nn.Module):
     x = QuantDense(self.num_classes, dtype=self.dtype,
                    config=self.config.quant.dense,
                    bits=self.config.quant.bits,
-                   kernel_init = normal(0.01),
-                   bias_init= nn.initializers.zeros,
+                   kernel_init=normal(0.01),
+                   bias_init=nn.initializers.zeros,
                    )(x)
     x = jnp.asarray(x, self.dtype)
 
     return x
 
 
-MobileNetV2_140 = partial(MobileNetV2, width_mult = 1.4)
-MobileNetV2_130 = partial(MobileNetV2, width_mult = 1.3)
-MobileNetV2_100 = partial(MobileNetV2, width_mult = 1.0)
-MobileNetV2_075 = partial(MobileNetV2, width_mult = 0.75)
-MobileNetV2_050 = partial(MobileNetV2, width_mult = 0.5)
-MobileNetV2_035 = partial(MobileNetV2, width_mult = 0.35)
-
-
+MobileNetV2_140 = partial(MobileNetV2, width_mult=1.4)
+MobileNetV2_130 = partial(MobileNetV2, width_mult=1.3)
+MobileNetV2_100 = partial(MobileNetV2, width_mult=1.0)
+MobileNetV2_075 = partial(MobileNetV2, width_mult=0.75)
+MobileNetV2_050 = partial(MobileNetV2, width_mult=0.5)
+MobileNetV2_035 = partial(MobileNetV2, width_mult=0.35)

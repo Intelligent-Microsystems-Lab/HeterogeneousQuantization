@@ -6,7 +6,6 @@
 
 import ml_collections
 from functools import partial
-from quant import parametric_d_xmax, gaussian_init, percentile_init
 
 
 def get_config():
