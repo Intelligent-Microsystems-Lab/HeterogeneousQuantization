@@ -13,8 +13,6 @@ import logging
 
 from flax import jax_utils
 
-import autoaugment
-
 
 def create_input_iter(dataset_builder, batch_size, image_size, dtype, train,
                       cache, mean_rgb, std_rgb, crop, augment_name):
@@ -173,24 +171,6 @@ def preprocess_for_train(image_bytes, dtype, image_size, mean_rgb, std_rgb,
   image = _decode_and_random_crop(image_bytes, image_size, crop)
   image = tf.reshape(image, [image_size, image_size, 3])
   image = tf.image.random_flip_left_right(image)
-
-  if augment_name != 'plain':
-    logging.info('Apply AutoAugment policy %s', augment_name)
-    input_image_type = image.dtype
-    image = tf.clip_by_value(image, 0.0, 255.0)
-    image = tf.cast(image, dtype=tf.uint8)
-
-    if augment_name == 'autoaugment':
-      logging.info('Apply AutoAugment policy %s', augment_name)
-      image = autoaugment.distort_image_with_autoaugment(image, 'v0')
-    elif 'randaugment' in augment_name:
-      _, num_layers, magnitude = augment_name.split('_')
-      image = autoaugment.distort_image_with_randaugment(
-          image, int(num_layers), int(magnitude))
-    else:
-      raise ValueError('Invalid value for augment_name: %s' % (augment_name))
-
-    image = tf.cast(image, dtype=input_image_type)
 
   image = normalize_image(image, mean_rgb, std_rgb)
   image = tf.image.convert_image_dtype(image, dtype=dtype)
