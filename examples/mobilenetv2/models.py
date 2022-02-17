@@ -99,8 +99,8 @@ class InvertedResidual(nn.Module):
 
 class MobileNetV2(nn.Module):
   """MobileNetV2."""
-  num_classes: int = 1000,
-  width_mult: float = 1.0,
+  num_classes: int = 1000
+  width_mult: float = 1.0
   inverted_residual_setting: Optional[Tuple[Tuple[int]]] = (
       # t, c, n, s
       (1, 16, 1, (1, 1)),
@@ -113,7 +113,7 @@ class MobileNetV2(nn.Module):
   )
   round_nearest: int = 8
   config: dict = ml_collections.FrozenConfigDict({})
-  dtype: Any = jnp.float32
+  dtype: Any = jnp.bfloat16
 
   @nn.compact
   def __call__(self, x: Array, train: bool = True, rng: Any = None) -> Array:

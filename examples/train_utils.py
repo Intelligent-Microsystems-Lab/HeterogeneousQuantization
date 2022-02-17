@@ -312,7 +312,7 @@ def train_step(state, batch, rng, b_quant_params, learning_rate_fn,
 
   # Re-use same axis_name as in the call to `pmap(...train_step...)` below.
   grads = (grads[0], clip_quant_grads(grads[1], state.params['quant_params']))
-  grads = lax.pmean(grads, axis_name='batch')
+  # grads = lax.pmean(grads, axis_name='batch')
 
   # if not b_quant_params:
   # grads = (grads[0], jax.tree_util.tree_map(

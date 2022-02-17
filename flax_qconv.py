@@ -29,6 +29,7 @@ from jax._src.lax.lax import (
 
 from flax.linen.module import Module, compact
 from flax.linen.linear import (
+    zeros,
     default_kernel_init,
     PRNGKey,
     Shape,
@@ -82,7 +83,7 @@ class QuantConv(Module):
   dtype: Dtype = jnp.float32
   # precision: Any = None
   kernel_init: Callable[[PRNGKey, Shape, Dtype], Array] = default_kernel_init
-  # bias_init: Callable[[PRNGKey, Shape, Dtype], Array] = zeros
+  bias_init: Callable[[PRNGKey, Shape, Dtype], Array] = zeros
   config: dict = None
   bits: int = 8
   quant_act_sign: bool = True
@@ -97,7 +98,7 @@ class QuantConv(Module):
       The convolved data.
     """
     assert self.use_bias is False
-    inputs = jnp.asarray(inputs, jnp.float32)
+    inputs = jnp.asarray(inputs, self.dtype)
     cfg = self.config
 
     if isinstance(self.kernel_size, int):
@@ -119,7 +120,7 @@ class QuantConv(Module):
         self.features,
     )
     kernel = self.param("kernel", self.kernel_init, kernel_shape)
-    kernel = jnp.asarray(kernel, jnp.float32)
+    kernel = jnp.asarray(kernel, self.dtype)
     dimension_numbers = _conv_dimension_numbers(inputs.shape)
 
     dnums = conv_dimension_numbers(
@@ -142,51 +143,7 @@ class QuantConv(Module):
     else:
       padding = self.padding
 
-    # Quantization has to be done here to use Flax convenience functions for
-    # parameters.
-    # if "mode" in cfg:
-    #   modes = cfg.mode.split('-')
-    # else:
-    #   modes = ['f', 'f']
-
-    # if "weight" in cfg:
-    #   if modes[0] == 'f':
-    #     kernel_fwd = cfg.weight(bits=self.bits, g_scale=self.g_scale)(kernel)
-    #   elif modes[0] == 'cc':
-    #     kernel_fwd = kernel
-    #     for i in range(kernel.shape[-1]):
-    #       for j in range(kernel.shape[-2]):
-    #         kernel_fwd.at[:, :, j, i].set(cfg.weight(
-    #             bits=self.bits, g_scale=self.g_scale)(kernel[:, :, j, i]))
-    #   elif modes[0] == 'c1':
-    #     kernel_fwd = kernel
-    #     for i in range(kernel.shape[-2]):
-    #       kernel_fwd.at[:, :, i, :].set(cfg.weight(
-    #           bits=self.bits, g_scale=self.g_scale)(kernel[:, :, i, :]))
-    #   elif modes[0] == 'c2':
-    #     kernel_fwd = kernel
-    #     for i in range(kernel.shape[-1]):
-    #       kernel_fwd.at[:, :, :, i].set(cfg.weight(
-    #           bits=self.bits, g_scale=self.g_scale)(kernel[:, :, :, i]))
-    #   else:
-    #     raise Exception("Unknown split type:" + modes[0])
-    # else:
-    #   kernel_fwd = kernel
-
-    # if "act" in cfg:
-    #   if modes[1] == 'f':
-    #     inpt_fwd = cfg.act(bits=self.bits, g_scale=self.g_scale)(
-    #         inputs, sign=self.quant_act_sign)
-    #   elif modes[1] == 'c':
-    #     inpt_fwd = inputs
-    #     for i in range(inputs.shape[-1]):
-    #       inpt_fwd.at[:, :, :, i].set(cfg.weight(
-    #           bits=self.bits, g_scale=self.g_scale)(inputs[:, :, :, i]))
-    #   else:
-    #     raise Exception("Unknown split type:" + modes[1])
-    # else:
-    #   inpt_fwd = inputs
-
+    # Quantization.
     if "weight" in cfg:
       kernel_fwd = cfg.weight(bits=self.bits, g_scale=self.g_scale)(kernel)
     else:
@@ -202,22 +159,6 @@ class QuantConv(Module):
     def conv_general(inpt_fwd: Array, kernel_fwd: Array, inpt: Array,
                      kernel: Array, rng: PRNGKey) -> Array:
 
-      # Nois
-      if "weight_noise" in cfg:
-        rng, prng = jax.random.split(rng, 2)
-        kernel_fwd = kernel_fwd + \
-            get_noise(kernel_fwd, cfg["weight_noise"], prng)
-
-      if "act_noise" in cfg:
-        rng, prng = jax.random.split(rng, 2)
-        inpt_fwd = inpt_fwd + get_noise(inpt_fwd, cfg["act_noise"], prng)
-
-      # # Quantization
-      # if "weight" in cfg:
-      #   kernel = cfg.weight(bits=self.bits)(kernel)
-
-      # if "act" in cfg:
-      #   inpt = cfg.act(bits=self.bits)(inpt, sign=self.quant_act_sign)
 
       return jax.lax.conv_general_dilated(
           inpt_fwd,
@@ -248,41 +189,6 @@ class QuantConv(Module):
       (inpt, kernel, rng) = res
       g_inpt = g_weight = g
 
-      # Noise
-      if "weight_bwd_noise" in cfg:
-        rng, prng = jax.random.split(rng, 2)
-        kernel = kernel + get_noise(
-            kernel, cfg["weight_bwd_noise"], prng
-        )
-
-      if "act_bwd_noise" in cfg:
-        rng, prng = jax.random.split(rng, 2)
-        inpt = inpt + get_noise(inpt, cfg["act_bwd_noise"], prng)
-
-      if "err_inpt_noise" in cfg:
-        rng, prng = jax.random.split(rng, 2)
-        g_inpt = g_inpt + get_noise(
-            g_inpt, cfg["err_inpt_noise"], prng
-        )
-
-      if "err_weight_noise" in cfg:
-        rng, prng = jax.random.split(rng, 2)
-        g_weight = g_weight + get_noise(
-            g_weight, cfg["err_weight_noise"], prng
-        )
-
-      # Quantization
-      if "weight_bwd" in cfg:
-        kernel = cfg.weight_bwd()(kernel)
-
-      if "act_bwd" in cfg:
-        inpt = cfg.act_bwd()(inpt, sign=self.quant_act_sign)
-
-      if "err_inpt" in cfg:
-        g_inpt = cfg.err_inpt()(g_inpt)
-
-      if "err_weight" in cfg:
-        g_weight = cfg.err_weight()(g_weight)
 
       lhs_sdims, rhs_sdims, out_sdims = map(
           _conv_sdims, dimension_numbers
@@ -378,8 +284,14 @@ class QuantConv(Module):
     if is_single_input:
       y = jnp.squeeze(y, axis=0)
 
-    # if self.use_bias:
-    #   bias = self.param("bias", self.bias_init, (self.features,))
-    #   bias = jnp.asarray(bias, self.dtype)
-    #   y = y + bias
+    if self.use_bias:
+      bias = self.param("bias", self.bias_init, (self.features,))
+      bias = jnp.asarray(bias, self.dtype)
+
+      if "bias" in self.config:
+        bias = self.config.bias(
+            bits=self.bits, g_scale=self.g_scale,
+            maxabs_w=jnp.max(jnp.abs(kernel)))(bias)
+
+      y = y + bias
     return y

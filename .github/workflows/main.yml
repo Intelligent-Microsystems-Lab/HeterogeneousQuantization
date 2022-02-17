@@ -93,3 +93,4 @@ jobs:
           python train_test.py
           python efficientnet_test.py
           python resnet_test.py
+          python mobilenetv2_test.py

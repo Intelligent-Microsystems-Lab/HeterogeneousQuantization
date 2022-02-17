@@ -43,7 +43,7 @@ def get_config():
   config.nesterov = True
   config.smoothing = .1
 
-  config.num_epochs = 50
+  config.num_epochs = 100
   config.log_every_steps = 256
 
   config.cache = True

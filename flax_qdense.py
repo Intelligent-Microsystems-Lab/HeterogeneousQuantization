@@ -69,8 +69,7 @@ class QuantDense(Module):
     )
     kernel = jnp.asarray(kernel, self.dtype)
 
-    # Quantization has to be done here to use Flax convenience functions for
-    # parameters.
+    # Quantization.
     if "weight" in self.config:
       kernel_fwd = self.config.weight(
           bits=self.bits, g_scale=self.g_scale)(kernel)
@@ -86,16 +85,6 @@ class QuantDense(Module):
     @jax.custom_vjp
     def dot_general(inpt_fwd: Array, kernel_fwd: Array, inpt_bwd: Array,
                     kernel_bwd: Array, rng: PRNGKey) -> Array:
-      # Nois
-      if "weight_noise" in self.config:
-        rng, prng = jax.random.split(rng, 2)
-        kernel_fwd = kernel_fwd + \
-            get_noise(kernel_fwd, self.config["weight_noise"], prng)
-
-      if "act_noise" in self.config:
-        rng, prng = jax.random.split(rng, 2)
-        inpt_fwd = inpt_fwd + \
-            get_noise(inpt_fwd, self.config["act_noise"], prng)
 
       return jnp.dot(inpt_fwd, kernel_fwd)
 
@@ -120,40 +109,6 @@ class QuantDense(Module):
           rng,
       ) = res
       g_inpt = g_weight = g
-
-      # Noise
-      if "weight_bwd_noise" in self.config:
-        rng, prng = jax.random.split(rng, 2)
-        kernel = kernel + \
-            get_noise(kernel, self.config["weight_bwd_noise"], prng)
-
-      if "act_bwd_noise" in self.config:
-        rng, prng = jax.random.split(rng, 2)
-        inpt = inpt + get_noise(inpt, self.config["act_bwd_noise"], prng)
-
-      if "err_inpt_noise" in self.config:
-        rng, prng = jax.random.split(rng, 2)
-        g_inpt = g_inpt + \
-            get_noise(g_inpt, self.config["err_inpt_noise"], prng)
-
-      if "err_weight_noise" in self.config:
-        rng, prng = jax.random.split(rng, 2)
-        g_weight = g_weight + get_noise(
-            g_weight, self.config["err_weight_noise"], prng
-        )
-
-      # Quantization
-      if "weight_bwd" in self.config:
-        kernel = self.config.weight_bwd()(kernel)
-
-      if "act_bwd" in self.config:
-        inpt = self.config.act_bwd()(inpt, sign=self.quant_act_sign)
-
-      if "err_inpt" in self.config:
-        g_inpt = self.config.err_inpt()(g_inpt)
-
-      if "err_weight" in self.config:
-        g_weight = self.config.err_weight()(g_weight)
 
       g_inpt_fwd = jnp.dot(g_inpt, jnp.transpose(kernel))
 
