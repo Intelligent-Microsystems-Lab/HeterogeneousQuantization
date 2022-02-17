@@ -4,10 +4,7 @@
 # https://pytorch.org/vision/stable/\
 # _modules/torchvision/models/mobilenetv2.html
 
-"""Flax implementation of ResNet V1."""
-
-# See issue #620.
-# pytype: disable=wrong-arg-count
+"""Flax implementation of MobileNetV2."""
 import sys
 
 from functools import partial
@@ -57,7 +54,6 @@ def _make_divisible(v, divisor, min_value=None):
 
 class InvertedResidual(nn.Module):
   """InvertedResidual block."""
-  # inp: int,
   oup: int
   stride: int
   expand_ratio: int
