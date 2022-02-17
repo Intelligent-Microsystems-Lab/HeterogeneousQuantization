@@ -12,13 +12,16 @@ import sys
 
 from functools import partial
 import ml_collections
-from typing import Any, Tuple, Optional
+from typing import Any, Tuple, Optional, Callable
 from absl import logging
 
 import jax
 from flax import linen as nn
 from jax.nn.initializers import variance_scaling, normal
 import jax.numpy as jnp
+
+sys.path.append('mobilenetv2')
+from mobilenetv2_load_pretrained_weights import mobilenetv2_load_pretrained_weights  # noqa: E402, E501
 
 sys.path.append("..")
 from flax_qconv import QuantConv  # noqa: E402
@@ -57,7 +60,6 @@ def _make_divisible(v, divisor, min_value=None):
 
 class InvertedResidual(nn.Module):
   """InvertedResidual block."""
-  # inp: int,
   oup: int
   stride: int
   expand_ratio: int
@@ -93,7 +95,8 @@ class InvertedResidual(nn.Module):
         (0, 0), (0, 0)), config=self.config,)(x)
     x = self.norm()(x)
 
-    if self.stride == 1 and x.shape[3] == self.oup:
+    if self.stride == (1, 1) and residual.shape[3] == self.oup:
+      logging.info('use_res_connect: True')
       x += residual
 
     return x
@@ -115,12 +118,13 @@ class MobileNetV2(nn.Module):
   )
   round_nearest: int = 8
   config: dict = ml_collections.FrozenConfigDict({})
-  dtype: Any = jnp.bfloat16
+  load_model_fn: Callable = mobilenetv2_load_pretrained_weights
+  dtype: Any = jnp.float32
 
   @nn.compact
   def __call__(self, x: Array, train: bool = True, rng: Any = None) -> Array:
 
-    conv = partial(QuantConv, padding='SAME', use_bias=False, dtype=self.dtype,
+    conv = partial(QuantConv, use_bias=False, dtype=self.dtype,
                    bits=self.config.quant.bits,
                    kernel_init=default_kernel_init(),)
     norm = partial(BatchNorm,
@@ -156,8 +160,10 @@ class MobileNetV2(nn.Module):
              )(x)
     x = norm(name='stem_bn')(x)
     x = jax.nn.relu6(x)
+    self.sow('intermediates', 'stem', x)
 
     # building inverted residual blocks
+    block_counter = 0
     for t, c, n, s in self.inverted_residual_setting:
       output_channel = _make_divisible(c * self.width_mult, self.round_nearest)
       logging.info('InvertedResidual sequence')
@@ -171,6 +177,8 @@ class MobileNetV2(nn.Module):
             conv=conv,
             config=self.config.quant.invertedresidual,
             bits=self.config.quant.bits)(x)
+        self.sow('intermediates', 'features_' + str(block_counter), x)
+        block_counter += 1
 
     # building last several layers
     logging.info('Head input shape: %s', x.shape)
@@ -180,6 +188,7 @@ class MobileNetV2(nn.Module):
              bits=self.config.quant.bits)(x)
     x = norm(name='head_bn')(x)
     x = jax.nn.relu6(x)
+    self.sow('intermediates', 'head', x)
 
     if 'average' in self.config.quant:
       x = self.config.quant.average(

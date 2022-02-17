@@ -261,7 +261,7 @@ def train_step(state, batch, rng, b_quant_params, learning_rate_fn,
                                               'quant_config':
                                               state.quant_config},
                                              inputs, rng=prng, mutable=[
-        'batch_stats', 'weight_size', 'act_size', 'intermediates',
+        'batch_stats', 'weight_size', 'act_size',
         'quant_config'],
         rngs={'dropout': rng})
 
