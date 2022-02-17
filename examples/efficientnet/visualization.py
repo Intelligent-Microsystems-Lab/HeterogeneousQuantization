@@ -438,9 +438,11 @@ def plot_comparison(name):
           label='EfficientNet-Lite0 (3-8 Bits)', ms=20, markeredgewidth=5,
           linewidth=5)
 
-  xv = np.array([1.294680054, 1.700428101, 1.832848022,
+  xv = np.array([1.1537720947265625, 1.1611640625, 1.294680054, 1.700428101,
+                 1.832848022,
                 2.013916138, 2.142487061, 2.306124023]) + 0.16806400 / 2
-  yv = 100 - np.array([0.6106770635, 0.679361999, 0.6814778447,
+  yv = 100 - np.array([0.37939453125, 0.4444986879825592, 0.6106770635,
+                       0.679361999, 0.6814778447,
                       0.6925455928, 0.7124023438, 0.7234700322]) * 100
   ax.plot(xv, yv, marker='x', label="Mixed EfficientNet-Lite0 STE",
           ms=20, markeredgewidth=5, linewidth=5, color='red')
