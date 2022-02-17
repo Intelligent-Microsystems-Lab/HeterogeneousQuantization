@@ -19,8 +19,6 @@ import ml_collections
 import jax
 import jax.numpy as jnp
 
-from quant import get_noise
-
 
 default_kernel_init = lecun_normal()
 

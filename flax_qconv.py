@@ -38,8 +38,6 @@ from flax.linen.linear import (
     _conv_dimension_numbers,
 )
 
-from quant import get_noise
-
 
 class QuantConv(Module):
   """Convolution Module wrapping lax.conv_general_dilated.
@@ -159,7 +157,6 @@ class QuantConv(Module):
     def conv_general(inpt_fwd: Array, kernel_fwd: Array, inpt: Array,
                      kernel: Array, rng: PRNGKey) -> Array:
 
-
       return jax.lax.conv_general_dilated(
           inpt_fwd,
           kernel_fwd,
@@ -188,7 +185,6 @@ class QuantConv(Module):
     def conv_general_bwd(res: tuple, g: Array) -> tuple:
       (inpt, kernel, rng) = res
       g_inpt = g_weight = g
-
 
       lhs_sdims, rhs_sdims, out_sdims = map(
           _conv_sdims, dimension_numbers

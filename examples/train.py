@@ -53,9 +53,9 @@ from train_utils import (
 )
 
 
-from jax.config import config
-config.update("jax_debug_nans", True)
-config.update("jax_disable_jit", True)
+# from jax.config import config
+# config.update("jax_debug_nans", True)
+# config.update("jax_disable_jit", True)
 
 # import os
 # os.environ["TPU_CHIPS_PER_HOST_BOUNDS"] = "1,1,1"
@@ -93,7 +93,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   writer_eval = metric_writers.create_default_writer(
       logdir=workdir + '/eval', just_logging=jax.process_index() != 0)
 
-  # logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
+  logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
   logging.info('Git commit: ' + subprocess.check_output(
       ['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
   logging.info(config)
@@ -234,7 +234,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   # step_offset > 0 if restarting from checkpoint
   step_offset = int(state.step)
 
-  # state = jax_utils.replicate(state)
+  state = jax_utils.replicate(state)
   # Debug note:
   # 1. Make above line a comment "state = jax_utils.replicate(state)".
   # 2. In train_util.py make all pmean commands comments.
@@ -243,53 +243,53 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   # 5. Uncomment JIT configs at the top.
   # 6. Deactivate logging handler.
 
-  # p_train_step = jax.pmap(
-  #     functools.partial(
-  #         train_step,
-  #         learning_rate_fn=learning_rate_fn,
-  #         decay_strength_fn=decay_strength_fn,
-  #         weight_decay=config.weight_decay,
-  #         quant_target=config.quant_target,
-  #         smoothing=config.smoothing,
-  #     ),
-  #     axis_name='batch',
-  # )
+  p_train_step = jax.pmap(
+      functools.partial(
+          train_step,
+          learning_rate_fn=learning_rate_fn,
+          decay_strength_fn=decay_strength_fn,
+          weight_decay=config.weight_decay,
+          quant_target=config.quant_target,
+          smoothing=config.smoothing,
+      ),
+      axis_name='batch',
+  )
 
-  # p_eval_step = jax.pmap(
-  #     functools.partial(
-  #         eval_step,
-  #         size_div=config.quant_target.size_div,
-  #         smoothing=config.smoothing
-  #     ),
-  #     axis_name='batch',
-  # )
+  p_eval_step = jax.pmap(
+      functools.partial(
+          eval_step,
+          size_div=config.quant_target.size_div,
+          smoothing=config.smoothing
+      ),
+      axis_name='batch',
+  )
 
-  # Debug
-  p_train_step = functools.partial(
-      train_step,
-      learning_rate_fn=learning_rate_fn,
-      decay_strength_fn=decay_strength_fn,
-      weight_decay=config.weight_decay,
-      quant_target=config.quant_target,
-      smoothing=config.smoothing,)
-  p_eval_step = functools.partial(
-      eval_step,
-      size_div=config.quant_target.size_div,
-      smoothing=config.smoothing)
+  # # Debug
+  # p_train_step = functools.partial(
+  #     train_step,
+  #     learning_rate_fn=learning_rate_fn,
+  #     decay_strength_fn=decay_strength_fn,
+  #     weight_decay=config.weight_decay,
+  #     quant_target=config.quant_target,
+  #     smoothing=config.smoothing,)
+  # p_eval_step = functools.partial(
+  #     eval_step,
+  #     size_div=config.quant_target.size_div,
+  #     smoothing=config.smoothing)
 
   # Initial Accurcay
   logging.info('Start evaluating model at beginning...')
   eval_metrics = []
   eval_best = -1.
   evaled_steps = 0
-  # for _ in range(steps_per_eval):
-  #   eval_batch = next(eval_iter)
-  #   metrics = p_eval_step(state, eval_batch)
-  #   eval_metrics.append(metrics)
-  # eval_metrics = common_utils.stack_forest(eval_metrics)
-  # summary = jax.tree_map(lambda x: jnp.mean(x), eval_metrics)
-  # logging.info('Initial, loss: %.10f, accuracy: %.10f',
-  #              summary['loss'], summary['accuracy'] * 100)
+  for _ in range(steps_per_eval):
+    eval_batch = next(eval_iter)
+    metrics = p_eval_step(state, eval_batch)
+    eval_metrics.append(metrics)
+  eval_metrics = common_utils.stack_forest(eval_metrics)
+  summary = jax.tree_map(lambda x: jnp.mean(x), eval_metrics)
+  logging.info('Initial, loss: %.10f, accuracy: %.10f',
+               summary['loss'], summary['accuracy'] * 100)
 
   train_metrics = []
   hooks = []
@@ -309,12 +309,12 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     else:
       b_quant = jnp.zeros((jax.local_device_count(),))
 
-    # state, metrics = p_train_step(state, batch, rng_list[1:], b_quant)
+    state, metrics = p_train_step(state, batch, rng_list[1:], b_quant)
 
-    # Debug
-    state, metrics = p_train_step(
-        state, {'image': batch['image'][0, :, :, :] * 0 + 1,
-                'label': batch['label'][0] * 0 + 1}, rng_list[2], b_quant[0])
+    # # Debug
+    # state, metrics = p_train_step(
+    #     state, {'image': batch['image'][0, :, :, :] * 0 + 1,
+    #             'label': batch['label'][0] * 0 + 1}, rng_list[2], b_quant[0])
 
     for h in hooks:
       h(step)
@@ -344,9 +344,9 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
             eval_batch = next(eval_iter)
             size_metrics = p_eval_step(state, eval_batch)
             eval_metrics.append(size_metrics)
-          # eval_metrics = common_utils.get_metrics(eval_metrics)
-          # Debug
-          eval_metrics = common_utils.stack_forest(eval_metrics)
+          eval_metrics = common_utils.get_metrics(eval_metrics)
+          # # Debug
+          # eval_metrics = common_utils.stack_forest(eval_metrics)
           summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
           if summary['accuracy'] > eval_best:
             save_checkpoint(state, workdir + '/best')
@@ -359,9 +359,9 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     if config.get('log_every_steps'):
       train_metrics.append(metrics)
       if (step + 1) % config.log_every_steps == 0:
-        # train_metrics = common_utils.get_metrics(train_metrics)
-        # Debug
-        train_metrics = common_utils.stack_forest(train_metrics)
+        train_metrics = common_utils.get_metrics(train_metrics)
+        # # Debug
+        # train_metrics = common_utils.stack_forest(train_metrics)
         summary = {
             f'{k}': v
             for k, v in jax.tree_map(lambda x: x.mean(), train_metrics).items()
@@ -383,9 +383,9 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         eval_batch = next(eval_iter)
         metrics = p_eval_step(state, eval_batch)
         eval_metrics.append(metrics)
-      # eval_metrics = common_utils.get_metrics(eval_metrics)
-      # Debug
-      eval_metrics = common_utils.stack_forest(eval_metrics)
+      eval_metrics = common_utils.get_metrics(eval_metrics)
+      # # Debug
+      # eval_metrics = common_utils.stack_forest(eval_metrics)
       summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
       logging.info('eval epoch: %d, loss: %.4f, accuracy: %.2f',
                    epoch, summary['loss'], summary['accuracy'] * 100)

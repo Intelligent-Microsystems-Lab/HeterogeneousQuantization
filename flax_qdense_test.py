@@ -16,8 +16,6 @@ import jax.numpy as jnp
 from flax import jax_utils
 import functools
 
-import numpy as np
-
 import ml_collections
 
 from flax_qdense import QuantDense
@@ -152,8 +150,6 @@ def dense_test_data():
   )
 
 
-
-
 class QuantDenseTest(parameterized.TestCase):
   @parameterized.named_parameters(*dense_test_data())
   def test_QuantDense_vs_nnDense(
@@ -252,7 +248,6 @@ class QuantDenseTest(parameterized.TestCase):
         ),
         numerical_tolerance,
     )
-
 
 
 if __name__ == "__main__":

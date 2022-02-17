@@ -10,7 +10,7 @@ import jax
 from jax import numpy as jnp
 import numpy as np
 
-from mobilenetv2.configs import mobilenetv2_fp32 as default_lib
+from mobilenetv2.configs import mobilenetv2_bf16 as default_lib
 
 import mobilenetv2.models as models
 
@@ -26,10 +26,10 @@ class MobileNetV2Test(absltest.TestCase):
     rng = jax.random.PRNGKey(0)
     config = default_lib.get_config()
     model_def = models.MobileNetV2_100(
-        num_classes=1000, dtype=jnp.float32, config=config)
+        num_classes=1000, dtype=jnp.bfloat16, config=config)
     rng, prng = jax.random.split(rng, 2)
     variables = model_def.init(
-        rng, jnp.ones((8, 224, 224, 3), jnp.float32), rng=prng, train=False)
+        rng, jnp.ones((8, 224, 224, 3), jnp.bfloat16), rng=prng, train=False)
 
     # check total number of parameters
     self.assertEqual(np.sum(jax.tree_util.tree_leaves(jax.tree_map(

@@ -9,7 +9,6 @@
 from absl.testing import absltest
 from absl.testing import parameterized
 
-import ml_collections
 import functools
 from flax import linen as nn
 from flax import optim
@@ -286,7 +285,6 @@ def conv_test_data():
   )
 
 
-
 class QuantConvTest(parameterized.TestCase):
   @parameterized.named_parameters(*conv_test_data())
   def test_QuantConv_vs_nnConv(
@@ -417,7 +415,6 @@ class QuantConvTest(parameterized.TestCase):
         ) / 2,
         numerical_tolerance,
     )
-
 
 
 if __name__ == "__main__":

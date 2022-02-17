@@ -13,6 +13,7 @@ import sys
 from functools import partial
 import ml_collections
 from typing import Any, Tuple, Optional
+from absl import logging
 
 import jax
 from flax import linen as nn
@@ -67,7 +68,7 @@ class InvertedResidual(nn.Module):
 
   @nn.compact
   def __call__(self, x: Array, train: bool = True,) -> Array:
-
+    logging.info('%s input shape: %s', self.name, x.shape)
     residual = x
     assert self.stride in [(1, 1), (2, 2)]
 
@@ -81,8 +82,9 @@ class InvertedResidual(nn.Module):
       x = jax.nn.relu6(x)
 
     # dw
-    x = self.conv(hidden_dim, (3, 3), padding=((1, 1), (1, 1)),
-                  config=self.config, feature_group_count=hidden_dim)(x)
+    x = self.conv(hidden_dim, (3, 3), strides=self.stride,
+                  padding=((1, 1), (1, 1)), config=self.config,
+                  feature_group_count=hidden_dim)(x)
     x = self.norm()(x)
     x = jax.nn.relu6(x)
 
@@ -145,6 +147,7 @@ class MobileNetV2(nn.Module):
     last_channel = _make_divisible(
         last_channel * max(1.0, self.width_mult), self.round_nearest)
 
+    logging.info('Stem input shape: %s', x.shape)
     x = conv(features=input_channel, kernel_size=(3, 3), strides=(2, 2),
              padding=((1, 1), (1, 1)),
              name='stem_conv',
@@ -157,6 +160,7 @@ class MobileNetV2(nn.Module):
     # building inverted residual blocks
     for t, c, n, s in self.inverted_residual_setting:
       output_channel = _make_divisible(c * self.width_mult, self.round_nearest)
+      logging.info('InvertedResidual sequence')
       for i in range(n):
         stride = s if i == 0 else (1, 1)
         x = InvertedResidual(
@@ -169,6 +173,7 @@ class MobileNetV2(nn.Module):
             bits=self.config.quant.bits)(x)
 
     # building last several layers
+    logging.info('Head input shape: %s', x.shape)
     x = conv(last_channel, (1, 1), strides=(1, 1),
              name='head_conv', padding=((0, 0), (0, 0)),
              config=self.config.quant.head,
@@ -180,6 +185,8 @@ class MobileNetV2(nn.Module):
       x = self.config.quant.average(
           g_scale=self.config.quant.g_scale, bits=self.config.quant.bits
       )(x, sign=False)
+
+    logging.info('Average pool input shape: %s', x.shape)
     x = jnp.mean(x, axis=(1, 2))
 
     x = nn.Dropout(0.2)(x, deterministic=not train)
