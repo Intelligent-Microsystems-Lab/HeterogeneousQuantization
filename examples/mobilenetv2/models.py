@@ -76,20 +76,22 @@ class InvertedResidual(nn.Module):
     if self.expand_ratio != 1:
       # pw
       x = self.conv(hidden_dim, (1, 1), padding=(
-          (0, 0), (0, 0)), config=self.config,)(x)
+          (0, 0), (0, 0)), config=self.config, bits=self.bits)(x)
       x = self.norm()(x)
       x = jax.nn.relu6(x)
 
     # dw
     x = self.conv(hidden_dim, (3, 3), strides=self.stride,
                   padding=((1, 1), (1, 1)), config=self.config,
-                  feature_group_count=hidden_dim)(x)
+                  feature_group_count=hidden_dim, bits=self.bits,
+                  quant_act_sign=False)(x)
     x = self.norm()(x)
     x = jax.nn.relu6(x)
 
     # pw-linear
     x = self.conv(self.oup, (1, 1), padding=(
-        (0, 0), (0, 0)), config=self.config,)(x)
+        (0, 0), (0, 0)), config=self.config, bits=self.bits,
+        quant_act_sign=False)(x)
     x = self.norm()(x)
 
     if self.stride == (1, 1) and residual.shape[3] == self.oup:
@@ -189,7 +191,7 @@ class MobileNetV2(nn.Module):
 
     if 'average' in self.config.quant:
       x = self.config.quant.average(
-          g_scale=self.config.quant.g_scale, bits=self.config.quant.bits
+          g_scale=self.config.quant.g_scale, bits=self.config.quant.bits,
       )(x, sign=False)
 
     logging.info('Average pool input shape: %s', x.shape)
@@ -202,6 +204,7 @@ class MobileNetV2(nn.Module):
                    bits=self.config.quant.bits,
                    kernel_init=normal(0.01),
                    bias_init=nn.initializers.zeros,
+                   quant_act_sign=False,
                    )(x)
     x = jnp.asarray(x, self.dtype)
 

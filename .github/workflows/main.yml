@@ -81,7 +81,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
-          pip install jax==0.2.26 jaxlib==0.1.75 numpy==1.21.3 flax==0.3.6 tensorflow-datasets==4.4.0 ml_collections==0.1.0 clu==0.0.6 torch
+          pip install jax==0.2.26 jaxlib==0.1.75 numpy==1.21.3 flax==0.3.6 tensorflow-datasets==4.4.0 ml_collections==0.1.0 clu==0.0.6 torch torchvision
       - name: Run unit tests
         run: |
           ./aux_data_download.sh
