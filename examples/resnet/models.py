@@ -192,9 +192,6 @@ class ResNet(nn.Module):
 
     x = jnp.mean(x, axis=(1, 2))
 
-    if not self.cifar10_flag and 'average' in self.config.quant:
-      x = self.config.quant.average(
-          bits=self.config.quant.a_bits)(x, sign=False)
     x = QuantDense(self.num_classes, dtype=self.dtype,
                    config=self.config.quant.dense, quant_act_sign=False,
                    bits=self.config.quant.w_bits,

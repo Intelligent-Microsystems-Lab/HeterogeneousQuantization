@@ -360,10 +360,6 @@ class EfficientNet(nn.Module):
     x = self.act(x)
 
     x = jnp.mean(x, axis=(1, 2))
-    if 'average' in self.config.quant:
-      x = self.config.quant.average(
-          g_scale=self.config.quant.g_scale, bits=self.config.quant.bits
-      )(x, sign=False)
 
     x = nn.Dropout(self.dropout_rate)(x, deterministic=not train)
     if self.config.quant.bits is None:

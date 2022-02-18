@@ -189,11 +189,6 @@ class MobileNetV2(nn.Module):
     x = jax.nn.relu6(x)
     self.sow('intermediates', 'head', x)
 
-    # if 'average' in self.config.quant:
-    #   x = self.config.quant.average(
-    #       g_scale=self.config.quant.g_scale, bits=self.config.quant.bits,
-    #   )(x, sign=False)
-
     logging.info('Average pool input shape: %s', x.shape)
     x = jnp.mean(x, axis=(1, 2))
 
