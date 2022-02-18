@@ -33,7 +33,7 @@ def get_config():
   config.augment_name = 'plain'
 
   config.optimizer = 'rmsprop'
-  config.learning_rate = 0.0000125  # 0.0001
+  config.learning_rate = 0.00125
   config.lr_boundaries_scale = None
   config.warmup_epochs = 2.0
   config.momentum = 0.9
@@ -49,7 +49,7 @@ def get_config():
   config.cache = True
 
   # Load pretrained weights.
-  config.pretrained = '../../pretrained_squeezenet/squeezenet1_1-b8a52dc0.pth'
+  config.pretrained = None
   config.pretrained_quant = None
 
   # If num_train_steps==-1 then the number of training steps is calculated from

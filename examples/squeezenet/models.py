@@ -39,18 +39,18 @@ class Fire(nn.Module):
     logging.info('%s input shape: %s', self.name, x.shape)
 
     # squeeze
-    x = self.conv(int(self.squeeze_planes * self.width_mult), (1, 1), padding=(
-        (0, 0), (0, 0)), config=self.config)(x)
+    x = self.conv(int(self.squeeze_planes * self.width_mult), (1, 1),
+                  padding=((0, 0), (0, 0)), config=self.config)(x)
     x = nn.relu(x)
 
     # expand1x1
-    x_1x1 = self.conv(int(self.expand1x1_planes * self.width_mult), (1, 1), padding=(
-        (0, 0), (0, 0)), config=self.config)(x)
+    x_1x1 = self.conv(int(self.expand1x1_planes * self.width_mult), (1, 1),
+                      padding=((0, 0), (0, 0)), config=self.config)(x)
     x_1x1 = nn.relu(x_1x1)
 
     # expand3x3
-    x_3x3 = self.conv(int(self.expand1x1_planes * self.width_mult), (3, 3), padding=(
-        (1, 1), (1, 1)), config=self.config)(x)
+    x_3x3 = self.conv(int(self.expand1x1_planes * self.width_mult), (3, 3),
+                      padding=((1, 1), (1, 1)), config=self.config)(x)
     x_3x3 = nn.relu(x_3x3)
 
     return jnp.concatenate([x_1x1, x_3x3], axis=3)
@@ -70,12 +70,15 @@ class SqueezeNet(nn.Module):
                    bias_init=nn.initializers.zeros,
                    bits=self.config.quant.bits,
                    kernel_init=kaiming_uniform(),)
-    fire = partial(Fire, conv = conv, width_mult = self.width_mult, config=self.config.quant.fire)
+    fire = partial(Fire, conv=conv, width_mult=self.width_mult,
+                   config=self.config.quant.fire)
     _ = self.variable('batch_stats', 'placeholder', lambda x: 0., (1,))
 
     # Building first layer.
     logging.info('Stem input shape: %s', x.shape)
-    x = conv(features=int(64*self.width_mult), kernel_size=(3, 3), strides=(2, 2),
+    x = conv(features=int(64 * self.width_mult),
+             kernel_size=(3, 3),
+             strides=(2, 2),
              padding=((0, 0), (0, 0)),
              name='stem_conv',
              config=self.config.quant.stem,
