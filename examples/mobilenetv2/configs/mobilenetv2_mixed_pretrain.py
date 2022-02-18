@@ -50,7 +50,7 @@ def get_config():
   config.cache = True
 
   # Load pretrained weights.
-  config.pretrained = '../../pretrained_mobilenetv2/mobilenet_v2-b0353104.pth'
+  config.pretrained = '../../pretrained_mobilenetv2/mobilenetv2_fp32'
   config.pretrained_quant = None
 
   # If num_train_steps==-1 then the number of training steps is calculated from

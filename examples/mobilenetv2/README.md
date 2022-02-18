@@ -3,6 +3,9 @@
 
 ## Performance
 
+FP32 from torchvision checkpoint finetuned for 100 epochs: 72.20%
+
+Comparison: original paper reports 72.00%, torchvision reports 71.88%
 
 ## References
 
