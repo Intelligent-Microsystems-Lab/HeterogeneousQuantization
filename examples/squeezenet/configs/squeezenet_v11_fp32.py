@@ -87,14 +87,3 @@ def get_config():
   config.quant.dense = ml_collections.ConfigDict()
 
   return config
-
-
-
-
-
-
-
-
-
-
-
