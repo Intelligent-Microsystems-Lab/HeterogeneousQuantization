@@ -44,6 +44,13 @@ unzip ../pretrained_efficientnet/enet-lite0_best.zip -d ../pretrained_efficientn
 mkdir ../pretrained_mobilenetv2
 wget https://download.pytorch.org/models/mobilenet_v2-b0353104.pth -O ../pretrained_mobilenetv2/mobilenet_v2-b0353104.pth
 
-
 wget https://notredame.box.com/shared/static/xswvymwy9sd3ircbwbn5k8k4uxsge07u.zip -O ../unit_tests/mobilnetv2_unit_test.zip
 unzip ../unit_tests/mobilnetv2_unit_test.zip -d ../unit_tests
+
+
+mkdir ../pretrained_squeezenet
+wget https://download.pytorch.org/models/squeezenet1_1-b8a52dc0.pth -O ../pretrained_squeezenet/squeezenet1_1-b8a52dc0.pth
+
+wget https://notredame.box.com/shared/static/41gnftuzv2jlqsuo5vwh20dxi8ga83ec.zip -O ../unit_tests/squeezenet_unit_test.zip
+unzip ../unit_tests/squeezenet_unit_test.zip -d ../unit_tests
+

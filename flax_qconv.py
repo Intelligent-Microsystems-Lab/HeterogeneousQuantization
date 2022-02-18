@@ -95,7 +95,6 @@ class QuantConv(Module):
     Returns:
       The convolved data.
     """
-    assert self.use_bias is False
     inputs = jnp.asarray(inputs, self.dtype)
     cfg = self.config
 
