@@ -76,7 +76,7 @@ def get_config():
   config.quant.stem = ml_collections.ConfigDict()
 
   # Conv in MBConv blocks.
-  config.quant.invertedresidual = ml_collections.ConfigDict()
+  config.quant.fire = ml_collections.ConfigDict()
 
   # Average quant.
 
@@ -87,14 +87,3 @@ def get_config():
   config.quant.dense = ml_collections.ConfigDict()
 
   return config
-
-
-
-
-
-
-
-
-
-
-

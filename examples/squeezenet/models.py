@@ -31,25 +31,25 @@ class Fire(nn.Module):
   expand1x1_planes: int
   expand3x3_planes: int
   conv: ModuleDef
+  width_mult: float
   config: dict = ml_collections.FrozenConfigDict({})
-  bits: int = 8
 
   @nn.compact
   def __call__(self, x: Array, train: bool = True,) -> Array:
     logging.info('%s input shape: %s', self.name, x.shape)
 
     # squeeze
-    x = self.conv(self.squeeze_planes, (1, 1), padding=(
+    x = self.conv(int(self.squeeze_planes * self.width_mult), (1, 1), padding=(
         (0, 0), (0, 0)), config=self.config)(x)
     x = nn.relu(x)
 
     # expand1x1
-    x_1x1 = self.conv(self.expand1x1_planes, (1, 1), padding=(
+    x_1x1 = self.conv(int(self.expand1x1_planes * self.width_mult), (1, 1), padding=(
         (0, 0), (0, 0)), config=self.config)(x)
     x_1x1 = nn.relu(x_1x1)
 
     # expand3x3
-    x_3x3 = self.conv(self.expand1x1_planes, (3, 3), padding=(
+    x_3x3 = self.conv(int(self.expand1x1_planes * self.width_mult), (3, 3), padding=(
         (1, 1), (1, 1)), config=self.config)(x)
     x_3x3 = nn.relu(x_3x3)
 
@@ -59,6 +59,7 @@ class Fire(nn.Module):
 class SqueezeNet(nn.Module):
   """SqueezeNet 1.1."""
   num_classes: int = 1000
+  width_mult: float = 1.0
   config: dict = ml_collections.FrozenConfigDict({})
   load_model_fn: Callable = squeezenet_load_pretrained_weights
   dtype: Any = jnp.float32
@@ -69,11 +70,12 @@ class SqueezeNet(nn.Module):
                    bias_init=nn.initializers.zeros,
                    bits=self.config.quant.bits,
                    kernel_init=kaiming_uniform(),)
+    fire = partial(Fire, conv = conv, width_mult = self.width_mult, config=self.config.quant.fire)
     _ = self.variable('batch_stats', 'placeholder', lambda x: 0., (1,))
 
     # Building first layer.
     logging.info('Stem input shape: %s', x.shape)
-    x = conv(features=64, kernel_size=(3, 3), strides=(2, 2),
+    x = conv(features=int(64*self.width_mult), kernel_size=(3, 3), strides=(2, 2),
              padding=((0, 0), (0, 0)),
              name='stem_conv',
              config=self.config.quant.stem,
@@ -84,23 +86,23 @@ class SqueezeNet(nn.Module):
 
     # Building Fire blocks.
     x = nn.max_pool(x, (3, 3), strides=(2, 2), padding='VALID')
-    x = Fire(16, 64, 64, conv=conv)(x)
+    x = fire(16, 64, 64)(x)
     self.sow('intermediates', 'fire_0', x)
-    x = Fire(16, 64, 64, conv=conv)(x)
+    x = fire(16, 64, 64)(x)
     x = nn.max_pool(x, (3, 3), strides=(2, 2), padding='VALID')
     self.sow('intermediates', 'fire_1', x)
-    x = Fire(32, 128, 128, conv=conv)(x)
+    x = fire(32, 128, 128)(x)
     self.sow('intermediates', 'fire_2', x)
-    x = Fire(32, 128, 128, conv=conv)(x)
+    x = fire(32, 128, 128)(x)
     x = nn.max_pool(x, (3, 3), strides=(2, 2), padding='VALID')
     self.sow('intermediates', 'fire_3', x)
-    x = Fire(48, 192, 192, conv=conv)(x)
+    x = fire(48, 192, 192)(x)
     self.sow('intermediates', 'fire_4', x)
-    x = Fire(48, 192, 192, conv=conv)(x)
+    x = fire(48, 192, 192)(x)
     self.sow('intermediates', 'fire_5', x)
-    x = Fire(64, 256, 256, conv=conv)(x)
+    x = fire(64, 256, 256)(x)
     self.sow('intermediates', 'fire_6', x)
-    x = Fire(64, 256, 256, conv=conv)(x)
+    x = fire(64, 256, 256)(x)
     self.sow('intermediates', 'fire_7', x)
 
     x = nn.Dropout(0.5)(x, deterministic=not train)
@@ -121,3 +123,6 @@ class SqueezeNet(nn.Module):
     x = jnp.asarray(x, self.dtype)
 
     return x
+
+
+WideSqueezeNet = partial(SqueezeNet, width_mult=2.0)
