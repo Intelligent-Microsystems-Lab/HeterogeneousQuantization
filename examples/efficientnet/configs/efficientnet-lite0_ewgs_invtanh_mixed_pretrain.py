@@ -1,4 +1,4 @@
-# IMSL Lab - parametric_d_xmaxNotre Dame
+# IMSL Lab - University of Notre Dame xNotre Dame
 # Author: Clemens JS Schaefer
 # Originally copied from https://github.com/google/flax/tree/main/examples
 
