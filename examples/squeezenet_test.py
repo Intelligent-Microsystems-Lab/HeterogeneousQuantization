@@ -20,7 +20,7 @@ from squeezenet.configs import squeezenet_v11_fp32 as default_lib
 
 import squeezenet.models as models
 from squeezenet.squeezenet_load_pretrained_weights import (
-   squeezenet_load_pretrained_weights
+    squeezenet_load_pretrained_weights
 )
 
 from train_utils import TrainState  # noqa: E402
@@ -111,7 +111,7 @@ class SqueezeNetTest(absltest.TestCase):
                                rng=prng,
                                train=False)
 
-    rtol = 1e-7
+    rtol = 1e-3
     atol = 1e-4
     # testing for equality
     logging.info('Check stem.')
@@ -123,21 +123,13 @@ class SqueezeNetTest(absltest.TestCase):
 
     for i in range(8):
       logging.info('Check feature: ' + str(i))
-      pytorch_features = np.load('../../unit_tests/mobilnetv2_unit_test/features_' + str(i + 3) + '.npy')
-      pytorch_features = jnp.moveaxis(jnp.array(pytorch_features), (0, 1, 2, 3), (0, 3, 1, 2))
-      import pdb; pdb.set_trace()
+      pytorch_features = np.load(
+          '../../unit_tests/squeezenet_unit_test/features_' + str(i) + '.npy')
+      pytorch_features = jnp.moveaxis(
+          jnp.array(pytorch_features), (0, 1, 2, 3), (0, 3, 1, 2))
       np.testing.assert_allclose(
           state['intermediates']['fire_' + str(i)][0], pytorch_features,
           rtol=rtol, atol=atol)
-
-    
-
-    logging.info('Check head.')
-    pytorch_head = np.load('../../unit_tests/mobilnetv2_unit_test/head.npy')
-    pytorch_head = jnp.moveaxis(
-        jnp.array(pytorch_head), (0, 1, 2, 3), (0, 3, 1, 2))
-    np.testing.assert_allclose(
-        state['intermediates']['head'][0], pytorch_head, rtol=rtol, atol=atol)
 
 
 if __name__ == '__main__':

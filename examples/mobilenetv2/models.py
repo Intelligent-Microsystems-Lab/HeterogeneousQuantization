@@ -210,6 +210,7 @@ class MobileNetV2(nn.Module):
 
     return x
 
+
 # https://arxiv.org/pdf/1801.04381.pdf
 MobileNetV2_140 = partial(MobileNetV2, width_mult=1.4)
 MobileNetV2_130 = partial(MobileNetV2, width_mult=1.3)

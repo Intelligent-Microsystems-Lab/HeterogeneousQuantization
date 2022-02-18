@@ -34,9 +34,9 @@ map_dict = {
     '10': '5',
     '11': '6',
     '12': '7',
-    'squeeze' : 'QuantConv_0',
-    'expand1x1' : 'QuantConv_1',
-    'expand3x3' : 'QuantConv_2',
+    'squeeze': 'QuantConv_0',
+    'expand1x1': 'QuantConv_1',
+    'expand3x3': 'QuantConv_2',
 }
 
 
@@ -53,7 +53,7 @@ def squeezenet_load_pretrained_weights(state, location):
 
       if key == 'classifier.1.weight':
         torch_weights['head_conv']['kernel'] = jnp.moveaxis(
-                jnp.array(value), (0, 1, 2, 3), (3, 2, 0, 1))
+            jnp.array(value), (0, 1, 2, 3), (3, 2, 0, 1))
         continue
       if key == 'classifier.1.bias':
         torch_weights['head_conv']['bias'] = jnp.array(value)
@@ -68,17 +68,18 @@ def squeezenet_load_pretrained_weights(state, location):
               jnp.array(value), (0, 1, 2, 3), (3, 2, 0, 1))
           continue
         elif key_parts[1] == '0' and key_parts[2] == 'bias':
-          torch_weights['stem_conv']['bias'] =  jnp.array(value)
+          torch_weights['stem_conv']['bias'] = jnp.array(value)
           continue
         else:
           if key_parts[-1] == 'weight':
-            torch_weights['Fire_'+map_dict[key_parts[1]]][map_dict[key_parts[2]]]['kernel'] = jnp.moveaxis(
-              jnp.array(value), (0, 1, 2, 3), (3, 2, 0, 1))
+            torch_weights['Fire_' + map_dict[key_parts[1]]][map_dict[
+                key_parts[2]]]['kernel'] = jnp.moveaxis(
+                jnp.array(value), (0, 1, 2, 3), (3, 2, 0, 1))
             continue
           else:
-            torch_weights['Fire_'+map_dict[key_parts[1]]][map_dict[key_parts[2]]]['bias'] = jnp.array(value)
+            torch_weights['Fire_' + map_dict[key_parts[1]]
+                          ][map_dict[key_parts[2]]]['bias'] = jnp.array(value)
             continue
-
 
     general_params = {'params': torch_weights,
                       'quant_params': state.params['quant_params']}
