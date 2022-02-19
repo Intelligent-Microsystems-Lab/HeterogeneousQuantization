@@ -61,13 +61,14 @@ class MobileNetV2Test(absltest.TestCase):
     # get correct config
     config_module = importlib.import_module(
         'configs.mobilenetv2_fp32')
-    config = config_module.get_config()
+    cfg = config_module.get_config()
+    cfg.pretrained = '../../pretrained_mobilenetv2/mobilenet_v2-b0353104.pth'
 
     # initialize network
     rng = jax.random.PRNGKey(0)
     rng, prng1, prng2 = jax.random.split(rng, 3)
     model_cls = getattr(models, 'MobileNetV2_100')
-    model_def = model_cls(num_classes=1000, dtype=jnp.float32, config=config)
+    model_def = model_cls(num_classes=1000, dtype=jnp.float32, config=cfg)
     variables = model_def.init(
         prng1, jnp.ones((8, 224, 224, 3), jnp.float32),
         rng=prng2, train=False)
@@ -84,7 +85,7 @@ class MobileNetV2Test(absltest.TestCase):
             'quant_params': quant_params}, tx=tx,
         batch_stats=variables['batch_stats'],
         weight_size={}, act_size={}, quant_config={})
-    state = mobilenetv2_load_pretrained_weights(state, config.pretrained)
+    state = mobilenetv2_load_pretrained_weights(state, cfg.pretrained)
 
     # load inpt
     input_image = Image.open('../../unit_tests/mobilnetv2_unit_test/dog.jpg')

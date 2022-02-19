@@ -50,7 +50,7 @@ def get_config():
   config.cache = True
 
   # Load pretrained weights.
-  config.pretrained = None #'../../pretrained_mobilenetv2/mobilenetv2_fp32'
+  config.pretrained = None  # '../../pretrained_mobilenetv2/mobilenetv2_fp32'
   config.pretrained_quant = None
 
   # If num_train_steps==-1 then the number of training steps is calculated from
@@ -97,6 +97,5 @@ def get_config():
       percentile_init, perc=99.9), bitwidth_min=1, d_max=8)
   config.quant.head.bias = partial(
       parametric_d_xmax, init_fn=gaussian_init, bitwidth_min=1)
-
 
   return config

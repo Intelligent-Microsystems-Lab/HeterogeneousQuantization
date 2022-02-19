@@ -16,7 +16,7 @@ def get_config():
   config.seed = 203853699
 
   # As defined in the `models` module.
-  config.model = 'ResNet18'
+  config.model = 'MobileNetV2_100'
   # `name` argument of tensorflow_datasets.builder()
   config.dataset = 'imagenet2012'
   config.num_classes = 1000
@@ -50,7 +50,7 @@ def get_config():
   config.cache = True
 
   # Load pretrained weights.
-  config.pretrained = "../../pretrained_resnet/resnet18_v2"
+  config.pretrained = '../../pretrained_mobilenetv2/mobilenetv2_fp32'
   config.pretrained_quant = None
 
   # If num_train_steps==-1 then the number of training steps is calculated from
@@ -69,22 +69,29 @@ def get_config():
 
   config.quant = ml_collections.ConfigDict()
 
-  config.quant.a_bits = 4
-  config.quant.w_bits = 4
+  config.quant.bits = 4
 
   config.quant.g_scale = 0.
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
   config.quant.stem.weight = partial(
-      parametric_d_xmax, init_fn=gaussian_init, bitwidth_min=1)
+      parametric_d_xmax, init_fn=partial(gaussian_init, axis=(0, 1, 2)), bitwidth_min=1)
 
-  # Conv in MBConv blocks.
-  config.quant.mbconv = ml_collections.ConfigDict()
-  config.quant.mbconv.weight = partial(
-      parametric_d_xmax, init_fn=gaussian_init, bitwidth_min=1)
-  config.quant.mbconv.act = partial(parametric_d_xmax, act=True, init_fn=partial(
+  # Conv in InvertedResidual blocks.
+  config.quant.invertedresidual = ml_collections.ConfigDict()
+  config.quant.invertedresidual.weight = partial(
+      parametric_d_xmax, init_fn=partial(gaussian_init, axis=(0, 1, 2)), bitwidth_min=1)
+  config.quant.invertedresidual.act = partial(parametric_d_xmax, act=True, init_fn=partial(
       percentile_init, perc=99.9), bitwidth_min=1, d_max=8)
+
+  # Conv for head layer.
+  config.quant.head = ml_collections.ConfigDict()
+  config.quant.head.weight = partial(
+      parametric_d_xmax, init_fn=partial(gaussian_init, axis=(0, 1, 2)), bitwidth_min=1)
+  config.quant.head.act = partial(parametric_d_xmax, act=True, init_fn=partial(
+      percentile_init, perc=99.9), bitwidth_min=1, d_max=8)
+
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()

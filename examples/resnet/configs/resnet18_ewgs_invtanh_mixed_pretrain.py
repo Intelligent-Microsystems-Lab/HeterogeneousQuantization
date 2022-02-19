@@ -86,7 +86,6 @@ def get_config():
   config.quant.mbconv.act = partial(parametric_d_xmax, act=True, init_fn=partial(
       percentile_init, perc=99.9), round_fn=round_invtanh, bitwidth_min=1, d_max=8)
 
-
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
   config.quant.dense.weight = partial(

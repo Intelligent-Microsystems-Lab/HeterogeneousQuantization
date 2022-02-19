@@ -43,6 +43,7 @@ unzip ../pretrained_efficientnet/enet-lite0_best.zip -d ../pretrained_efficientn
 
 
 mkdir ../pretrained_mobilenetv2
+wget https://download.pytorch.org/models/mobilenet_v2-b0353104.pth -O ../pretrained_mobilenetv2/mobilenet_v2-b0353104.pth
 wget https://notredame.box.com/shared/static/xtwcx89qez08k9uxdpa20csboyl7leby.zip -O ../pretrained_mobilenetv2/mobilenetv2_fp32.zip
 unzip ../pretrained_mobilenetv2/mobilenetv2_fp32.zip -d ../pretrained_mobilenetv2
 
