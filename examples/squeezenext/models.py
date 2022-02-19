@@ -61,7 +61,7 @@ class SqueezeNet(nn.Module):
   num_classes: int = 1000
   width_mult: float = 1.0
   config: dict = ml_collections.FrozenConfigDict({})
-  load_model_fn: Callable = squeezenet_load_pretrained_weights
+  # load_model_fn: Callable = squeezenet_load_pretrained_weights
   dtype: Any = jnp.float32
 
   @nn.compact
