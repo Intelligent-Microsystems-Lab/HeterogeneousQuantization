@@ -15,8 +15,8 @@ from flax import linen as nn
 from jax.nn.initializers import normal, kaiming_uniform
 import jax.numpy as jnp
 
-sys.path.append('squeezenet')
-from squeezenet_load_pretrained_weights import squeezenet_load_pretrained_weights  # noqa: E402, E501
+# sys.path.append('squeezenet')
+# from squeezenet_load_pretrained_weights import squeezenet_load_pretrained_weights  # noqa: E402, E501
 
 sys.path.append("..")
 from flax_qconv import QuantConv  # noqa: E402
