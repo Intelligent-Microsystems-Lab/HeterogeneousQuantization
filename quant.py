@@ -431,7 +431,7 @@ class parametric_d_xmax(nn.Module):
   xmax_max: float = 127
   d_min: float = 2**-12
   d_max: float = 1
-  round_fn: Callable = round_psgd
+  round_fn: Callable = round_ste
   init_fn: Callable = None
   g_scale: float = 0.
   ceil_tolerance: float = 0.0
