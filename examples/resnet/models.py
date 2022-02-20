@@ -187,9 +187,6 @@ class ResNet(nn.Module):
                            "SAME",
                            cifar10_flag=self.cifar10_flag,
                            )(x)
-    if self.cifar10_flag and 'average' in self.config.quant:
-      x = self.config.quant.average(
-          bits=self.config.quant.a_bits)(x, sign=False)
 
     x = jnp.mean(x, axis=(1, 2))
 
