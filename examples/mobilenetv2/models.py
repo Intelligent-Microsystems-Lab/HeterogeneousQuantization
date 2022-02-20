@@ -125,7 +125,8 @@ class MobileNetV2(nn.Module):
 
     conv = partial(QuantConv, use_bias=False, dtype=self.dtype,
                    bits=self.config.quant.bits,
-                   kernel_init=default_kernel_init(),)
+                   kernel_init=default_kernel_init(),
+                   g_scale=self.config.quant.g_scale)
     norm = partial(BatchNorm,
                    scale_init=nn.initializers.ones,
                    bias_init=nn.initializers.zeros,
@@ -200,6 +201,7 @@ class MobileNetV2(nn.Module):
                    kernel_init=normal(0.01),
                    bias_init=nn.initializers.zeros,
                    quant_act_sign=False,
+                   g_scale=self.config.quant.g_scale
                    )(x)
     x = jnp.asarray(x, self.dtype)
 

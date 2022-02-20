@@ -30,6 +30,7 @@ from efficientnet_utils import BlockDecoder, GlobalParams  # noqa: E402
 sys.path.append("..")
 from flax_qconv import QuantConv  # noqa: E402
 from flax_qdense import QuantDense  # noqa: E402
+from batchnorm import BatchNorm  # noqa: E402
 
 ModuleDef = Any
 Array = Any
@@ -245,7 +246,7 @@ class EfficientNet(nn.Module):
     else:
       conv = partial(QuantConv, dtype=self.dtype,
                      g_scale=self.config.quant.g_scale)
-    norm = partial(nn.BatchNorm,
+    norm = partial(BatchNorm,
                    use_running_average=not train,
                    momentum=global_params.batch_norm_momentum,
                    epsilon=global_params.batch_norm_epsilon,

@@ -15,7 +15,7 @@ def get_config():
   config.seed = 203853699
 
   # As defined in the `models` module.
-  config.model = 'SqueezeNet'
+  config.model = 'sqnxt23_w2'
   # `name` argument of tensorflow_datasets.builder()
   config.dataset = 'imagenet2012'
   config.num_classes = 1000
@@ -33,7 +33,7 @@ def get_config():
   config.augment_name = 'plain'
 
   config.optimizer = 'rmsprop'
-  config.learning_rate = 0.00125
+  config.learning_rate = 0.0000125  # 0.0001
   config.lr_boundaries_scale = None
   config.warmup_epochs = 2.0
   config.momentum = 0.9
@@ -49,7 +49,7 @@ def get_config():
   config.cache = True
 
   # Load pretrained weights.
-  config.pretrained = None
+  config.pretrained = 'imgclsmob-sqnxt23_w2'
   config.pretrained_quant = None
 
   # If num_train_steps==-1 then the number of training steps is calculated from
@@ -75,10 +75,13 @@ def get_config():
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
 
-  # Conv in MBConv blocks.
-  config.quant.fire = ml_collections.ConfigDict()
+  # Conv in SqnxtUnit blocks.
+  config.quant.sqnxtunit = ml_collections.ConfigDict()
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
+
+  # Conv for dense layer.
+  config.quant.dense = ml_collections.ConfigDict()
 
   return config

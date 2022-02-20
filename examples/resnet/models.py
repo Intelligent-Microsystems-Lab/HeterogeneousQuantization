@@ -145,7 +145,8 @@ class ResNet(nn.Module):
 
   @nn.compact
   def __call__(self, x, train: bool = True, rng: Any = None):
-    conv = partial(QuantConv, use_bias=False, dtype=self.dtype)
+    conv = partial(QuantConv, use_bias=False, dtype=self.dtype,
+                   g_scale=self.config.quant.g_scale)
     norm = partial(BatchNorm,
                    use_running_average=not train,
                    momentum=.9,
@@ -195,6 +196,7 @@ class ResNet(nn.Module):
     x = QuantDense(self.num_classes, dtype=self.dtype,
                    config=self.config.quant.dense, quant_act_sign=False,
                    bits=self.config.quant.w_bits,
+                   g_scale=self.config.quant.g_scale,
                    kernel_init=nn.initializers.zeros if self.cifar10_flag else
                    default_kernel_init)(x)
     x = jnp.asarray(x, self.dtype)
