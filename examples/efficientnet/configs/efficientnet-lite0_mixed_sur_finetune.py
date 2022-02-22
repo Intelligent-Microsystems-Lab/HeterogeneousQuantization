@@ -16,7 +16,7 @@ def get_config():
   config.seed = 203853699
 
   # As defined in the `models` module.
-  config.model = 'MobileNetV2_100'
+  config.model = 'EfficientNetB0'
   # `name` argument of tensorflow_datasets.builder()
   config.dataset = 'imagenet2012'
   config.num_classes = 1000
@@ -34,7 +34,7 @@ def get_config():
   config.augment_name = 'plain'
 
   config.optimizer = 'rmsprop'
-  config.learning_rate = 0.00125
+  config.learning_rate = 0.0000125  # 0.00125
   config.lr_boundaries_scale = None
   config.warmup_epochs = 2.0
   config.momentum = 0.9
@@ -50,8 +50,8 @@ def get_config():
   config.cache = True
 
   # Load pretrained weights.
-  config.pretrained = '../../pretrained_mobilenetv2/mobilenetv2_fp32'
-  config.pretrained_quant = None
+  config.pretrained = None
+  config.pretrained_quant = "gs://imagenet_clemens/enet_lite0_mixed_3.00"
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.
@@ -65,7 +65,7 @@ def get_config():
   config.quant_target.act_penalty = .0
   config.quant_target.size_div = 8. * 1000.
   config.quant_target.eval_start = .0
-  config.quant_target.update_every = 1e+32 
+  config.quant_target.update_every = 1e+32
 
   config.quant = ml_collections.ConfigDict()
 
@@ -73,16 +73,16 @@ def get_config():
 
   config.quant.g_scale = 5e-3
 
-  # Conv for stem layer.
+  # Conv for stem layer (activation is input - fixed bitwidth).
   config.quant.stem = ml_collections.ConfigDict()
   config.quant.stem.weight = partial(
       parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
 
-  # Conv in InvertedResidual blocks.
-  config.quant.invertedresidual = ml_collections.ConfigDict()
-  config.quant.invertedresidual.weight = partial(
+  # Conv in MBConv blocks.
+  config.quant.mbconv = ml_collections.ConfigDict()
+  config.quant.mbconv.weight = partial(
       parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
-  config.quant.invertedresidual.act = partial(parametric_d_xmax, act=True, init_fn=partial(
+  config.quant.mbconv.act = partial(parametric_d_xmax, act=True, init_fn=partial(
       percentile_init, perc=99.9), round_fn=round_invtanh, bitwidth_min=1, d_max=8)
 
   # Conv for head layer.
