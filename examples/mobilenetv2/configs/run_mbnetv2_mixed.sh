@@ -12,6 +12,10 @@ do
   BITS=$(echo "scale=0; ($SIZE)/1 + 2" | bc -l)
 
   python3 train.py --workdir=../../mbnetv2_mixed_${SIZE}_9 --config=mobilenetv2/configs/mobilenetv2_mixed.py  --config.quant_target.weight_mb=${WEIGHT_TARGET} --config.quant_target.act_mb=${ACT_TARGET} --config.quant.bits=${BITS} --config.pretrained_quant=gs://imagenet_clemens/pretrained/mbnet_${BITS}_pre_2/best
-  python3 train.py --workdir=../../mbnetv2_mixed_${SIZE}_finetune_9 --config=mobilenetv2/configs/mobilenetv2_mixed_finetune.py --config.pretrained_quant=../../mbnetv2_mixed_${SIZE}_9/best
+  if [ -d ../../mbnetv2_mixed_${SIZE}_9/best ]; then
+    python3 train.py --workdir=../../mbnetv2_mixed_${SIZE}_finetune_9 --config=mobilenetv2/configs/mobilenetv2_mixed_finetune.py --config.pretrained_quant=../../mbnetv2_mixed_${SIZE}_9/best
+  else
+    python3 train.py --workdir=../../mbnetv2_mixed_${SIZE}_finetune_9 --config=mobilenetv2/configs/mobilenetv2_mixed_finetune.py --config.pretrained_quant=../../mbnetv2_mixed_${SIZE}_9/
+  fi
 
 done

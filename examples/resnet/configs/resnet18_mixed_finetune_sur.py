@@ -6,7 +6,7 @@
 
 import ml_collections
 from functools import partial
-from quant import parametric_d_xmax, gaussian_init, percentile_init
+from quant import parametric_d_xmax, gaussian_init, percentile_init, round_ewgs, round_invtanh
 
 
 def get_config():
@@ -16,7 +16,7 @@ def get_config():
   config.seed = 203853699
 
   # As defined in the `models` module.
-  config.model = 'MobileNetV2_100'
+  config.model = 'ResNet18'
   # `name` argument of tensorflow_datasets.builder()
   config.dataset = 'imagenet2012'
   config.num_classes = 1000
@@ -34,7 +34,7 @@ def get_config():
   config.augment_name = 'plain'
 
   config.optimizer = 'rmsprop'
-  config.learning_rate = 0.0000125  # 0.0001
+  config.learning_rate = 0.0000125  # 0.00125
   config.lr_boundaries_scale = None
   config.warmup_epochs = 2.0
   config.momentum = 0.9
@@ -50,8 +50,9 @@ def get_config():
   config.cache = True
 
   # Load pretrained weights.
-  config.pretrained = None
-  config.pretrained_quant = '..'
+  config.pretrained = None  # "../../pretrained_efficientnet/enet-lite0_best"
+  # "../../pretrained_efficientnet/efficientnet-lite0"
+  config.pretrained_quant = "gs://imagenet_clemens/resnet18_pre/resnet18_mixed_bits_5"
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.
@@ -60,51 +61,39 @@ def get_config():
 
   config.quant_target = ml_collections.ConfigDict()
 
-  config.quant_target.weight_mb = 1731.0
-  config.quant_target.weight_penalty = .0001
+  config.quant_target.weight_penalty = .0
   config.quant_target.act_mode = 'sum'
-  config.quant_target.act_mb = 2524.0  # 2505.0
-  config.quant_target.act_penalty = .0001
+  config.quant_target.act_penalty = .0
   config.quant_target.size_div = 8. * 1000.
-  config.quant_target.eval_start = 61000  # 31050
-  config.quant_target.update_every = 20  # every x steps d and xmax are updated
+  config.quant_target.eval_start = .0
+  config.quant_target.update_every = 1e+32 
 
   config.quant = ml_collections.ConfigDict()
 
-  config.quant.bits = 4
+  config.quant.a_bits = 4
+  config.quant.w_bits = 4
 
-  config.quant.g_scale = 0.
+  config.quant.g_scale = 5e-3
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
   config.quant.stem.weight = partial(
-      parametric_d_xmax, init_fn=gaussian_init, bitwidth_min=1)
+      parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
 
   # Conv in InvertedResidual blocks.
-  config.quant.invertedresidual = ml_collections.ConfigDict()
-  config.quant.invertedresidual.weight = partial(
-      parametric_d_xmax, init_fn=gaussian_init, bitwidth_min=1)
-  config.quant.invertedresidual.act = partial(parametric_d_xmax, act=True, init_fn=partial(
-      percentile_init, perc=99.9), bitwidth_min=1, d_max=8)
-
-  # Conv for head layer.
-  config.quant.head = ml_collections.ConfigDict()
-  config.quant.head.weight = partial(
-      parametric_d_xmax, init_fn=gaussian_init, bitwidth_min=1)
-  config.quant.head.act = partial(parametric_d_xmax, act=True, init_fn=partial(
-      percentile_init, perc=99.9), bitwidth_min=1, d_max=8)
-
-  # Average quant.
-  config.quant.average = partial(parametric_d_xmax, act=True, init_fn=partial(
-      percentile_init, perc=99.9), bitwidth_min=1, d_max=8)
+  config.quant.mbconv = ml_collections.ConfigDict()
+  config.quant.mbconv.weight = partial(
+      parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
+  config.quant.mbconv.act = partial(parametric_d_xmax, act=True, init_fn=partial(
+      percentile_init, perc=99.9), round_fn=round_invtanh, bitwidth_min=1, d_max=8)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
   config.quant.dense.weight = partial(
-      parametric_d_xmax, init_fn=gaussian_init, bitwidth_min=1)
+      parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
   config.quant.dense.act = partial(parametric_d_xmax, act=True, init_fn=partial(
-      percentile_init, perc=99.9), bitwidth_min=1, d_max=8)
+      percentile_init, perc=99.9), round_fn=round_invtanh, bitwidth_min=1, d_max=8)
   config.quant.dense.bias = partial(
-      parametric_d_xmax, init_fn=gaussian_init, bitwidth_min=1)
+      parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
 
   return config
