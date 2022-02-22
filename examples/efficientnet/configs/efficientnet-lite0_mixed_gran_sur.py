@@ -99,7 +99,7 @@ def get_config():
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
   config.quant.dense.weight = partial(
-      parametric_d_xmax, init_fn=partial(gaussian_init, axis=(0, 1, 2)), round_fn=round_ewgs, bitwidth_min=1)
+      parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
   config.quant.dense.act = partial(parametric_d_xmax, act=True, init_fn=partial(
       percentile_init, perc=99.9), round_fn=round_invtanh, bitwidth_min=1, d_max=8)
   config.quant.dense.bias = partial(
