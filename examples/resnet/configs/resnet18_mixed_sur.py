@@ -6,7 +6,7 @@
 
 import ml_collections
 from functools import partial
-from quant import parametric_d_xmax, gaussian_init, percentile_init
+from quant import parametric_d_xmax, gaussian_init, percentile_init, round_ewgs, round_invtanh
 
 
 def get_config():
@@ -75,27 +75,27 @@ def get_config():
   config.quant.a_bits = 4
   config.quant.w_bits = 4
 
-  config.quant.g_scale = 0.
+  config.quant.g_scale = 5e-3
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
   config.quant.stem.weight = partial(
-      parametric_d_xmax, init_fn=gaussian_init, bitwidth_min=1)
+      parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
 
-  # Conv in MBConv blocks.
+  # Conv in InvertedResidual blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
   config.quant.mbconv.weight = partial(
-      parametric_d_xmax, init_fn=gaussian_init, bitwidth_min=1)
+      parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
   config.quant.mbconv.act = partial(parametric_d_xmax, act=True, init_fn=partial(
-      percentile_init, perc=99.9), bitwidth_min=1, d_max=8)
+      percentile_init, perc=99.9), round_fn=round_invtanh, bitwidth_min=1, d_max=8)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
   config.quant.dense.weight = partial(
-      parametric_d_xmax, init_fn=gaussian_init, bitwidth_min=1)
+      parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
   config.quant.dense.act = partial(parametric_d_xmax, act=True, init_fn=partial(
-      percentile_init, perc=99.9), bitwidth_min=1, d_max=8)
+      percentile_init, perc=99.9), round_fn=round_invtanh, bitwidth_min=1, d_max=8)
   config.quant.dense.bias = partial(
-      parametric_d_xmax, init_fn=gaussian_init, bitwidth_min=1)
+      parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
 
   return config
