@@ -6,7 +6,7 @@
 
 import ml_collections
 from functools import partial
-from quant import parametric_d_xmax, gaussian_init, percentile_init
+from quant import parametric_d_xmax, gaussian_init, percentile_init, round_ewgs, round_invtanh
 
 
 def get_config():
@@ -16,7 +16,7 @@ def get_config():
   config.seed = 203853699
 
   # As defined in the `models` module.
-  config.model = 'MobileNetV2_100'
+  config.model = 'sqnxt23_w2'
   # `name` argument of tensorflow_datasets.builder()
   config.dataset = 'imagenet2012'
   config.num_classes = 1000
@@ -50,7 +50,7 @@ def get_config():
   config.cache = True
 
   # Load pretrained weights.
-  config.pretrained = '../../pretrained_mobilenetv2/mobilenetv2_fp32'
+  config.pretrained = 'gs://imagenet_clemens/sqnxt23_w2/best'
   config.pretrained_quant = None
 
   # If num_train_steps==-1 then the number of training steps is calculated from
@@ -76,29 +76,35 @@ def get_config():
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
   config.quant.stem.weight = partial(
-      parametric_d_xmax, init_fn=gaussian_init, bitwidth_min=1)
+      parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
+  config.quant.stem.bias = partial(
+      parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
 
-  # Conv in InvertedResidual blocks.
-  config.quant.invertedresidual = ml_collections.ConfigDict()
-  config.quant.invertedresidual.weight = partial(
-      parametric_d_xmax, init_fn=gaussian_init, bitwidth_min=1)
-  config.quant.invertedresidual.act = partial(parametric_d_xmax, act=True, init_fn=partial(
-      percentile_init, perc=99.9), bitwidth_min=1, d_max=8)
+  # Conv in SqnxtUnit blocks.
+  config.quant.sqnxtunit = ml_collections.ConfigDict()
+  config.quant.sqnxtunit.weight = partial(
+      parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
+  config.quant.sqnxtunit.act = partial(parametric_d_xmax, act=True, init_fn=partial(
+      percentile_init, perc=99.9), round_fn=round_invtanh, bitwidth_min=1, d_max=8)
+  config.quant.sqnxtunit.bias = partial(
+      parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
   config.quant.head.weight = partial(
-      parametric_d_xmax, init_fn=gaussian_init, bitwidth_min=1)
+      parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
   config.quant.head.act = partial(parametric_d_xmax, act=True, init_fn=partial(
-      percentile_init, perc=99.9), bitwidth_min=1, d_max=8)
+      percentile_init, perc=99.9), round_fn=round_invtanh, bitwidth_min=1, d_max=8)
+  config.quant.head.bias = partial(
+      parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
 
-  # Final linear layer.
+  # Conv for dense layer.
   config.quant.dense = ml_collections.ConfigDict()
   config.quant.dense.weight = partial(
-      parametric_d_xmax, init_fn=gaussian_init, bitwidth_min=1)
+      parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
   config.quant.dense.act = partial(parametric_d_xmax, act=True, init_fn=partial(
-      percentile_init, perc=99.9), bitwidth_min=1, d_max=8)
+      percentile_init, perc=99.9), round_fn=round_invtanh, bitwidth_min=1, d_max=8)
   config.quant.dense.bias = partial(
-      parametric_d_xmax, init_fn=gaussian_init, bitwidth_min=1)
+      parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
 
   return config
