@@ -50,7 +50,7 @@ def get_config():
   config.cache = True
 
   # Load pretrained weights.
-  config.pretrained = '..'
+  config.pretrained = None
   config.pretrained_quant = '..'
 
   # If num_train_steps==-1 then the number of training steps is calculated from
