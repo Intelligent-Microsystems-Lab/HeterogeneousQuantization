@@ -12,6 +12,10 @@ do
   BITS=$(echo "scale=0; ($SIZE)/1 + 2" | bc -l)
 
   python3 train.py --workdir=../../resnet18_mixed_${SIZE}_9 --config=resnet/configs/resnet18_mixed.py  --config.quant_target.weight_mb=${WEIGHT_TARGET} --config.quant_target.act_mb=${ACT_TARGET} --config.quant.w_bits=${BITS} --config.quant.a_bits=${BITS} --config.pretrained_quant=gs://imagenet_clemens/pretrained/resnet18_${BITS}_pre_2/best
-  python3 train.py --workdir=../../resnet18_mixed_${SIZE}_finetune_9 --config=resnet/configs/resnet18_mixed_finetune.py --config.pretrained_quant=../../resnet18_mixed_${SIZE}_9/best
+  if [ -d ../../resnet18_mixed_${SIZE}_9/best ]; then
+    python3 train.py --workdir=../../resnet18_mixed_${SIZE}_finetune_9 --config=resnet/configs/resnet18_mixed_finetune.py --config.pretrained_quant=../../resnet18_mixed_${SIZE}_9/best
+  else
+    python3 train.py --workdir=../../resnet18_mixed_${SIZE}_finetune_9 --config=resnet/configs/resnet18_mixed_finetune.py --config.pretrained_quant=../../resnet18_mixed_${SIZE}_9/
+  fi
 
 done
