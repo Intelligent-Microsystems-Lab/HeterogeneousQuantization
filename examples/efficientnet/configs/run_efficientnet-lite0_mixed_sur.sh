@@ -12,6 +12,10 @@ do
   BITS=$(echo "scale=0; ($SIZE)/1 + 2" | bc -l)
 
   python3 train.py --workdir=../../efficientnet-lite0_mixed_${SIZE}_sur_9 --config=efficientnet/configs/efficientnet-lite0_mixed_sur.py  --config.quant_target.weight_mb=${WEIGHT_TARGET} --config.quant_target.act_mb=${ACT_TARGET} --config.quant.bits=${BITS} --config.pretrained_quant=gs://imagenet_clemens/pretrained/enet0_${BITS}_pre_sur_1/best
-  python3 train.py --workdir=../../efficientnet-lite0_mixed_${SIZE}_sur_finetune_9 --config=efficientnet/configs/efficientnet-lite0_mixed_sur_finetune.py --config.pretrained_quant=../../efficientnet-lite0_mixed_${SIZE}_sur_9/best
+  if [ -d ../../efficientnet-lite0_mixed_${SIZE}_sur_9/best ]; then
+    python3 train.py --workdir=../../efficientnet-lite0_mixed_${SIZE}_sur_finetune_9 --config=efficientnet/configs/efficientnet-lite0_mixed_sur_finetune.py --config.pretrained_quant=../../efficientnet-lite0_mixed_${SIZE}_sur_9/best
+  else
+    python3 train.py --workdir=../../efficientnet-lite0_mixed_${SIZE}_sur_finetune_9 --config=efficientnet/configs/efficientnet-lite0_mixed_sur_finetune.py --config.pretrained_quant=../../efficientnet-lite0_mixed_${SIZE}_sur_9/
+  fi
 
 done
