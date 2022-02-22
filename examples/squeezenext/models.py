@@ -63,12 +63,12 @@ class SqnxtUnit(nn.Module):
     x = nn.relu(x)
 
     x = self.conv(in_channels // reduction_den, (1, 3), strides=(1, 1),
-                  padding=((0, 1), (0, 1)), config=self.config)(x)
+                  padding=((0, 0), (1, 1)), config=self.config)(x)
     x = self.norm()(x)
     x = nn.relu(x)
 
     x = self.conv(in_channels // reduction_den, (3, 1), strides=(1, 1),
-                  padding=((1, 0), (1, 0)), config=self.config)(x)
+                  padding=((1, 1), (0, 0)), config=self.config)(x)
     x = self.norm()(x)
     x = nn.relu(x)
 
@@ -116,13 +116,14 @@ class SqueezeNext(nn.Module):
     x = conv(features=int(64 * self.width_mult),
              kernel_size=(7, 7),
              strides=(2, 2),
-             padding=((1, 1), (1, 1)),
+             padding=((1, 0), (1, 0)),
              name='stem_conv',
              config=self.config.quant.stem,
              )(x)
     x = norm()(x)
     x = nn.relu(x)
-    x = nn.max_pool(x, (3, 3), strides=(2, 2), padding='VALID')
+    self.sow('intermediates', 'stem_conv_track', x)
+    x = nn.max_pool(x, (3, 3), strides=(2, 2), padding=((1, 0), (1, 0)))
     self.sow('intermediates', 'stem', x)
 
     for i, block_size in enumerate(self.stage_sizes):
@@ -145,10 +146,10 @@ class SqueezeNext(nn.Module):
              config=self.config.quant.head)(x)
     x = norm()(x)
     x = nn.relu(x)
-    self.sow('intermediates', 'head', x)
 
     # Average
     x = jnp.mean(x, axis=(1, 2))
+    self.sow('intermediates', 'head', x)
 
     # Dense
     x = QuantDense(self.num_classes,

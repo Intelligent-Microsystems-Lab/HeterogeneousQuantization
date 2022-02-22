@@ -51,9 +51,6 @@ wget https://notredame.box.com/shared/static/xswvymwy9sd3ircbwbn5k8k4uxsge07u.zi
 unzip ../unit_tests/mobilnetv2_unit_test.zip -d ../unit_tests
 
 
-mkdir ../pretrained_squeezenet
-wget https://download.pytorch.org/models/squeezenet1_1-b8a52dc0.pth -O ../pretrained_squeezenet/squeezenet1_1-b8a52dc0.pth
-
-wget https://notredame.box.com/shared/static/41gnftuzv2jlqsuo5vwh20dxi8ga83ec.zip -O ../unit_tests/squeezenet_unit_test.zip
-unzip ../unit_tests/squeezenet_unit_test.zip -d ../unit_tests
+wget https://notredame.box.com/shared/static/ztcr84dfjg9j0qre0pr7bvtjvqgqyvoo.zip -O ../unit_tests/squeezenext_unit_test.zip
+unzip ../unit_tests/squeezenext_unit_test.zip -d ../unit_tests
 
