@@ -2,7 +2,7 @@
 
 
 ## Performance
-On ImageNet-1k: 69.73%
+FP32 from imgclsmob checkpoint finetuned for 100 epochs: 69.73%
 
 Comparison: original paper 67.18%, hawq-v2 69.38%, imgclsmob 69.88%
 
