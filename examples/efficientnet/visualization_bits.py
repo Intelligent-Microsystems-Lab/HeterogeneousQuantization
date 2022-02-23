@@ -263,6 +263,10 @@ def plot_bits(config: ml_collections.ConfigDict, workdir: str):
   font_size = 22
 
   fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(14, 5.0))
+
+  twin1 = ax.twinx()
+  twin2 = ax.twinx()
+
   ax.spines["top"].set_visible(False)
   ax.spines["right"].set_visible(False)
 
@@ -270,6 +274,7 @@ def plot_bits(config: ml_collections.ConfigDict, workdir: str):
   ax.xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
   ax.yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
 
+  ax.spines['left'].set_position('zero')
 
   for axis in ['top', 'bottom', 'left', 'right']:
     ax.spines[axis].set_linewidth(5)
@@ -283,8 +288,8 @@ def plot_bits(config: ml_collections.ConfigDict, workdir: str):
   pos = 1
   for k, v in enet_bits.items():
     ax.bar(pos, v[0], width=1.0, color=v[-1], label=color_to_label[v[-1]])
-    ax.bar(pos, -v[1], width=.5, color=v[-1], label=color_to_label[v[-1]])
-    ax.bar(pos+.5, -v[2], width=.5, color=v[-1], label=color_to_label[v[-1]])
+    twin1.bar(pos, -v[1], width=.5, color=v[-1], label=color_to_label[v[-1]])
+    twin2.bar(pos+.5, -v[2], width=.5, color=v[-1], label=color_to_label[v[-1]])
     pos += 1
 
   ax.set_xlabel("#quantization", fontsize=font_size, fontweight='bold')
