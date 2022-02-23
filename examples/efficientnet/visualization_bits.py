@@ -151,7 +151,7 @@ enet_template = {
     '/MBConvBlock_9/depthwise_conv2d/act': (-1, 95, 1),
     '/head_conv/weight': (-1, 96, 1),
     '/head_conv/act': (-1, 97, 1),
-    '/act': (-1, 98, 0),
+    # '/act': (-1, 98, 0),
     '/QuantDense_0/weight': (-1, 99, 1),
     '/QuantDense_0/act': (-1, 100, 0),
     '/QuantDense_0/bias': (-1, 101, 1),
@@ -194,226 +194,115 @@ def plot_bits(config: ml_collections.ConfigDict, workdir: str):
       subkey, config, model, config.image_size, lambda x: x)
   state = restore_checkpoint(state, workdir)
 
+
+  act_names = flatten_names(unfreeze(state.act_size), '')
+  flat_acts = {}
+  for local_name in act_names:
+    flat_acts[local_name] = fetch_value(
+        state.act_size, local_name[1:].split('/'))
+
+
+  weight_names = flatten_names(unfreeze(state.weight_size), '')
+  flat_weights = {}
+  for local_name in weight_names:
+    flat_weights[local_name] = fetch_value(
+        state.weight_size, local_name[1:].split('/'))
+
+
   param_names = flatten_names(unfreeze(state.params['quant_params']), '')
   flat_params = {}
   for local_name in param_names:
     flat_params[local_name] = fetch_value(
         state.params['quant_params'], local_name[1:].split('/'))
 
-  # enet_bits = enet_template.copy()
   enet_bits = copy.deepcopy(enet_template)
   for i in flat_params:
     if i == '/placeholder':
       continue
-    if i.split('/')[1] == 'parametric_d_xmax_0':
-      # averaging layer
-      path = i[1:].split('/')[:-1]
-      d = fetch_value(state.params['quant_params'], path + ['step_size'])
-      xmax = fetch_value(
-          state.params['quant_params'], path + ['dynamic_range'])
-      sign_bit = enet_bits['/act'][2]
-      enet_bits['/act'] = (jnp.ceil(jnp.log2(xmax / d)) + sign_bit,
-                           enet_bits['/act'][1], sign_bit, 'red')
-      continue
     if i.split('/parametric_d_xmax_')[1][0] == '0':
-      # weights
-      path = i[1:].split('/')[:-1]
-      d = fetch_value(state.params['quant_params'], path + ['step_size'])
-      xmax = fetch_value(
-          state.params['quant_params'], path + ['dynamic_range'])
-      sign_bit = enet_bits[i.split('/parametric_d_xmax_')[0] + '/weight'][2]
-      enet_bits[i.split('/parametric_d_xmax_')[0] + '/weight'] = (jnp.ceil(
-          jnp.log2(xmax / d)) + sign_bit,
-          enet_bits[i.split('/parametric_d_xmax_'
-                            )[0] + '/weight'][1], sign_bit, 'blue')
+      if enet_bits[i.split('/parametric_d_xmax_')[0] + '/weight'][0] == -1:
+        # weights
+        path = i[1:].split('/')[:-1]
+        d = fetch_value(state.params['quant_params'], path + ['step_size'])
+        xmax = fetch_value(state.params['quant_params'], path + ['dynamic_range'])
+        sign_bit = enet_bits[i.split('/parametric_d_xmax_')[0] + '/weight'][2]
+        bits_comp = jnp.ceil(jnp.log2(xmax / d)) + sign_bit
+        num_params = flat_weights[ i.split('/parametric_d_xmax_0')[0] + '/parametric_d_xmax_0/weight_mb'] / bits_comp
+        enet_bits[i.split('/parametric_d_xmax_')[0] + '/weight'] = (bits_comp, xmax, num_params,
+            enet_bits[i.split('/parametric_d_xmax_')[0] + '/weight'][1], 'blue')
       continue
     if i.split('/parametric_d_xmax_')[1][0] == '1':
-      # act
-      path = i[1:].split('/')[:-1]
-      d = fetch_value(state.params['quant_params'], path + ['step_size'])
-      xmax = fetch_value(
-          state.params['quant_params'], path + ['dynamic_range'])
-      sign_bit = enet_bits[i.split('/parametric_d_xmax_')[0] + '/act'][2]
-      enet_bits[i.split('/parametric_d_xmax_')[0] + '/act'] = (jnp.ceil(
-          jnp.log2(xmax / d)) + sign_bit,
-          enet_bits[i.split('/parametric_d_xmax_'
-                            )[0] + '/act'][1], sign_bit, 'green')
+      if enet_bits[i.split('/parametric_d_xmax_')[0] + '/act'][0] == -1:
+        # act
+        path = i[1:].split('/')[:-1]
+        d = fetch_value(state.params['quant_params'], path + ['step_size'])
+        xmax = fetch_value(state.params['quant_params'], path + ['dynamic_range'])
+        sign_bit = enet_bits[i.split('/parametric_d_xmax_')[0] + '/act'][2]
+        bits_comp = jnp.ceil(jnp.log2(xmax / d)) + sign_bit
+        num_params =  flat_acts[ i.split('/parametric_d_xmax_1')[0] + '/parametric_d_xmax_0/act_mb'] /  bits_comp
+
+        enet_bits[i.split('/parametric_d_xmax_')[0] + '/act'] = (bits_comp, xmax, num_params,
+            enet_bits[i.split('/parametric_d_xmax_')[0] + '/act'][1], 'green')
       continue
     if i.split('/parametric_d_xmax_')[1][0] == '2':
-      # bias
-      path = i[1:].split('/')[:-1]
-      d = fetch_value(state.params['quant_params'], path + ['step_size'])
-      xmax = fetch_value(
-          state.params['quant_params'], path + ['dynamic_range'])
-      sign_bit = enet_bits[i.split('/parametric_d_xmax_')[0] + '/bias'][2]
-      enet_bits[i.split('/parametric_d_xmax_')[0] + '/bias'] = (jnp.ceil(
-          jnp.log2(xmax / d)) + sign_bit,
-          enet_bits[i.split('/parametric_d_xmax_'
-                            )[0] + '/bias'][1], sign_bit, 'orange')
+      if enet_bits[i.split('/parametric_d_xmax_')[0] + '/bias'][0] == -1:
+        # bias
+        path = i[1:].split('/')[:-1]
+        d = fetch_value(state.params['quant_params'], path + ['step_size'])
+        xmax = fetch_value(state.params['quant_params'], path + ['dynamic_range'])
+        sign_bit = enet_bits[i.split('/parametric_d_xmax_')[0] + '/bias'][2]
+        bits_comp = jnp.ceil(jnp.log2(xmax / d)) + sign_bit
+        num_params = flat_weights[ i.split('/parametric_d_xmax_2')[0] + '/parametric_d_xmax_0/weight_mb'] /  bits_comp
+        enet_bits[i.split('/parametric_d_xmax_')[0] + '/bias'] = (bits_comp, xmax, num_params,
+            enet_bits[i.split('/parametric_d_xmax_')[0] + '/bias'][1], 'orange')
       continue
+    import pdb; pdb.set_trace()
 
-  enet_xmax = copy.deepcopy(enet_template)
-  for i in flat_params:
-    if i == '/placeholder':
-      continue
-    if i.split('/')[1] == 'parametric_d_xmax_0':
-      # averaging layer
-      path = i[1:].split('/')[:-1]
-      xmax = fetch_value(
-          state.params['quant_params'], path + ['dynamic_range'])
-      enet_xmax['/act'] = (xmax, enet_xmax['/act'][1], 'red')
-      continue
-    if i.split('/parametric_d_xmax_')[1][0] == '0':
-      # weights
-      path = i[1:].split('/')[:-1]
-      xmax = fetch_value(
-          state.params['quant_params'], path + ['dynamic_range'])
-      enet_xmax[i.split('/parametric_d_xmax_'
-                        )[0] + '/weight'] = (xmax, enet_xmax[i.split(
-                            '/parametric_d_xmax_')[0] + '/weight'][1], 'blue')
-      continue
-    if i.split('/parametric_d_xmax_')[1][0] == '1':
-      # act
-      path = i[1:].split('/')[:-1]
-      xmax = fetch_value(
-          state.params['quant_params'], path + ['dynamic_range'])
-      enet_xmax[i.split('/parametric_d_xmax_'
-                        )[0] + '/act'] = (xmax, enet_xmax[i.split(
-                            '/parametric_d_xmax_')[0] + '/act'][1], 'green')
-      continue
-    if i.split('/parametric_d_xmax_')[1][0] == '2':
-      # bias
-      path = i[1:].split('/')[:-1]
-      xmax = fetch_value(
-          state.params['quant_params'], path + ['dynamic_range'])
-      enet_xmax[i.split('/parametric_d_xmax_'
-                        )[0] + '/bias'] = (xmax, enet_xmax[i.split(
-                            '/parametric_d_xmax_')[0] + '/bias'][1], 'orange')
-      continue
 
-  enet_d = copy.deepcopy(enet_template)
-  for i in flat_params:
-    if i == '/placeholder':
-      continue
-    if i.split('/')[1] == 'parametric_d_xmax_0':
-      # averaging layer
-      path = i[1:].split('/')[:-1]
-      d = fetch_value(state.params['quant_params'], path + ['step_size'])
-      enet_d['/act'] = (d, enet_d['/act'][1], 'red')
-      continue
-    if i.split('/parametric_d_xmax_')[1][0] == '0':
-      # weights
-      path = i[1:].split('/')[:-1]
-      d = fetch_value(state.params['quant_params'], path + ['step_size'])
-      enet_d[i.split('/parametric_d_xmax_'
-                     )[0] + '/weight'] = (d, enet_d[i.split(
-                         '/parametric_d_xmax_')[0] + '/weight'][1], 'blue')
-      continue
-    if i.split('/parametric_d_xmax_')[1][0] == '1':
-      # act
-      path = i[1:].split('/')[:-1]
-      d = fetch_value(state.params['quant_params'], path + ['step_size'])
-      enet_d[i.split('/parametric_d_xmax_'
-                     )[0] + '/act'] = (d, enet_d[i.split(
-                         '/parametric_d_xmax_')[0] + '/act'][1], 'green')
-      continue
-    if i.split('/parametric_d_xmax_')[1][0] == '2':
-      # bias
-      path = i[1:].split('/')[:-1]
-      d = fetch_value(state.params['quant_params'], path + ['step_size'])
-      enet_d[i.split('/parametric_d_xmax_'
-                     )[0] + '/bias'] = (d, enet_d[i.split(
-                         '/parametric_d_xmax_')[0] + '/bias'][1], 'orange')
-      continue
+  # def plot_fig(omit, name):
+  font_size = 22
 
-  def plot_fig(omit, name):
-    font_size = 22
+  fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(14, 5.0))
+  ax.spines["top"].set_visible(False)
+  ax.spines["right"].set_visible(False)
 
-    fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(14, 8.8))
-    ax[0].spines["top"].set_visible(False)
-    ax[0].spines["right"].set_visible(False)
-    ax[1].spines["top"].set_visible(False)
-    ax[1].spines["right"].set_visible(False)
-    ax[2].spines["top"].set_visible(False)
-    ax[2].spines["right"].set_visible(False)
 
-    ax[0].xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
-    ax[0].yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
-    ax[1].xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
-    ax[1].yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
-    ax[2].xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
-    ax[2].yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
+  ax.xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
+  ax.yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
 
-    for axis in ['top', 'bottom', 'left', 'right']:
-      ax[0].spines[axis].set_linewidth(5)
-      ax[1].spines[axis].set_linewidth(5)
-      ax[2].spines[axis].set_linewidth(5)
 
-    for tick in ax[0].xaxis.get_major_ticks():
-      tick.label1.set_fontweight('bold')
-    for tick in ax[0].yaxis.get_major_ticks():
-      tick.label1.set_fontweight('bold')
+  for axis in ['top', 'bottom', 'left', 'right']:
+    ax.spines[axis].set_linewidth(5)
 
-    for tick in ax[1].xaxis.get_major_ticks():
-      tick.label1.set_fontweight('bold')
-    for tick in ax[1].yaxis.get_major_ticks():
-      tick.label1.set_fontweight('bold')
 
-    for tick in ax[2].xaxis.get_major_ticks():
-      tick.label1.set_fontweight('bold')
-    for tick in ax[2].yaxis.get_major_ticks():
-      tick.label1.set_fontweight('bold')
+  for tick in ax.xaxis.get_major_ticks():
+    tick.label1.set_fontweight('bold')
+  for tick in ax.yaxis.get_major_ticks():
+    tick.label1.set_fontweight('bold')
 
-    pos = 1
-    for k, v in enet_bits.items():
-      skip = False
-      for iu in omit:
-        if iu in k:
-          skip = True
-      if not skip:
-        ax[0].bar(pos, v[0], color=v[3], label=color_to_label[v[3]])
-        pos += 1
+  pos = 1
+  for k, v in enet_bits.items():
+    ax.bar(pos, v[0], width=1.0, color=v[-1], label=color_to_label[v[-1]])
+    ax.bar(pos, -v[1], width=.5, color=v[-1], label=color_to_label[v[-1]])
+    ax.bar(pos+.5, -v[2], width=.5, color=v[-1], label=color_to_label[v[-1]])
+    pos += 1
 
-    # pos = 1
-    # for k, v in enet_xmax.items():
-    #   skip = False
-    #   for iu in omit:
-    #     if iu in k:
-    #       skip = True
-    #   if not skip:
-    #     ax[1].bar(pos, v[0], color=v[2], label=color_to_label[v[2]])
-    #     pos += 1
+  ax.set_xlabel("#quantization", fontsize=font_size, fontweight='bold')
+  ax.set_ylabel("bits", fontsize=font_size, fontweight='bold')
 
-    # pos = 1
-    # for k, v in enet_d.items():
-    #   skip = False
-    #   for iu in omit:
-    #     if iu in k:
-    #       skip = True
-    #   if not skip:
-    #     ax[2].bar(pos, v[0], color=v[2], label=color_to_label[v[2]])
-    #     pos += 1
+  handles, labels = plt.gca().get_legend_handles_labels()
+  by_label = OrderedDict(zip(labels, handles))
+  plt.legend(by_label.values(), by_label.keys(),
+             bbox_to_anchor=(0, 1.02, 1, 0.2),
+             loc="lower left", borderaxespad=0, ncol=5, mode='expand',
+             frameon=False,
+             prop={'weight': 'bold', 'size': font_size})
 
-    ax[2].set_xlabel("#quantization", fontsize=font_size, fontweight='bold')
-    ax[2].set_ylabel("step size", fontsize=font_size, fontweight='bold')
-    ax[1].set_xlabel("#quantization", fontsize=font_size, fontweight='bold')
-    ax[1].set_ylabel("dynamic range", fontsize=font_size, fontweight='bold')
-    ax[0].set_xlabel("#quantization", fontsize=font_size, fontweight='bold')
-    ax[0].set_ylabel("bits", fontsize=font_size, fontweight='bold')
+  plt.tight_layout()
+  plt.savefig('efficientnet/figures/bitwidths_all.png')
+  plt.close()
 
-    handles, labels = plt.gca().get_legend_handles_labels()
-    by_label = OrderedDict(zip(labels, handles))
-    plt.legend(by_label.values(), by_label.keys(),
-               bbox_to_anchor=(0, 1.02, 1, 0.2),
-               loc="lower left", borderaxespad=0, ncol=5, mode='expand',
-               frameon=False,
-               prop={'weight': 'bold', 'size': font_size})
-
-    plt.tight_layout()
-    plt.savefig(name)
-    plt.close()
-
-  plot_fig([], 'efficientnet/figures/bitwidths_all.png')
+  # plot_fig([], 'efficientnet/figures/bitwidths_all.png')
   # plot_fig(['/act'], 'efficientnet/figures/bitwidths_w.png')
   # plot_fig(['/weight', '/bias'], 'efficientnet/figures/bitwidths_a.png')
 
