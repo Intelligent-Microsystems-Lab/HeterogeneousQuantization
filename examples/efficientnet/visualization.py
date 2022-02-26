@@ -772,6 +772,55 @@ def plot_surrogate_24(num):
   plt.close()
 
 
+def plot_methods():
+  font_size = 23
+  plt.rc('font', family='Helvetica', weight='bold')
+  fig, ax = plt.subplots(figsize=(8, 8))
+
+  ax.spines["top"].set_visible(False)
+  ax.spines["right"].set_visible(False)
+
+  ax.xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
+  ax.yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
+
+  for axis in ['top', 'bottom', 'left', 'right']:
+    ax.spines[axis].set_linewidth(5)
+
+  for tick in ax.xaxis.get_major_ticks():
+    tick.label1.set_fontweight('bold')
+  for tick in ax.yaxis.get_major_ticks():
+    tick.label1.set_fontweight('bold')
+
+  x = np.arange(-1, 1, .001)
+
+  ax.plot(x,x,linewidth=5,label='EWGS', color='k')
+  ax.plot(x,x*0,linewidth=5,label='STE', color='r')
+  ax.plot(x,np.abs(x),linewidth=5,label='PSGD', color='g')
+  # ax.plot(x,np.abs(np.cos(x+2*np.pi)),linewidth=5,label='ACos', color='b')
+  ax.plot(x,np.tanh(x*4),linewidth=5,label='Tanh', color='orange')
+  # ax.plot(x,np.arctanh(x*1.9),linewidth=5,label='InvTanh', color='magenta')
+
+
+  plt.xticks([-1, 0, 1], [
+             'QP - 1/2 Δ', 'QP', 'QP + 1/2 Δ'])
+  plt.yticks([-1, 0, 1], [
+             '1-δ', '1', '1+δ'])
+  ax.set_xlabel("x", fontsize=font_size, fontweight='bold')
+  ax.set_ylabel("dx/dL", fontsize=font_size, fontweight='bold')
+  plt.legend(
+      bbox_to_anchor=(-.05, 1.02, 1.05, 0.2),
+      loc="lower left",
+      ncol=3,
+      mode="expand",
+      borderaxespad=0,
+      frameon=False,
+      prop={'weight': 'bold', 'size': font_size}
+  )
+  plt.tight_layout()
+  plt.savefig('figures/methods.png', dpi=300)
+  plt.close()
+
+
 if __name__ == '__main__':
   major_ver, minor_ver, _ = version.parse(tb.__version__).release
   assert major_ver >= 2 and minor_ver >= 3, \
@@ -782,5 +831,6 @@ if __name__ == '__main__':
   plot_surrogate_24(4)
   plot_surrogate()
   plot_surrogate_mix()
+  plot_methods()
   plot_comparison('figures/overview.png')
   plot_comparison2('figures/overview_act.png')
