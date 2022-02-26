@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-from matplotlib.ticker import FormatStrFormatter
+# from matplotlib.ticker import FormatStrFormatter
 import tensorboard as tb
 from packaging import version
 import grpc
@@ -63,7 +63,7 @@ competitors = {
     #     # https://arxiv.org/abs/2004.09576
     #     # they claim to be a natural extension... so also first and last?
     #     'eval_err': np.array([1 - 0.668, 1 - 0.694, 1 - 0.708]) * 100,
-    #     'size_mb': np.array([2, 3, 4]) * 11679912 / 8_000_000 + 0.03840000 / 2,
+    #     'size_mb': np.array([2, 3, 4]) * 11679912 / 8_000_000 + 0.03840000/2,
     #     'name': 'LSQ+ ResNet18*',
     #     'alpha': .25,
     # },
@@ -119,7 +119,7 @@ competitors = {
     },
 
     # 'qil_resnet34': {
-    #     # "We did not quantize the first and the last layers as was done in..."
+    #     # "We did not quantize the first and the last layers as was done in"
     #     # https://arxiv.org/abs/1808.05779
     #     'eval_err': np.array([1 - 0.706, 1 - 0.731, 1 - 0.737, 1 - 0.737,
     #                           ]) * 100,
@@ -132,7 +132,7 @@ competitors = {
     # 'profit_mobilev1': {
     #     # https://arxiv.org/pdf/2008.04693.pdf
     #     'eval_err': np.array([1 - 0.6139, 1 - 0.6884, 1 - 0.7125, ]) * 100,
-    #     'size_mb': np.array([4, 5, 8]) * 4211113 / 8_000_000 + 0.08755200 / 2,
+    #     'size_mb': np.array([4, 5, 8]) * 4211113 / 8_000_000 + 0.08755200 /2,
     #     'name': 'PROFIT MobileNetV1',
     #     'alpha': .25,
     # },
@@ -142,7 +142,7 @@ competitors = {
     # 'profit_mobilev3': {
     #     # https://arxiv.org/pdf/2008.04693.pdf
     #     'eval_err': np.array([1 - 0.6139, 1 - 0.6884, 1 - 0.7125, ]) * 100,
-    #     'size_mb': np.array([4, 5, 8]) * 5459913 / 8_000_000 + 0.09760000 / 2,
+    #     'size_mb': np.array([4, 5, 8]) * 5459913 / 8_000_000 + 0.09760000 /2,
     #     'name': 'PROFIT MobileNetV3',
     #     'alpha': .25,
     # },
@@ -291,7 +291,8 @@ def plot_surrogate():
 
   handles, labels = ax.get_legend_handles_labels()
   handles.append(mpatches.Patch(
-      facecolor='m', label='Wall-clock Overhead', edgecolor='black', linewidth=3.))
+      facecolor='m', label='Wall-clock Overhead', edgecolor='black',
+      linewidth=3.))
 
   plt.legend(
       handles=handles,
@@ -764,7 +765,7 @@ def plot_surrogate_24(num):
 
   names = [x.replace('W_', 'W: ').replace('_A_', ' A: ') for x in names]
   plt.xticks((base_x) / 2, names, rotation=45, horizontalalignment='right')
-  #plt.xticks((np.arange(0, len(names) + x_old[-1]) + 1) / 2, names)
+  # plt.xticks((np.arange(0, len(names) + x_old[-1]) + 1) / 2, names)
 
   fig.autofmt_xdate(rotation=45)
   plt.tight_layout()
@@ -793,13 +794,12 @@ def plot_methods():
 
   x = np.arange(-1, 1, .001)
 
-  ax.plot(x,x,linewidth=5,label='EWGS', color='k')
-  ax.plot(x,x*0,linewidth=5,label='STE', color='r')
-  ax.plot(x,np.abs(x),linewidth=5,label='PSGD', color='g')
+  ax.plot(x, x, linewidth=5, label='EWGS', color='k')
+  ax.plot(x, x * 0, linewidth=5, label='STE', color='r')
+  ax.plot(x, np.abs(x), linewidth=5, label='PSGD', color='g')
   # ax.plot(x,np.abs(np.cos(x+2*np.pi)),linewidth=5,label='ACos', color='b')
-  ax.plot(x,np.tanh(x*4),linewidth=5,label='Tanh', color='orange')
+  ax.plot(x, np.tanh(x * 4), linewidth=5, label='Tanh', color='orange')
   # ax.plot(x,np.arctanh(x*1.9),linewidth=5,label='InvTanh', color='magenta')
-
 
   plt.xticks([-1, 0, 1], [
              'QP - 1/2 Δ', 'QP', 'QP + 1/2 Δ'])

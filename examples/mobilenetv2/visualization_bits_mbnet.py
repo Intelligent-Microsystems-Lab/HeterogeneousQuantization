@@ -9,11 +9,8 @@ from clu import platform
 
 import pickle
 import copy
-import matplotlib.patches as mpatches
-
 
 import matplotlib.pyplot as plt
-
 
 import jax
 from jax import random
@@ -244,21 +241,24 @@ def load_data(config: ml_collections.ConfigDict, workdir: str):
         sign_bit = enet_bits[i.split('/parametric_d_xmax_')[0] + '/weight'][2]
         bits_comp = jnp.ceil(jnp.log2(xmax / d)) + sign_bit
         num_params = flat_weights[i.split(
-            '/parametric_d_xmax_0')[0] + '/parametric_d_xmax_0/weight_mb'] / bits_comp
-        enet_bits[i.split('/parametric_d_xmax_')[0] + '/weight'] = (bits_comp, xmax, num_params,
-                                                                    enet_bits[i.split('/parametric_d_xmax_')[0] + '/weight'][1], 'blue')
+            '/parametric_d_xmax_0')[0] + '/parametric_d_xmax_0/weight_mb'] \
+            / bits_comp
+        enet_bits[i.split('/parametric_d_xmax_')[0]
+                  + '/weight'] = (bits_comp, xmax, num_params,
+                                  enet_bits[i.split('/parametric_d_xmax_')[0]
+                                            + '/weight'][1], 'blue')
         if bits_comp > max_bits:
           max_bits = bits_comp
         if xmax > max_xmax:
           max_xmax = xmax
-        if num_params > max_num: 
+        if num_params > max_num:
           max_num = num_params
 
         if bits_comp > w_max_bits:
           w_max_bits = bits_comp
         if xmax > w_max_xmax:
           w_max_xmax = xmax
-        if num_params > w_max_num: 
+        if num_params > w_max_num:
           w_max_num = num_params
       continue
     if i.split('/parametric_d_xmax_')[1][0] == '1':
@@ -271,22 +271,25 @@ def load_data(config: ml_collections.ConfigDict, workdir: str):
         sign_bit = enet_bits[i.split('/parametric_d_xmax_')[0] + '/act'][2]
         bits_comp = jnp.ceil(jnp.log2(xmax / d)) + sign_bit
         num_params = flat_acts[i.split(
-            '/parametric_d_xmax_1')[0] + '/parametric_d_xmax_1/act_mb'] / bits_comp
+            '/parametric_d_xmax_1')[0] + '/parametric_d_xmax_1/act_mb'] \
+            / bits_comp
 
-        enet_bits[i.split('/parametric_d_xmax_')[0] + '/act'] = (bits_comp, xmax, num_params,
-                                                                 enet_bits[i.split('/parametric_d_xmax_')[0] + '/act'][1], 'green')
+        enet_bits[i.split('/parametric_d_xmax_')[0]
+                  + '/act'] = (bits_comp, xmax, num_params,
+                               enet_bits[i.split('/parametric_d_xmax_')[0]
+                                         + '/act'][1], 'green')
         if bits_comp > max_bits:
           max_bits = bits_comp
         if xmax > max_xmax:
           max_xmax = xmax
-        if num_params > max_num: 
+        if num_params > max_num:
           max_num = num_params
 
         if bits_comp > a_max_bits:
           a_max_bits = bits_comp
         if xmax > a_max_xmax:
           a_max_xmax = xmax
-        if num_params > a_max_num: 
+        if num_params > a_max_num:
           a_max_num = num_params
       continue
     if i.split('/parametric_d_xmax_')[1][0] == '2':
@@ -299,40 +302,47 @@ def load_data(config: ml_collections.ConfigDict, workdir: str):
         sign_bit = enet_bits[i.split('/parametric_d_xmax_')[0] + '/bias'][2]
         bits_comp = jnp.ceil(jnp.log2(xmax / d)) + sign_bit
         num_params = flat_weights[i.split(
-            '/parametric_d_xmax_2')[0] + '/parametric_d_xmax_2/weight_mb'] / bits_comp
-        enet_bits[i.split('/parametric_d_xmax_')[0] + '/bias'] = (bits_comp, xmax, num_params,
-                                                                  enet_bits[i.split('/parametric_d_xmax_')[0] + '/bias'][1], 'orange')
+            '/parametric_d_xmax_2')[0] + '/parametric_d_xmax_2/weight_mb'] \
+            / bits_comp
+        enet_bits[i.split('/parametric_d_xmax_')[0]
+                  + '/bias'] = (bits_comp, xmax, num_params,
+                                enet_bits[i.split('/parametric_d_xmax_')[0]
+                                          + '/bias'][1], 'orange')
         if bits_comp > max_bits:
           max_bits = bits_comp
         if xmax > max_xmax:
           max_xmax = xmax
-        if num_params > max_num: 
+        if num_params > max_num:
           max_num = num_params
 
         if bits_comp > w_max_bits:
           w_max_bits = bits_comp
         if xmax > w_max_xmax:
           w_max_xmax = xmax
-        if num_params > w_max_num: 
+        if num_params > w_max_num:
           w_max_num = num_params
       continue
 
-  return enet_bits, {'w_max_bits': w_max_bits, 'w_max_xmax': w_max_xmax, 'w_max_num': w_max_num, 'a_max_bits': a_max_bits, 'a_max_xmax': a_max_xmax, 'a_max_num': a_max_num, 'max_bits': max_bits, 'max_xmax': max_xmax, 'max_num': max_num}
+  return enet_bits, {'w_max_bits': w_max_bits, 'w_max_xmax': w_max_xmax,
+                     'w_max_num': w_max_num, 'a_max_bits': a_max_bits,
+                     'a_max_xmax': a_max_xmax, 'a_max_num': a_max_num,
+                     'max_bits': max_bits, 'max_xmax': max_xmax,
+                     'max_num': max_num}
 
 
 def plot_bits(config: ml_collections.ConfigDict, workdir: str):
 
-  try:
-    with open('/Users/clemens/Desktop/mbnet_bits.pkl', 'rb') as f:
-      enet_bits = pickle.load(f)
-    with open('/Users/clemens/Desktop/mbnet_max.pkl', 'rb') as f:
-      max_data = pickle.load(f)
-  except:
-    enet_bits, max_data = load_data(config, workdir)
-    with open('/Users/clemens/Desktop/mbnet_bits.pkl', 'wb') as f:
-      pickle.dump(enet_bits, f)
-    with open('/Users/clemens/Desktop/mbnet_max.pkl', 'wb') as f:
-      pickle.dump(max_data, f)
+  # try:
+  #   with open('/Users/clemens/Desktop/mbnet_bits.pkl', 'rb') as f:
+  #     enet_bits = pickle.load(f)
+  #   with open('/Users/clemens/Desktop/mbnet_max.pkl', 'rb') as f:
+  #     max_data = pickle.load(f)
+  # except:
+  enet_bits, max_data = load_data(config, workdir)
+  with open('/Users/clemens/Desktop/mbnet_bits.pkl', 'wb') as f:
+    pickle.dump(enet_bits, f)
+  with open('/Users/clemens/Desktop/mbnet_max.pkl', 'wb') as f:
+    pickle.dump(max_data, f)
 
   def plot_fig_num(omit, name):
 
@@ -360,7 +370,7 @@ def plot_bits(config: ml_collections.ConfigDict, workdir: str):
 
     if '/act' in omit:
       local_max_bits = 7  # max_data['w_max_bits']
-      local_max_xmax = max_data['w_max_xmax']
+      # local_max_xmax = max_data['w_max_xmax']
       local_max_num = 6  # max_data['w_max_num']
       ax.plot([0, 107 + 1], [2 / 7, 2 / 7], color='grey', alpha=.5,
               linestyle='--', linewidth=3, zorder=0)
@@ -377,7 +387,7 @@ def plot_bits(config: ml_collections.ConfigDict, workdir: str):
               linestyle='--', linewidth=3, zorder=0)
     elif '/weight' in omit:
       local_max_bits = 5  # max_data['a_max_bits']
-      local_max_xmax = max_data['a_max_xmax']
+      # local_max_xmax = max_data['a_max_xmax']
       local_max_num = 6  # max_data['a_max_num']
 
       ax.plot([0, 105 + 1], [1 / 4.1, 1 / 4.1], color='grey', alpha=.5,
@@ -393,12 +403,12 @@ def plot_bits(config: ml_collections.ConfigDict, workdir: str):
               linestyle='--', linewidth=3, zorder=0)
     else:
       local_max_bits = 7  # max_data['max_bits']
-      local_max_xmax = max_data['max_xmax']
+      # local_max_xmax = max_data['max_xmax']
       local_max_num = max_data['max_num']
-      label_num = '# Activations/Weights'
+      # label_num = '# Activations/Weights'
 
     pos = 1
-    extra_entry = False
+    # extra_entry = False
     for k, v in enet_bits.items():
       skip = False
       for iu in omit:
@@ -424,7 +434,8 @@ def plot_bits(config: ml_collections.ConfigDict, workdir: str):
         ax.bar(pos, v[0] / local_max_bits, width=2.0, color=color,
                label=label, edgecolor='black', zorder=10)
         ax.bar(pos, -1 * (np.log10(v[2])) / local_max_num,
-               width=2., color=color, label=label, edgecolor='black', zorder=10)
+               width=2., color=color, label=label, edgecolor='black',
+               zorder=10)
         pos += 2
 
     # print('Done')
@@ -487,8 +498,8 @@ def plot_bits(config: ml_collections.ConfigDict, workdir: str):
 
     # if '/act' in omit:
     localw_max_bits = 7  # max_data['w_max_bits']
-    localw_max_xmax = max_data['w_max_xmax']
-    localw_max_num = max_data['w_max_num']
+    # localw_max_xmax = max_data['w_max_xmax']
+    # localw_max_num = max_data['w_max_num']
     ax.plot([0, 107 + 1], [2 / 7, 2 / 7], color='grey', alpha=.5,
             linestyle='--', linewidth=3, zorder=0)
     ax.plot([0, 107 + 1], [4 / 7, 4 / 7], color='grey', alpha=.5,
@@ -497,8 +508,8 @@ def plot_bits(config: ml_collections.ConfigDict, workdir: str):
             linestyle='--', linewidth=3, zorder=0)
     # elif '/weight' in omit:
     locala_max_bits = 7  # max_data['a_max_bits']
-    locala_max_xmax = max_data['a_max_xmax']
-    locala_max_num = max_data['a_max_num']
+    # locala_max_xmax = max_data['a_max_xmax']
+    # locala_max_num = max_data['a_max_num']
     ax.plot([0, 107 + 1], [-2 / 7, -2 / 7], color='grey', alpha=.5,
             linestyle='--', linewidth=3, zorder=0)
     ax.plot([0, 107 + 1], [-4 / 7, -4 / 7], color='grey', alpha=.5,
@@ -506,7 +517,7 @@ def plot_bits(config: ml_collections.ConfigDict, workdir: str):
 
     a_pos = 3
     w_pos = 1
-    extra_entry = False
+    # extra_entry = False
     for k, v in enet_bits.items():
       if 'bias' not in k:
         if v[3] == 76:

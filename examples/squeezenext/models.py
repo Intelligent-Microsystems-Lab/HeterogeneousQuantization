@@ -53,27 +53,32 @@ class SqnxtUnit(nn.Module):
       resize_identity = False
 
     x = self.conv(in_channels // reduction_den, (1, 1), strides=self.strides,
-                  padding=((0, 0), (0, 0)), config=self.config)(x)
+                  padding=((0, 0), (0, 0)), config=self.config,
+                  quant_act_sign=False)(x)
     x = self.norm()(x)
     x = nn.relu(x)
 
     x = self.conv(in_channels // (reduction_den * 2), (1, 1), strides=(1, 1),
-                  padding=((0, 0), (0, 0)), config=self.config)(x)
+                  padding=((0, 0), (0, 0)), config=self.config,
+                  quant_act_sign=False)(x)
     x = self.norm()(x)
     x = nn.relu(x)
 
     x = self.conv(in_channels // reduction_den, (1, 3), strides=(1, 1),
-                  padding=((0, 0), (1, 1)), config=self.config)(x)
+                  padding=((0, 0), (1, 1)), config=self.config,
+                  quant_act_sign=False)(x)
     x = self.norm()(x)
     x = nn.relu(x)
 
     x = self.conv(in_channels // reduction_den, (3, 1), strides=(1, 1),
-                  padding=((1, 1), (0, 0)), config=self.config)(x)
+                  padding=((1, 1), (0, 0)), config=self.config,
+                  quant_act_sign=False)(x)
     x = self.norm()(x)
     x = nn.relu(x)
 
     x = self.conv(self.out_channels, (1, 1), strides=(1, 1),
-                  padding=((0, 0), (0, 0)), config=self.config)(x)
+                  padding=((0, 0), (0, 0)), config=self.config,
+                  quant_act_sign=False)(x)
     x = self.norm()(x)
     x = nn.relu(x)
 
@@ -81,7 +86,7 @@ class SqnxtUnit(nn.Module):
       residual = self.conv(self.out_channels, (1, 1),
                            strides=self.strides,
                            padding=((0, 0), (0, 0)),
-                           config=self.config)(residual)
+                           config=self.config, quant_act_sign=False)(residual)
       residual = self.norm()(residual)
       residual = nn.relu(residual)
 
@@ -143,7 +148,7 @@ class SqueezeNext(nn.Module):
              strides=(1, 1),
              padding=((0, 0), (0, 0)),
              name='head_conv',
-             config=self.config.quant.head)(x)
+             config=self.config.quant.head, quant_act_sign=False)(x)
     x = norm()(x)
     x = nn.relu(x)
 
