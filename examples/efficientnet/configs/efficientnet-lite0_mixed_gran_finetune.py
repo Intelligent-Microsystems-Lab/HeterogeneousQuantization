@@ -34,13 +34,13 @@ def get_config():
   config.augment_name = 'plain'
 
   config.optimizer = 'rmsprop'
-  config.learning_rate = 0.0000125  # 0.0001
+  config.learning_rate = 0.0000125  # 0.00125
   config.lr_boundaries_scale = None
   config.warmup_epochs = 2.0
   config.momentum = 0.9
   config.batch_size = 1024
   config.eval_batch_size = 4096
-  config.weight_decay = 0.00005
+  config.weight_decay = 0.00001
   config.nesterov = True
   config.smoothing = .1
 
@@ -50,9 +50,8 @@ def get_config():
   config.cache = True
 
   # Load pretrained weights.
-  config.pretrained = None  # "../../pretrained_efficientnet/enet-lite0_best"
-  # "../../pretrained_efficientnet/efficientnet-lite0"
-  config.pretrained_quant = "gs://imagenet_clemens/enet-lite0_pre/efficientnet-lite0_mixed_bits_5"
+  config.pretrained = None
+  config.pretrained_quant = "gs://imagenet_clemens/enet_lite0_mixed_3.00"
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.
@@ -61,20 +60,18 @@ def get_config():
 
   config.quant_target = ml_collections.ConfigDict()
 
-  config.quant_target.weight_mb = 1731.0
-  config.quant_target.weight_penalty = .0001
+  config.quant_target.weight_penalty = .0
   config.quant_target.act_mode = 'sum'
-  config.quant_target.act_mb = 2524.0  # 2505.0
-  config.quant_target.act_penalty = .0001
+  config.quant_target.act_penalty = .0
   config.quant_target.size_div = 8. * 1000.
-  config.quant_target.eval_start = 61000  # 31050
-  config.quant_target.update_every = 20  # every x steps d and xmax are updated
+  config.quant_target.eval_start = .0
+  config.quant_target.update_every = 1e+32
 
   config.quant = ml_collections.ConfigDict()
 
   config.quant.bits = 4
 
-  config.quant.g_scale = 0.
+  config.quant.g_scale = .0
 
   # Conv for stem layer (activation is input - fixed bitwidth).
   config.quant.stem = ml_collections.ConfigDict()
