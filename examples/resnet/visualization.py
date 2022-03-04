@@ -94,33 +94,54 @@ competitors = {
 }
 
 
-def inefficient_frontier(file, x_axis="Weight Size", y_axis="Error",
+def slope(df, first, second, x_axis, y_axis):
+  rise = df.at[second, y_axis] - df.at[first, y_axis]
+  run = df.at[second, x_axis] - df.at[first, x_axis]
+  return rise / run
+
+def lower_convex_hull(input_file, x_axis="Weight Size", y_axis="Error",
                          summing=None):
-  df = pd.read_csv(file)
+  df = pd.read_csv(input_file)
   df['Error'] = 1 - df['Accuracy']
   if summing:
     df['Sum'] = sum(df[item] for item in summing)
   df = df.sort_values(x_axis)
   frontier = []
   for index, row in df.iterrows():
-    if not len(frontier) or row[y_axis] <= df.at[frontier[-1], y_axis]:
+    if len(frontier) == 0:
       frontier.append(index)
+      continue
+    if len(frontier) == 1 and row[y_axis] <= df.at[frontier[-1], y_axis]:
+      frontier.append(index)
+      continue
+    new_slope = slope(df, frontier[-1], index, x_axis, y_axis)
+    if new_slope > 0:
+      continue
+    old_slope = slope(df, frontier[-2], frontier[-1], x_axis, y_axis)
+    while new_slope < old_slope:
+      frontier.pop()
+      if len(frontier) < 2:
+        break
+      new_slope = slope(df, frontier[-1], index, x_axis, y_axis)
+      old_slope = slope(df, frontier[-2], frontier[-1], x_axis, y_axis)
+    frontier.append(index)
+
   return [list(thing) for thing in (df.iloc[frontier][x_axis] / 1000,
           df.iloc[frontier][y_axis] * 100,
           df.iloc[~df.index.isin(frontier)][x_axis] / 1000,
           df.iloc[~df.index.isin(frontier)][y_axis] * 100)]
 
 
-resnet_mixed = inefficient_frontier(
+resnet_mixed = lower_convex_hull(
     'figures/resnet18_mixed.csv', x_axis='Sum', y_axis="Error",
     summing=['Act Size Max', 'Weight Size'])
-resnet_mixed_gran = inefficient_frontier(
+resnet_mixed_gran = lower_convex_hull(
     'figures/resnet18_mixed_gran.csv', x_axis='Sum', y_axis="Error",
     summing=['Act Size Max', 'Weight Size'])
-resnet_mixed_sur = inefficient_frontier(
+resnet_mixed_sur = lower_convex_hull(
     'figures/resnet18_mixed_sur.csv', x_axis='Sum', y_axis="Error",
     summing=['Act Size Max', 'Weight Size'])
-resnet_mixed_sur_gran = inefficient_frontier(
+resnet_mixed_sur_gran = lower_convex_hull(
     'figures/resnet18_mixed_sur_gran.csv', x_axis='Sum', y_axis="Error",
     summing=['Act Size Max', 'Weight Size'])
 
