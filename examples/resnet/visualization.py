@@ -106,9 +106,9 @@ def inefficient_frontier(file, x_axis="Weight Size", y_axis="Error",
     if not len(frontier) or row[y_axis] <= df.at[frontier[-1], y_axis]:
       frontier.append(index)
   return [list(thing) for thing in (df.iloc[frontier][x_axis] / 1000,
-          df.iloc[frontier][y_axis],
+          df.iloc[frontier][y_axis] * 100,
           df.iloc[~df.index.isin(frontier)][x_axis] / 1000,
-          df.iloc[~df.index.isin(frontier)][y_axis])]
+          df.iloc[~df.index.isin(frontier)][y_axis] * 100)]
 
 
 resnet_mixed = inefficient_frontier(
@@ -180,6 +180,7 @@ ax.scatter(resnet_mixed_sur_gran[2], resnet_mixed_sur_gran[3],
            marker='x', s=20**2, linewidth=5, color='magenta', alpha=.25)
 
 
+plt.ylim(31, 38)
 ax.set_xscale('log')
 plt.xticks([3, 4, 5, 6, ], [
     '3', '4', '5', '6'])
