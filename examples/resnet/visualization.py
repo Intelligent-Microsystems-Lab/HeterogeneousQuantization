@@ -120,12 +120,10 @@ def lower_convex_hull(input_file, x_axis="Weight Size", y_axis="Error",
     old_slope = slope(df, frontier[-2], frontier[-1], x_axis, y_axis)
     while new_slope < old_slope:
       frontier.pop()
-      if len(frontier) < 2:
-        break
+      old_slope = float('inf') if len(frontier) < 2 \
+        else slope(df, frontier[-2], frontier[-1], x_axis, y_axis)
       new_slope = slope(df, frontier[-1], index, x_axis, y_axis)
-      old_slope = slope(df, frontier[-2], frontier[-1], x_axis, y_axis)
     frontier.append(index)
-
   return [list(thing) for thing in (df.iloc[frontier][x_axis] / 1000,
           df.iloc[frontier][y_axis] * 100,
           df.iloc[~df.index.isin(frontier)][x_axis] / 1000,
