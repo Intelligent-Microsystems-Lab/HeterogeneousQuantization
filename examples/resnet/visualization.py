@@ -94,53 +94,78 @@ competitors = {
 }
 
 
-def slope(df, first, second, x_axis, y_axis):
-  rise = df.at[second, y_axis] - df.at[first, y_axis]
-  run = df.at[second, x_axis] - df.at[first, x_axis]
-  return rise / run
+def convex_hull(points):
+  # https://en.wikibooks.org/wiki/Algorithm_Implementation/Geometry/\
+  # Convex_hull/Monotone_chain
+  """Computes the convex hull of a set of 2D points.
 
-def lower_convex_hull(input_file, x_axis="Weight Size", y_axis="Error",
-                         summing=None):
+  Input: an iterable sequence of (x, y) pairs representing the points.
+  Output: a list of vertices of the convex hull in counter-clockwise order,
+    starting from the vertex with the lexicographically smallest coordinates.
+  Implements Andrew's monotone chain algorithm. O(n log n) complexity.
+  """
+
+  # Sort the points lexicographically (tuples are compared lexicographically).
+  # Remove duplicates to detect the case we have just one unique point.
+  points = sorted(set(points))
+
+  # Boring case: no points or a single point, possibly repeated multiple times.
+  if len(points) <= 1:
+    return points
+
+  # 2D cross product of OA and OB vectors.
+  # Returns a positive value, if OAB makes a counter-clockwise turn,
+  # negative for clockwise turn, and zero if the points are collinear.
+  def cross(o, a, b):
+    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+  # Build lower hull
+  lower = []
+  for p in points:
+    while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+      lower.pop()
+    lower.append(p)
+
+  # check for tricky first points
+  lower = pd.DataFrame(lower).sort_values(1)
+
+  if lower[0].idxmax() != lower[1].idxmin():
+    return lower.drop(lower[0].idxmax()).to_numpy()
+
+  return lower.to_numpy()
+
+
+def lower_convex_hull(input_file, y_axis="Error", summing=["Weight"]):
   df = pd.read_csv(input_file)
   df['Error'] = 1 - df['Accuracy']
-  if summing:
-    df['Sum'] = sum(df[item] for item in summing)
-  df = df.sort_values(x_axis)
-  frontier = []
-  for index, row in df.iterrows():
-    if len(frontier) == 0:
-      frontier.append(index)
-      continue
-    if len(frontier) == 1 and row[y_axis] <= df.at[frontier[-1], y_axis]:
-      frontier.append(index)
-      continue
-    new_slope = slope(df, frontier[-1], index, x_axis, y_axis)
-    if new_slope > 0:
-      continue
-    old_slope = slope(df, frontier[-2], frontier[-1], x_axis, y_axis)
-    while new_slope < old_slope:
-      frontier.pop()
-      old_slope = float('inf') if len(frontier) < 2 \
-        else slope(df, frontier[-2], frontier[-1], x_axis, y_axis)
-      new_slope = slope(df, frontier[-1], index, x_axis, y_axis)
-    frontier.append(index)
-  return [list(thing) for thing in (df.iloc[frontier][x_axis] / 1000,
-          df.iloc[frontier][y_axis] * 100,
-          df.iloc[~df.index.isin(frontier)][x_axis] / 1000,
-          df.iloc[~df.index.isin(frontier)][y_axis] * 100)]
+  df['Sum'] = sum(df[item] for item in summing)
+
+  np_base = df[['Error', 'Sum']].to_numpy()
+  frontier = convex_hull(list(map(tuple, np_base)))
+
+  idx_not_frontier = set([None if np.sum(
+      np_base[x, :] == frontier) else x for x in range(np_base.shape[0])]
+  ) - set([None])
+  idx_not_frontier = [*idx_not_frontier]
+
+  return [(frontier[:, 1] / 1000).tolist(),
+          ((frontier[:, 0] * 100)).tolist(),
+          (np_base[idx_not_frontier, 1] / 1000).tolist(),
+          ((np_base[idx_not_frontier, 0] * 100)).tolist(),
+          ]
 
 
 resnet_mixed = lower_convex_hull(
-    'figures/resnet18_mixed.csv', x_axis='Sum', y_axis="Error",
+    'figures/resnet18_mixed.csv', y_axis="Error",
     summing=['Act Size Max', 'Weight Size'])
 resnet_mixed_gran = lower_convex_hull(
-    'figures/resnet18_mixed_gran.csv', x_axis='Sum', y_axis="Error",
+    'figures/resnet18_mixed_gran.csv', y_axis="Error",
     summing=['Act Size Max', 'Weight Size'])
 resnet_mixed_sur = lower_convex_hull(
-    'figures/resnet18_mixed_sur.csv', x_axis='Sum', y_axis="Error",
+    'figures/resnet18_mixed_sur.csv', y_axis="Error",
     summing=['Act Size Max', 'Weight Size'])
 resnet_mixed_sur_gran = lower_convex_hull(
-    'figures/resnet18_mixed_sur_gran.csv', x_axis='Sum', y_axis="Error",
+    'figures/resnet18_mixed_sur_gran.csv', y_axis="Error",
     summing=['Act Size Max', 'Weight Size'])
 
 
@@ -203,7 +228,7 @@ plt.ylim(31, 38)
 ax.set_xscale('log')
 plt.xticks([3, 4, 5, 6, ], [
     '3', '4', '5', '6'])
-ax.set_xlabel("Max Activation Size + Weight Size (MB)",
+ax.set_xlabel("Weight Size + Max Activation Size (MB)",
               fontsize=font_size, fontweight='bold')
 ax.set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
 plt.legend(
