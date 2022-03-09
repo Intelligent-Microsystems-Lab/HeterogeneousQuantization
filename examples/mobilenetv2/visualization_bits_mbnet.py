@@ -52,7 +52,7 @@ config_flags.DEFINE_config_file(
     lock_config=True)
 
 
-enet_template = {
+mbnet_template = {
     '/stem_conv/weight': (-1, 99, 1),
     '/InvertedResidual_0/QuantConv_0/act': (-1, 76, 0),
     '/InvertedResidual_0/QuantConv_0/weight': (-1, 76, 1),
@@ -227,7 +227,7 @@ def load_data(config: ml_collections.ConfigDict, workdir: str):
   a_max_xmax = 0
   a_max_num = 0
 
-  enet_bits = copy.deepcopy(enet_template)
+  enet_bits = copy.deepcopy(mbnet_template)
   for i in flat_params:
     if i == '/placeholder':
       continue

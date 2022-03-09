@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import matplotlib.patches as mpatches
 # from matplotlib.ticker import FormatStrFormatter
 import tensorboard as tb
@@ -802,9 +803,9 @@ def plot_methods():
   # ax.plot(x,np.arctanh(x*1.9),linewidth=5,label='InvTanh', color='magenta')
 
   plt.xticks([-1, 0, 1], [
-             'QP - 1/2 Δ', 'QP', 'QP + 1/2 Δ'])
+             r'$QP-\dfrac{1}{2}\Delta$', r'$QP$', r'$QP+\dfrac{1}{2}\Delta$'])
   plt.yticks([-1, 0, 1], [
-             '1-δ', '1', '1+δ'])
+             r'$1-\delta$', r'$1$', r'$1+\delta$'])
   ax.set_xlabel("x", fontsize=font_size, fontweight='bold')
   ax.set_ylabel("dx/dL", fontsize=font_size, fontweight='bold')
   plt.legend(
@@ -826,6 +827,14 @@ if __name__ == '__main__':
   assert major_ver >= 2 and minor_ver >= 3, \
       "This notebook requires TensorBoard 2.3 or later."
   print("TensorBoard version: ", tb.__version__)
+
+  mpl.rcParams['font.family'] = 'sans-serif'
+  mpl.rcParams['font.sans-serif'] = 'Helvetica'
+  mpl.rcParams['font.weight'] = 'bold'
+  mpl.rcParams['mathtext.fontset'] = 'custom'
+  mpl.rcParams['mathtext.rm'] = 'sans'
+  mpl.rcParams['mathtext.it'] = 'sans:bold'
+  mpl.rcParams['mathtext.default'] = 'bf'
 
   plot_surrogate_24(2)
   plot_surrogate_24(4)
