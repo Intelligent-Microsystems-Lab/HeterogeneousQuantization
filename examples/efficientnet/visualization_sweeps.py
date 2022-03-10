@@ -137,7 +137,7 @@ ax.scatter(resnet_mixed_sur_gran[2], resnet_mixed_sur_gran[3],
            marker='x', s=20**2, linewidth=5, color='magenta', alpha=.25)
 
 
-#plt.ylim(31, 38)
+# plt.ylim(31, 38)
 ax.set_xscale('log')
 plt.xticks([1.5, 2, 2.5, 3, ], [
     '1.5', '2.0', '2.5', '3.0'])
