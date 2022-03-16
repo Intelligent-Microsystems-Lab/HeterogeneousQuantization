@@ -455,7 +455,6 @@ def load_data(config: ml_collections.ConfigDict, workdir: str):
   a_max_bits = 0
   a_max_xmax = 0
   a_max_num = 0
-  # import pdb; pdb.set_trace()
 
   enet_bits = copy.deepcopy(enet_template)
   for i in flat_params:
@@ -492,6 +491,8 @@ def load_data(config: ml_collections.ConfigDict, workdir: str):
           w_max_num = num_params
       continue
     if i.split('/parametric_d_xmax_')[1][0] == '1':
+      if i.split('/parametric_d_xmax_')[0] + '/act' == '/stem_conv/act':
+        continue
       if enet_bits[i.split('/parametric_d_xmax_')[0] + '/act'][0] == -1:
         # act
         path = i[1:].split('/')[:-1]

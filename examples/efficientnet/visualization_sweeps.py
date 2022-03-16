@@ -48,7 +48,8 @@ def convex_hull(points):
   return lower.to_numpy()
 
 
-def lower_convex_hull(input_file, y_axis="Error", summing=["Weight"]):
+def lower_convex_hull(input_file, y_axis="Error", summing=["Weight",
+                                                           "Act Size Sum"]):
   df = pd.read_csv(input_file)
   df['Error'] = 1 - df['Accuracy']
   df['Sum'] = sum(df[item] for item in summing)
@@ -70,16 +71,16 @@ def lower_convex_hull(input_file, y_axis="Error", summing=["Weight"]):
 
 resnet_mixed = lower_convex_hull(
     'figures/enet0.csv', y_axis="Error",
-    summing=['Act Size Max', 'Weight Size'])
+    summing=['Act Size Sum', 'Weight Size'])
 resnet_mixed_gran = lower_convex_hull(
     'figures/enet0_gran.csv', y_axis="Error",
-    summing=['Act Size Max', 'Weight Size'])
+    summing=['Act Size Sum', 'Weight Size'])
 resnet_mixed_sur = lower_convex_hull(
     'figures/enet0_sur.csv', y_axis="Error",
-    summing=['Act Size Max', 'Weight Size'])
+    summing=['Act Size Sum', 'Weight Size'])
 resnet_mixed_sur_gran = lower_convex_hull(
     'figures/enet0_sur_gran.csv', y_axis="Error",
-    summing=['Act Size Max', 'Weight Size'])
+    summing=['Act Size Sum', 'Weight Size'])
 
 
 mpl.rcParams['font.family'] = 'sans-serif'
@@ -136,19 +137,20 @@ ax.plot(resnet_mixed_sur_gran[0], resnet_mixed_sur_gran[1], marker='x',
 ax.scatter(resnet_mixed_sur_gran[2], resnet_mixed_sur_gran[3],
            marker='x', s=20**2, linewidth=5, color='magenta', alpha=.25)
 
-
+print(resnet_mixed_sur[0])
+print(resnet_mixed_sur[1])
 # plt.ylim(31, 38)
 ax.set_xscale('log')
-plt.xticks([1.5, 2, 2.5, 3, ], [
-    '1.5', '2.0', '2.5', '3.0'])
-ax.set_xlabel("Weight Size + Max Activation Size (MB)",
+plt.xticks([3, 4, 5, ], [
+    '3.0', '4.0', '5.0'])
+ax.set_xlabel("Weight Size + Sum Activation Size (MB)",
               fontsize=font_size, fontweight='bold')
 ax.set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
 plt.legend(
-    bbox_to_anchor=(-.05, 1.02, 1.05, 0.2),
+    bbox_to_anchor=(0., 1.02, 1.05, 0.2),
     loc="lower left",
-    ncol=3,
-    mode="expand",
+    ncol=2,
+    # mode="expand",
     borderaxespad=0,
     frameon=False,
     prop={'weight': 'bold', 'size': font_size}

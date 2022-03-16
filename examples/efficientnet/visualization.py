@@ -9,35 +9,108 @@ import grpc
 import numpy as np
 import itertools
 
+# 'pact_resnet50': {
+#     # https://arxiv.org/pdf/1805.06085.pdf
+#     'eval_err': np.array([1 - 0.722, 1 - 0.753, 1 - 0.765,
+#                           1 - 0.767]) * 100,
+#     'size_mb': np.array([2, 3, 4, 5
+#                          ]) * 25503912 / 8_000_000 + 0.21248000 / 2,
+#     'name': 'PACT ResNet50*',
+#     'alpha': .25,
+#     # no first and last layer quant
+# },
+# 'pact_resnet18': {
+#     # https://arxiv.org/pdf/1805.06085.pdf
+#     'eval_err': np.array([1 - 0.644, 1 - 0.681, 1 - 0.692,
+#                           1 - 0.698]) * 100,
+#     'size_mb': np.array([2, 3, 4, 5
+#                          ]) * 11679912 / 8_000_000 + 0.03840000 / 2,
+#     'name': 'PACT ResNet18*',
+#     'alpha': .25,
+#     # no first and last layer quant
+# },
+# 'lsqp_resnet18': {
+#     # https://arxiv.org/abs/2004.09576
+#     # they claim to be a natural extension... so also first and last?
+#     'eval_err': np.array([1 - 0.668, 1 - 0.694, 1 - 0.708]) * 100,
+#     'size_mb': np.array([2, 3, 4]) * 11679912 / 8_000_000 + 0.03840000/2,
+#     'name': 'LSQ+ ResNet18*',
+#     'alpha': .25,
+# },
+# 'ewgs_resnet34': {
+#     # https://arxiv.org/abs/2104.00903
+#     'eval_err': np.array([1 - 0.615, 1 - 0.714, 1 - 0.733,
+#                           1 - 0.739]) * 100,
+#     'size_mb': np.array([1, 2, 3, 4
+#                          ]) * 21780648 / 8_000_000 + 0.06809600 / 2,
+#     'name': 'EWGS ResNet34*',
+#     'alpha': .25,
+# },
+# 'qil_resnet34': {
+#     # "We did not quantize the first and the last layers as was done in"
+#     # https://arxiv.org/abs/1808.05779
+#     'eval_err': np.array([1 - 0.706, 1 - 0.731, 1 - 0.737, 1 - 0.737,
+#                           ]) * 100,
+#     'size_mb': np.array([2, 3, 4, 5
+#                          ]) * 21780648 / 8_000_000 + 0.06809600 / 2,
+#     'name': 'QIL ResNet34*',
+#     'alpha': .25,
+# },
+# 'profit_mobilev1': {
+#     # https://arxiv.org/pdf/2008.04693.pdf
+#     'eval_err': np.array([1 - 0.6139, 1 - 0.6884, 1 - 0.7125, ]) * 100,
+#     'size_mb': np.array([4, 5, 8]) * 4211113 / 8_000_000 + 0.08755200 /2,
+#     'name': 'PROFIT MobileNetV1',
+#     'alpha': .25,
+# },
+# 'profit_mobilev3': {
+#     # https://arxiv.org/pdf/2008.04693.pdf
+#     'eval_err': np.array([1 - 0.6139, 1 - 0.6884, 1 - 0.7125, ]) * 100,
+#     'size_mb': np.array([4, 5, 8]) * 5459913 / 8_000_000 + 0.09760000 /2,
+#     'name': 'PROFIT MobileNetV3',
+#     'alpha': .25,
+# },
+# 'profit_mnas': {
+#     # https://arxiv.org/pdf/2008.04693.pdf
+#     'eval_err': np.array([1 - .72244, 1 - .73378, 1 - .73742]) * 100,
+#     'size_mb': np.array([4, 5, 8]) * 3853550 / 8_000_000 + 0.13395200 / 2,
+#     'name': 'PROFIT MNasNet-A1',
+#     'alpha': .25,
+# },
+# 'mixed_resnet18': {
+#     # activation budget 380 KB against
+#     # https://arxiv.org/abs/1905.11452
+#     'eval_err': np.array([0.2992]) * 100,
+#     'size_mb': np.array([5.4]),
+#     'name': 'Mixed ResNet18',
+#     'alpha': .25,
+# },
+# 'haq_resnet50': {
+#     # https://arxiv.org/pdf/1811.08886.pdf
+#     'eval_err': np.array([1 - 0.7063, 1 - 0.7530, 1 - 0.7614]) * 100,
+#     'size_mb': np.array([6.30, 9.22, 12.14]),
+#     'name': 'HAQ ResNet50',
+#     'alpha': .25,
+# },
+# to big to be relevant
+# 'hawqv2_inceptionv3': {
+#     # https://arxiv.org/abs/1911.03852
+#     'eval_err': [1 - 0.7568],
+#     'size_mb': np.array([7.57]),
+#     'name': 'HAWQ-V2 Inception-V3',
+#     'alpha': 1.,
+# },
+
+
 # Competitor Performance.
 competitors = {
-    # 'pact_resnet50': {
-    #     # https://arxiv.org/pdf/1805.06085.pdf
-    #     'eval_err': np.array([1 - 0.722, 1 - 0.753, 1 - 0.765,
-    #                           1 - 0.767]) * 100,
-    #     'size_mb': np.array([2, 3, 4, 5
-    #                          ]) * 25503912 / 8_000_000 + 0.21248000 / 2,
-    #     'name': 'PACT ResNet50*',
-    #     'alpha': .25,
-    #     # no first and last layer quant
-    # },
-    # 'pact_resnet18': {
-    #     # https://arxiv.org/pdf/1805.06085.pdf
-    #     'eval_err': np.array([1 - 0.644, 1 - 0.681, 1 - 0.692,
-    #                           1 - 0.698]) * 100,
-    #     'size_mb': np.array([2, 3, 4, 5
-    #                          ]) * 11679912 / 8_000_000 + 0.03840000 / 2,
-    #     'name': 'PACT ResNet18*',
-    #     'alpha': .25,
-    #     # no first and last layer quant
-    # },
-
     'pact_mobilev2': {
         # https://arxiv.org/pdf/1811.08886.pdf
+        # no first and last layer quant
         'eval_err': np.array([1 - 0.6139, 1 - 0.6884, 1 - 0.7125]) * 100,
         'size_mb': np.array([4, 5, 6
-                             ]) * 3472041 / 8_000_000 + 0.13644800 / 2,
-        'name': 'PACT MbNetV2*',  # 'PACT MobileNetV2*',
+                             ]) * (3472041 + 6616672) / 8_000_000 + 0.06822,
+        'name': 'PACT MbNetV2',  # 'PACT MobileNetV2*',
         'alpha': .25,
     },
 
@@ -45,47 +118,45 @@ competitors = {
         # https://arxiv.org/abs/1908.05033
         'eval_err': np.array([1 - 0.6517, 1 - 0.6866, 1 - 0.6956]) * 100,
         'size_mb': np.array([2, 3, 4
-                             ]) * 11679912 / 8_000_000 + 0.03840000 / 2,
-        'name': 'DSQ ResNet18*',
+                             ]) * (11157504 + 2032128) / 8_000_000 + 0.0192 \
+        + 1.044816 + (512 * 16 / 8_000_000),
+        'name': 'DSQ ResNet18',
         'alpha': .25,
     },
 
     'lsq_resnet18': {
         # https://arxiv.org/abs/1902.08153
+        # no first and last layer quant
         'eval_err': np.array([1 - 0.676, 1 - 0.702, 1 - 0.711,
                               1 - 0.711]) * 100,
         'size_mb': np.array([2, 3, 4, 8
-                             ]) * 11679912 / 8_000_000 + 0.03840000 / 2,
-        'name': 'LSQ ResNet18*',
+                             ]) * (11157504 + 2032128) / 8_000_000 + 0.0192 \
+        + 1.044816 + (512 * 16 / 8_000_000),
+        'name': 'LSQ ResNet18',
         'alpha': .25,
     },
-
-    # 'lsqp_resnet18': {
-    #     # https://arxiv.org/abs/2004.09576
-    #     # they claim to be a natural extension... so also first and last?
-    #     'eval_err': np.array([1 - 0.668, 1 - 0.694, 1 - 0.708]) * 100,
-    #     'size_mb': np.array([2, 3, 4]) * 11679912 / 8_000_000 + 0.03840000/2,
-    #     'name': 'LSQ+ ResNet18*',
-    #     'alpha': .25,
-    # },
 
     'lsqp_enet0': {
         # this is efficient-b0 not lite (!)
         # https://arxiv.org/abs/2004.09576
+        # they claim to be a natural extension... so also first and last?
         'eval_err': np.array([1 - 0.491, 1 - 0.699, 1 - 0.738]) * 100,
         # number might be incorrect
-        'size_mb': np.array([2, 3, 4]) * 5246532 / 8_000_000 + 0.16806400 / 2,
-        'name': 'LSQ+ ENet-B0*',
+        'size_mb': np.array([2, 3, 4]) * (5117668 + 6674976) / 8_000_000 \
+        + 0.08403 + 0.257728 + (1280 * 16 / 8_000_000),
+        'name': 'LSQ+ EfficientNet',
         'alpha': .25,
     },
 
     'ewgs_resnet18': {
         # https://arxiv.org/abs/2104.00903
+        # no first and last layer quant
         'eval_err': np.array([1 - 0.553, 1 - 0.67, 1 - 0.697,
                               1 - 0.706]) * 100,
         'size_mb': np.array([1, 2, 3, 4
-                             ]) * 11679912 / 8_000_000 + 0.03840000 / 2,
-        'name': 'EWGS ResNet18*',
+                             ]) * (11157504 + 2032128) / 8_000_000 + 0.0192 \
+        + 1.044816 + (512 * 16 / 8_000_000),
+        'name': 'EWGS ResNet18',
         'alpha': .25,
     },
 
@@ -93,20 +164,11 @@ competitors = {
     'psgd_resnet18': {
         # https://arxiv.org/pdf/2005.11035.pdf
         'eval_err': np.array([1 - 0.6345, 1 - 0.6951, 1 - 0.7013, ]) * 100,
-        'size_mb': np.array([4, 6, 8]) * 11679912 / 8_000_000 + 0.03840000 / 2,
+        'size_mb': np.array([4, 6, 8]) * (11157504 + 2032128) / 8_000_000 \
+        + 0.0192 + 0.522408 + (512 * 8 / 8_000_000),
         'name': 'PSGD ResNet18',
         'alpha': .25,
     },
-
-    # 'ewgs_resnet34': {
-    #     # https://arxiv.org/abs/2104.00903
-    #     'eval_err': np.array([1 - 0.615, 1 - 0.714, 1 - 0.733,
-    #                           1 - 0.739]) * 100,
-    #     'size_mb': np.array([1, 2, 3, 4
-    #                          ]) * 21780648 / 8_000_000 + 0.06809600 / 2,
-    #     'name': 'EWGS ResNet34*',
-    #     'alpha': .25,
-    # },
 
     'qil_resnet18': {
         # "We did not quantize the first and the last layers as was done in..."
@@ -114,60 +176,18 @@ competitors = {
         'eval_err': np.array([1 - 0.657, 1 - 0.692, 1 - 0.701, 1 - 0.704,
                               ]) * 100,
         'size_mb': np.array([2, 3, 4, 5
-                             ]) * 11679912 / 8_000_000 + 0.03840000 / 2,
-        'name': 'QIL ResNet18*',
+                             ]) * (11157504 + 2032128) / 8_000_000 + 0.0192 \
+        + 1.044816 + (512 * 16 / 8_000_000),
+        'name': 'QIL ResNet18',
         'alpha': .25,
     },
 
-    # 'qil_resnet34': {
-    #     # "We did not quantize the first and the last layers as was done in"
-    #     # https://arxiv.org/abs/1808.05779
-    #     'eval_err': np.array([1 - 0.706, 1 - 0.731, 1 - 0.737, 1 - 0.737,
-    #                           ]) * 100,
-    #     'size_mb': np.array([2, 3, 4, 5
-    #                          ]) * 21780648 / 8_000_000 + 0.06809600 / 2,
-    #     'name': 'QIL ResNet34*',
-    #     'alpha': .25,
-    # },
-
-    # 'profit_mobilev1': {
-    #     # https://arxiv.org/pdf/2008.04693.pdf
-    #     'eval_err': np.array([1 - 0.6139, 1 - 0.6884, 1 - 0.7125, ]) * 100,
-    #     'size_mb': np.array([4, 5, 8]) * 4211113 / 8_000_000 + 0.08755200 /2,
-    #     'name': 'PROFIT MobileNetV1',
-    #     'alpha': .25,
-    # },
-
-
-
-    # 'profit_mobilev3': {
-    #     # https://arxiv.org/pdf/2008.04693.pdf
-    #     'eval_err': np.array([1 - 0.6139, 1 - 0.6884, 1 - 0.7125, ]) * 100,
-    #     'size_mb': np.array([4, 5, 8]) * 5459913 / 8_000_000 + 0.09760000 /2,
-    #     'name': 'PROFIT MobileNetV3',
-    #     'alpha': .25,
-    # },
-
-
-
-}
-
-competitors_bigger_act = {
-    # profit doesnt quantize s. We did not apply quantization only for the
-    # input image of the first convolution layer and the activation of
-    # the squeeze-excitation module.
     'profit_mobilev2': {
         # https://arxiv.org/pdf/2008.04693.pdf
         'eval_err': np.array([1 - .71564, 1 - .72192, 1 - .72352]) * 100,
-        'size_mb': np.array([4, 5, 8]) * 3506153 / 8_000_000 + 0.13644800 / 2,
-        'name': 'PROFIT MbNetV2',
-        'alpha': .25,
-    },
-    'profit_mnas': {
-        # https://arxiv.org/pdf/2008.04693.pdf
-        'eval_err': np.array([1 - .72244, 1 - .73378, 1 - .73742]) * 100,
-        'size_mb': np.array([4, 5, 8]) * 3853550 / 8_000_000 + 0.13395200 / 2,
-        'name': 'PROFIT MNasNet-A1',
+        'size_mb': np.array([4, 5, 8]) * (3472041 + 6616672) / 8_000_000 \
+        + 0.06822,
+        'name': 'PROFIT MobileNetV2',
         'alpha': .25,
     },
 
@@ -175,54 +195,34 @@ competitors_bigger_act = {
         # activation bits 8 (uniform)
         # https://arxiv.org/abs/1911.03852
         'eval_err': np.array([1 - 0.6838]) * 100,
-        'size_mb': np.array([1.07]),
-        'name': 'HAWQ-V2 SqueezeNext',
-        'alpha': .25,
-    },
-
-    # to big to be relevant
-    # 'hawqv2_inceptionv3': {
-    #     # https://arxiv.org/abs/1911.03852
-    #     'eval_err': [1 - 0.7568],
-    #     'size_mb': np.array([7.57]),
-    #     'name': 'HAWQ-V2 Inception-V3',
-    #     'alpha': 1.,
-    # },
-
-    'mixed_resnet18': {
-        # activation budget 380 KB against
-        # https://arxiv.org/abs/1905.11452
-        'eval_err': np.array([0.2992]) * 100,
-        'size_mb': np.array([5.4]),
-        'name': 'Mixed ResNet18',
+        'size_mb': np.array([1.07]) + 0.369664 + 3.962208,
+        'name': 'HAWQ SqueezeNext',
         'alpha': .25,
     },
 
     'mixed_mobilev2': {
-        # activation budget 570 KB against
+        # activation budget 570 KB against -> be generous 4 bits
+        # 6616672 * 4.0
         # https://arxiv.org/abs/1905.11452
         'eval_err': np.array([0.3026]) * 100,
-        'size_mb': np.array([1.55]),
-        'name': 'Mixed MbNetV2',
+        'size_mb': np.array([1.55]) + 0.068224 + 3.308336,
+        'name': 'Mixed MobileNetV2',
         'alpha': .25,
     },
 
     'haq_mobilev2': {
-        # https://arxiv.org/pdf/1811.08886.pdf
+        # https://arxiv.org/pdf/1811.08886.
+        # didnt address batch norm
+        # I think they only did weight compression and latency considerations.
+        # give them 8 bits for act
         'eval_err': np.array([1 - 0.6675, 1 - 0.7090, 1 - 0.7147]) * 100,
-        'size_mb': np.array([.95, 1.38, 1.79]),
-        'name': 'HAQ MbNetV2',
+        'size_mb': np.array([.95, 1.38, 1.79]) + 0.068224 + 6.616672,
+        'name': 'HAQ MobileNetV2',
         'alpha': .25,
     },
 
-    'haq_resnet50': {
-        # https://arxiv.org/pdf/1811.08886.pdf
-        'eval_err': np.array([1 - 0.7063, 1 - 0.7530, 1 - 0.7614]) * 100,
-        'size_mb': np.array([6.30, 9.22, 12.14]),
-        'name': 'HAQ ResNet50',
-        'alpha': .25,
-    },
 }
+
 
 sur_grads_tb = {"STE": "g3EVmBo2Q46JQlyLfzzfkg",
                 "Gaussian": "kg86vUopRXWjfVZ9mY1DwQ",
@@ -432,141 +432,51 @@ def plot_comparison(name):
             marker='.', ms=20, markeredgewidth=5, linewidth=5,
             alpha=competitor_data['alpha'])
 
-  # Our own.
-  ax.plot(np.array([4609992, 5363016, 6033976, 8120424, 12894200]
-                   ) * 8 / 8_000_000 + np.array([0.16806400, 0.21465600,
-                                                 0.23238400,
-                                                 0.30668800, 0.44947200]) / 2,
-          np.array([0.2452799677848816, 0.2303873896598816, 0.2221272587776184,
-                    0.2054443359375, 0.1907958984375]) * 100, marker='x',
-          label='ENet0-4 INT8', ms=20, markeredgewidth=5,
-          linewidth=5)
-
-  ax.plot(0.5762490000 * np.array([3, 4, 5, 6, 7, 8]) + 0.16806400 / 2,
+  ax.plot((0.5762490000 + 0.834532) * np.array([3, 4, 5, 6, 7, 8]) + 0.084032,
           np.array([0.36395263671875, 0.2801310420036316, 0.2576497197151184,
                     0.2494099736213684, 0.2458088994026184,
-                    0.2452799677848816]) * 100, marker='x',
-          label='ENet0 3-8 Bits', ms=20, markeredgewidth=5,
+                    0.2452799677848816]) * 100, marker='.',
+          label='EfficientNet 3-8 Bits', ms=20, markeredgewidth=5,
           linewidth=5)
 
-  xv = np.array([1.1537720947265625, 1.1611640625, 1.294680054, 1.700428101,
-                 1.832848022,
-                2.013916138, 2.142487061, 2.306124023]) + 0.16806400 / 2
-  yv = 100 - np.array([0.37939453125, 0.4444986879825592, 0.6106770635,
-                       0.679361999, 0.6814778447,
-                      0.6925455928, 0.7124023438, 0.7234700322]) * 100
-  ax.plot(xv, yv, marker='x', label="M ENet STE",
-          ms=20, markeredgewidth=5, linewidth=5, color='red')
+  # Our own.
 
-  xv = np.array([1.153934082, 1.294906128, 1.417925903, 1.719146118,
-                1.874620117, 1.982543091, 2.144371094, 2.290263916]
-                ) + 0.16806400 / 2
-  yv = 100 - np.array([0.46598, 0.607747376, 0.654622376, 0.6850585938,
-                      0.693033874, 0.7049153447, 0.7202148438, 0.7312825322]
-                      ) * 100
-  ax.plot(xv, yv, marker='x',
-          label="M ENet Surrogate",
-          ms=20, markeredgewidth=5, linewidth=5, color='green')
+  # squeezenext
+  ax.plot(np.array([2.5703838498, 2.7629910277, 3.4920328978, 4.371810425,
+                    4.73617749]) + 0.369664, [53.88997495000001, 49.33268428,
+                                              40.52734375, 36.81640625,
+                                              35.7421875], marker='x',
+          label='SqueezeNext (Ours)', ms=20, markeredgewidth=5,
+          linewidth=5)
 
-  xv = np.array([2.919978271, 3.278890381, 3.50227417, 3.538114014,
-                 4.284223145,
-                4.539738281, 4.855490234, 5.462999512, 5.81514502]
-                ) + 0.03840000 / 2
-  yv = 100 - np.array([0.5455729365, 0.5716145635, 0.6126301885, 0.6258137822,
-                      0.6560872197, 0.6430664063, 0.6513671875, 0.6647135615,
-                      0.6805012822]) * 100
-  ax.plot(xv, yv, marker='x', label="M ResNet18 STE",
-          ms=20, markeredgewidth=5, linewidth=5, color='violet')
+  # mobilenet
+  ax.plot(np.array([2.9314647829, 3.0517024534, 3.1762102050000003,
+                    3.431919068, 3.9978448490000003, 5.404619385, 5.538372192]
+                   ) + 0.068224, [39.518229999999996, 37.695310000000006,
+                                  36.425779999999996, 34.53775999999999,
+                                  33.024089999999994, 30.957029999999996,
+                                  30.778000000000006], marker='x',
+          label='MobileNetV2 (Ours)', ms=20, markeredgewidth=5,
+          linewidth=5)
+
+  # efficientnet
+  ax.plot(np.array([2.8756660160000003, 3.202751953, 3.9428900139999996,
+                    4.355371215, 5.3502570799999996, 5.617363526]) + 0.084032,
+          [51.318360000000006, 44.28711, 33.805339999999994, 31.70573,
+          27.73437, 27.587890000000005], marker='x',
+          label='EfficientNet (Ours)', ms=20, markeredgewidth=5,
+          linewidth=5)
 
   ax.set_xscale('log')
-  plt.xticks([1.5, 2, 3, 4, 5, 6, 7, 8, 9, 10], [
-             '1.5', '2', '3', '4', '5', '6', '7', '8', '9', '10'])
-  ax.set_xlabel("Network Size (MB)", fontsize=font_size, fontweight='bold')
+  plt.xticks([3, 4, 5, 6, 7, 8, 9, 10], [
+      '3', '4', '5', '6', '7', '8', '9', '10'])
+  ax.set_xlabel("Network Size + Sum Activation Size (MB)",
+                fontsize=font_size, fontweight='bold')
   ax.set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
   plt.legend(
       bbox_to_anchor=(-.05, 1.02, 1.05, 0.2),
       loc="lower left",
       ncol=4,
-      mode="expand",
-      borderaxespad=0,
-      frameon=False,
-      prop={'weight': 'bold', 'size': font_size}
-  )
-  plt.tight_layout()
-  plt.savefig(name, dpi=300)
-  plt.close()
-
-
-def plot_comparison2(name):
-  font_size = 23
-  plt.rc('font', family='Helvetica', weight='bold')
-  fig, ax = plt.subplots(figsize=(16.5, 8.5))
-
-  ax.spines["top"].set_visible(False)
-  ax.spines["right"].set_visible(False)
-
-  ax.xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
-  ax.yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
-
-  for axis in ['top', 'bottom', 'left', 'right']:
-    ax.spines[axis].set_linewidth(5)
-
-  for tick in ax.xaxis.get_major_ticks():
-    tick.label1.set_fontweight('bold')
-  for tick in ax.yaxis.get_major_ticks():
-    tick.label1.set_fontweight('bold')
-
-  # Competitors.
-  for competitor_name, competitor_data in competitors_bigger_act.items():
-    ax.plot(competitor_data['size_mb'], competitor_data['eval_err'],
-            label=competitor_data['name'],
-            marker='.', ms=20, markeredgewidth=5, linewidth=5,
-            alpha=competitor_data['alpha'])
-
-  # Our own.
-  ax.plot(np.array([4609992, 5363016, 6033976, 8120424, 12894200]
-                   ) * 8 / 8_000_000 + np.array([0.16806400, 0.21465600,
-                                                 0.23238400,
-                                                 0.30668800, 0.44947200]) / 2,
-          np.array([0.2452799677848816, 0.2303873896598816, 0.2221272587776184,
-                    0.2054443359375, 0.1907958984375]) * 100, marker='x',
-          label='ENet0-4 INT8', ms=20, markeredgewidth=5,
-          linewidth=5)
-
-  ax.plot(0.5762490000 * np.array([3, 4, 5, 6, 7, 8]) + 0.16806400 / 2,
-          np.array([0.36395263671875, 0.2801310420036316, 0.2576497197151184,
-                    0.2494099736213684, 0.2458088994026184,
-                    0.2452799677848816]) * 100, marker='x',
-          label='ENet0 3-8 Bits', ms=20, markeredgewidth=5,
-          linewidth=5)
-
-  xv = np.array([1153.9700927734375, 1268.692017, 1437.639038, 1574.033081,
-                1702.221069, 1865.83606, 1986.667114, 2126.347412,
-                2267.265381]) / 1000 + 0.16806400 / 2
-  yv = 100 - np.array([0.6048176884651184, 0.6778971553, 0.6868489385,
-                      0.6979166865, 0.7075195313, 0.706705749, 0.719075501,
-                      0.7220051885, 0.7236328125]) * 100
-  ax.plot(xv, yv, marker='x', label="M ENet0 INT4",
-          ms=20, markeredgewidth=5, linewidth=5, color='red')
-
-  xv = np.array([1154.7200927734375, 1271.812012, 1440.932129, 1577.504028,
-                1664.144897, 1828.402222, 1880.366089, 2146.508057,
-                2294.529053]) / 1000 + 0.16806400 / 2
-  yv = 100 - np.array([0.6427409052848816, 0.693033874, 0.7003580928,
-                      0.70703125, 0.7194010615, 0.7309570313, 0.7298176885,
-                      0.7355143428, 0.7364909053]) * 100
-  ax.plot(xv, yv, marker='x', label="M ENet0 INT8",
-          ms=20, markeredgewidth=5, linewidth=5, color='green')
-
-  ax.set_xscale('log')
-  plt.xticks([1.5, 2, 3, 4, 5, 6, 7, 8, 9, 10], [
-             '1.5', '2', '3', '4', '5', '6', '7', '8', '9', '10'])
-  ax.set_xlabel("Network Size (MB)", fontsize=font_size, fontweight='bold')
-  ax.set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
-  plt.legend(
-      bbox_to_anchor=(-.05, 1.02, 1.05, 0.2),
-      loc="lower left",
-      ncol=3,
       mode="expand",
       borderaxespad=0,
       frameon=False,
@@ -692,40 +602,6 @@ def plot_surrogate_24(num):
   ax.scatter(base_x / 2, mu - sigma, marker='_',
              linewidths=5, s=840, color='green', zorder=10)
 
-  # ax2 = ax.twinx()
-
-  # data = np.genfromtxt('figures/surrogate_plain2.csv',
-  #                      delimiter=',', names=True)
-  # names = data.dtype.names
-  # data = np.genfromtxt('figures/surrogate_plain2.csv',
-  #                      delimiter=',', skip_header=1) * 100
-  # y = data.flatten(order='F')
-  # x_old = x
-  # x = np.repeat(np.arange(x[-1], len(names) + x[-1]) + 1, 20)
-  # base_x = np.arange(x_old[-1], len(names) + x_old[-1]) + 1
-
-  # mu = np.nanmean(data, axis=0)
-  # sigma = np.nanstd(data, axis=0)
-
-  # ax2.scatter(x / 2, y, marker='x', linewidths=5,
-  #             s=180, color='blue', label='Observations 2 Bit', alpha=.35)
-
-  # ax2.scatter(base_x / 2, mu, marker='_', linewidths=5,
-  #             s=840, color='red', label='Mean 2 Bit', alpha=.35)
-
-  # ax2.scatter(base_x / 2, mu + sigma, marker='_', linewidths=5,
-  #             s=840, color='green', label='Std. Dev. 2 Bit', alpha=.35)
-
-  # ax2.scatter(base_x / 2, mu - sigma, marker='_',
-  #             linewidths=5, s=840, color='green', alpha=.35)
-
-  # ax2.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
-
-  # handles, labels = ax.get_legend_handles_labels()
-  # handles2, labels2 = ax2.get_legend_handles_labels()
-  # handles += handles2
-  # labels += labels2
-
   plt.legend(
       # handles=list(flip(handles, 3)),
       bbox_to_anchor=(0., 1.02, 1.0, .1),
@@ -750,14 +626,6 @@ def plot_surrogate_24(num):
     tick.label1.set_fontweight('bold')
   for tick in ax.yaxis.get_major_ticks():
     tick.label1.set_fontweight('bold')
-
-  # for axis in ['top', 'bottom', 'left', 'right']:
-  #   ax2.spines[axis].set_linewidth(5)
-
-  # for tick in ax2.xaxis.get_major_ticks():
-  #   tick.label1.set_fontweight('bold')
-  # for tick in ax2.yaxis.get_major_ticks():
-  #   tick.label1.set_fontweight('bold')
 
   ax.set_ylabel("Eval Accuracy (%)",
                 fontsize=font_size, fontweight='bold')
@@ -842,4 +710,3 @@ if __name__ == '__main__':
   plot_surrogate_mix()
   plot_methods()
   plot_comparison('figures/overview.png')
-  plot_comparison2('figures/overview_act.png')
