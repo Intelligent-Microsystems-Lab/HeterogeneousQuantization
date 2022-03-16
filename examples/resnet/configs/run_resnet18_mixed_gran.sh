@@ -11,11 +11,11 @@ do
   WEIGHT_TARGET=$(echo "$SUM_WEIGHT*$SIZE" | bc -l)
   BITS=$(echo "scale=0; ($SIZE)/1 + 2" | bc -l)
 
-  python3 train.py --workdir=../../resnet18_mixed_${SIZE}_gran_9 --config=resnet/configs/resnet18_mixed_gran.py  --config.quant_target.weight_mb=${WEIGHT_TARGET} --config.quant_target.act_mb=${ACT_TARGET} --config.quant.w_bits=${BITS} --config.quant.a_bits=${BITS} --config.pretrained_quant=gs://imagenet_clemens/pretrained/resnet18_${BITS}_pre_gran_2/best
-  if [ -d ../../resnet18_mixed_${SIZE}_gran_9/best ]; then
-    python3 train.py --workdir=../../resnet18_mixed_${SIZE}_gran_finetune_9 --config=resnet/configs/resnet18_mixed_gran_finetune.py --config.pretrained_quant=../../resnet18_mixed_${SIZE}_gran_9/best
+  python3 train.py --workdir=../../resnet18_mixed_${SIZE}_gran_8 --config=resnet/configs/resnet18_mixed_gran.py  --config.quant_target.weight_mb=${WEIGHT_TARGET} --config.quant_target.act_mb=${ACT_TARGET} --config.quant.w_bits=${BITS} --config.quant.a_bits=${BITS} --config.pretrained_quant=gs://imagenet_clemens/efficient_frontier/resnet18_mixed_${SIZE}_9/best
+  if [ -d ../../resnet18_mixed_${SIZE}_gran_8/best ]; then
+    python3 train.py --workdir=../../resnet18_mixed_${SIZE}_gran_finetune_8 --config=resnet/configs/resnet18_mixed_gran_finetune.py --config.pretrained_quant=../../resnet18_mixed_${SIZE}_gran_8/best
   else
-    python3 train.py --workdir=../../resnet18_mixed_${SIZE}_gran_finetune_9 --config=resnet/configs/resnet18_mixed_gran_finetune.py --config.pretrained_quant=../../resnet18_mixed_${SIZE}_gran_9/
+    python3 train.py --workdir=../../resnet18_mixed_${SIZE}_gran_finetune_8 --config=resnet/configs/resnet18_mixed_gran_finetune.py --config.pretrained_quant=../../resnet18_mixed_${SIZE}_gran_8/
   fi
 
 done

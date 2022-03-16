@@ -11,11 +11,11 @@ do
   WEIGHT_TARGET=$(echo "$SUM_WEIGHT*$SIZE" | bc -l)
   BITS=$(echo "scale=0; ($SIZE)/1 + 2" | bc -l)
 
-  python3 train.py --workdir=../../efficientnet-lite0_mixed_${SIZE}_gran_sur_9 --config=efficientnet/configs/efficientnet-lite0_mixed_gran_sur.py  --config.quant_target.weight_mb=${WEIGHT_TARGET} --config.quant_target.act_mb=${ACT_TARGET} --config.quant.bits=${BITS} --config.pretrained_quant=gs://imagenet_clemens/pretrained/enet0_${BITS}_pre_gran_sur_2/best
-  if [ -d ../../efficientnet-lite0_mixed_${SIZE}_gran_sur_9/best ]; then
-    python3 train.py --workdir=../../efficientnet-lite0_mixed_${SIZE}_gran_sur_finetune_9 --config=efficientnet/configs/efficientnet-lite0_mixed_gran_sur_finetune.py --config.pretrained_quant=../../efficientnet-lite0_mixed_${SIZE}_gran_sur_9/best
+  python3 train.py --workdir=../../efficientnet-lite0_mixed_${SIZE}_gran_sur_8 --config=efficientnet/configs/efficientnet-lite0_mixed_gran_sur.py  --config.quant_target.weight_mb=${WEIGHT_TARGET} --config.quant_target.act_mb=${ACT_TARGET} --config.quant.bits=${BITS} --config.pretrained_quant=gs://imagenet_clemens/efficient_frontier/efficientnet-lite0_mixed_${SIZE}_sur_9/best
+  if [ -d ../../efficientnet-lite0_mixed_${SIZE}_gran_sur_8/best ]; then
+    python3 train.py --workdir=../../efficientnet-lite0_mixed_${SIZE}_gran_sur_finetune_8 --config=efficientnet/configs/efficientnet-lite0_mixed_gran_sur_finetune.py --config.pretrained_quant=../../efficientnet-lite0_mixed_${SIZE}_gran_sur_8/best
   else
-    python3 train.py --workdir=../../efficientnet-lite0_mixed_${SIZE}_gran_sur_finetune_9 --config=efficientnet/configs/efficientnet-lite0_mixed_gran_sur_finetune.py --config.pretrained_quant=../../efficientnet-lite0_mixed_${SIZE}_gran_sur_9/
+    python3 train.py --workdir=../../efficientnet-lite0_mixed_${SIZE}_gran_sur_finetune_8 --config=efficientnet/configs/efficientnet-lite0_mixed_gran_sur_finetune.py --config.pretrained_quant=../../efficientnet-lite0_mixed_${SIZE}_gran_sur_8/
   fi
 
 done
