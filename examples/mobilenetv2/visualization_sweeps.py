@@ -140,6 +140,9 @@ ax.scatter(resnet_mixed_sur_gran[2], resnet_mixed_sur_gran[3],
 
 print(resnet_mixed_sur_gran[0])
 print(resnet_mixed_sur_gran[1])
+
+print(resnet_mixed[0])
+print(resnet_mixed[1])
 # plt.ylim(31, 38)
 ax.set_xscale('log')
 plt.xticks([3.0, 4.0, 5.0], [
