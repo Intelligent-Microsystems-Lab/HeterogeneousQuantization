@@ -102,7 +102,7 @@ def compute_metrics(logits, labels, state, size_div, smoothing):
       metrics['act_size_max'] = jnp.max(
           jnp.array(jax.tree_util.tree_flatten(state['act_size'])[0])
       ) / size_div
-  # metrics = lax.pmean(metrics, axis_name='batch')
+
   return metrics
 
 
@@ -341,7 +341,7 @@ def train_step(state, batch, rng, b_quant_params, learning_rate_fn,
   metrics['size_act_penalty'] = aux[1][-3]
   metrics['size_weight_penalty'] = aux[1][-2]
   metrics['ce_loss'] = aux[1][-1]
-  metrics['accuracy'] = metrics['accuracy'].mean()
+  metrics['accuracy'] = metrics['accuracy']
 
   return new_state, metrics
 
@@ -360,7 +360,7 @@ def eval_step(state, batch, size_div, smoothing):
       mutable=['weight_size', 'act_size'])
   metrics = compute_metrics(
       logits, batch['label'], new_state, size_div, smoothing)
-  metrics['accuracy'] = metrics['accuracy'].mean()
+  metrics['accuracy'] = metrics['accuracy']
   return metrics
 
 

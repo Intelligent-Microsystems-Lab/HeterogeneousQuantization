@@ -150,7 +150,7 @@ def evaluate(config: ml_collections.ConfigDict,
     time_per_epoch.append(time.time() - train_metrics_last_t)
     eval_metrics.append(metrics)
 
-  eval_metrics = common_utils.get_metrics(eval_metrics)
+  eval_metrics = common_utils.stack_forest(eval_metrics)
   summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
   logging.info('eval loss: %.4f, accuracy: %.2f latency: %.4f±%.4f(ms)',
                summary['loss'],
