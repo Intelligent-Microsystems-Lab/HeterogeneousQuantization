@@ -11,7 +11,7 @@ do
   WEIGHT_TARGET=$(echo "$SUM_WEIGHT*$SIZE" | bc -l)
   BITS=$(echo "scale=0; ($SIZE)/1 + 2" | bc -l)
 
-  python3 train.py --workdir=../../mbnetv2_mixed_${SIZE}_gran_sur_7 --config=mobilenetv2/configs/mobilenetv2_mixed_gran_gran_sur.py  --config.quant_target.weight_mb=${WEIGHT_TARGET} --config.quant_target.act_mb=${ACT_TARGET} --config.quant.bits=${BITS} --config.pretrained_quant=gs://imagenet_clemens/pretrained_hq/mbnet_${BITS}_gran_sur_pre_3/best
+  python3 train.py --workdir=../../mbnetv2_mixed_${SIZE}_gran_sur_7 --config=mobilenetv2/configs/mobilenetv2_mixed_gran_sur.py  --config.quant_target.weight_mb=${WEIGHT_TARGET} --config.quant_target.act_mb=${ACT_TARGET} --config.quant.bits=${BITS} --config.pretrained_quant=gs://imagenet_clemens/pretrained_hq/mbnet_${BITS}_gran_sur_pre_3/best
   if [ -d ../../mbnetv2_mixed_${SIZE}_gran_sur_7/best ]; then
     python3 train.py --workdir=../../mbnetv2_mixed_${SIZE}_finetune_7 --config=mobilenetv2/configs/mobilenetv2_mixed_finetune_gran_gran_sur.py --config.pretrained_quant=../../mbnetv2_mixed_${SIZE}_gran_sur_7/best
   else
