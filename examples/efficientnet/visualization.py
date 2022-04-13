@@ -482,7 +482,7 @@ def plot_comparison(name):
   ax.set_xscale('log')
   plt.xticks([3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], [
       '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14'])
-  ax.set_xlabel("Sum Parameter Size + Sum Activation Feauture Maps Size (MB)",
+  ax.set_xlabel("Sum Parameter Size + Sum Activation Feature Maps Size (MB)",
                 fontsize=font_size, fontweight='bold')
   ax.set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
   plt.legend(
@@ -534,7 +534,7 @@ def plot_meth_sur():
   fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(14.4, 6.5))
 
   textst1 = 'Configurations:\n\na)\nb)\nc)\nd)\ne)\nf)\ng)\nh)\ni)\nj)'
-  textst2 = '\nWgt.\nSTE\nSTE\nSTE\nPBGS\nEWGS\nATanh\nAcos\nATanh\nPBGS\nEWGS'
+  textst2 = '\nWgt.\nSTE\nSTE\nSTE\nPBGS\nEWGS\nATanh\n|Cos|\nATanh\nPBGS\nEWGS'
   textst3 = '\nAct.\nPBGS\nEWGS\nATanh\nSTE\nSTE\nSTE\nSTE\nEWGS\nATanh\nATanh'
 
   plt.text(.88, 0.25, textst1, fontsize=20,
@@ -611,7 +611,7 @@ def plot_meth_sur():
   ax[0].plot(x, x, linewidth=gen_linewidth, label='EWGS',
              linestyle='--', color='purple')
   ax[0].plot(x, np.sin(np.pi * (.5 * x - np.round(.5 * x))),
-             linewidth=gen_linewidth, label='ACos', color='b')
+             linewidth=gen_linewidth, label='|Cos|', color='b')
   ax[0].plot(x, np.tanh(x * 4), linewidth=gen_linewidth,
              label='Tanh', color='r')
   ax[0].plot(x, np.arctanh(x / 1.05) / 1.85,
