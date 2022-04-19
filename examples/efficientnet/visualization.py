@@ -474,8 +474,8 @@ def plot_comparison(name):
   ax.plot(np.array([2.925111084, 2.925306152, 3.1460351570000005, 3.9969198,
                     5.27848999, 5.373107422, 5.788132813, 5.932807129,
                     5.973300536999999]) + 0.084032,
-          [51.7965, 51.6317, 47.127300000000005, 33.247899999999994, 
-           27.728299999999994, 27.337599999999995, 26.867700000000006, 
+          [51.7965, 51.6317, 47.127300000000005, 33.247899999999994,
+           27.728299999999994, 27.337599999999995, 26.867700000000006,
            26.837200000000006, 26.833099999999998], marker='x',
           label='EfficientNet-Lite0 (Ours)', ms=mw, markeredgewidth=gen_lw,
           linewidth=gen_lw)
@@ -534,15 +534,15 @@ def plot_meth_sur():
 
   fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(14.4, 6.5))
 
-  textst1 = 'Configurations:\n\na)\nb)\nc)\nd)\ne)\nf)\ng)\nh)\ni)\nj)'
-  textst2 = '\nWgt.\nSTE\nSTE\nSTE\nPBGS\nEWGS\nATanh\n|Cos|\nATanh\nPBGS\nEWGS'
-  textst3 = '\nAct.\nPBGS\nEWGS\nATanh\nSTE\nSTE\nSTE\nSTE\nEWGS\nATanh\nATanh'
+  texts1 = 'Configurations:\n\na)\nb)\nc)\nd)\ne)\nf)\ng)\nh)\ni)\nj)'
+  texts2 = '\nWgt.\nSTE\nSTE\nSTE\nPBGS\nEWGS\nATanh\n|Cos|\nATanh\nPBGS\nEWGS'
+  texts3 = '\nAct.\nPBGS\nEWGS\nATanh\nSTE\nSTE\nSTE\nSTE\nEWGS\nATanh\nATanh'
 
-  plt.text(.88, 0.25, textst1, fontsize=20,
+  plt.text(.88, 0.25, texts1, fontsize=20,
            transform=plt.gcf().transFigure, linespacing=1.5)
-  plt.text(.90, 0.25, textst2, fontsize=20,
+  plt.text(.90, 0.25, texts2, fontsize=20,
            transform=plt.gcf().transFigure, linespacing=1.5)
-  plt.text(.965, 0.25, textst3, fontsize=20,
+  plt.text(.965, 0.25, texts3, fontsize=20,
            transform=plt.gcf().transFigure, linespacing=1.5)
 
   ax[1].axhline(y=65.741000, color='orange',
