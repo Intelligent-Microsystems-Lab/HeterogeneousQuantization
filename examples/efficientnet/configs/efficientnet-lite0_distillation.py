@@ -50,7 +50,7 @@ def get_config():
   config.cache = True
 
   # Load pretrained weights.
-  config.restore_path = "gs://imagenet_clemens/frontier/enet_gran_sur/efficientnet-lite0_mixed_2.8_gran_sur_finetune_7/best"
+  config.restore_path = "gs://imagenet_clemens/frontier/enet_gran_sur/efficientnet-lite0_mixed_2.2_gran_sur_finetune_7/best"
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.

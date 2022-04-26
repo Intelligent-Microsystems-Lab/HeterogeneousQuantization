@@ -344,7 +344,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
   # teacher model
   big_model = "../../pretrained_efficientnet/B_16-i21k-300ep-lr_0.001-aug_" \
-      + "medium1-wd_0.1-do_0.0-sd_0.0--imagenet2012-'+'steps_20k-lr_0.03-" \
+      + "medium1-wd_0.1-do_0.0-sd_0.0--imagenet2012-steps_20k-lr_0.03-" \
       + "res_384.npz"
   model_config = models_config.AUGREG_CONFIGS['B_16']
   model = models_vit.VisionTransformer(
