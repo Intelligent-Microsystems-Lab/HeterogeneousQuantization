@@ -173,8 +173,7 @@ def train_step(state, batch, rng, logits_tgt, learning_rate_fn,
         rngs={'dropout': rng})
 
     loss = jnp.mean(optax.softmax_cross_entropy(
-        logits=logits, labels=logits_tgt))
-
+        logits=logits, labels=jax.nn.softmax(logits_tgt, axis=-1)))
     return loss, (new_model_state, logits)
 
   lr = learning_rate_fn(step)
@@ -384,13 +383,13 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     rng_list = jax.random.split(rng, jax.local_device_count() + 1)
     rng = rng_list[0]
 
-    logits = p_teacher_logits(eval_batch['image2'])
+    logits = p_teacher_logits(batch['image2'])
     state, metrics = p_train_step(state, batch, rng_list[1:], logits)
 
     # # Debug
     # state, metrics = p_train_step(
-    #     state, {'image': batch['image'][0, :, :, :] * 0 + 1,
-    #             'label': batch['label'][0] * 0 + 1}, rng_list[2], b_quant[0])
+    #     state, {'image': batch['image'][0, :, :, :],
+    #             'label': batch['label'][0]}, rng_list[2], logits[0,:,:])
 
     for h in hooks:
       h(step)
