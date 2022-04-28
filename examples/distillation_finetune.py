@@ -172,8 +172,13 @@ def train_step(state, batch, rng, logits_tgt, learning_rate_fn,
         'quant_config'],
         rngs={'dropout': rng})
 
+    one_hot_labels = common_utils.onehot(targets, num_classes=logits.shape[1])
     loss = jnp.mean(optax.softmax_cross_entropy(
-        logits=logits, labels=jax.nn.softmax(logits_tgt, axis=-1)))
+        logits=logits, labels=one_hot_labels))
+
+    loss += -1 * jnp.mean(jnp.sum(jax.nn.softmax(logits_tgt, axis=-1)
+                          * jax.nn.log_softmax(logits, axis=-1), axis=-1))
+
     return loss, (new_model_state, logits)
 
   lr = learning_rate_fn(step)
