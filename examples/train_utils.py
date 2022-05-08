@@ -145,6 +145,17 @@ def create_learning_rate_fn(
 
     base_learning_rate = config.learning_rate * config.batch_size / 256.
 
+    # bn_stabilize_epochs
+    if 'bn_stabilize_epochs' in config:
+      regimes.append(
+          optax.linear_schedule(
+              init_value=0., end_value=0.,
+              transition_steps=config.bn_stabilize_epochs * steps_per_epoch)
+      )
+      transition_points.append(
+          epoch_counter + config.bn_stabilize_epochs * steps_per_epoch)
+      epoch_counter += config.bn_stabilize_epochs * steps_per_epoch
+
     # warm up
     if 'warmup_epochs' in config:
       regimes.append(

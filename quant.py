@@ -424,6 +424,52 @@ class parametric_d(nn.Module):
     return vbar * s
 
 
+class DuQ(nn.Module):
+  bits: int = 4
+  g_scale: float = 0.
+
+  # Differentiable and unified Quantization (DuQ)
+  # Based on PROFIT.
+  # https://arxiv.org/pdf/2008.04693.pdf
+  @nn.compact
+  def __call__(self, inputs: Array, sign: bool = True) -> Array:
+
+    @jax.custom_vjp
+    def DuQ_round_quant(x, n_lvl):
+      return jnp.round(x * (n_lvl - 1)) / (n_lvl - 1)
+
+    def DuQ_round_quant_fwd(x, n_lvl):
+      return DuQ_round_quant(x, n_lvl), (None,)
+
+    def DuQ_round_quant_bwd(res, g):
+      return g, None
+
+    DuQ_round_quant.defvjp(DuQ_round_quant_fwd, DuQ_round_quant_bwd)
+
+    x = inputs
+
+    if sign:
+      n_lv = 2 ** (self.bits - 1)
+    else:
+      n_lv = 2 ** self.bits
+
+    a = self.variable('quant_params', 'a', jnp.ones, (1,))
+    c = self.variable('quant_params', 'c', jnp.ones, (1,))
+
+    if self.is_mutable_collection('quant_params'):
+      max_val = jnp.abs(x).max()
+      a.value = jnp.log(jnp.exp(max_val * .9) - 1)
+      c.value = jnp.log(jnp.exp(max_val * .9) - 1)
+
+    local_a = jax.nn.softplus(a.value)
+    local_c = jax.nn.softplus(c.value)
+
+    x = jax.nn.hard_tanh(x / local_a)
+    x = DuQ_round_quant(x, n_lv) * local_c
+
+    return x
+
+
 class parametric_d_xmax(nn.Module):
   bits: int = 4  # here its just init bits
   act: bool = False
