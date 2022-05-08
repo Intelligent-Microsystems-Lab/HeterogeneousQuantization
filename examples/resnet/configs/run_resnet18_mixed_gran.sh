@@ -13,9 +13,9 @@ do
 
   python3 train.py --workdir=../../resnet18_mixed_${SIZE}_gran_7 --config=resnet/configs/resnet18_mixed_gran.py  --config.quant_target.weight_mb=${WEIGHT_TARGET} --config.quant_target.act_mb=${ACT_TARGET} --config.quant.w_bits=${BITS} --config.quant.a_bits=${BITS} --config.pretrained_quant=gs://imagenet_clemens/pretrained_hq/resnet_${BITS}_pre_3/best
   if [ -d ../../resnet18_mixed_${SIZE}_gran_7/best ]; then
-    python3 train.py --workdir=../../resnet18_mixed_${SIZE}_finetune_gran_7 --config=resnet/configs/resnet18_mixed_gran.py --config.pretrained_quant=../../resnet18_mixed_${SIZE}_gran_7/best
+    python3 train.py --workdir=../../resnet18_mixed_${SIZE}_finetune_gran_7 --config=resnet/configs/resnet18_mixed_gran_finetune.py --config.pretrained_quant=../../resnet18_mixed_${SIZE}_gran_7/best
   else
-    python3 train.py --workdir=../../resnet18_mixed_${SIZE}_finetune_gran_7 --config=resnet/configs/resnet18_mixed_gran.py  --config.pretrained_quant=../../resnet18_mixed_${SIZE}_gran_7/
+    python3 train.py --workdir=../../resnet18_mixed_${SIZE}_finetune_gran_7 --config=resnet/configs/resnet18_mixed_gran_finetune.py  --config.pretrained_quant=../../resnet18_mixed_${SIZE}_gran_7/
   fi
 
 done

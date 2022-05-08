@@ -3,6 +3,7 @@
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
+from collections import OrderedDict
 import numpy as np
 import pandas as pd
 
@@ -69,6 +70,44 @@ def lower_convex_hull(input_file, y_axis="Error", summing=["Weight",
           ]
 
 
+mpl.rcParams['font.family'] = 'sans-serif'
+mpl.rcParams['font.sans-serif'] = 'Helvetica'
+mpl.rcParams['font.weight'] = 'bold'
+mpl.rcParams['mathtext.fontset'] = 'custom'
+mpl.rcParams['mathtext.rm'] = 'sans'
+mpl.rcParams['mathtext.it'] = 'sans:bold'
+mpl.rcParams['mathtext.default'] = 'bf'
+
+
+font_size = 23
+gen_linewidth = 3
+mw = 15
+
+
+"""
+EfficientNet and MobileNet
+"""
+
+
+plt.rc('font', family='Helvetica', weight='bold')
+fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(14.4, 6.5))
+
+ax[0].spines["top"].set_visible(False)
+ax[0].spines["right"].set_visible(False)
+
+ax[0].xaxis.set_tick_params(
+    width=gen_linewidth, length=10, labelsize=font_size)
+ax[0].yaxis.set_tick_params(
+    width=gen_linewidth, length=10, labelsize=font_size)
+
+for axis in ['top', 'bottom', 'left', 'right']:
+  ax[0].spines[axis].set_linewidth(gen_linewidth)
+
+for tick in ax[0].xaxis.get_major_ticks():
+  tick.label1.set_fontweight('bold')
+for tick in ax[0].yaxis.get_major_ticks():
+  tick.label1.set_fontweight('bold')
+
 resnet_mixed = lower_convex_hull(
     'figures/enet0.csv', y_axis="Error",
     summing=['Act Size Sum', 'Weight Size'])
@@ -83,78 +122,310 @@ resnet_mixed_sur_gran = lower_convex_hull(
     summing=['Act Size Sum', 'Weight Size'])
 
 
-mpl.rcParams['font.family'] = 'sans-serif'
-mpl.rcParams['font.sans-serif'] = 'Helvetica'
-mpl.rcParams['font.weight'] = 'bold'
-mpl.rcParams['mathtext.fontset'] = 'custom'
-mpl.rcParams['mathtext.rm'] = 'sans'
-mpl.rcParams['mathtext.it'] = 'sans:bold'
-mpl.rcParams['mathtext.default'] = 'bf'
+ax[0].plot(resnet_mixed[0], resnet_mixed[1], marker='x', label='Mixed',
+           ms=mw, markeredgewidth=gen_linewidth, linewidth=gen_linewidth,
+           color='green')
+ax[0].scatter(resnet_mixed[2], resnet_mixed[3], marker='x',
+              s=15**2, linewidth=gen_linewidth, color='green', alpha=.25)
 
 
-font_size = 23
-plt.rc('font', family='Helvetica', weight='bold')
-fig, ax = plt.subplots(figsize=(16.5, 8.5))
+ax[0].plot(resnet_mixed_gran[0], resnet_mixed_gran[1], marker='x',
+           label='Mixed Granular', ms=mw, markeredgewidth=gen_linewidth,
+           linewidth=gen_linewidth,
+           color='red')
+ax[0].scatter(resnet_mixed_gran[2], resnet_mixed_gran[3],
+              marker='x', s=15**2, linewidth=gen_linewidth, color='red',
+              alpha=.25)
 
-ax.spines["top"].set_visible(False)
-ax.spines["right"].set_visible(False)
 
-ax.xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
-ax.yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
+ax[0].plot(resnet_mixed_sur[0], resnet_mixed_sur[1], marker='x',
+           label='Mixed Surrogate', ms=mw, markeredgewidth=gen_linewidth,
+           linewidth=gen_linewidth,
+           color='blue')
+ax[0].scatter(resnet_mixed_sur[2], resnet_mixed_sur[3],
+              marker='x', s=15**2, linewidth=gen_linewidth, color='blue',
+              alpha=.25)
+
+
+ax[0].plot(resnet_mixed_sur_gran[0], resnet_mixed_sur_gran[1], marker='x',
+           label='Mixed Granular Surrogate', ms=mw,
+           markeredgewidth=gen_linewidth, linewidth=gen_linewidth,
+           color='orange')
+ax[0].scatter(resnet_mixed_sur_gran[2], resnet_mixed_sur_gran[3],
+              marker='x', s=15**2, linewidth=gen_linewidth, color='orange',
+              alpha=.25)
+
+print(resnet_mixed_sur_gran[0])
+print(resnet_mixed_sur_gran[1])
+ax[0].set_xscale('log')
+ax[0].set_xticks([3, 4, 5, ], [
+    '3.0', '4.0', '5.0'])
+ax[0].set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
+
+
+ax[1].spines["top"].set_visible(False)
+ax[1].spines["right"].set_visible(False)
+
+ax[1].xaxis.set_tick_params(
+    width=gen_linewidth, length=10, labelsize=font_size)
+ax[1].yaxis.set_tick_params(
+    width=gen_linewidth, length=10, labelsize=font_size)
 
 for axis in ['top', 'bottom', 'left', 'right']:
-  ax.spines[axis].set_linewidth(5)
+  ax[1].spines[axis].set_linewidth(gen_linewidth)
 
-for tick in ax.xaxis.get_major_ticks():
+for tick in ax[1].xaxis.get_major_ticks():
   tick.label1.set_fontweight('bold')
-for tick in ax.yaxis.get_major_ticks():
+for tick in ax[1].yaxis.get_major_ticks():
   tick.label1.set_fontweight('bold')
 
-
-ax.plot(resnet_mixed[0], resnet_mixed[1], marker='x', label='Mixed',
-        ms=20, markeredgewidth=5, linewidth=5, color='green')
-ax.scatter(resnet_mixed[2], resnet_mixed[3], marker='x',
-           s=20**2, linewidth=5, color='green', alpha=.25)
-
-
-ax.plot(resnet_mixed_gran[0], resnet_mixed_gran[1], marker='x',
-        label='Mixed Granular', ms=20, markeredgewidth=5, linewidth=5,
-        color='red')
-ax.scatter(resnet_mixed_gran[2], resnet_mixed_gran[3],
-           marker='x', s=20**2, linewidth=5, color='red', alpha=.25)
-
-
-ax.plot(resnet_mixed_sur[0], resnet_mixed_sur[1], marker='x',
-        label='Mixed Surrogate', ms=20, markeredgewidth=5, linewidth=5,
-        color='blue')
-ax.scatter(resnet_mixed_sur[2], resnet_mixed_sur[3],
-           marker='x', s=20**2, linewidth=5, color='blue', alpha=.25)
+resnet_mixed = lower_convex_hull(
+    'figures/mbnet.csv', y_axis="Error",
+    summing=['Act Size Sum', 'Weight Size'])
+resnet_mixed_gran = lower_convex_hull(
+    'figures/mbnet_gran.csv', y_axis="Error",
+    summing=['Act Size Sum', 'Weight Size'])
+resnet_mixed_sur = lower_convex_hull(
+    'figures/mbnet_sur.csv', y_axis="Error",
+    summing=['Act Size Sum', 'Weight Size'])
+resnet_mixed_sur_gran = lower_convex_hull(
+    'figures/mbnet_gran_sur.csv', y_axis="Error",
+    summing=['Act Size Sum', 'Weight Size'])
 
 
-ax.plot(resnet_mixed_sur_gran[0], resnet_mixed_sur_gran[1], marker='x',
-        label='Mixed Granular Surrogate', ms=20, markeredgewidth=5,
-        linewidth=5, color='magenta')
-ax.scatter(resnet_mixed_sur_gran[2], resnet_mixed_sur_gran[3],
-           marker='x', s=20**2, linewidth=5, color='magenta', alpha=.25)
+ax[1].plot(resnet_mixed[0], resnet_mixed[1], marker='x', label='Mixed',
+           ms=mw, markeredgewidth=gen_linewidth, linewidth=gen_linewidth,
+           color='green')
+ax[1].scatter(resnet_mixed[2], resnet_mixed[3], marker='x',
+              s=15**2, linewidth=gen_linewidth, color='green', alpha=.25)
 
-print(resnet_mixed_sur[0])
-print(resnet_mixed_sur[1])
-# plt.ylim(31, 38)
-ax.set_xscale('log')
-plt.xticks([3, 4, 5, ], [
+
+ax[1].plot(resnet_mixed_gran[0], resnet_mixed_gran[1], marker='x',
+           label='Mixed Granular', ms=mw, markeredgewidth=gen_linewidth,
+           linewidth=gen_linewidth,
+           color='red')
+ax[1].scatter(resnet_mixed_gran[2], resnet_mixed_gran[3],
+              marker='x', s=15**2, linewidth=gen_linewidth, color='red',
+              alpha=.25)
+
+
+ax[1].plot(resnet_mixed_sur[0], resnet_mixed_sur[1], marker='x',
+           label='Mixed Surrogate', ms=mw, markeredgewidth=gen_linewidth,
+           linewidth=gen_linewidth,
+           color='blue')
+ax[1].scatter(resnet_mixed_sur[2], resnet_mixed_sur[3],
+              marker='x', s=15**2, linewidth=gen_linewidth, color='blue',
+              alpha=.25)
+
+
+ax[1].plot(resnet_mixed_sur_gran[0], resnet_mixed_sur_gran[1], marker='x',
+           label='Mixed Granular Surrogate', ms=mw,
+           markeredgewidth=gen_linewidth, linewidth=gen_linewidth,
+           color='orange')
+ax[1].scatter(resnet_mixed_sur_gran[2], resnet_mixed_sur_gran[3],
+              marker='x', s=15**2, linewidth=gen_linewidth, color='orange',
+              alpha=.25)
+
+print(resnet_mixed_sur_gran[0])
+print(resnet_mixed_sur_gran[1])
+ax[1].set_xscale('log')
+ax[1].set_xticks([3, 4, 5, ], [
     '3.0', '4.0', '5.0'])
-ax.set_xlabel("Weight Size + Sum Activation Size (MB)",
-              fontsize=font_size, fontweight='bold')
-ax.set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
-plt.legend(
-    bbox_to_anchor=(0., 1.02, 1.05, 0.2),
+ax[1].set_xlabel("Wgt. + Act. (MB)", fontsize=font_size, fontweight='bold')
+ax[0].set_xlabel("Wgt. + Act. (MB)", fontsize=font_size, fontweight='bold')
+ax[1].set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
+
+handles, labels = ax[0].get_legend_handles_labels()
+by_label = OrderedDict(zip(labels, handles))
+
+ax[0].text(.25, .75, 'EfficientNet-Lite0', fontsize=23,
+           transform=plt.gcf().transFigure, linespacing=1.5)
+ax[1].text(.78, .75, 'MobilenetV2', fontsize=23,
+           transform=plt.gcf().transFigure, linespacing=1.5)
+
+
+fig.legend(
+    by_label.values(), by_label.keys(),
+    bbox_to_anchor=(0.01, .95, 1., 0.2),
     loc="lower left",
-    ncol=2,
-    # mode="expand",
-    borderaxespad=0,
+    ncol=4,
+    mode="expand",
     frameon=False,
     prop={'weight': 'bold', 'size': font_size}
 )
 plt.tight_layout()
-plt.savefig('figures/sweeps.png', dpi=300)
+plt.savefig('figures/sweeps_enet_mbnet.png', dpi=300, bbox_inches='tight')
+plt.close()
+
+
+"""
+SqueezeNext and ResNet
+"""
+
+
+fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(14.4, 6.5))
+
+ax[0].spines["top"].set_visible(False)
+ax[0].spines["right"].set_visible(False)
+
+ax[0].xaxis.set_tick_params(
+    width=gen_linewidth, length=10, labelsize=font_size)
+ax[0].yaxis.set_tick_params(
+    width=gen_linewidth, length=10, labelsize=font_size)
+
+for axis in ['top', 'bottom', 'left', 'right']:
+  ax[0].spines[axis].set_linewidth(gen_linewidth)
+
+for tick in ax[0].xaxis.get_major_ticks():
+  tick.label1.set_fontweight('bold')
+for tick in ax[0].yaxis.get_major_ticks():
+  tick.label1.set_fontweight('bold')
+
+resnet_mixed = lower_convex_hull(
+    'figures/sqnxt.csv', y_axis="Error",
+    summing=['Act Size Sum', 'Weight Size'])
+resnet_mixed_gran = lower_convex_hull(
+    'figures/sqnxt_gran.csv', y_axis="Error",
+    summing=['Act Size Sum', 'Weight Size'])
+resnet_mixed_sur = lower_convex_hull(
+    'figures/sqnxt_sur.csv', y_axis="Error",
+    summing=['Act Size Sum', 'Weight Size'])
+resnet_mixed_sur_gran = lower_convex_hull(
+    'figures/sqnxt_gran_sur.csv', y_axis="Error",
+    summing=['Act Size Sum', 'Weight Size'])
+
+
+ax[0].plot(resnet_mixed[0], resnet_mixed[1], marker='x', label='Mixed',
+           ms=mw, markeredgewidth=gen_linewidth, linewidth=gen_linewidth,
+           color='green')
+ax[0].scatter(resnet_mixed[2], resnet_mixed[3], marker='x',
+              s=15**2, linewidth=gen_linewidth, color='green', alpha=.25)
+
+
+ax[0].plot(resnet_mixed_gran[0], resnet_mixed_gran[1], marker='x',
+           label='Mixed Granular', ms=mw, markeredgewidth=gen_linewidth,
+           linewidth=gen_linewidth,
+           color='red')
+ax[0].scatter(resnet_mixed_gran[2], resnet_mixed_gran[3],
+              marker='x', s=15**2, linewidth=gen_linewidth, color='red',
+              alpha=.25)
+
+
+ax[0].plot(resnet_mixed_sur[0], resnet_mixed_sur[1], marker='x',
+           label='Mixed Surrogate', ms=mw, markeredgewidth=gen_linewidth,
+           linewidth=gen_linewidth,
+           color='blue')
+ax[0].scatter(resnet_mixed_sur[2], resnet_mixed_sur[3],
+              marker='x', s=15**2, linewidth=gen_linewidth, color='blue',
+              alpha=.25)
+
+
+ax[0].plot(resnet_mixed_sur_gran[0], resnet_mixed_sur_gran[1], marker='x',
+           label='Mixed Granular Surrogate', ms=mw,
+           markeredgewidth=gen_linewidth, linewidth=gen_linewidth,
+           color='orange')
+ax[0].scatter(resnet_mixed_sur_gran[2], resnet_mixed_sur_gran[3],
+              marker='x', s=15**2, linewidth=gen_linewidth, color='orange',
+              alpha=.25)
+
+print(resnet_mixed_sur_gran[0])
+print(resnet_mixed_sur_gran[1])
+ax[0].set_xscale('log')
+ax[0].set_xticks([3, 4, 5, ], [
+    '3.0', '4.0', '5.0'])
+ax[0].set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
+
+
+ax[1].spines["top"].set_visible(False)
+ax[1].spines["right"].set_visible(False)
+
+ax[1].xaxis.set_tick_params(
+    width=gen_linewidth, length=10, labelsize=font_size)
+ax[1].yaxis.set_tick_params(
+    width=gen_linewidth, length=10, labelsize=font_size)
+
+for axis in ['top', 'bottom', 'left', 'right']:
+  ax[1].spines[axis].set_linewidth(gen_linewidth)
+
+for tick in ax[1].xaxis.get_major_ticks():
+  tick.label1.set_fontweight('bold')
+for tick in ax[1].yaxis.get_major_ticks():
+  tick.label1.set_fontweight('bold')
+
+resnet_mixed = lower_convex_hull(
+    'figures/resnet.csv', y_axis="Error",
+    summing=['Act Size Sum', 'Weight Size'])
+resnet_mixed_gran = lower_convex_hull(
+    'figures/resnet_gran.csv', y_axis="Error",
+    summing=['Act Size Sum', 'Weight Size'])
+resnet_mixed_sur = lower_convex_hull(
+    'figures/resnet_sur.csv', y_axis="Error",
+    summing=['Act Size Sum', 'Weight Size'])
+resnet_mixed_sur_gran = lower_convex_hull(
+    'figures/resnet_gran_sur.csv', y_axis="Error",
+    summing=['Act Size Sum', 'Weight Size'])
+
+
+ax[1].plot(resnet_mixed[0], resnet_mixed[1], marker='x', label='Mixed',
+           ms=mw, markeredgewidth=gen_linewidth, linewidth=gen_linewidth,
+           color='green')
+ax[1].scatter(resnet_mixed[2], resnet_mixed[3], marker='x',
+              s=15**2, linewidth=gen_linewidth, color='green', alpha=.25)
+
+
+ax[1].plot(resnet_mixed_gran[0], resnet_mixed_gran[1], marker='x',
+           label='Mixed Granular', ms=mw, markeredgewidth=gen_linewidth,
+           linewidth=gen_linewidth,
+           color='red')
+ax[1].scatter(resnet_mixed_gran[2], resnet_mixed_gran[3],
+              marker='x', s=15**2, linewidth=gen_linewidth, color='red',
+              alpha=.25)
+
+
+ax[1].plot(resnet_mixed_sur[0], resnet_mixed_sur[1], marker='x',
+           label='Mixed Surrogate', ms=mw, markeredgewidth=gen_linewidth,
+           linewidth=gen_linewidth,
+           color='blue')
+ax[1].scatter(resnet_mixed_sur[2], resnet_mixed_sur[3],
+              marker='x', s=15**2, linewidth=gen_linewidth, color='blue',
+              alpha=.25)
+
+
+ax[1].plot(resnet_mixed_sur_gran[0], resnet_mixed_sur_gran[1], marker='x',
+           label='Mixed Granular Surrogate', ms=mw,
+           markeredgewidth=gen_linewidth, linewidth=gen_linewidth,
+           color='orange')
+ax[1].scatter(resnet_mixed_sur_gran[2], resnet_mixed_sur_gran[3],
+              marker='x', s=15**2, linewidth=gen_linewidth, color='orange',
+              alpha=.25)
+
+print(resnet_mixed_sur_gran[0])
+print(resnet_mixed_sur_gran[1])
+ax[1].set_xscale('log')
+ax[1].set_xticks([3, 4, 5, 6, 7], [
+    '3.0', '4.0', '5.0', '6', '7'])
+ax[1].set_xlabel("Wgt. + Act. (MB)", fontsize=font_size, fontweight='bold')
+ax[0].set_xlabel("Wgt. + Act. (MB)", fontsize=font_size, fontweight='bold')
+ax[1].set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
+
+handles, labels = ax[0].get_legend_handles_labels()
+by_label = OrderedDict(zip(labels, handles))
+
+ax[0].text(.25, .75, 'SqueezeNext23-W2', fontsize=23,
+           transform=plt.gcf().transFigure, linespacing=1.5)
+ax[1].text(.78, .75, 'ResNet18', fontsize=23,
+           transform=plt.gcf().transFigure, linespacing=1.5)
+
+
+fig.legend(
+    by_label.values(), by_label.keys(),
+    bbox_to_anchor=(0.01, .95, 1., 0.2),
+    loc="lower left",
+    ncol=4,
+    mode="expand",
+    frameon=False,
+    prop={'weight': 'bold', 'size': font_size}
+)
+plt.tight_layout()
+plt.savefig('figures/sweeps_sqnxt_resnet.png', dpi=300, bbox_inches='tight')
 plt.close()

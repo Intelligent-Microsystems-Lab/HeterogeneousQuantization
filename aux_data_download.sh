@@ -15,6 +15,8 @@ tar zxf ../pretrained_efficientnet/efficientnet-lite3.tar.gz -C ../pretrained_ef
 wget https://storage.googleapis.com/cloud-tpu-checkpoints/efficientnet/lite/efficientnet-lite4.tar.gz -P ../pretrained_efficientnet
 tar zxf ../pretrained_efficientnet/efficientnet-lite4.tar.gz -C ../pretrained_efficientnet
 
+# teacher network for distillation
+wget https://storage.googleapis.com/vit_models/augreg/B_16-i21k-300ep-lr_0.001-aug_medium1-wd_0.1-do_0.0-sd_0.0--imagenet2012-steps_20k-lr_0.03-res_384.npz -P ../pretrained_efficientnet
 
 mkdir ../unit_tests
 

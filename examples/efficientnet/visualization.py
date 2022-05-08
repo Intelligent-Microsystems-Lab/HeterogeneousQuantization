@@ -1,10 +1,12 @@
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import matplotlib.patches as mpatches
-# from matplotlib.ticker import FormatStrFormatter
+from matplotlib.ticker import FormatStrFormatter
 import tensorboard as tb
 from packaging import version
 import grpc
+import string
+from collections import OrderedDict
 
 import numpy as np
 import itertools
@@ -110,7 +112,7 @@ competitors = {
         'eval_err': np.array([1 - 0.6139, 1 - 0.6884, 1 - 0.7125]) * 100,
         'size_mb': np.array([4, 5, 6
                              ]) * (3472041 + 6616672) / 8_000_000 + 0.06822,
-        'name': 'PACT MbNetV2',  # 'PACT MobileNetV2*',
+        'name': 'PACT MobileNetV2',  # 'PACT MobileNetV2*',
         'alpha': .25,
     },
 
@@ -142,18 +144,19 @@ competitors = {
         # they claim to be a natural extension... so also first and last?
         'eval_err': np.array([1 - 0.491, 1 - 0.699, 1 - 0.738]) * 100,
         # number might be incorrect
-        'size_mb': np.array([2, 3, 4]) * (5117668 + 6674976) / 8_000_000 \
-        + 0.08403 + 0.257728 + (1280 * 16 / 8_000_000),
-        'name': 'LSQ+ EfficientNet',
+        'size_mb': np.array([2, 3, 4]) * (3964668 + 8981504) / 8_000_000 \
+        + (1281000 * 16 / 8_000_000) + \
+        (864 * 16 / 8_000_000) + (1280 * 16 / 8_000_000),
+        'name': 'LSQ+ EfficientNet-B0',
         'alpha': .25,
     },
 
     'ewgs_resnet18': {
         # https://arxiv.org/abs/2104.00903
         # no first and last layer quant
-        'eval_err': np.array([1 - 0.553, 1 - 0.67, 1 - 0.697,
-                              1 - 0.706]) * 100,
-        'size_mb': np.array([1, 2, 3, 4
+        'eval_err': np.array([1 - 0.67, 1 - 0.697,
+                              1 - 0.706]) * 100,  # 1 - 0.553,
+        'size_mb': np.array([2, 3, 4
                              ]) * (11157504 + 2032128) / 8_000_000 + 0.0192 \
         + 1.044816 + (512 * 16 / 8_000_000),
         'name': 'EWGS ResNet18',
@@ -166,7 +169,7 @@ competitors = {
         'eval_err': np.array([1 - 0.6345, 1 - 0.6951, 1 - 0.7013, ]) * 100,
         'size_mb': np.array([4, 6, 8]) * (11157504 + 2032128) / 8_000_000 \
         + 0.0192 + 0.522408 + (512 * 8 / 8_000_000),
-        'name': 'PSGD ResNet18',
+        'name': 'PBGS ResNet18',
         'alpha': .25,
     },
 
@@ -185,8 +188,8 @@ competitors = {
     'profit_mobilev2': {
         # https://arxiv.org/pdf/2008.04693.pdf
         'eval_err': np.array([1 - .71564, 1 - .72192, 1 - .72352]) * 100,
-        'size_mb': np.array([4, 5, 8]) * (3472041 + 6616672) / 8_000_000 \
-        + 0.06822,
+        'size_mb': np.array([4, 5, 8]) * (3470760 + 6678112) / 8_000_000 \
+        + (34112 * 16 / 8_000_000),
         'name': 'PROFIT MobileNetV2',
         'alpha': .25,
     },
@@ -230,7 +233,7 @@ sur_grads_tb = {"STE": "g3EVmBo2Q46JQlyLfzzfkg",
                 "PSGD": "9xzZuWVxQ3GUOqBzBD2i7g",
                 "EWGS": "x4O1lzXmRbOyAxV7JtoE1g",
                 "Tanh": "fExUVAqnQMWlA2uqbPLN8A",
-                "InvTanh": "NxmL7DdIREOOWiJVGJB1Qg",
+                "ATanh": "NxmL7DdIREOOWiJVGJB1Qg",
                 "Acos": "gvma2fO9RAOrrPLNmHVuwg",
                 }
 
@@ -269,26 +272,26 @@ def plot_surrogate():
   x = np.repeat(np.arange(len(names)) + 1, 20)
   base_x = np.arange(len(names)) + 1
 
-  mu = np.nanmean(data, axis=0)
-  sigma = np.nanstd(data, axis=0)
-
   font_size = 23
+  gen_linewidth = 3
   plt.rc('font', family='Helvetica', weight='bold')
-  fig, ax = plt.subplots(figsize=(16.5, 8.5))
+  fig, ax = plt.subplots(figsize=(14.4, 6.5))
 
-  ax.scatter(x / 2, y, marker='x', linewidths=5,
-             s=180, color='blue', label='Observations')
+  boxprops = dict(linestyle='-', linewidth=gen_linewidth, color='k')
+  flierprops = dict(marker='o', linewidth=gen_linewidth,)
+  medianprops = dict(linestyle='-', linewidth=gen_linewidth, color='k')
+  meanlineprops = dict(linestyle='-', linewidth=gen_linewidth, color='k')
 
-  ax.scatter(base_x / 2, mu, marker='_', linewidths=5,
-             s=840, color='red', label='Mean')
+  bp_data = np.stack([y[np.argwhere(x == i)]
+                     for i in np.unique(x)])[:, :, 0].transpose()
+  ax.boxplot(bp_data, positions=np.unique(x), boxprops=boxprops,
+             whiskerprops=boxprops,
+             capprops=boxprops, flierprops=flierprops, medianprops=medianprops,
+             meanprops=meanlineprops)
+  ax.scatter(x, y, marker='.', linewidths=0,
+             s=180, alpha=.4, color='blue', label='Observations')
 
-  ax.scatter(base_x / 2, mu + sigma, marker='_', linewidths=5,
-             s=840, color='green', label='Std. Dev.')
-
-  ax.scatter(base_x / 2, mu - sigma, marker='_',
-             linewidths=5, s=840, color='green')
-
-  plt.xticks(base_x / 2 + .1, names, rotation='horizontal')
+  plt.xticks(base_x + .2, names, rotation='horizontal')
 
   handles, labels = ax.get_legend_handles_labels()
   handles.append(mpatches.Patch(
@@ -304,23 +307,22 @@ def plot_surrogate():
       prop={'weight': 'bold', 'size': font_size}
   )
 
-  # times = get_times_rel_ste()
   times = np.array([0.00000000e+00, 4.57459557e-01, 4.45819267e-01,
                     2.40027758e-04, 1.25836929e-02, 1.25226535e-01,
                     1.49267876e-01, 1.08655595e-01])
 
   ax2 = ax.twinx()
-  ax2.bar(base_x / 2 + .2, times * 100, width=.1,
-          color='m', edgecolor='black', linewidth=3.)
+  ax2.bar(base_x + .5, times * 100, width=.1,
+          color='m', edgecolor='black', linewidth=gen_linewidth)
   ax2.set_yscale('log')
 
   ax.spines["top"].set_visible(False)
 
-  ax.xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
-  ax.yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
+  ax.xaxis.set_tick_params(width=gen_linewidth, length=10, labelsize=font_size)
+  ax.yaxis.set_tick_params(width=gen_linewidth, length=10, labelsize=font_size)
 
   for axis in ['top', 'bottom', 'left', 'right']:
-    ax.spines[axis].set_linewidth(5)
+    ax.spines[axis].set_linewidth(gen_linewidth)
 
   for tick in ax.xaxis.get_major_ticks():
     tick.label1.set_fontweight('bold')
@@ -329,11 +331,13 @@ def plot_surrogate():
 
   ax2.spines["top"].set_visible(False)
 
-  ax2.xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
-  ax2.yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
+  ax2.xaxis.set_tick_params(
+      width=gen_linewidth, length=10, labelsize=font_size)
+  ax2.yaxis.set_tick_params(
+      width=gen_linewidth, length=10, labelsize=font_size)
 
   for axis in ['top', 'bottom', 'left', 'right']:
-    ax2.spines[axis].set_linewidth(5)
+    ax2.spines[axis].set_linewidth(gen_linewidth)
 
   for tick in ax2.xaxis.get_major_ticks():
     tick.label1.set_fontweight('bold')
@@ -408,17 +412,20 @@ def plot_line(ax, res_dict):
 
 def plot_comparison(name):
   font_size = 23
+  gen_lw = 3
+  mw = 15
+
   plt.rc('font', family='Helvetica', weight='bold')
-  fig, ax = plt.subplots(figsize=(16.5, 8.5))
+  fig, ax = plt.subplots(figsize=(14.4, 8.5))
 
   ax.spines["top"].set_visible(False)
   ax.spines["right"].set_visible(False)
 
-  ax.xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
-  ax.yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
+  ax.xaxis.set_tick_params(width=gen_lw, length=10, labelsize=font_size)
+  ax.yaxis.set_tick_params(width=gen_lw, length=10, labelsize=font_size)
 
   for axis in ['top', 'bottom', 'left', 'right']:
-    ax.spines[axis].set_linewidth(5)
+    ax.spines[axis].set_linewidth(gen_lw)
 
   for tick in ax.xaxis.get_major_ticks():
     tick.label1.set_fontweight('bold')
@@ -429,64 +436,60 @@ def plot_comparison(name):
   for competitor_name, competitor_data in competitors.items():
     ax.plot(competitor_data['size_mb'], competitor_data['eval_err'],
             label=competitor_data['name'],
-            marker='.', ms=20, markeredgewidth=5, linewidth=5,
+            marker='.', ms=mw, markeredgewidth=gen_lw, linewidth=gen_lw,
             alpha=competitor_data['alpha'])
 
+  # gran sur pre train
   ax.plot((0.5762490000 + 0.834532) * np.array([3, 4, 5, 6, 7, 8]) + 0.084032,
-          np.array([0.36395263671875, 0.2801310420036316, 0.2576497197151184,
-                    0.2494099736213684, 0.2458088994026184,
-                    0.2452799677848816]) * 100, marker='.',
-          label='EfficientNet 3-8 Bits', ms=20, markeredgewidth=5,
-          linewidth=5)
+          (1 - np.array([0.6678, 0.7269, 0.7425, 0.7466, 0.7497, 0.7505]))
+          * 100, marker='.',
+          label='EfficientNet-Lite0 3-8 Bits', ms=mw, markeredgewidth=gen_lw,
+          linewidth=gen_lw)
 
   # Our own.
 
   # squeezenext
-  ax.plot(np.array([2.5703838498, 2.7629910277, 3.4920328978, 4.371810425,
-                    4.73617749]) + 0.369664, [53.88997495000001, 49.33268428,
-                                              40.52734375, 36.81640625,
-                                              35.7421875], marker='x',
-          label='SqueezeNext (Ours)', ms=20, markeredgewidth=5,
-          linewidth=5)
+  ax.plot(np.array([2.6015712276, 3.4095508423000003, 4.606633788999999,
+                    4.8350780030000005]) + 0.369664, [50.421099999999996,
+                                                      40.2303,
 
-  # mobilenet - gran sur
-  # ax.plot(np.array([2.9314647829, 3.0517024534, 3.1762102050000003,
-  #                   3.431919068, 3.9978448490000003, 5.404619385,5.538372192]
-  #                  ) + 0.068224, [39.518229999999996, 37.695310000000006,
-  #                                 36.425779999999996, 34.53775999999999,
-  #                                 33.024089999999994, 30.957029999999996,
-  #                                 30.778000000000006], marker='x',
-  #         label='MobileNetV2 (Ours)', ms=20, markeredgewidth=5,
-  #         linewidth=5)
+                                                      36.03920000000001,
+                                                      35.6628], marker='x',
+          label='SqueezeNext (Ours)', ms=mw, markeredgewidth=gen_lw,
+          linewidth=gen_lw)
 
-  # plain mixed mobilenet
-  ax.plot(np.array([2.7311000363, 3.0878244628, 3.1964763789, 4.237476197,
-                    4.433703125, 5.655306274]
-                   ) + 0.068224, [41.341139999999996, 37.939449999999994,
-                                  37.190749999999994, 32.242839999999994,
-                                  31.787109999999995, 30.322269999999996],
+  # mobilenet
+  ax.plot(np.array([2.8214422603, 3.1445559693, 3.411231812,
+                    3.4379381110000002, 4.753455323, 4.979867553, 5.551028442,
+                    5.694456177]
+                   ) + 0.068224, [39.540600000000005, 36.8205,
+                                  34.802200000000006, 34.606899999999996,
+                                  31.5002, 31.0689, 30.454499999999996,
+                                  30.322300000000002],
           marker='x',
-          label='MobileNetV2 (Ours)', ms=20, markeredgewidth=5,
-          linewidth=5)
+          label='MobileNetV2 (Ours)', ms=mw, markeredgewidth=gen_lw,
+          linewidth=gen_lw)
 
   # efficientnet
-  ax.plot(np.array([2.8756660160000003, 3.202751953, 3.9428900139999996,
-                    4.355371215, 5.3502570799999996, 5.617363526]) + 0.084032,
-          [51.318360000000006, 44.28711, 33.805339999999994, 31.70573,
-          27.73437, 27.587890000000005], marker='x',
-          label='EfficientNet (Ours)', ms=20, markeredgewidth=5,
-          linewidth=5)
+  ax.plot(np.array([2.925111084, 2.925306152, 3.1460351570000005, 3.9969198,
+                    5.27848999, 5.373107422, 5.788132813, 5.932807129,
+                    5.973300536999999]) + 0.084032,
+          [51.7965, 51.6317, 47.127300000000005, 33.247899999999994,
+           27.728299999999994, 27.337599999999995, 26.867700000000006,
+           26.837200000000006, 26.833099999999998], marker='x',
+          label='EfficientNet-Lite0 (Ours)', ms=mw, markeredgewidth=gen_lw,
+          linewidth=gen_lw)
 
   ax.set_xscale('log')
-  plt.xticks([3, 4, 5, 6, 7, 8, 9, 10], [
-      '3', '4', '5', '6', '7', '8', '9', '10'])
-  ax.set_xlabel("Network Size + Sum Activation Size (MB)",
+  plt.xticks([3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], [
+      '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14'])
+  ax.set_xlabel("Sum Parameter Size + Sum Activation Feature Maps Size (MB)",
                 fontsize=font_size, fontweight='bold')
   ax.set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
   plt.legend(
       bbox_to_anchor=(-.05, 1.02, 1.05, 0.2),
       loc="lower left",
-      ncol=4,
+      ncol=3,
       mode="expand",
       borderaxespad=0,
       frameon=False,
@@ -501,193 +504,132 @@ def plot_comparison(name):
 sur_grads_mixed_tb = {
     'STE_PSGD': '2c6z1WUlSyGfxbkNenD9cA',
     'STE_EWGS': 'PI0wmaaNSZqCNfXqsqSk7A',
-    'STE_InvTanh': 'xdQtJvCeRl6HavRpCjsbeg',
+    'STE_ATanh': 'xdQtJvCeRl6HavRpCjsbeg',
     'PSGD_STE': 'kJBi3rklT4uEnzAzESATqg',
     'EWGS_STE': 'A5OrYLJNS7SybC1FLjCWUQ',
-    'InvTanh_STE': 'PQFx6n8FQECgVzLVV5dMGw',
+    'ATanh_STE': 'PQFx6n8FQECgVzLVV5dMGw',
     'Acos_STE': 'wF4mfk4lQSq14OHGWjJPlA',
-    'InvTanh_EWGS': '2k1wt76LTvimNWo07GtQlQ',
-    'PSGD_InvTanh': 'qj3Eow1uRxWWqaz0gKXW6Q',
-    'EWGS_InvTanh': 'vJyM25oIRbGcKSDueA3dAg',
+    'ATanh_EWGS': '2k1wt76LTvimNWo07GtQlQ',
+    'PSGD_ATanh': 'qj3Eow1uRxWWqaz0gKXW6Q',
+    'EWGS_ATanh': 'vJyM25oIRbGcKSDueA3dAg',
 }
 
 
-def plot_surrogate_mix():
+def plot_meth_sur():
   data = np.genfromtxt('figures/surrogate_mixed.csv',
                        delimiter=',', names=True)
   names = data.dtype.names
   names = ['W: ' + x.split('_')[0] + ' A: ' + x.split('_')[1] for x in names]
+  names = string.ascii_lowercase[:len(names)]
   data = np.genfromtxt('figures/surrogate_mixed.csv',
                        delimiter=',', skip_header=1) * 100
   y = data.flatten(order='F')
   x = np.repeat(np.arange(len(names)) + 1, 20)
   base_x = np.arange(len(names)) + 1
 
-  mu = np.nanmean(data, axis=0)
-  sigma = np.nanstd(data, axis=0)
-
   font_size = 23
-  plt.rc('font', family='Helvetica', weight='bold')
-  fig, ax = plt.subplots(figsize=(16.5, 11.5))
+  gen_linewidth = 3
 
-  ax.scatter(x / 4, y, marker='x', linewidths=5,
-             s=180, color='blue', label='Observations')
-
-  ax.scatter(base_x / 4, mu, marker='_', linewidths=5,
-             s=840, color='red', label='Mean')
-
-  ax.scatter(base_x / 4, mu + sigma, marker='_', linewidths=5,
-             s=840, color='green', label='Std. Dev.')
-
-  ax.scatter(base_x / 4, mu - sigma, marker='_',
-             linewidths=5, s=840, color='green')
-
-  ax.axhline(y=65.741000, color='orange',
-             linestyle='--', label='STE', linewidth=5)
-
-  ax.axhline(y=66.37000, color='purple',
-             linestyle='--', label='EWGS', linewidth=5)
-
-  plt.xticks(base_x / 4, names, rotation=45, horizontalalignment='right')
-
-  plt.legend(
-      bbox_to_anchor=(0., 1.02, 1.0, .05),
-      loc="upper center",
-      ncol=5,
-      frameon=False,
-      prop={'weight': 'bold', 'size': font_size}
-  )
-
-  ax.spines["top"].set_visible(False)
-  ax.spines["right"].set_visible(False)
-
-  ax.xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
-  ax.yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
-
-  for axis in ['top', 'bottom', 'left', 'right']:
-    ax.spines[axis].set_linewidth(5)
-
-  for tick in ax.xaxis.get_major_ticks():
-    tick.label1.set_fontweight('bold')
-  for tick in ax.yaxis.get_major_ticks():
-    tick.label1.set_fontweight('bold')
-
-  ax.set_ylabel("Eval Accuracy (%)", fontsize=font_size, fontweight='bold')
-  plt.tight_layout()
-  plt.savefig('figures/surrogate_grads_mixed.png', dpi=300)
-  plt.close()
-
-
-def flip(items, ncol):
-  return itertools.chain(*[items[i::ncol] for i in range(ncol)])
-
-
-def plot_surrogate_24(num):
-  data = np.genfromtxt('figures/surrogate_plain' + str(num) + '.csv',
-                       delimiter=',', names=True)
-  names = data.dtype.names
-  data = np.genfromtxt('figures/surrogate_plain' + str(num) + '.csv',
-                       delimiter=',', skip_header=1) * 100
-  y = data.flatten(order='F')
-  x = np.repeat(np.arange(len(names)) + 1, 20)
-  base_x = np.arange(len(names)) + 1
-
-  mu = np.nanmean(data, axis=0)
-  sigma = np.nanstd(data, axis=0)
-
-  font_size = 23
   plt.rc('font', family='Helvetica', weight='bold')
 
-  fig, ax = plt.subplots(figsize=(8.0, 12.0))
+  fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(14.4, 6.5))
 
-  ax.scatter(base_x / 2, mu, marker='_', linewidths=5,
-             s=840, color='red', label='Mean', zorder=10)
+  texts1 = 'Configurations:\n\na)\nb)\nc)\nd)\ne)\nf)\ng)\nh)\ni)\nj)'
+  texts2 = '\nWgt.\nSTE\nSTE\nSTE\nPBGS\nEWGS\nATanh\n|Cos|\nATanh\nPBGS\nEWGS'
+  texts3 = '\nAct.\nPBGS\nEWGS\nATanh\nSTE\nSTE\nSTE\nSTE\nEWGS\nATanh\nATanh'
 
-  ax.scatter(x / 2, y, marker='x', linewidths=5,
-             s=180, color='blue', label='Observations', zorder=0)
+  plt.text(.88, 0.25, texts1, fontsize=20,
+           transform=plt.gcf().transFigure, linespacing=1.5)
+  plt.text(.90, 0.25, texts2, fontsize=20,
+           transform=plt.gcf().transFigure, linespacing=1.5)
+  plt.text(.965, 0.25, texts3, fontsize=20,
+           transform=plt.gcf().transFigure, linespacing=1.5)
 
-  ax.scatter(base_x / 2, mu + sigma, marker='_', linewidths=5,
-             s=840, color='green', label='Std. Dev.', zorder=10)
+  ax[1].axhline(y=65.741000, color='orange',
+                linestyle='--', label='STE', linewidth=gen_linewidth)
 
-  ax.scatter(base_x / 2, mu - sigma, marker='_',
-             linewidths=5, s=840, color='green', zorder=10)
+  ax[1].axhline(y=66.37000, color='purple',
+                linestyle='--', label='EWGS', linewidth=gen_linewidth)
 
-  plt.legend(
-      # handles=list(flip(handles, 3)),
-      bbox_to_anchor=(0., 1.02, 1.0, .1),
-      loc="upper center",
-      ncol=2,
-      frameon=False,
-      prop={'weight': 'bold', 'size': font_size},
-  )
+  boxprops = dict(linestyle='-', linewidth=gen_linewidth, color='k')
+  flierprops = dict(marker='o', linewidth=gen_linewidth,)
+  medianprops = dict(linestyle='-', linewidth=gen_linewidth, color='k')
+  meanlineprops = dict(linestyle='-', linewidth=gen_linewidth, color='k')
 
-  ax.spines["top"].set_visible(False)
-  ax.spines["right"].set_visible(False)
+  bp_data = np.stack([y[np.argwhere(x == i)]
+                     for i in np.unique(x)])[:, :, 0].transpose()
+  ax[1].boxplot(bp_data, positions=np.unique(x), boxprops=boxprops,
+                whiskerprops=boxprops,
+                capprops=boxprops, flierprops=flierprops,
+                medianprops=medianprops, meanprops=meanlineprops)
+  ax[1].scatter(x, y, marker='.', linewidths=0,
+                s=180, alpha=.4, color='blue', label='Obs.')
 
-  ax.xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
-  ax.yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
-  # ax2.xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
-  # ax2.yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
+  ax[1].set_xticks(base_x, names, rotation=0, horizontalalignment='center')
 
-  for axis in ['top', 'bottom', 'left', 'right']:
-    ax.spines[axis].set_linewidth(5)
+  ax[1].spines["top"].set_visible(False)
+  ax[1].spines["right"].set_visible(False)
 
-  for tick in ax.xaxis.get_major_ticks():
-    tick.label1.set_fontweight('bold')
-  for tick in ax.yaxis.get_major_ticks():
-    tick.label1.set_fontweight('bold')
-
-  ax.set_ylabel("Eval Accuracy (%)",
-                fontsize=font_size, fontweight='bold')
-  # ax2.set_ylabel("2 Bit Eval Accuracy (%)",
-  #                fontsize=font_size, fontweight='bold')
-
-  names = [x.replace('W_', 'W: ').replace('_A_', ' A: ') for x in names]
-  plt.xticks((base_x) / 2, names, rotation=45, horizontalalignment='right')
-  # plt.xticks((np.arange(0, len(names) + x_old[-1]) + 1) / 2, names)
-
-  fig.autofmt_xdate(rotation=45)
-  plt.tight_layout()
-  plt.savefig('figures/surrogate_grads_' + str(num) + '.png', dpi=300)
-  plt.close()
-
-
-def plot_methods():
-  font_size = 23
-  plt.rc('font', family='Helvetica', weight='bold')
-  fig, ax = plt.subplots(figsize=(8, 8))
-
-  ax.spines["top"].set_visible(False)
-  ax.spines["right"].set_visible(False)
-
-  ax.xaxis.set_tick_params(width=5, length=10, labelsize=font_size)
-  ax.yaxis.set_tick_params(width=5, length=10, labelsize=font_size)
+  ax[1].xaxis.set_tick_params(
+      width=gen_linewidth, length=10, labelsize=font_size)
+  ax[1].yaxis.set_tick_params(
+      width=gen_linewidth, length=10, labelsize=font_size)
 
   for axis in ['top', 'bottom', 'left', 'right']:
-    ax.spines[axis].set_linewidth(5)
+    ax[1].spines[axis].set_linewidth(gen_linewidth)
 
-  for tick in ax.xaxis.get_major_ticks():
+  for tick in ax[1].xaxis.get_major_ticks():
     tick.label1.set_fontweight('bold')
-  for tick in ax.yaxis.get_major_ticks():
+  for tick in ax[1].yaxis.get_major_ticks():
+    tick.label1.set_fontweight('bold')
+
+  ax[1].set_ylabel("Eval Accuracy (%)", fontsize=font_size, fontweight='bold')
+  ax[1].set_xlabel("Configuration", fontsize=font_size, fontweight='bold')
+
+  ax[0].spines["top"].set_visible(False)
+  ax[0].spines["right"].set_visible(False)
+
+  ax[0].xaxis.set_tick_params(
+      width=gen_linewidth, length=10, labelsize=font_size)
+  ax[0].yaxis.set_tick_params(
+      width=gen_linewidth, length=10, labelsize=font_size)
+
+  for axis in ['top', 'bottom', 'left', 'right']:
+    ax[0].spines[axis].set_linewidth(gen_linewidth)
+
+  for tick in ax[0].xaxis.get_major_ticks():
+    tick.label1.set_fontweight('bold')
+  for tick in ax[0].yaxis.get_major_ticks():
     tick.label1.set_fontweight('bold')
 
   x = np.arange(-1, 1, .001)
 
-  ax.plot(x, x, linewidth=5, label='EWGS', color='k')
-  ax.plot(x, x * 0, linewidth=5, label='STE', color='r')
-  ax.plot(x, np.abs(x), linewidth=5, label='PSGD', color='g')
-  # ax.plot(x,np.abs(np.cos(x+2*np.pi)),linewidth=5,label='ACos', color='b')
-  ax.plot(x, np.tanh(x * 4), linewidth=5, label='Tanh', color='orange')
-  # ax.plot(x,np.arctanh(x*1.9),linewidth=5,label='InvTanh', color='magenta')
+  ax[0].plot(x, x * 0, linewidth=gen_linewidth,
+             label='STE', linestyle='--', color='orange')
+  ax[0].plot(x[::100], np.abs(x)[::100], linewidth=gen_linewidth,
+             label='PBGS', marker='x', ms=8, markeredgewidth=gen_linewidth,
+             color='g')
+  ax[0].plot(x, x, linewidth=gen_linewidth, label='EWGS',
+             linestyle='--', color='purple')
+  ax[0].plot(x, np.sin(np.pi * (.5 * x - np.round(.5 * x))),
+             linewidth=gen_linewidth, label='|Cos|', color='b')
+  ax[0].plot(x, np.tanh(x * 4), linewidth=gen_linewidth,
+             label='Tanh', color='r')
+  ax[0].plot(x, np.arctanh(x / 1.05) / 1.85,
+             linewidth=gen_linewidth, label='ATanh', color='k')
 
-  plt.xticks([-1, 0, 1], [
-             r'$QP-\dfrac{1}{2}\Delta$', r'$QP$', r'$QP+\dfrac{1}{2}\Delta$'])
-  plt.yticks([-1, 0, 1], [
-             r'$1-\delta$', r'$1$', r'$1+\delta$'])
-  ax.set_xlabel("x", fontsize=font_size, fontweight='bold')
-  ax.set_ylabel("dx/dL", fontsize=font_size, fontweight='bold')
-  plt.legend(
-      bbox_to_anchor=(-.05, 1.02, 1.05, 0.2),
+  ax[0].set_xticks([-1, 0, 1], [
+      r'$QP\,$-$\,.5d$', r'$QP$', r'$QP+.5d$'])
+  ax[0].set_yticks([-1, 0, 1], [
+      r'$1\,$-$\,\delta$', r'$1$', r'$1+\delta$'])
+  ax[0].set_xlabel("x", fontsize=font_size, fontweight='bold')
+  ax[0].set_ylabel("df/dx", fontsize=font_size, fontweight='bold')
+
+  handles, labels = ax[0].get_legend_handles_labels()
+  by_label = OrderedDict(zip(labels, handles))
+  fig.legend(
+      by_label.values(), by_label.keys(),
+      bbox_to_anchor=(0.15, .95, .6, 0.2),
       loc="lower left",
       ncol=3,
       mode="expand",
@@ -695,8 +637,136 @@ def plot_methods():
       frameon=False,
       prop={'weight': 'bold', 'size': font_size}
   )
+
   plt.tight_layout()
-  plt.savefig('figures/methods.png', dpi=300)
+  plt.savefig('figures/meth_sur.png', dpi=300, bbox_inches='tight')
+  plt.close()
+
+
+def flip(items, ncol):
+  return itertools.chain(*[items[i::ncol] for i in range(ncol)])
+
+
+def plot_surrogate_24():
+
+  font_size = 23
+  gen_linewidth = 3
+  plt.rc('font', family='Helvetica', weight='bold')
+
+  fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(
+      14.4, 6.5), gridspec_kw={'width_ratios': [20, 20, 1]})
+
+  ax[2].get_xaxis().set_visible(False)
+  ax[2].get_yaxis().set_visible(False)
+  ax[2].spines["top"].set_visible(False)
+  ax[2].spines["right"].set_visible(False)
+  ax[2].spines["bottom"].set_visible(False)
+  ax[2].spines["left"].set_visible(False)
+
+  textstr1 = 'Configurations\n\na)\nb)\nc)\nd)\ne)\nf)'
+  textstr2 = '\nWgt.\nSTE\nEWGS\nEWGS\nATanh\nEWGS\nATanh'
+  textstr3 = 'Act.\nSTE\nEWGS\nATanh\nEWGS\nSTE\nSTE'
+
+  base_x = .82
+  base_y = .27
+  plt.text(base_x, base_y, textstr1, fontsize=20,
+           transform=plt.gcf().transFigure, linespacing=1.5)
+  plt.text(base_x + .025, base_y, textstr2, fontsize=20,
+           transform=plt.gcf().transFigure, linespacing=1.5)
+  plt.text(base_x + .1, base_y, textstr3, fontsize=20,
+           transform=plt.gcf().transFigure, linespacing=1.5)
+
+  ax[1].yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+  ax[0].yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+  boxprops = dict(linestyle='-', linewidth=gen_linewidth, color='k')
+  flierprops = dict(marker='o', linewidth=gen_linewidth,)
+  medianprops = dict(linestyle='-', linewidth=gen_linewidth, color='k')
+  meanlineprops = dict(linestyle='-', linewidth=gen_linewidth, color='k')
+
+  data = np.genfromtxt('figures/surrogate_plain' + str(2) + '.csv',
+                       delimiter=',', names=True)
+  names = data.dtype.names
+  data = np.genfromtxt('figures/surrogate_plain' + str(2) + '.csv',
+                       delimiter=',', skip_header=1) * 100
+  y = data.flatten(order='F')
+  x = np.repeat(np.arange(len(names)) + 1, 20)
+  base_x = np.arange(len(names)) + 1
+
+  bp_data = np.stack([y[np.argwhere(x == i)]
+                     for i in np.unique(x)])[:, :, 0].transpose()
+  ax[0].boxplot(bp_data, positions=np.unique(x), boxprops=boxprops,
+                whiskerprops=boxprops,
+                capprops=boxprops, flierprops=flierprops,
+                medianprops=medianprops, meanprops=meanlineprops)
+  ax[0].scatter(x, y, marker='.', linewidths=0,
+                s=180, alpha=.4, color='blue', label='2 Bits')
+
+  data = np.genfromtxt('figures/surrogate_plain' + str(4) + '.csv',
+                       delimiter=',', names=True)
+  names = data.dtype.names
+  data = np.genfromtxt('figures/surrogate_plain' + str(4) + '.csv',
+                       delimiter=',', skip_header=1) * 100
+  y = data.flatten(order='F')
+  x = np.repeat(np.arange(len(names)) + 1, 20)
+  base_x = np.arange(len(names)) + 1
+
+  bp_data = np.stack([y[np.argwhere(x == i)]
+                     for i in np.unique(x)])[:, :, 0].transpose()
+  ax[1].boxplot(bp_data, positions=np.unique(x), boxprops=boxprops,
+                whiskerprops=boxprops,
+                capprops=boxprops, flierprops=flierprops,
+                medianprops=medianprops, meanprops=meanlineprops)
+  ax[1].scatter(x, y, marker='.', linewidths=0,
+                s=180, alpha=.4, color='red', label='4 Bits')
+
+  ax[0].spines["top"].set_visible(False)
+  ax[0].spines["right"].set_visible(False)
+
+  ax[0].xaxis.set_tick_params(
+      width=gen_linewidth, length=10, labelsize=font_size)
+  ax[0].yaxis.set_tick_params(
+      width=gen_linewidth, length=10, labelsize=font_size)
+
+  for axis in ['top', 'bottom', 'left', 'right']:
+    ax[0].spines[axis].set_linewidth(gen_linewidth)
+
+  for tick in ax[0].xaxis.get_major_ticks():
+    tick.label1.set_fontweight('bold')
+  for tick in ax[0].yaxis.get_major_ticks():
+    tick.label1.set_fontweight('bold')
+
+  ax[0].set_ylabel("Eval Accuracy (%)",
+                   fontsize=font_size, fontweight='bold')
+  ax[1].set_xlabel("Configurations",
+                   fontsize=font_size, fontweight='bold')
+  ax[0].set_xlabel("Configurations",
+                   fontsize=font_size, fontweight='bold')
+
+  ax[1].spines["top"].set_visible(False)
+  ax[1].spines["right"].set_visible(False)
+
+  ax[1].xaxis.set_tick_params(
+      width=gen_linewidth, length=10, labelsize=font_size)
+  ax[1].yaxis.set_tick_params(
+      width=gen_linewidth, length=10, labelsize=font_size)
+
+  for axis in ['top', 'bottom', 'left', 'right']:
+    ax[1].spines[axis].set_linewidth(gen_linewidth)
+
+  for tick in ax[1].xaxis.get_major_ticks():
+    tick.label1.set_fontweight('bold')
+  for tick in ax[1].yaxis.get_major_ticks():
+    tick.label1.set_fontweight('bold')
+
+  ax[1].set_ylabel("Eval Accuracy (%)",
+                   fontsize=font_size, fontweight='bold')
+
+  names = ['a', 'b', 'c', 'd', 'e', 'f']
+  ax[1].set_xticks((base_x), names, )
+  ax[0].set_xticks((base_x), names, )
+
+  plt.tight_layout()
+  plt.savefig('figures/surrogate_grads_24.png', dpi=300)
   plt.close()
 
 
@@ -714,9 +784,7 @@ if __name__ == '__main__':
   mpl.rcParams['mathtext.it'] = 'sans:bold'
   mpl.rcParams['mathtext.default'] = 'bf'
 
-  plot_surrogate_24(2)
-  plot_surrogate_24(4)
+  plot_surrogate_24()
   plot_surrogate()
-  plot_surrogate_mix()
-  plot_methods()
+  plot_meth_sur()
   plot_comparison('figures/overview.png')

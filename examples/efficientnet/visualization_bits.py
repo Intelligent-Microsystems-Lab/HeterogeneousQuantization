@@ -1,11 +1,7 @@
 # IMSL Lab - University of Notre Dame
 # Author: Clemens JS Schaefer
 
-
 from absl import app
-# from absl import flags
-# from absl import logging
-# from clu import platform
 
 import pickle
 import copy
@@ -14,43 +10,27 @@ import matplotlib.pyplot as plt
 
 import jax
 from jax import random
-# import tensorflow as tf
-import numpy as np
-
 import jax.numpy as jnp
 
 import ml_collections
-# from ml_collections import config_flags
 from flax.core import unfreeze
 
 from collections import OrderedDict
 
 import sys
-import os.path
-sys.path.append(os.path.abspath(os.path.join(
-    os.path.dirname(__file__), os.path.pardir)))
+sys.path.append('..')
+sys.path.append('../..')
+sys.path.append('../mobilenetv2')
 
 from train_utils import (  # noqa: E402
     create_model,
     create_train_state,
     restore_checkpoint,
 )
-import models  # noqa: E402
-
-
-# import resource
-# low, high = resource.getrlimit(resource.RLIMIT_NOFILE)
-# resource.setrlimit(resource.RLIMIT_NOFILE, (high, high))
-
-# FLAGS = flags.FLAGS
-
-# flags.DEFINE_string('workdir', None, 'Directory to store model data.')
-# config_flags.DEFINE_config_file(
-#     'config',
-#     None,
-#     'File path to the training hyperparameter configuration.',
-#     lock_config=True)
-
+import models as enet_models  # noqa: E402
+import configs.vis_dummy_mb as mb_conf  # noqa: E402
+import configs.vis_dummy as enet_conf  # noqa: E402
+import mobilenetv2.models as mbnet_model  # noqa: E402
 
 enet_template = {
     '/stem_conv/weight': (-1, 1, 1),
@@ -152,7 +132,7 @@ enet_template = {
     '/head_conv/weight': (-1, 96, 1),
     '/QuantDense_0/act': (-1, 100, 0),
     '/QuantDense_0/weight': (-1, 99, 1),
-    '/QuantDense_0/bias': (-1, 101, 1),
+    '/QuantDense_0/bias': (-1, 108, 1),
 }
 
 
@@ -212,7 +192,7 @@ mbnet_template = {
     '/InvertedResidual_8/QuantConv_2/weight': (-1, 99, 1),
     '/InvertedResidual_9/QuantConv_0/act': (-1, 99, 1),
     '/InvertedResidual_9/QuantConv_0/weight': (-1, 99, 1),
-    '/InvertedResidual_9/QuantConv_1/act': (-1, 769, 0),
+    '/InvertedResidual_9/QuantConv_1/act': (-1, 76, 0),
     '/InvertedResidual_9/QuantConv_1/weight': (-1, 76, 1),
     '/InvertedResidual_9/QuantConv_2/act': (-1, 99, 0),
     '/InvertedResidual_9/QuantConv_2/weight': (-1, 99, 1),
@@ -265,344 +245,6 @@ mbnet_template = {
     '/QuantDense_0/bias': (-1, 99, 1),
 }
 
-enet_template = {
-    '/stem_conv/weight': (-1, 85, 1),
-    # '/stem_conv/bias': (-1, 85, 1),
-    '/SqnxtUnit_0/QuantConv_0/act': (-1, 99, 0),
-    '/SqnxtUnit_0/QuantConv_0/weight': (-1, 99, 1),
-    '/SqnxtUnit_0/QuantConv_0/bias': (-1, 99, 1),
-    '/SqnxtUnit_0/QuantConv_1/act': (-1, 99, 0),
-    '/SqnxtUnit_0/QuantConv_1/weight': (-1, 99, 1),
-    '/SqnxtUnit_0/QuantConv_1/bias': (-1, 99, 1),
-    '/SqnxtUnit_0/QuantConv_2/act': (-1, 65, 0),
-    '/SqnxtUnit_0/QuantConv_2/weight': (-1, 65, 1),
-    '/SqnxtUnit_0/QuantConv_2/bias': (-1, 65, 1),
-    '/SqnxtUnit_0/QuantConv_3/act': (-1, 65, 0),
-    '/SqnxtUnit_0/QuantConv_3/weight': (-1, 65, 1),
-    '/SqnxtUnit_0/QuantConv_3/bias': (-1, 65, 1),
-    '/SqnxtUnit_0/QuantConv_4/act': (-1, 99, 0),
-    '/SqnxtUnit_0/QuantConv_4/weight': (-1, 99, 1),
-    '/SqnxtUnit_0/QuantConv_4/bias': (-1, 99, 1),
-    '/SqnxtUnit_0/QuantConv_5/act': (-1, 99, 0),
-    '/SqnxtUnit_0/QuantConv_5/weight': (-1, 99, 1),
-    '/SqnxtUnit_0/QuantConv_5/bias': (-1, 99, 1),
-    '/SqnxtUnit_1/QuantConv_0/act': (-1, 99, 0),
-    '/SqnxtUnit_1/QuantConv_0/weight': (-1, 99, 1),
-    '/SqnxtUnit_1/QuantConv_0/bias': (-1, 99, 1),
-    '/SqnxtUnit_1/QuantConv_1/act': (-1, 99, 0),
-    '/SqnxtUnit_1/QuantConv_1/weight': (-1, 99, 1),
-    '/SqnxtUnit_1/QuantConv_1/bias': (-1, 99, 1),
-    '/SqnxtUnit_1/QuantConv_2/act': (-1, 65, 0),
-    '/SqnxtUnit_1/QuantConv_2/weight': (-1, 65, 1),
-    '/SqnxtUnit_1/QuantConv_2/bias': (-1, 65, 1),
-    '/SqnxtUnit_1/QuantConv_3/act': (-1, 65, 0),
-    '/SqnxtUnit_1/QuantConv_3/weight': (-1, 65, 1),
-    '/SqnxtUnit_1/QuantConv_3/bias': (-1, 65, 1),
-    '/SqnxtUnit_1/QuantConv_4/act': (-1, 99, 0),
-    '/SqnxtUnit_1/QuantConv_4/weight': (-1, 99, 1),
-    '/SqnxtUnit_1/QuantConv_4/bias': (-1, 99, 1),
-    '/SqnxtUnit_2/QuantConv_0/act': (-1, 99, 0),
-    '/SqnxtUnit_2/QuantConv_0/weight': (-1, 99, 1),
-    '/SqnxtUnit_2/QuantConv_0/bias': (-1, 99, 1),
-    '/SqnxtUnit_2/QuantConv_1/act': (-1, 99, 0),
-    '/SqnxtUnit_2/QuantConv_1/weight': (-1, 99, 1),
-    '/SqnxtUnit_2/QuantConv_1/bias': (-1, 99, 1),
-    '/SqnxtUnit_2/QuantConv_2/act': (-1, 65, 0),
-    '/SqnxtUnit_2/QuantConv_2/weight': (-1, 65, 1),
-    '/SqnxtUnit_2/QuantConv_2/bias': (-1, 65, 1),
-    '/SqnxtUnit_2/QuantConv_3/act': (-1, 65, 0),
-    '/SqnxtUnit_2/QuantConv_3/weight': (-1, 65, 1),
-    '/SqnxtUnit_2/QuantConv_3/bias': (-1, 65, 1),
-    '/SqnxtUnit_2/QuantConv_4/act': (-1, 99, 0),
-    '/SqnxtUnit_2/QuantConv_4/weight': (-1, 99, 1),
-    '/SqnxtUnit_2/QuantConv_4/bias': (-1, 99, 1),
-    '/SqnxtUnit_3/QuantConv_0/act': (-1, 99, 0),
-    '/SqnxtUnit_3/QuantConv_0/weight': (-1, 99, 1),
-    '/SqnxtUnit_3/QuantConv_0/bias': (-1, 99, 1),
-    '/SqnxtUnit_3/QuantConv_1/act': (-1, 99, 0),
-    '/SqnxtUnit_3/QuantConv_1/weight': (-1, 99, 1),
-    '/SqnxtUnit_3/QuantConv_1/bias': (-1, 99, 1),
-    '/SqnxtUnit_3/QuantConv_2/act': (-1, 65, 0),
-    '/SqnxtUnit_3/QuantConv_2/weight': (-1, 65, 1),
-    '/SqnxtUnit_3/QuantConv_2/bias': (-1, 65, 1),
-    '/SqnxtUnit_3/QuantConv_3/act': (-1, 65, 0),
-    '/SqnxtUnit_3/QuantConv_3/weight': (-1, 65, 1),
-    '/SqnxtUnit_3/QuantConv_3/bias': (-1, 65, 1),
-    '/SqnxtUnit_3/QuantConv_4/act': (-1, 99, 0),
-    '/SqnxtUnit_3/QuantConv_4/weight': (-1, 99, 1),
-    '/SqnxtUnit_3/QuantConv_4/bias': (-1, 99, 1),
-    '/SqnxtUnit_4/QuantConv_0/act': (-1, 99, 0),
-    '/SqnxtUnit_4/QuantConv_0/weight': (-1, 99, 1),
-    '/SqnxtUnit_4/QuantConv_0/bias': (-1, 99, 1),
-    '/SqnxtUnit_4/QuantConv_1/act': (-1, 99, 0),
-    '/SqnxtUnit_4/QuantConv_1/weight': (-1, 99, 1),
-    '/SqnxtUnit_4/QuantConv_1/bias': (-1, 99, 1),
-    '/SqnxtUnit_4/QuantConv_2/act': (-1, 65, 0),
-    '/SqnxtUnit_4/QuantConv_2/weight': (-1, 65, 1),
-    '/SqnxtUnit_4/QuantConv_2/bias': (-1, 65, 1),
-    '/SqnxtUnit_4/QuantConv_3/act': (-1, 65, 0),
-    '/SqnxtUnit_4/QuantConv_3/weight': (-1, 65, 1),
-    '/SqnxtUnit_4/QuantConv_3/bias': (-1, 65, 1),
-    '/SqnxtUnit_4/QuantConv_4/act': (-1, 99, 0),
-    '/SqnxtUnit_4/QuantConv_4/weight': (-1, 99, 1),
-    '/SqnxtUnit_4/QuantConv_4/bias': (-1, 99, 1),
-    '/SqnxtUnit_5/QuantConv_0/act': (-1, 99, 0),
-    '/SqnxtUnit_5/QuantConv_0/weight': (-1, 99, 1),
-    '/SqnxtUnit_5/QuantConv_0/bias': (-1, 99, 1),
-    '/SqnxtUnit_5/QuantConv_1/act': (-1, 99, 0),
-    '/SqnxtUnit_5/QuantConv_1/weight': (-1, 99, 1),
-    '/SqnxtUnit_5/QuantConv_1/bias': (-1, 99, 1),
-    '/SqnxtUnit_5/QuantConv_2/act': (-1, 65, 0),
-    '/SqnxtUnit_5/QuantConv_2/weight': (-1, 65, 1),
-    '/SqnxtUnit_5/QuantConv_2/bias': (-1, 65, 1),
-    '/SqnxtUnit_5/QuantConv_3/act': (-1, 65, 0),
-    '/SqnxtUnit_5/QuantConv_3/weight': (-1, 65, 1),
-    '/SqnxtUnit_5/QuantConv_3/bias': (-1, 65, 1),
-    '/SqnxtUnit_5/QuantConv_4/act': (-1, 99, 0),
-    '/SqnxtUnit_5/QuantConv_4/weight': (-1, 99, 1),
-    '/SqnxtUnit_5/QuantConv_4/bias': (-1, 99, 1),
-    '/SqnxtUnit_6/QuantConv_0/act': (-1, 99, 0),
-    '/SqnxtUnit_6/QuantConv_0/weight': (-1, 99, 1),
-    '/SqnxtUnit_6/QuantConv_0/bias': (-1, 99, 1),
-    '/SqnxtUnit_6/QuantConv_1/act': (-1, 99, 0),
-    '/SqnxtUnit_6/QuantConv_1/weight': (-1, 99, 1),
-    '/SqnxtUnit_6/QuantConv_1/bias': (-1, 99, 1),
-    '/SqnxtUnit_6/QuantConv_2/act': (-1, 65, 0),
-    '/SqnxtUnit_6/QuantConv_2/weight': (-1, 65, 1),
-    '/SqnxtUnit_6/QuantConv_2/bias': (-1, 65, 1),
-    '/SqnxtUnit_6/QuantConv_3/act': (-1, 65, 0),
-    '/SqnxtUnit_6/QuantConv_3/weight': (-1, 65, 1),
-    '/SqnxtUnit_6/QuantConv_3/bias': (-1, 65, 1),
-    '/SqnxtUnit_6/QuantConv_4/act': (-1, 99, 0),
-    '/SqnxtUnit_6/QuantConv_4/weight': (-1, 99, 1),
-    '/SqnxtUnit_6/QuantConv_4/bias': (-1, 99, 1),
-    '/SqnxtUnit_6/QuantConv_5/act': (-1, 99, 0),
-    '/SqnxtUnit_6/QuantConv_5/weight': (-1, 99, 1),
-    '/SqnxtUnit_6/QuantConv_5/bias': (-1, 99, 1),
-    '/SqnxtUnit_7/QuantConv_0/act': (-1, 99, 0),
-    '/SqnxtUnit_7/QuantConv_0/weight': (-1, 99, 1),
-    '/SqnxtUnit_7/QuantConv_0/bias': (-1, 99, 1),
-    '/SqnxtUnit_7/QuantConv_1/act': (-1, 99, 0),
-    '/SqnxtUnit_7/QuantConv_1/weight': (-1, 99, 1),
-    '/SqnxtUnit_7/QuantConv_1/bias': (-1, 99, 1),
-    '/SqnxtUnit_7/QuantConv_2/act': (-1, 65, 0),
-    '/SqnxtUnit_7/QuantConv_2/weight': (-1, 65, 1),
-    '/SqnxtUnit_7/QuantConv_2/bias': (-1, 65, 1),
-    '/SqnxtUnit_7/QuantConv_3/act': (-1, 65, 0),
-    '/SqnxtUnit_7/QuantConv_3/weight': (-1, 65, 1),
-    '/SqnxtUnit_7/QuantConv_3/bias': (-1, 65, 1),
-    '/SqnxtUnit_7/QuantConv_4/act': (-1, 99, 0),
-    '/SqnxtUnit_7/QuantConv_4/weight': (-1, 99, 1),
-    '/SqnxtUnit_7/QuantConv_4/bias': (-1, 99, 1),
-    '/SqnxtUnit_8/QuantConv_0/act': (-1, 99, 0),
-    '/SqnxtUnit_8/QuantConv_0/weight': (-1, 99, 1),
-    '/SqnxtUnit_8/QuantConv_0/bias': (-1, 99, 1),
-    '/SqnxtUnit_8/QuantConv_1/act': (-1, 99, 0),
-    '/SqnxtUnit_8/QuantConv_1/weight': (-1, 99, 1),
-    '/SqnxtUnit_8/QuantConv_1/bias': (-1, 99, 1),
-    '/SqnxtUnit_8/QuantConv_2/act': (-1, 65, 0),
-    '/SqnxtUnit_8/QuantConv_2/weight': (-1, 65, 1),
-    '/SqnxtUnit_8/QuantConv_2/bias': (-1, 65, 1),
-    '/SqnxtUnit_8/QuantConv_3/act': (-1, 65, 0),
-    '/SqnxtUnit_8/QuantConv_3/weight': (-1, 65, 1),
-    '/SqnxtUnit_8/QuantConv_3/bias': (-1, 65, 1),
-    '/SqnxtUnit_8/QuantConv_4/act': (-1, 99, 0),
-    '/SqnxtUnit_8/QuantConv_4/weight': (-1, 99, 1),
-    '/SqnxtUnit_8/QuantConv_4/bias': (-1, 99, 1),
-    '/SqnxtUnit_9/QuantConv_0/act': (-1, 99, 0),
-    '/SqnxtUnit_9/QuantConv_0/weight': (-1, 99, 1),
-    '/SqnxtUnit_9/QuantConv_0/bias': (-1, 99, 1),
-    '/SqnxtUnit_9/QuantConv_1/act': (-1, 99, 0),
-    '/SqnxtUnit_9/QuantConv_1/weight': (-1, 99, 1),
-    '/SqnxtUnit_9/QuantConv_1/bias': (-1, 99, 1),
-    '/SqnxtUnit_9/QuantConv_2/act': (-1, 65, 0),
-    '/SqnxtUnit_9/QuantConv_2/weight': (-1, 65, 1),
-    '/SqnxtUnit_9/QuantConv_2/bias': (-1, 65, 1),
-    '/SqnxtUnit_9/QuantConv_3/act': (-1, 65, 0),
-    '/SqnxtUnit_9/QuantConv_3/weight': (-1, 65, 1),
-    '/SqnxtUnit_9/QuantConv_3/bias': (-1, 65, 1),
-    '/SqnxtUnit_9/QuantConv_4/act': (-1, 99, 0),
-    '/SqnxtUnit_9/QuantConv_4/weight': (-1, 99, 1),
-    '/SqnxtUnit_9/QuantConv_4/bias': (-1, 99, 1),
-    '/SqnxtUnit_10/QuantConv_0/act': (-1, 99, 0),
-    '/SqnxtUnit_10/QuantConv_0/weight': (-1, 99, 1),
-    '/SqnxtUnit_10/QuantConv_0/bias': (-1, 99, 1),
-    '/SqnxtUnit_10/QuantConv_1/act': (-1, 99, 0),
-    '/SqnxtUnit_10/QuantConv_1/weight': (-1, 99, 1),
-    '/SqnxtUnit_10/QuantConv_1/bias': (-1, 99, 1),
-    '/SqnxtUnit_10/QuantConv_2/act': (-1, 65, 0),
-    '/SqnxtUnit_10/QuantConv_2/weight': (-1, 65, 1),
-    '/SqnxtUnit_10/QuantConv_2/bias': (-1, 65, 1),
-    '/SqnxtUnit_10/QuantConv_3/act': (-1, 65, 0),
-    '/SqnxtUnit_10/QuantConv_3/weight': (-1, 65, 1),
-    '/SqnxtUnit_10/QuantConv_3/bias': (-1, 65, 1),
-    '/SqnxtUnit_10/QuantConv_4/act': (-1, 99, 0),
-    '/SqnxtUnit_10/QuantConv_4/weight': (-1, 99, 1),
-    '/SqnxtUnit_10/QuantConv_4/bias': (-1, 99, 1),
-    '/SqnxtUnit_11/QuantConv_0/act': (-1, 99, 0),
-    '/SqnxtUnit_11/QuantConv_0/weight': (-1, 99, 1),
-    '/SqnxtUnit_11/QuantConv_0/bias': (-1, 99, 1),
-    '/SqnxtUnit_11/QuantConv_1/act': (-1, 99, 0),
-    '/SqnxtUnit_11/QuantConv_1/weight': (-1, 99, 1),
-    '/SqnxtUnit_11/QuantConv_1/bias': (-1, 99, 1),
-    '/SqnxtUnit_11/QuantConv_2/act': (-1, 65, 0),
-    '/SqnxtUnit_11/QuantConv_2/weight': (-1, 65, 1),
-    '/SqnxtUnit_11/QuantConv_2/bias': (-1, 65, 1),
-    '/SqnxtUnit_11/QuantConv_3/act': (-1, 65, 0),
-    '/SqnxtUnit_11/QuantConv_3/weight': (-1, 65, 1),
-    '/SqnxtUnit_11/QuantConv_3/bias': (-1, 65, 1),
-    '/SqnxtUnit_11/QuantConv_4/act': (-1, 99, 0),
-    '/SqnxtUnit_11/QuantConv_4/weight': (-1, 99, 1),
-    '/SqnxtUnit_11/QuantConv_4/bias': (-1, 99, 1),
-    '/SqnxtUnit_12/QuantConv_0/act': (-1, 99, 0),
-    '/SqnxtUnit_12/QuantConv_0/weight': (-1, 99, 1),
-    '/SqnxtUnit_12/QuantConv_0/bias': (-1, 99, 1),
-    '/SqnxtUnit_12/QuantConv_1/act': (-1, 99, 0),
-    '/SqnxtUnit_12/QuantConv_1/weight': (-1, 99, 1),
-    '/SqnxtUnit_12/QuantConv_1/bias': (-1, 99, 1),
-    '/SqnxtUnit_12/QuantConv_2/act': (-1, 65, 0),
-    '/SqnxtUnit_12/QuantConv_2/weight': (-1, 65, 1),
-    '/SqnxtUnit_12/QuantConv_2/bias': (-1, 65, 1),
-    '/SqnxtUnit_12/QuantConv_3/act': (-1, 65, 0),
-    '/SqnxtUnit_12/QuantConv_3/weight': (-1, 65, 1),
-    '/SqnxtUnit_12/QuantConv_3/bias': (-1, 65, 1),
-    '/SqnxtUnit_12/QuantConv_4/act': (-1, 99, 0),
-    '/SqnxtUnit_12/QuantConv_4/weight': (-1, 99, 1),
-    '/SqnxtUnit_12/QuantConv_4/bias': (-1, 99, 1),
-    '/SqnxtUnit_12/QuantConv_5/act': (-1, 99, 0),
-    '/SqnxtUnit_12/QuantConv_5/weight': (-1, 99, 1),
-    '/SqnxtUnit_12/QuantConv_5/bias': (-1, 99, 1),
-    '/SqnxtUnit_13/QuantConv_0/act': (-1, 99, 0),
-    '/SqnxtUnit_13/QuantConv_0/weight': (-1, 99, 1),
-    '/SqnxtUnit_13/QuantConv_0/bias': (-1, 99, 1),
-    '/SqnxtUnit_13/QuantConv_1/act': (-1, 99, 0),
-    '/SqnxtUnit_13/QuantConv_1/weight': (-1, 99, 1),
-    '/SqnxtUnit_13/QuantConv_1/bias': (-1, 99, 1),
-    '/SqnxtUnit_13/QuantConv_2/act': (-1, 65, 0),
-    '/SqnxtUnit_13/QuantConv_2/weight': (-1, 65, 1),
-    '/SqnxtUnit_13/QuantConv_2/bias': (-1, 65, 1),
-    '/SqnxtUnit_13/QuantConv_3/act': (-1, 65, 0),
-    '/SqnxtUnit_13/QuantConv_3/weight': (-1, 65, 1),
-    '/SqnxtUnit_13/QuantConv_3/bias': (-1, 65, 1),
-    '/SqnxtUnit_13/QuantConv_4/act': (-1, 99, 0),
-    '/SqnxtUnit_13/QuantConv_4/weight': (-1, 99, 1),
-    '/SqnxtUnit_13/QuantConv_4/bias': (-1, 99, 1),
-    '/SqnxtUnit_14/QuantConv_0/act': (-1, 99, 0),
-    '/SqnxtUnit_14/QuantConv_0/weight': (-1, 99, 1),
-    '/SqnxtUnit_14/QuantConv_0/bias': (-1, 99, 1),
-    '/SqnxtUnit_14/QuantConv_1/act': (-1, 99, 0),
-    '/SqnxtUnit_14/QuantConv_1/weight': (-1, 99, 1),
-    '/SqnxtUnit_14/QuantConv_1/bias': (-1, 99, 1),
-    '/SqnxtUnit_14/QuantConv_2/act': (-1, 65, 0),
-    '/SqnxtUnit_14/QuantConv_2/weight': (-1, 65, 1),
-    '/SqnxtUnit_14/QuantConv_2/bias': (-1, 65, 1),
-    '/SqnxtUnit_14/QuantConv_3/act': (-1, 65, 0),
-    '/SqnxtUnit_14/QuantConv_3/weight': (-1, 65, 1),
-    '/SqnxtUnit_14/QuantConv_3/bias': (-1, 65, 1),
-    '/SqnxtUnit_14/QuantConv_4/act': (-1, 99, 0),
-    '/SqnxtUnit_14/QuantConv_4/weight': (-1, 99, 1),
-    '/SqnxtUnit_14/QuantConv_4/bias': (-1, 99, 1),
-    '/SqnxtUnit_15/QuantConv_0/act': (-1, 99, 0),
-    '/SqnxtUnit_15/QuantConv_0/weight': (-1, 99, 1),
-    '/SqnxtUnit_15/QuantConv_0/bias': (-1, 99, 1),
-    '/SqnxtUnit_15/QuantConv_1/act': (-1, 99, 0),
-    '/SqnxtUnit_15/QuantConv_1/weight': (-1, 99, 1),
-    '/SqnxtUnit_15/QuantConv_1/bias': (-1, 99, 1),
-    '/SqnxtUnit_15/QuantConv_2/act': (-1, 65, 0),
-    '/SqnxtUnit_15/QuantConv_2/weight': (-1, 65, 1),
-    '/SqnxtUnit_15/QuantConv_2/bias': (-1, 65, 1),
-    '/SqnxtUnit_15/QuantConv_3/act': (-1, 65, 0),
-    '/SqnxtUnit_15/QuantConv_3/weight': (-1, 65, 1),
-    '/SqnxtUnit_15/QuantConv_3/bias': (-1, 65, 1),
-    '/SqnxtUnit_15/QuantConv_4/act': (-1, 99, 0),
-    '/SqnxtUnit_15/QuantConv_4/weight': (-1, 99, 1),
-    '/SqnxtUnit_15/QuantConv_4/bias': (-1, 99, 1),
-    '/SqnxtUnit_16/QuantConv_0/act': (-1, 99, 0),
-    '/SqnxtUnit_16/QuantConv_0/weight': (-1, 99, 1),
-    '/SqnxtUnit_16/QuantConv_0/bias': (-1, 99, 1),
-    '/SqnxtUnit_16/QuantConv_1/act': (-1, 99, 0),
-    '/SqnxtUnit_16/QuantConv_1/weight': (-1, 99, 1),
-    '/SqnxtUnit_16/QuantConv_1/bias': (-1, 99, 1),
-    '/SqnxtUnit_16/QuantConv_2/act': (-1, 65, 0),
-    '/SqnxtUnit_16/QuantConv_2/weight': (-1, 65, 1),
-    '/SqnxtUnit_16/QuantConv_2/bias': (-1, 65, 1),
-    '/SqnxtUnit_16/QuantConv_3/act': (-1, 65, 0),
-    '/SqnxtUnit_16/QuantConv_3/weight': (-1, 65, 1),
-    '/SqnxtUnit_16/QuantConv_3/bias': (-1, 65, 1),
-    '/SqnxtUnit_16/QuantConv_4/act': (-1, 99, 0),
-    '/SqnxtUnit_16/QuantConv_4/weight': (-1, 99, 1),
-    '/SqnxtUnit_16/QuantConv_4/bias': (-1, 99, 1),
-    '/SqnxtUnit_17/QuantConv_0/act': (-1, 99, 0),
-    '/SqnxtUnit_17/QuantConv_0/weight': (-1, 99, 1),
-    '/SqnxtUnit_17/QuantConv_0/bias': (-1, 99, 1),
-    '/SqnxtUnit_17/QuantConv_1/act': (-1, 99, 0),
-    '/SqnxtUnit_17/QuantConv_1/weight': (-1, 99, 1),
-    '/SqnxtUnit_17/QuantConv_1/bias': (-1, 99, 1),
-    '/SqnxtUnit_17/QuantConv_2/act': (-1, 65, 0),
-    '/SqnxtUnit_17/QuantConv_2/weight': (-1, 65, 1),
-    '/SqnxtUnit_17/QuantConv_2/bias': (-1, 65, 1),
-    '/SqnxtUnit_17/QuantConv_3/act': (-1, 65, 0),
-    '/SqnxtUnit_17/QuantConv_3/weight': (-1, 65, 1),
-    '/SqnxtUnit_17/QuantConv_3/bias': (-1, 65, 1),
-    '/SqnxtUnit_17/QuantConv_4/act': (-1, 99, 0),
-    '/SqnxtUnit_17/QuantConv_4/weight': (-1, 99, 1),
-    '/SqnxtUnit_17/QuantConv_4/bias': (-1, 99, 1),
-    '/SqnxtUnit_18/QuantConv_0/act': (-1, 99, 0),
-    '/SqnxtUnit_18/QuantConv_0/weight': (-1, 99, 1),
-    '/SqnxtUnit_18/QuantConv_0/bias': (-1, 99, 1),
-    '/SqnxtUnit_18/QuantConv_1/act': (-1, 99, 0),
-    '/SqnxtUnit_18/QuantConv_1/weight': (-1, 99, 1),
-    '/SqnxtUnit_18/QuantConv_1/bias': (-1, 99, 1),
-    '/SqnxtUnit_18/QuantConv_2/act': (-1, 65, 0),
-    '/SqnxtUnit_18/QuantConv_2/weight': (-1, 65, 1),
-    '/SqnxtUnit_18/QuantConv_2/bias': (-1, 65, 1),
-    '/SqnxtUnit_18/QuantConv_3/act': (-1, 65, 0),
-    '/SqnxtUnit_18/QuantConv_3/weight': (-1, 65, 1),
-    '/SqnxtUnit_18/QuantConv_3/bias': (-1, 65, 1),
-    '/SqnxtUnit_18/QuantConv_4/act': (-1, 99, 0),
-    '/SqnxtUnit_18/QuantConv_4/weight': (-1, 99, 1),
-    '/SqnxtUnit_18/QuantConv_4/bias': (-1, 99, 1),
-    '/SqnxtUnit_19/QuantConv_0/act': (-1, 99, 0),
-    '/SqnxtUnit_19/QuantConv_0/weight': (-1, 99, 1),
-    '/SqnxtUnit_19/QuantConv_0/bias': (-1, 99, 1),
-    '/SqnxtUnit_19/QuantConv_1/act': (-1, 99, 0),
-    '/SqnxtUnit_19/QuantConv_1/weight': (-1, 99, 1),
-    '/SqnxtUnit_19/QuantConv_1/bias': (-1, 99, 1),
-    '/SqnxtUnit_19/QuantConv_2/act': (-1, 65, 0),
-    '/SqnxtUnit_19/QuantConv_2/weight': (-1, 65, 1),
-    '/SqnxtUnit_19/QuantConv_2/bias': (-1, 65, 1),
-    '/SqnxtUnit_19/QuantConv_3/act': (-1, 65, 0),
-    '/SqnxtUnit_19/QuantConv_3/weight': (-1, 65, 1),
-    '/SqnxtUnit_19/QuantConv_3/bias': (-1, 65, 1),
-    '/SqnxtUnit_19/QuantConv_4/act': (-1, 99, 0),
-    '/SqnxtUnit_19/QuantConv_4/weight': (-1, 99, 1),
-    '/SqnxtUnit_19/QuantConv_4/bias': (-1, 99, 1),
-    '/SqnxtUnit_20/QuantConv_0/act': (-1, 99, 0),
-    '/SqnxtUnit_20/QuantConv_0/weight': (-1, 99, 1),
-    '/SqnxtUnit_20/QuantConv_0/bias': (-1, 99, 1),
-    '/SqnxtUnit_20/QuantConv_1/act': (-1, 99, 0),
-    '/SqnxtUnit_20/QuantConv_1/weight': (-1, 99, 1),
-    '/SqnxtUnit_20/QuantConv_1/bias': (-1, 99, 1),
-    '/SqnxtUnit_20/QuantConv_2/act': (-1, 65, 0),
-    '/SqnxtUnit_20/QuantConv_2/weight': (-1, 65, 1),
-    '/SqnxtUnit_20/QuantConv_2/bias': (-1, 65, 1),
-    '/SqnxtUnit_20/QuantConv_3/act': (-1, 65, 0),
-    '/SqnxtUnit_20/QuantConv_3/weight': (-1, 65, 1),
-    '/SqnxtUnit_20/QuantConv_3/bias': (-1, 65, 1),
-    '/SqnxtUnit_20/QuantConv_4/act': (-1, 99, 0),
-    '/SqnxtUnit_20/QuantConv_4/weight': (-1, 99, 1),
-    '/SqnxtUnit_20/QuantConv_4/bias': (-1, 99, 1),
-    '/SqnxtUnit_20/QuantConv_5/act': (-1, 99, 0),
-    '/SqnxtUnit_20/QuantConv_5/weight': (-1, 99, 1),
-    '/SqnxtUnit_20/QuantConv_5/bias': (-1, 99, 1),
-    '/head_conv/act': (-1, 99, 0),
-    '/head_conv/weight': (-1, 99, 1),
-    '/head_conv/bias': (-1, 99, 1),
-    '/QuantDense_0/act': (-1, 99, 0),
-    '/QuantDense_0/weight': (-1, 99, 1),
-    '/QuantDense_0/bias': (-1, 99, 1),
-}
-
 
 def flatten_names(x, path):
   if hasattr(x, 'keys'):
@@ -621,9 +263,11 @@ def fetch_value(x, name_list):
 
 
 def load_data(config: ml_collections.ConfigDict, workdir: str):
-  rng = random.PRNGKey(config.seed)
-
-  model_cls = getattr(models, config.model)
+  rng = random.PRNGKey(0)
+  if config.model == 'MobileNetV2_100':
+    model_cls = getattr(mbnet_model, config.model)
+  else:
+    model_cls = getattr(enet_models, config.model)
   model = create_model(model_cls=model_cls,
                        num_classes=config.num_classes, config=config)
 
@@ -662,7 +306,10 @@ def load_data(config: ml_collections.ConfigDict, workdir: str):
   a_max_xmax = 0
   a_max_num = 0
 
-  enet_bits = copy.deepcopy(enet_template)
+  if config.model == 'EfficientNetB0':
+    enet_bits = copy.deepcopy(enet_template)
+  else:
+    enet_bits = copy.deepcopy(mbnet_template)
   for i in flat_params:
     if i == '/placeholder':
       continue
@@ -765,153 +412,36 @@ def load_data(config: ml_collections.ConfigDict, workdir: str):
                      'max_num': max_num}
 
 
-def plot_bits_enet(ax, config: ml_collections.ConfigDict, workdir: str):
+def plot_bits_enet(ax, config: str, workdir: str):
 
-  # try:
-  #   with open('/Users/clemens/Desktop/enet0_bits.pkl', 'rb') as f:
-  #     enet_bits = pickle.load(f)
-  #   with open('/Users/clemens/Desktop/enet0_max.pkl', 'rb') as f:
-  #     max_data = pickle.load(f)
-  # except:
-  enet_bits, max_data = load_data(config, workdir)
-  with open('/Users/clemens/Desktop/enet0_bits.pkl', 'wb') as f:
-    pickle.dump(enet_bits, f)
-  with open('/Users/clemens/Desktop/enet0_max.pkl', 'wb') as f:
-    pickle.dump(max_data, f)
-
-  def plot_fig_num(ax, omit, name):
-
-    font_size = 23
-    # plt.rc('font', family='Helvetica', weight='bold')
-    # fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(16.5, 6.0))
-
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
-    ax.spines["bottom"].set_visible(False)
-    ax.spines["left"].set_visible(False)
-
-    ax.xaxis.set_tick_params(width=3, length=10, labelsize=font_size)
-    ax.yaxis.set_tick_params(width=3, length=10, labelsize=font_size)
-
-    ax.spines['left'].set_position('zero')
-
-    for axis in ['top', 'bottom', 'left', 'right']:
-      ax.spines[axis].set_linewidth(5)
-
-    for tick in ax.xaxis.get_major_ticks():
-      tick.label1.set_fontweight('bold')
-    for tick in ax.yaxis.get_major_ticks():
-      tick.label1.set_fontweight('bold')
-
-    if '/act' in omit:
-      local_max_bits = 7  # max_data['w_max_bits']
-      # local_max_xmax = max_data['w_max_xmax']
-      local_max_num = 6  # max_data['w_max_num']
-      ax.plot([0, 101 + 1], [2 / 7, 2 / 7], color='grey', alpha=.5,
-              linestyle='--', linewidth=3, zorder=0)
-      ax.plot([0, 101 + 1], [4 / 7, 4 / 7], color='grey', alpha=.5,
-              linestyle='--', linewidth=3, zorder=0)
-      ax.plot([0, 101 + 1], [6 / 7, 6 / 7], color='grey', alpha=.5,
-              linestyle='--', linewidth=3, zorder=0)
-
-      ax.plot([0, 101 + 1], [-2 / 6, -2 / 6], color='grey', alpha=.5,
-              linestyle='--', linewidth=3, zorder=0)
-      ax.plot([0, 101 + 1], [-4 / 6, -4 / 6], color='grey', alpha=.5,
-              linestyle='--', linewidth=3, zorder=0)
-      ax.plot([0, 101 + 1], [-6 / 6, -6 / 6], color='grey', alpha=.5,
-              linestyle='--', linewidth=3, zorder=0)
-    elif '/weight' in omit:
-      local_max_bits = 5  # max_data['a_max_bits']
-      # local_max_xmax = max_data['a_max_xmax']
-      local_max_num = 6  # max_data['a_max_num']
-
-      ax.plot([0, 99 + 1], [2 / 5, 2 / 5], color='grey', alpha=.5,
-              linestyle='--', linewidth=3, zorder=0)
-      ax.plot([0, 99 + 1], [4 / 5, 4 / 5], color='grey', alpha=.5,
-              linestyle='--', linewidth=3, zorder=0)
-
-      ax.plot([0, 99 + 1], [-2 / 6, -2 / 6], color='grey', alpha=.5,
-              linestyle='--', linewidth=3, zorder=0)
-      ax.plot([0, 99 + 1], [-4 / 6, -4 / 6], color='grey', alpha=.5,
-              linestyle='--', linewidth=3, zorder=0)
-      ax.plot([0, 99 + 1], [-6 / 6, -6 / 6], color='grey', alpha=.5,
-              linestyle='--', linewidth=3, zorder=0)
-    else:
-      local_max_bits = 7  # max_data['max_bits']
-      # local_max_xmax = max_data['max_xmax']
-      local_max_num = max_data['max_num']
-      # label_num = '# Activations/Weights'
-
-    pos = 1
-    # extra_entry = False
-    for k, v in enet_bits.items():
-      skip = False
-      for iu in omit:
-        if iu in k:
-          skip = True
-      if not skip:
-
-        if ('QuantConv' in k) or ('head_conv' in k):
-          label = 'Pointwise Conv.'
-          color = 'orange'
-        elif ('stem_conv' in k):
-          label = '3x3 Convolution'
-          color = 'b'
-        elif ('QuantDense' in k):
-          label = 'Affine'
-          color = 'r'
-        elif ('depthwise_conv2d' in k):
-          label = 'Depthwise Conv.'
-          color = 'g'
-        else:
-          raise Exception('Unknown error type: ' + k)
-
-        ax.bar(pos, v[0] / local_max_bits, width=2.0, color=color,
-               label=label, edgecolor='black', zorder=10)
-        ax.bar(pos, -1 * (np.log10(v[2])) / local_max_num,
-               width=2., color=color, label=label, edgecolor='black',
-               zorder=10)
-        pos += 2
-
-    # print('Done')
-    # ax.set_xlabel("#quantization", fontsize=font_size, fontweight='bold')
-    # ax.set_ylabel("bits", fontsize=font_size, fontweight='bold')
-    ax.text(-5, 0.3, '# Bits', dict(size=23), rotation=90)
-    ax.text(-5, -.6, 'log10 #', dict(size=23), rotation=90)
-    ax.annotate('', xy=(0, 0), xytext=(pos + 2, 0), arrowprops=dict(
-        arrowstyle='<-, head_width=.3, head_length=1.', lw=3), zorder=20)
-    ax.annotate('', xy=(0, -1.15), xytext=(0, 1.12), arrowprops=dict(
-        arrowstyle='<->, head_width=.3,  head_length=1.', lw=3), zorder=20)
-    if '/act' in omit:
-      ax.set_ylim(-1.15, 1.12)
-      ax.set_yticks([-6 / 6, -4 / 6, -2 / 6, 0., 2 / 7, 4 / 7, 6 / 7])
-      ax.set_yticklabels([6, 4, 2, 0, 2, 4, 6])
-      ax.text(33, -1.2, "Weights EfficientNet-Lite0", dict(size=23))
-    else:
-      ax.set_ylim(-1.15, 1.12)
-      ax.set_yticks([-6 / 6, -4 / 6, -2 / 6, 0., 2 / 5, 4 / 5, ])
-      ax.set_yticklabels([6, 4, 2, 0, 2, 4])
-      ax.text(33, -1.2, "Activations EfficientNet-Lite0", dict(size=23))
-
-    handles, labels = ax.get_legend_handles_labels()
-    by_label = OrderedDict(zip(labels, handles))
-    ax.legend(by_label.values(), by_label.keys(),
-              bbox_to_anchor=(.1, .95, .8, 0.11),
-              loc="lower left", borderaxespad=0, ncol=4, mode='expand',
-              frameon=False,
-              prop={'weight': 'bold', 'size': font_size})
-
-    ax.axes.xaxis.set_visible(False)
-    # ax.axes.yaxis.set_visible(False)
-    # plt.tight_layout()
-    # plt.savefig(name, dpi=300)
-    # plt.close()
+  if config == 'EfficientNet-Lite0':
+    # try:
+    #   with open('/Users/clemens/Desktop/enet0_bits.pkl', 'rb') as f:
+    #     enet_bits = pickle.load(f)
+    #   with open('/Users/clemens/Desktop/enet0_max.pkl', 'rb') as f:
+    #     max_data = pickle.load(f)
+    # except:
+    enet_bits, max_data = load_data(enet_conf.get_config(), workdir)
+    with open('/Users/clemens/Desktop/enet0_bits.pkl', 'wb') as f:
+      pickle.dump(enet_bits, f)
+    with open('/Users/clemens/Desktop/enet0_max.pkl', 'wb') as f:
+      pickle.dump(max_data, f)
+  if config == 'MobileNetV2':
+    # try:
+    #   with open('/Users/clemens/Desktop/mbnet_bits.pkl', 'rb') as f:
+    #     enet_bits = pickle.load(f)
+    #   with open('/Users/clemens/Desktop/mbnet_max.pkl', 'rb') as f:
+    #     max_data = pickle.load(f)
+    # except:
+    enet_bits, max_data = load_data(mb_conf.get_config(), workdir)
+    with open('/Users/clemens/Desktop/mbnet_bits.pkl', 'wb') as f:
+      pickle.dump(enet_bits, f)
+    with open('/Users/clemens/Desktop/mbnet_max.pkl', 'wb') as f:
+      pickle.dump(max_data, f)
 
   def plot_fig_aw(ax, name):
 
     font_size = 23
-    # plt.rc('font', family='Helvetica', weight='bold')
-    # fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(16.5, 6.0))
 
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
@@ -931,23 +461,19 @@ def plot_bits_enet(ax, config: ml_collections.ConfigDict, workdir: str):
     for tick in ax.yaxis.get_major_ticks():
       tick.label1.set_fontweight('bold')
 
-    # if '/act' in omit:
-    localw_max_bits = 7  # max_data['w_max_bits']
-    # localw_max_xmax = max_data['w_max_xmax']
-    # localw_max_num = max_data['w_max_num']
-    ax.plot([0, 101 + 1], [2 / 7, 2 / 7], color='grey', alpha=.5,
+    localw_max_bits = 7
+    ax.plot([0, 108 + 1], [2 / 7, 2 / 7], color='grey', alpha=.5,
             linestyle='--', linewidth=3, zorder=0)
-    ax.plot([0, 101 + 1], [4 / 7, 4 / 7], color='grey', alpha=.5,
+    ax.plot([0, 108 + 1], [4 / 7, 4 / 7], color='grey', alpha=.5,
             linestyle='--', linewidth=3, zorder=0)
-    ax.plot([0, 101 + 1], [6 / 7, 6 / 7], color='grey', alpha=.5,
+    ax.plot([0, 108 + 1], [6 / 7, 6 / 7], color='grey', alpha=.5,
             linestyle='--', linewidth=3, zorder=0)
-    # elif '/weight' in omit:
-    locala_max_bits = 7  # max_data['a_max_bits']
-    # locala_max_xmax = max_data['a_max_xmax']
-    # locala_max_num = max_data['a_max_num']
-    ax.plot([0, 101 + 1], [-2 / 7, -2 / 7], color='grey', alpha=.5,
+    locala_max_bits = 7
+    ax.plot([0, 108 + 1], [-2 / 7, -2 / 7], color='grey', alpha=.5,
             linestyle='--', linewidth=3, zorder=0)
-    ax.plot([0, 101 + 1], [-4 / 7, -4 / 7], color='grey', alpha=.5,
+    ax.plot([0, 108 + 1], [-4 / 7, -4 / 7], color='grey', alpha=.5,
+            linestyle='--', linewidth=3, zorder=0)
+    ax.plot([0, 108 + 1], [-6 / 7, -6 / 7], color='grey', alpha=.5,
             linestyle='--', linewidth=3, zorder=0)
 
     a_pos = 3
@@ -955,20 +481,37 @@ def plot_bits_enet(ax, config: ml_collections.ConfigDict, workdir: str):
     # extra_entry = False
     for k, v in enet_bits.items():
       if 'bias' not in k:
-        if ('QuantConv' in k) or ('head_conv' in k):
-          label = 'Pointwise Conv.'
-          color = 'orange'
-        elif ('stem_conv' in k):
-          label = '3x3 Convolution'
-          color = 'b'
-        elif ('QuantDense' in k):
-          label = 'Affine'
-          color = 'r'
-        elif ('depthwise_conv2d' in k):
-          label = 'Depthwise Conv.'
-          color = 'g'
+
+        if name == 'EfficientNet-Lite0':
+          if ('QuantConv' in k) or ('head_conv' in k):
+            label = 'Pointwise Conv.'
+            color = 'orange'
+          elif ('stem_conv' in k):
+            label = '3x3 Convolution'
+            color = 'b'
+          elif ('QuantDense' in k):
+            label = 'Affine'
+            color = 'r'
+          elif ('depthwise_conv2d' in k):
+            label = 'Depthwise Conv.'
+            color = 'g'
+          else:
+            raise Exception('Unknown error type: ' + k)
         else:
-          raise Exception('Unknown error type: ' + k)
+          if v[3] == 76:
+            label = 'Depthwise Conv.'
+            color = 'g'
+          elif ('QuantConv' in k) or ('head_conv' in k):
+            label = 'Pointwise Conv.'
+            color = 'orange'
+          elif ('stem_conv' in k):
+            label = '3x3 Convolution'
+            color = 'b'
+          elif ('QuantDense' in k):
+            label = 'Affine'
+            color = 'r'
+          else:
+            raise Exception('Unknown error type: ' + k)
 
         if 'act' in k:
           ax.bar(a_pos, -v[0] / locala_max_bits, width=2.0, color=color,
@@ -979,76 +522,50 @@ def plot_bits_enet(ax, config: ml_collections.ConfigDict, workdir: str):
                  label=label, edgecolor='black', zorder=10)
           w_pos += 2
 
-    # ax.set_xlabel("#quantization", fontsize=font_size, fontweight='bold')
-    # ax.set_ylabel("bits", fontsize=font_size, fontweight='bold')
-    ax.text(-5, 0.3, 'W # Bits', dict(size=23), rotation=90)
-    ax.text(-5, -.6, 'A # Bits', dict(size=23), rotation=90)
-    ax.annotate('', xy=(0, 0), xytext=(101 + 2, 0), arrowprops=dict(
+    ax.text(-11, 0.3, 'W # Bits', dict(size=23), rotation=90)
+    ax.text(-11, -.6, 'A # Bits', dict(size=23), rotation=90)
+    ax.annotate('', xy=(0, 0), xytext=(108 + 2, 0), arrowprops=dict(
         arrowstyle='<-, head_width=.3, head_length=1.', lw=3), zorder=20)
-    ax.annotate('', xy=(0, -.8), xytext=(0, 1.15), arrowprops=dict(
+    ax.annotate('', xy=(0, -.97), xytext=(0, 1.15), arrowprops=dict(
         arrowstyle='<->, head_width=.3,  head_length=1.', lw=3), zorder=20)
 
-    ax.set_ylim(-.8, 1.15)
-    ax.set_yticks([-4 / 7, -2 / 7, 0., 2 / 7, 4 / 7, 6 / 7])
-    ax.set_yticklabels([4, 2, 0, 2, 4, 6])
-    ax.text(37, -.82, "Bits EfficientNet-Lite0", dict(size=23))
+    ax.set_ylim(-.97, 1.15)
+    ax.set_yticks([-6 / 7, -4 / 7, -2 / 7, 0., 2 / 7, 4 / 7, 6 / 7])
+    ax.set_yticklabels([6, 4, 2, 0, 2, 4, 6])
+    ax.text(37, -.82, name, dict(size=23))
 
     handles, labels = ax.get_legend_handles_labels()
-    by_label = OrderedDict(zip(labels, handles))
-    ax.legend(by_label.values(), by_label.keys(),
-              bbox_to_anchor=(.1, .95, .8, 0.11),
-              loc="lower left", borderaxespad=0, ncol=4, mode='expand',
-              frameon=False,
-              prop={'weight': 'bold', 'size': font_size})
 
     ax.axes.xaxis.set_visible(False)
-    # ax.axes.yaxis.set_visible(False)
-    # plt.tight_layout()
-    # plt.savefig(name, dpi=300)
-    # plt.close()
 
-  # plot_fig_num(['/bias'], 'efficientnet/figures/bitwidths_all.png')
-  # plot_fig_num(['/act', '/bias'], 'efficientnet/figures/bitwidths_w.png')
-  # plot_fig_num(['/weight', '/bias'], 'efficientnet/figures/bitwidths_a.png')
-  plot_fig_aw(ax, 'efficientnet/figures/bitwidths_aw.png')
+  plot_fig_aw(ax, config)
 
 
 def main(argv):
-  # if len(argv) > 1:
-  #   raise app.UsageError('Too many command-line arguments.')
 
-  # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
-  # it unavailable to JAX.
-  # tf.config.experimental.set_visible_devices([], 'GPU')
-
-  # logging.info('JAX process: %d / %d',
-  #              jax.process_index(), jax.process_count())
-  # logging.info('JAX local devices: %r', jax.local_devices())
-
-  # Add a note so that we can tell which task is which JAX host.
-  # (Depending on the platform task 0 is not guaranteed to be host 0)
-  # platform.work_unit().set_task_status(f'proc_index: {jax.process_index()}, '
-  #                                      f'proc_count: {jax.process_count()}')
-  # platform.work_unit().create_artifact(platform.ArtifactType.DIRECTORY,
-  #                                      FLAGS.workdir, 'workdir')
-
-  # font_size = 23
   plt.rc('font', family='Helvetica', weight='bold')
-  fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(16.5, 18.0))
+  fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(14.4, 6.5))
 
-  plot_bits_enet(ax[0], 'efficientnet/configs/efficientnet-lite0_mixed.py',
-                 'gs://imagenet_clemens/efficientnet-lite0_mixed_2.1_'
-                 + 'finetune_9/best')
-  # plot_bits_enet(ax[1], 'mobilenetv2/configs/mobilenetv2_mixed.py',
-  # 'gs://imagenet_clemens/mbnetv2_mixed_2.2_finetune_9/best')
-  # plot_bits_enet(ax[2], 'squeezenext/configs/sqnxt23_w2_mixed.py',
-  # 'gs://imagenet_clemens/sqnxt23_w2_mixed_2_finetune_sur_9/best')
+  plot_bits_enet(ax[0], "EfficientNet-Lite0",
+                 'gs://imagenet_clemens/frontier/enet_sur/efficientnet-lite0_'
+                 + 'mixed_2.4_sur_finetune_7/best')
+  plot_bits_enet(ax[1], "MobileNetV2",
+                 'gs://imagenet_clemens/frontier/mbnet_sur/mbnetv2_mixed_2.4_'
+                 + 'finetune_7/best')
+
+  handles, labels = ax[0].get_legend_handles_labels()
+  by_label = OrderedDict(zip(labels, handles))
+  fig.legend(by_label.values(), by_label.keys(),
+             bbox_to_anchor=(.02, .96, .95, 0.11),
+             loc="lower left", borderaxespad=0,
+             ncol=4, mode='expand',
+             frameon=False,
+             prop={'weight': 'bold', 'size': 23})
 
   plt.tight_layout()
-  plt.savefig('efficientnet/figures/bits_overview.png', dpi=300)
+  plt.savefig('figures/bits_overview.png', dpi=300, bbox_inches='tight')
   plt.close()
 
 
 if __name__ == '__main__':
-  # flags.mark_flags_as_required(['config', 'workdir'])
   app.run(main)

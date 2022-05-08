@@ -11,7 +11,7 @@ do
   WEIGHT_TARGET=$(echo "$SUM_WEIGHT*$SIZE" | bc -l)
   BITS=$(echo "scale=0; ($SIZE)/1 + 2" | bc -l)
 
-  python3 train.py --workdir=../../efficientnet-lite0_mixed_${SIZE}_7 --config=efficientnet/configs/efficientnet-lite0_mixed.py  --config.quant_target.weight_mb=${WEIGHT_TARGET} --config.quant_target.act_mb=${ACT_TARGET} --config.quant.bits=${BITS} --config.pretrained_quant=gs://imagenet_clemens/pretrained_hq/enet0_${BITS}_pre_3/best
+  python3 train.py --workdir=../../efficientnet-lite0_mixed_${SIZE}_7 --config=efficientnet/configs/efficientnet-lite0_mixed.py  --config.quant_target.weight_mb=${WEIGHT_TARGET} --config.quant_target.act_mb=${ACT_TARGET} --config.quant.bits=${BITS} --config.pretrained_quant=gs://imagenet_clemens/pretrained_hq/enet_${BITS}_pre_3/best
   if [ -d ../../efficientnet-lite0_mixed_${SIZE}_9/best ]; then
     python3 train.py --workdir=../../efficientnet-lite0_mixed_${SIZE}_finetune_7 --config=efficientnet/configs/efficientnet-lite0_mixed_finetune.py --config.pretrained_quant=../../efficientnet-lite0_mixed_${SIZE}_7/best
   else
