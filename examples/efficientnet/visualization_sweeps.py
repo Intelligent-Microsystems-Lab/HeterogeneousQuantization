@@ -158,8 +158,8 @@ ax[0].scatter(resnet_mixed_sur_gran[2], resnet_mixed_sur_gran[3],
 print(resnet_mixed_sur_gran[0])
 print(resnet_mixed_sur_gran[1])
 ax[0].set_xscale('log')
-ax[0].set_xticks([3, 4, 5, ], [
-    '3.0', '4.0', '5.0'])
+ax[0].set_xticks([3, 4, 5, 6], [
+    '3.0', '4.0', '5.0', '6'])
 ax[0].set_ylabel("Eval Error (%)", fontsize=font_size, fontweight='bold')
 
 

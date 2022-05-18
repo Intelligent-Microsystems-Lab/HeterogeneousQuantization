@@ -138,11 +138,11 @@ ax.plot(resnet_mixed_sur_gran[0], resnet_mixed_sur_gran[1], marker='x',
 ax.scatter(resnet_mixed_sur_gran[2], resnet_mixed_sur_gran[3],
            marker='x', s=20**2, linewidth=5, color='magenta', alpha=.25)
 
-print(resnet_mixed_sur_gran[0])
-print(resnet_mixed_sur_gran[1])
+# print(resnet_mixed_sur_gran[0])
+# print(resnet_mixed_sur_gran[1])
 
-print(resnet_mixed[0])
-print(resnet_mixed[1])
+print(resnet_mixed_sur[0])
+print(resnet_mixed_sur[1])
 # plt.ylim(31, 38)
 ax.set_xscale('log')
 plt.xticks([3.0, 4.0, 5.0], [
