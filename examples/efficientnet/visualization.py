@@ -154,9 +154,9 @@ competitors = {
     'ewgs_resnet18': {
         # https://arxiv.org/abs/2104.00903
         # no first and last layer quant
-        'eval_err': np.array([1 - 0.553, 1 - 0.67, 1 - 0.697,
-                              1 - 0.706]) * 100,  # 
-        'size_mb': np.array([1, 2, 3, 4
+        'eval_err': np.array([1 - 0.67, 1 - 0.697,
+                              1 - 0.706]) * 100,  # 1 - 0.553
+        'size_mb': np.array([2, 3, 4
                              ]) * (11157504 + 2032128) / 8_000_000 + 0.0192 \
         + 1.044816 + (512 * 16 / 8_000_000),
         'name': 'EWGS ResNet18',

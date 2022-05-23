@@ -1,32 +1,13 @@
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-import matplotlib.patches as mpatches
-from matplotlib.ticker import FormatStrFormatter
 import tensorboard as tb
 from packaging import version
-import grpc
-import string
-from collections import OrderedDict
 
 import numpy as np
 import pandas as pd
-import itertools
-
-from absl import app
-
-import pickle
-import copy
-
-import matplotlib.pyplot as plt
 
 import jax
 from jax import random
-import jax.numpy as jnp
-
-import ml_collections
-from flax.core import unfreeze
-
-from collections import OrderedDict
 
 import sys
 sys.path.append('..')
@@ -62,32 +43,33 @@ def load_data_mbnet():
   for i in range(16):
     print(i)
     x = state.params['quant_params']['InvertedResidual_'
-                                     + str(i)]['QuantConv_0']['parametric_d_xmax_0']
+                                     + str(i)]['QuantConv_0'][
+        'parametric_d_xmax_0']
     bits = np.ceil(np.log(x['dynamic_range'] / x['step_size']))
     print(np.unique(bits))
 
-    try:
-      x = state.params['quant_params']['InvertedResidual_'
-                                       + str(i)]['QuantConv_1']['parametric_d_xmax_0']
-      bits = np.ceil(np.log(x['dynamic_range'] / x['step_size']))
-      print(np.unique(bits))
-    except:
-      pass
+    # try:
+    #   x = state.params['quant_params']['InvertedResidual_'
+    #                                    + str(i)]['QuantConv_1'][
+    #       'parametric_d_xmax_0']
+    #   bits = np.ceil(np.log(x['dynamic_range'] / x['step_size']))
+    #   print(np.unique(bits))
+    # except:
+    #   pass
 
-    try:
-      x = state.params['quant_params']['InvertedResidual_'
-                                       + str(i)]['QuantConv_2']['parametric_d_xmax_0']
-      bits = np.ceil(np.log(x['dynamic_range'] / x['step_size']))
-      print(np.unique(bits))
-    except:
-      pass
+    # try:
+    #   x = state.params['quant_params']['InvertedResidual_'
+    #                                    + str(i)]['QuantConv_2'][
+    #       'parametric_d_xmax_0']
+    #   bits = np.ceil(np.log(x['dynamic_range'] / x['step_size']))
+    #   print(np.unique(bits))
+    # except:
+    #   pass
 
-  # interesting 0depth, 1_0, 1depth, 3_0, 
+  # interesting 0depth, 1_0, 1depth, 3_0,
   # 32
-  x = state.params['quant_params']['InvertedResidual_0']['QuantConv_0']['parametric_d_xmax_0']
-  # x = state.params['quant_params']['MBConvBlock_1']['depthwise_conv2d']['parametric_d_xmax_0'] # 96 nope
-  # x = state.params['quant_params']['MBConvBlock_1']['QuantConv_0']['parametric_d_xmax_0'] #96 nope
-  # x = state.params['quant_params']['MBConvBlock_3']['QuantConv_0']['parametric_d_xmax_0'] # 144 nope
+  x = state.params['quant_params']['InvertedResidual_0'][
+      'QuantConv_0']['parametric_d_xmax_0']
 
   bits = np.ceil(np.log(x['dynamic_range'] / x['step_size']))
 
@@ -110,30 +92,35 @@ def load_data_enet():
   state = restore_checkpoint(
       state, '/Users/clemens/Desktop/efficientnet-lite0_mixed_2.8_gran_sur_9')
 
-  # for i in range(16):
-  #   print(i)
-  #   x = state.params['quant_params']['MBConvBlock_'+str(i)]['QuantConv_0']['parametric_d_xmax_0']
-  #   bits = np.ceil(np.log(x['dynamic_range'] / x['step_size']))
-  #   print(np.unique(bits))
+  for i in range(16):
+    print(i)
+    x = state.params['quant_params']['MBConvBlock_' + str(i)]['QuantConv_0'
+                                                              ][
+        'parametric_d_xmax_0']
+    bits = np.ceil(np.log(x['dynamic_range'] / x['step_size']))
+    print(np.unique(bits))
 
-  #   try:
-  #     x = state.params['quant_params']['MBConvBlock_'+str(i)]['QuantConv_1']['parametric_d_xmax_0']
-  #     bits = np.ceil(np.log(x['dynamic_range'] / x['step_size']))
-  #     print(np.unique(bits))
-  #   except:
-  #     pass
+    # try:
+    #   x = state.params['quant_params']['MBConvBlock_' + str(i)]['QuantConv_1'
+    #                                                             ][
+    #       'parametric_d_xmax_0']
+    #   bits = np.ceil(np.log(x['dynamic_range'] / x['step_size']))
+    #   print(np.unique(bits))
+    # except:
+    #   pass
 
-  #   print('-')
-  #   x = state.params['quant_params']['MBConvBlock_'+str(i)]['depthwise_conv2d']['parametric_d_xmax_0']
-  #   bits = np.ceil(np.log(x['dynamic_range'] / x['step_size']))
-  #   print(np.unique(bits))
+    print('-')
+    x = state.params['quant_params']['MBConvBlock_' + str(i)][
+        'depthwise_conv2d'
+    ][
+        'parametric_d_xmax_0']
+    bits = np.ceil(np.log(x['dynamic_range'] / x['step_size']))
+    print(np.unique(bits))
 
-  # interesting 0depth, 1_0, 1depth, 3_0, 
+  # interesting 0depth, 1_0, 1depth, 3_0,
   # 32
-  x = state.params['quant_params']['MBConvBlock_0']['depthwise_conv2d']['parametric_d_xmax_0']
-  # x = state.params['quant_params']['MBConvBlock_1']['depthwise_conv2d']['parametric_d_xmax_0'] # 96 nope
-  # x = state.params['quant_params']['MBConvBlock_1']['QuantConv_0']['parametric_d_xmax_0'] #96 nope
-  # x = state.params['quant_params']['MBConvBlock_3']['QuantConv_0']['parametric_d_xmax_0'] # 144 nope
+  x = state.params['quant_params']['MBConvBlock_0']['depthwise_conv2d'
+                                                    ]['parametric_d_xmax_0']
 
   bits = np.ceil(np.log(x['dynamic_range'] / x['step_size']))
 
@@ -179,7 +166,6 @@ def plot_additional_fig():
   ax_lr.yaxis.set_tick_params(
       width=gen_linewidth, length=10, labelsize=font_size)
 
-
   data_lr = pd.read_csv(
       'figures/training_traces/pretrain-learning_rate.csv', sep=',')
   data_penalty = data_lr.copy()
@@ -213,7 +199,7 @@ def plot_additional_fig():
   ax_lr.set_yscale('log')
 
   ax_lr.axes.xaxis.set_visible(False)
-  ax2 = ax_lr.twinx() 
+  ax2 = ax_lr.twinx()
   ax2.plot(data_penalty['Step'], data_penalty['Value'],
            label=r'Size Penalty ($\beta$)', color='blue',
            linewidth=gen_linewidth,)
@@ -309,13 +295,15 @@ def plot_additional_fig():
               label='Accuracy', color='red', linewidth=gen_linewidth,)
 
   ax_acc.plot([62464, 62464], [np.min(data_acc['Value'] * 100),
-    np.max(data_acc['Value'] * 100)], color='grey', alpha=.75,
+                               np.max(data_acc['Value'] * 100)],
+              color='grey', alpha=.75,
               linestyle='--', linewidth=3, zorder=0)
   ax_acc.plot([62464 * 2, 62464 * 2], [np.min(data_acc['Value'] * 100),
-    np.max(data_acc['Value'] * 100)], color='grey', alpha=.75,
+                                       np.max(data_acc['Value'] * 100)],
+              color='grey', alpha=.75,
               linestyle='--', linewidth=3, zorder=0)
 
-  ax3 = ax_acc.twinx() 
+  ax3 = ax_acc.twinx()
   ax3.plot(data_act['Step'], (data_act['Value'] + data_wgt['Value']) / 1000,
            label='Memory Footprint', color='green', linewidth=gen_linewidth,)
 
@@ -346,7 +334,7 @@ def plot_additional_fig():
   for tick in ax_enet.yaxis.get_major_ticks():
     tick.label1.set_fontweight('bold')
 
-  localw_max_bits = 4
+  # localw_max_bits = 4
   ax_enet.plot([0, 32 + 1], [2 / 4, 2 / 4], color='grey', alpha=.5,
                linestyle='--', linewidth=3, zorder=0)
   ax_enet.plot([0, 32 + 1], [4 / 4, 4 / 4], color='grey', alpha=.5,
@@ -361,7 +349,6 @@ def plot_additional_fig():
     ax_enet.bar(i + .5, (bits[i] + 1) / 4, width=1.0,
                 color='m', edgecolor='black', zorder=10)
 
-  # import pdb; pdb.set_trace()
   for i in range(bits.shape[0]):
     ax_enet.bar(i + .5, -xmax[i] / xmax.max(), width=1.0,
                 color='c', edgecolor='black', zorder=10)
@@ -373,7 +360,7 @@ def plot_additional_fig():
   ax_enet.annotate('', xy=(0, -1.10), xytext=(0, 1.25), arrowprops=dict(
       arrowstyle='<->, head_width=.3,  head_length=1.', lw=3), zorder=20)
 
-  #ax[2].set_ylim(-.97, 1.15)
+  # ax[2].set_ylim(-.97, 1.15)
   ax_enet.set_yticks([1., .5, 0., -2 / 5, -4 / 5])
   ax_enet.set_yticklabels([4, 2, 0, '2.3', '4.7', ])
   # ax[2].text(37, -.82, name, dict(size=23))
@@ -407,7 +394,7 @@ def plot_additional_fig():
   for tick in ax_mbnet.yaxis.get_major_ticks():
     tick.label1.set_fontweight('bold')
 
-  localw_max_bits = 5
+  # localw_max_bits = 5
   ax_mbnet.plot([0, 32 + 1], [2 / 5, 2 / 5], color='grey', alpha=.5,
                 linestyle='--', linewidth=3, zorder=0)
   ax_mbnet.plot([0, 32 + 1], [4 / 5, 4 / 5], color='grey', alpha=.5,
@@ -422,7 +409,6 @@ def plot_additional_fig():
     ax_mbnet.bar(i + .5, (bits[i] + 1) / 5, width=1.0,
                  color='m', edgecolor='black', zorder=10)
 
-  # import pdb; pdb.set_trace()
   for i in range(bits.shape[0]):
     ax_mbnet.bar(i + .5, -xmax[i] / xmax.max(), width=1.0,
                  color='c', edgecolor='black', zorder=10)
@@ -434,7 +420,7 @@ def plot_additional_fig():
   ax_mbnet.annotate('', xy=(0, -1.1), xytext=(0, 1.2), arrowprops=dict(
       arrowstyle='<->, head_width=.3,  head_length=1.', lw=3), zorder=20)
 
-  #ax[2].set_ylim(-.97, 1.15)
+  # ax[2].set_ylim(-.97, 1.15)
   ax_mbnet.set_yticks([4 / 5, 2 / 5, 0., -2 / 5, -4 / 5])
   ax_mbnet.set_yticklabels([4, 2, 0, '1.5', '3.0', ])
   # ax[2].text(37, -.82, name, dict(size=23))
