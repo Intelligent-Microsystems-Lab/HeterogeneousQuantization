@@ -122,7 +122,7 @@ resnet_mixed_sur_gran = lower_convex_hull(
     summing=['Act Size Sum', 'Weight Size'])
 
 
-ax[0].plot(resnet_mixed[0], resnet_mixed[1], marker='x', label='Mixed',
+ax[0].plot(resnet_mixed[0], resnet_mixed[1], marker='x', label='Base',
            ms=mw, markeredgewidth=gen_linewidth, linewidth=gen_linewidth,
            color='green')
 ax[0].scatter(resnet_mixed[2], resnet_mixed[3], marker='x',
@@ -130,7 +130,7 @@ ax[0].scatter(resnet_mixed[2], resnet_mixed[3], marker='x',
 
 
 ax[0].plot(resnet_mixed_gran[0], resnet_mixed_gran[1], marker='x',
-           label='Mixed Granular', ms=mw, markeredgewidth=gen_linewidth,
+           label='Granular', ms=mw, markeredgewidth=gen_linewidth,
            linewidth=gen_linewidth,
            color='red')
 ax[0].scatter(resnet_mixed_gran[2], resnet_mixed_gran[3],
@@ -139,7 +139,7 @@ ax[0].scatter(resnet_mixed_gran[2], resnet_mixed_gran[3],
 
 
 ax[0].plot(resnet_mixed_sur[0], resnet_mixed_sur[1], marker='x',
-           label='Mixed Surrogate', ms=mw, markeredgewidth=gen_linewidth,
+           label='Grad. Scale.', ms=mw, markeredgewidth=gen_linewidth,
            linewidth=gen_linewidth,
            color='blue')
 ax[0].scatter(resnet_mixed_sur[2], resnet_mixed_sur[3],
@@ -148,7 +148,7 @@ ax[0].scatter(resnet_mixed_sur[2], resnet_mixed_sur[3],
 
 
 ax[0].plot(resnet_mixed_sur_gran[0], resnet_mixed_sur_gran[1], marker='x',
-           label='Mixed Granular Surrogate', ms=mw,
+           label='Granular + Grad. Scale.', ms=mw,
            markeredgewidth=gen_linewidth, linewidth=gen_linewidth,
            color='orange')
 ax[0].scatter(resnet_mixed_sur_gran[2], resnet_mixed_sur_gran[3],
@@ -193,7 +193,7 @@ resnet_mixed_sur_gran = lower_convex_hull(
     summing=['Act Size Sum', 'Weight Size'])
 
 
-ax[1].plot(resnet_mixed[0], resnet_mixed[1], marker='x', label='Mixed',
+ax[1].plot(resnet_mixed[0], resnet_mixed[1], marker='x', label='Base',
            ms=mw, markeredgewidth=gen_linewidth, linewidth=gen_linewidth,
            color='green')
 ax[1].scatter(resnet_mixed[2], resnet_mixed[3], marker='x',
@@ -201,7 +201,7 @@ ax[1].scatter(resnet_mixed[2], resnet_mixed[3], marker='x',
 
 
 ax[1].plot(resnet_mixed_gran[0], resnet_mixed_gran[1], marker='x',
-           label='Mixed Granular', ms=mw, markeredgewidth=gen_linewidth,
+           label='Granular', ms=mw, markeredgewidth=gen_linewidth,
            linewidth=gen_linewidth,
            color='red')
 ax[1].scatter(resnet_mixed_gran[2], resnet_mixed_gran[3],
@@ -210,7 +210,7 @@ ax[1].scatter(resnet_mixed_gran[2], resnet_mixed_gran[3],
 
 
 ax[1].plot(resnet_mixed_sur[0], resnet_mixed_sur[1], marker='x',
-           label='Mixed Surrogate', ms=mw, markeredgewidth=gen_linewidth,
+           label='Grad. Scale.', ms=mw, markeredgewidth=gen_linewidth,
            linewidth=gen_linewidth,
            color='blue')
 ax[1].scatter(resnet_mixed_sur[2], resnet_mixed_sur[3],
@@ -219,7 +219,7 @@ ax[1].scatter(resnet_mixed_sur[2], resnet_mixed_sur[3],
 
 
 ax[1].plot(resnet_mixed_sur_gran[0], resnet_mixed_sur_gran[1], marker='x',
-           label='Mixed Granular Surrogate', ms=mw,
+           label='Granular + Grad. Scale.', ms=mw,
            markeredgewidth=gen_linewidth, linewidth=gen_linewidth,
            color='orange')
 ax[1].scatter(resnet_mixed_sur_gran[2], resnet_mixed_sur_gran[3],
@@ -295,7 +295,7 @@ resnet_mixed_sur_gran = lower_convex_hull(
     summing=['Act Size Sum', 'Weight Size'])
 
 
-ax[0].plot(resnet_mixed[0], resnet_mixed[1], marker='x', label='Mixed',
+ax[0].plot(resnet_mixed[0], resnet_mixed[1], marker='x', label='Base',
            ms=mw, markeredgewidth=gen_linewidth, linewidth=gen_linewidth,
            color='green')
 ax[0].scatter(resnet_mixed[2], resnet_mixed[3], marker='x',
@@ -303,7 +303,7 @@ ax[0].scatter(resnet_mixed[2], resnet_mixed[3], marker='x',
 
 
 ax[0].plot(resnet_mixed_gran[0], resnet_mixed_gran[1], marker='x',
-           label='Mixed Granular', ms=mw, markeredgewidth=gen_linewidth,
+           label='Granular', ms=mw, markeredgewidth=gen_linewidth,
            linewidth=gen_linewidth,
            color='red')
 ax[0].scatter(resnet_mixed_gran[2], resnet_mixed_gran[3],
@@ -312,7 +312,7 @@ ax[0].scatter(resnet_mixed_gran[2], resnet_mixed_gran[3],
 
 
 ax[0].plot(resnet_mixed_sur[0], resnet_mixed_sur[1], marker='x',
-           label='Mixed Surrogate', ms=mw, markeredgewidth=gen_linewidth,
+           label='Grad. Scale.', ms=mw, markeredgewidth=gen_linewidth,
            linewidth=gen_linewidth,
            color='blue')
 ax[0].scatter(resnet_mixed_sur[2], resnet_mixed_sur[3],
@@ -321,7 +321,7 @@ ax[0].scatter(resnet_mixed_sur[2], resnet_mixed_sur[3],
 
 
 ax[0].plot(resnet_mixed_sur_gran[0], resnet_mixed_sur_gran[1], marker='x',
-           label='Mixed Granular Surrogate', ms=mw,
+           label='Granular + Grad. Scale.', ms=mw,
            markeredgewidth=gen_linewidth, linewidth=gen_linewidth,
            color='orange')
 ax[0].scatter(resnet_mixed_sur_gran[2], resnet_mixed_sur_gran[3],
@@ -366,7 +366,7 @@ resnet_mixed_sur_gran = lower_convex_hull(
     summing=['Act Size Sum', 'Weight Size'])
 
 
-ax[1].plot(resnet_mixed[0], resnet_mixed[1], marker='x', label='Mixed',
+ax[1].plot(resnet_mixed[0], resnet_mixed[1], marker='x', label='Base',
            ms=mw, markeredgewidth=gen_linewidth, linewidth=gen_linewidth,
            color='green')
 ax[1].scatter(resnet_mixed[2], resnet_mixed[3], marker='x',
@@ -374,7 +374,7 @@ ax[1].scatter(resnet_mixed[2], resnet_mixed[3], marker='x',
 
 
 ax[1].plot(resnet_mixed_gran[0], resnet_mixed_gran[1], marker='x',
-           label='Mixed Granular', ms=mw, markeredgewidth=gen_linewidth,
+           label='Granular', ms=mw, markeredgewidth=gen_linewidth,
            linewidth=gen_linewidth,
            color='red')
 ax[1].scatter(resnet_mixed_gran[2], resnet_mixed_gran[3],
@@ -383,7 +383,7 @@ ax[1].scatter(resnet_mixed_gran[2], resnet_mixed_gran[3],
 
 
 ax[1].plot(resnet_mixed_sur[0], resnet_mixed_sur[1], marker='x',
-           label='Mixed Surrogate', ms=mw, markeredgewidth=gen_linewidth,
+           label='Grad. Scale.', ms=mw, markeredgewidth=gen_linewidth,
            linewidth=gen_linewidth,
            color='blue')
 ax[1].scatter(resnet_mixed_sur[2], resnet_mixed_sur[3],
@@ -392,7 +392,7 @@ ax[1].scatter(resnet_mixed_sur[2], resnet_mixed_sur[3],
 
 
 ax[1].plot(resnet_mixed_sur_gran[0], resnet_mixed_sur_gran[1], marker='x',
-           label='Mixed Granular Surrogate', ms=mw,
+           label='Granular + Grad. Scale.', ms=mw,
            markeredgewidth=gen_linewidth, linewidth=gen_linewidth,
            color='orange')
 ax[1].scatter(resnet_mixed_sur_gran[2], resnet_mixed_sur_gran[3],
