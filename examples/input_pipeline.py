@@ -33,6 +33,15 @@ def create_input_iter_cifar10(dataset_builder, batch_size, dtype, train,
   it = jax_utils.prefetch_to_device(it, 2)
   return it
 
+def create_input_iter_mnist(dataset_builder, batch_size, dtype, train,
+                              cache, mean_rgb, std_rgb):
+  ds = create_split_mnist(
+      dataset_builder, batch_size, dtype=dtype,
+      train=train, cache=cache, mean_rgb=mean_rgb, std_rgb=std_rgb)
+  it = map(prepare_tf_data, ds)
+  it = jax_utils.prefetch_to_device(it, 2)
+  return it
+
 
 def prepare_tf_data(xs):
   """Convert a input batch from tf Tensors to numpy arrays."""
@@ -292,6 +301,62 @@ def create_split_cifar10(dataset_builder, batch_size, train, dtype,
       image = tf.cast(image, dtype=dtype)
 
       image = normalize_image(image, mean_rgb, std_rgb)
+
+    return {'image': image, 'label': example['label']}
+
+  ds = dataset_builder.as_dataset(split=split, decoders={
+      'image': tfds.decode.SkipDecoding(),
+  })
+  options = tf.data.Options()
+  options.experimental_threading.private_threadpool_size = 48
+  ds = ds.with_options(options)
+
+  if cache:
+    ds = ds.cache()
+
+  if train:
+    ds = ds.repeat()
+    ds = ds.shuffle(16 * batch_size, seed=0)
+
+  ds = ds.map(decode_example, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+  ds = ds.batch(batch_size, drop_remainder=True)
+
+  if not train:
+    ds = ds.repeat()
+
+  ds = ds.prefetch(10)
+
+  return ds
+
+def create_split_mnist(dataset_builder, batch_size, train, dtype,
+                         cache, mean_rgb, std_rgb):
+  """Creates a split from the MNIST dataset using TensorFlow Datasets.
+  Args:
+    dataset_builder: TFDS dataset builder for CIFAR10.
+    batch_size: the batch size returned by the data pipeline.
+    train: Whether to load the train or evaluation split.
+    dtype: data type of the image.
+    image_size: The target size of the images.
+    cache: Whether to cache the dataset.
+  Returns:
+    A `tf.data.Dataset`.
+  """
+  if train:
+    train_examples = dataset_builder.info.splits['train'].num_examples
+    split_size = train_examples // jax.process_count()
+    start = jax.process_index() * split_size
+    split = 'train[{}:{}]'.format(start, start + split_size)
+  else:
+    validate_examples = dataset_builder.info.splits['test'].num_examples
+    split_size = validate_examples // jax.process_count()
+    start = jax.process_index() * split_size
+    split = 'test[{}:{}]'.format(start, start + split_size)
+
+  def decode_example(example):
+    image = tf.io.decode_png(example['image'])
+    image = tf.cast(image, dtype=dtype)
+    image -= tf.constant(mean_rgb, shape=[1, 1, 3], dtype=image.dtype)
+    image /= tf.constant(std_rgb, shape=[1, 1, 3], dtype=image.dtype)
 
     return {'image': image, 'label': example['label']}
 

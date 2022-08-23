@@ -93,7 +93,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   writer_eval = metric_writers.create_default_writer(
       logdir=workdir + '/eval', just_logging=jax.process_index() != 0)
 
-  logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
+  # logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
   logging.info('Git commit: ' + subprocess.check_output(
       ['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
   logging.info(config)
@@ -113,6 +113,15 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         cache=config.cache, mean_rgb=config.mean_rgb,
         std_rgb=config.stddev_rgb)
     eval_iter = input_pipeline.create_input_iter_cifar10(
+        dataset_builder, local_batch_size, dtype=jnp.float32, train=False,
+        cache=config.cache, mean_rgb=config.mean_rgb,
+        std_rgb=config.stddev_rgb)
+  elif 'mnist' in config.dataset:
+    train_iter = input_pipeline.create_input_iter_mnist(
+        dataset_builder, local_batch_size, dtype=jnp.float32, train=True,
+        cache=config.cache, mean_rgb=config.mean_rgb,
+        std_rgb=config.stddev_rgb)
+    eval_iter = input_pipeline.create_input_iter_mnist(
         dataset_builder, local_batch_size, dtype=jnp.float32, train=False,
         cache=config.cache, mean_rgb=config.mean_rgb,
         std_rgb=config.stddev_rgb)
@@ -302,7 +311,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
     rng_list = jax.random.split(rng, jax.local_device_count() + 1)
     rng = rng_list[0]
-
     # alternating phases
     if (step + 1) % config.quant_target.update_every == 0:
       b_quant = jnp.ones((jax.local_device_count(),))
