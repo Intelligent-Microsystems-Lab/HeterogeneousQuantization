@@ -12,12 +12,10 @@
 import sys
 from functools import partial
 import ml_collections
-from typing import Any, Callable, Tuple
+from typing import Any, Callable
 
 from flax import linen as nn
 import jax.numpy as jnp
-import numpy as np
-import math
 from absl import logging
 
 import jax
@@ -25,7 +23,6 @@ from jax._src.nn.initializers import variance_scaling
 
 sys.path.append("efficientnet")
 from enet_load_pretrained_weights import enet_load_pretrained_weights  # noqa: E402, E501
-from efficientnet_utils import BlockDecoder, GlobalParams  # noqa: E402
 
 sys.path.append("..")
 from flax_qconv import QuantConv  # noqa: E402
@@ -68,27 +65,28 @@ class MnistNet(nn.Module):
                    dtype=self.dtype,
                    use_bias=True,
                    use_scale=True)
-  
+
     self.sow('intermediates', 'inputs', x)
     for i in range(self.depth):
       x = conv(
-        features=2**(i+4),
-        kernel_size=(3, 3),
-        strides=(1, 1),
-        padding='SAME',
-        kernel_init=conv_kernel_initializer(),
-        use_bias=False,
-        config=self.config.quant.mbconv,
-        bits=self.config.quant.bits,
-        quant_act_sign=True,)(x)
+          features=2**(i + 4),
+          kernel_size=(3, 3),
+          strides=(1, 1),
+          padding='SAME',
+          kernel_init=conv_kernel_initializer(),
+          use_bias=False,
+          config=self.config.quant.mbconv,
+          bits=self.config.quant.bits,
+          quant_act_sign=True,)(x)
 
       x = norm()(x)
       x = self.act(x)
-      self.sow('intermediates', 'stem'+str(i), x)
+      self.sow('intermediates', 'stem' + str(i), x)
       logging.info('Built layer with output shape: %s', x.shape)
 
     x = jnp.mean(x, axis=(1, 2))
-    
+    x = nn.Dropout(.2)(x, deterministic=not train)
+
     if self.config.quant.bits is None:
       x = nn.Dense(self.num_classes,
                    kernel_init=dense_kernel_initializer(),
@@ -107,5 +105,4 @@ class MnistNet(nn.Module):
     return x
 
 
-MnistNetB0 = partial(MnistNet, depth=3)
-
+MnistNetB0 = partial(MnistNet, depth=4)

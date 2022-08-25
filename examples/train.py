@@ -26,9 +26,11 @@ import models
 
 from flax.training import common_utils
 from flax.training import checkpoints
+from flax.core import freeze, unfreeze
 
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 from jax import random
 import tensorflow as tf
@@ -47,6 +49,7 @@ from train_utils import (
     create_train_state,
     restore_checkpoint,
     train_step,
+    train_step_admm,
     eval_step,
     sync_batch_stats,
     save_checkpoint,
@@ -99,6 +102,14 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   logging.info(config)
 
   rng = random.PRNGKey(config.seed)
+
+  if hasattr(config, 'admm'):
+    if config.admm is True:
+      admm_opt = True
+    else:
+      admm_opt = False
+  else:
+    admm_opt = False
 
   if config.batch_size % jax.device_count() > 0:
     raise ValueError('Batch size (' + str(config.batch_size) + ') must be \
@@ -243,6 +254,19 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   # step_offset > 0 if restarting from checkpoint
   step_offset = int(state.step)
 
+  if admm_opt:
+    tmp_parmas = unfreeze(state.params)
+    # variable splitting
+    tmp_parmas['params_admm'] = state.params['params']
+    tmp_parmas['quant_params_admm'] = state.params['quant_params']
+    tmp_parmas['admm_y'] = jnp.zeros((int(np.sum(jax.tree_util.tree_flatten(
+        jax.tree_map(lambda x: np.prod(x.shape), state.params['params']))[
+        0]) + np.sum(jax.tree_util.tree_flatten(
+            jax.tree_map(lambda x: np.prod(x.shape),
+                         state.params['quant_params']))[0])),))
+
+    state = state.replace(params=freeze(tmp_parmas),
+                          opt_state=state.tx.init(freeze(tmp_parmas)))
   state = jax_utils.replicate(state)
   # Debug note:
   # 1. Make above line a comment "state = jax_utils.replicate(state)".
@@ -252,17 +276,31 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   # 5. Uncomment JIT configs at the top.
   # 6. Deactivate logging handler.
 
-  p_train_step = jax.pmap(
-      functools.partial(
-          train_step,
-          learning_rate_fn=learning_rate_fn,
-          decay_strength_fn=decay_strength_fn,
-          weight_decay=config.weight_decay,
-          quant_target=config.quant_target,
-          smoothing=config.smoothing,
-      ),
-      axis_name='batch',
-  )
+  if admm_opt:
+    p_train_step = jax.pmap(
+        functools.partial(
+            train_step_admm,
+            learning_rate_fn=learning_rate_fn,
+            decay_strength_fn=decay_strength_fn,
+            weight_decay=config.weight_decay,
+            quant_target=config.quant_target,
+            smoothing=config.smoothing,
+            rho=config.rho,
+        ),
+        axis_name='batch',
+    )
+  else:
+    p_train_step = jax.pmap(
+        functools.partial(
+            train_step,
+            learning_rate_fn=learning_rate_fn,
+            decay_strength_fn=decay_strength_fn,
+            weight_decay=config.weight_decay,
+            quant_target=config.quant_target,
+            smoothing=config.smoothing,
+        ),
+        axis_name='batch',
+    )
 
   p_eval_step = jax.pmap(
       functools.partial(
@@ -332,7 +370,12 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     # evalaute when constraints are fullfilled
     if 'act_mb' in config.quant_target and 'weight_mb' in config.quant_target:
       # evaluate network size after gradients are applied.
-      metrics_size = p_eval_step(state, batch)
+      if admm_opt:
+        eval_state = state.replace(params={
+                                   'params': state.params['params'],
+                                   'quant_params': state.params['quant_params']
+                                   })
+      metrics_size = p_eval_step(eval_state, batch)
       weight_cond = (
           metrics_size['weight_size'].mean() <= config.quant_target.weight_mb
       )
@@ -348,9 +391,14 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
           eval_metrics = []
           # sync batch statistics across replicas
           state = sync_batch_stats(state)
+          if admm_opt:
+            eval_state = state.replace(params={
+                                       'params': state.params['params'],
+                                       'quant_params':
+                                       state.params['quant_params']})
           for _ in range(steps_per_eval):
             eval_batch = next(eval_iter)
-            size_metrics = p_eval_step(state, eval_batch)
+            size_metrics = p_eval_step(eval_state, eval_batch)
             eval_metrics.append(size_metrics)
           eval_metrics = common_utils.stack_forest(eval_metrics)
           summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
@@ -383,9 +431,14 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
       # sync batch statistics across replicas
       state = sync_batch_stats(state)
+      if admm_opt:
+        eval_state = state.replace(params={
+                                   'params': state.params['params'],
+                                   'quant_params':
+                                   state.params['quant_params']})
       for _ in range(steps_per_eval):
         eval_batch = next(eval_iter)
-        metrics = p_eval_step(state, eval_batch)
+        metrics = p_eval_step(eval_state, eval_batch)
         eval_metrics.append(metrics)
       eval_metrics = common_utils.stack_forest(eval_metrics)
       summary = jax.tree_map(lambda x: x.mean(), eval_metrics)

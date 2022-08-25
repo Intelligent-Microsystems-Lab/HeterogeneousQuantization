@@ -33,8 +33,9 @@ def create_input_iter_cifar10(dataset_builder, batch_size, dtype, train,
   it = jax_utils.prefetch_to_device(it, 2)
   return it
 
+
 def create_input_iter_mnist(dataset_builder, batch_size, dtype, train,
-                              cache, mean_rgb, std_rgb):
+                            cache, mean_rgb, std_rgb):
   ds = create_split_mnist(
       dataset_builder, batch_size, dtype=dtype,
       train=train, cache=cache, mean_rgb=mean_rgb, std_rgb=std_rgb)
@@ -328,8 +329,9 @@ def create_split_cifar10(dataset_builder, batch_size, train, dtype,
 
   return ds
 
+
 def create_split_mnist(dataset_builder, batch_size, train, dtype,
-                         cache, mean_rgb, std_rgb):
+                       cache, mean_rgb, std_rgb):
   """Creates a split from the MNIST dataset using TensorFlow Datasets.
   Args:
     dataset_builder: TFDS dataset builder for CIFAR10.
