@@ -222,7 +222,7 @@ def clip_quant_vals(params, quant_configs):
   quant_configs = unfreeze(quant_configs)
   quant_configs['placeholder'] = jnp.sum(jnp.ones((1,)))
   quant_configs = freeze(quant_configs)
-  return jax.tree_util.tree_multimap(clip_single_leaf_params, params,
+  return jax.tree_map(clip_single_leaf_params, params,
                                      quant_configs,
                                      is_leaf=parametric_d_xmax_is_leaf)
 
@@ -243,7 +243,7 @@ def clip_single_leaf_grads(x, params):
 
 
 def clip_quant_grads(grads, quant_params):
-  return jax.tree_util.tree_multimap(clip_single_leaf_grads, grads,
+  return jax.tree_map(clip_single_leaf_grads, grads,
                                      quant_params,
                                      is_leaf=parametric_d_xmax_is_leaf)
 

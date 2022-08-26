@@ -1,6 +1,5 @@
-# IMSL Lab - University of Notre Dame
-# Author: Clemens JS Schaefer
-# Originally copied from https://github.com/google/flax/tree/main/examples
+# IMSL Lab - University of Notre Dame Author: Clemens JS Schaefer Originally copied from 
+# https://github.com/google/flax/tree/main/examples
 
 """Default Hyperparameter configuration."""
 
@@ -56,7 +55,7 @@ def get_config():
   config.pretrained = None  # "../../pretrained_efficientnet/enet-lite0_best"
   # "../../pretrained_efficientnet/efficientnet-lite0"
   # "gs://imagenet_clemens/enet-lite0_pre/efficientnet-lite0_mixed_bits_5"
-  config.pretrained_quant = "/afs/crc.nd.edu/user/c/cschaef6/mnist_res/bits4/best"
+  config.pretrained_quant = "gs://imagenet_clemens/mnist_res/bits4/best"  #"/afs/crc.nd.edu/user/c/cschaef6/mnist_res/bits4/best"
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.
