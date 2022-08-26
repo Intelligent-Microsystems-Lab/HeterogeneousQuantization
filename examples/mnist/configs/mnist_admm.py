@@ -36,9 +36,9 @@ def get_config():
   config.num_steps = 15 # opt steps for admm steps
   config.optimizer = 'rmsprop'
   config.admm = True
-  config.learning_rate = 1e-5 #0.005  # 0.0001
+  config.learning_rate = 1e-4 #0.005  # 0.0001
   config.lr_boundaries_scale = None
-  config.warmup_epochs = 2.0
+  config.warmup_epochs = 10.0
   config.momentum = 0.9
   config.batch_size = 1024
   config.eval_batch_size = 4096
@@ -46,7 +46,7 @@ def get_config():
   config.nesterov = True
   config.smoothing = 0.
 
-  config.num_epochs = 50
+  config.num_epochs = 40
   config.log_every_steps = 256
 
   config.cache = True
