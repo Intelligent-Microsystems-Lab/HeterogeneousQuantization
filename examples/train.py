@@ -277,8 +277,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   # 6. Deactivate logging handler.
 
   if admm_opt:
-    p_train_step = jax.pmap(
-        functools.partial(
+    p_train_step = jax.jit(functools.partial(
             train_step_admm,
             learning_rate_fn=learning_rate_fn,
             decay_strength_fn=decay_strength_fn,
@@ -286,9 +285,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
             quant_target=config.quant_target,
             smoothing=config.smoothing,
             rho=config.rho,
-        ),
-        axis_name='batch',
-    )
+            dataloader=train_iter,
+        ))
   else:
     p_train_step = jax.pmap(
         functools.partial(
@@ -372,8 +370,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       # evaluate network size after gradients are applied.
       if admm_opt:
         eval_state = state.replace(params={
-                                   'params': state.params['params'],
-                                   'quant_params': state.params['quant_params']
+                                   'params': state.params['params_admm'],
+                                   'quant_params': state.params['quant_params_admm']
                                    })
       metrics_size = p_eval_step(eval_state, batch)
       weight_cond = (
@@ -393,9 +391,9 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
           state = sync_batch_stats(state)
           if admm_opt:
             eval_state = state.replace(params={
-                                       'params': state.params['params'],
+                                       'params': state.params['params_admm'],
                                        'quant_params':
-                                       state.params['quant_params']})
+                                       state.params['quant_params_admm']})
           for _ in range(steps_per_eval):
             eval_batch = next(eval_iter)
             size_metrics = p_eval_step(eval_state, eval_batch)
@@ -433,9 +431,9 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       state = sync_batch_stats(state)
       if admm_opt:
         eval_state = state.replace(params={
-                                   'params': state.params['params'],
+                                   'params': state.params['params_admm'],
                                    'quant_params':
-                                   state.params['quant_params']})
+                                   state.params['quant_params_admm']})
       for _ in range(steps_per_eval):
         eval_batch = next(eval_iter)
         metrics = p_eval_step(eval_state, eval_batch)

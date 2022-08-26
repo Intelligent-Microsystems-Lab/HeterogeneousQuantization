@@ -33,10 +33,10 @@ def get_config():
   config.stddev_rgb = [128.0]
   config.augment_name = 'plain'
 
-  config.rho = 1.0
+  config.rho = 1.8
   config.optimizer = 'rmsprop'
   config.admm = True
-  config.learning_rate = 0.005  # 0.0001
+  config.learning_rate = 1e-4 #0.005  # 0.0001
   config.lr_boundaries_scale = None
   config.warmup_epochs = 2.0
   config.momentum = 0.9
@@ -79,36 +79,21 @@ def get_config():
 
   config.quant.g_scale = 5e-3
 
+
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()
   config.quant.mbconv.weight = partial(
-      parametric_d_xmax, init_fn=partial(max_init, axis=(0, 1, 2)), round_fn=round_ste, bitwidth_min=1)
+      parametric_d_xmax, init_fn=partial(gaussian_init, axis=(0, 1, 2)), round_fn=round_ewgs, bitwidth_min=1)
   config.quant.mbconv.act = partial(parametric_d_xmax, act=True, init_fn=partial(
-      max_init), round_fn=round_ste, bitwidth_min=1, d_max=8)
+      percentile_init, perc=99.9), round_fn=round_invtanh, bitwidth_min=1, d_max=8)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
   config.quant.dense.weight = partial(
-      parametric_d_xmax, init_fn=max_init, round_fn=round_ste, bitwidth_min=1)
+      parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
   config.quant.dense.act = partial(parametric_d_xmax, act=True, init_fn=partial(
-      max_init,), round_fn=round_ste, bitwidth_min=1, d_max=8)
+      percentile_init, perc=99.9), round_fn=round_invtanh, bitwidth_min=1, d_max=8)
   config.quant.dense.bias = partial(
-      parametric_d_xmax, init_fn=max_init, round_fn=round_ste, bitwidth_min=1)
-
-  # # Conv in MBConv blocks.
-  # config.quant.mbconv = ml_collections.ConfigDict()
-  # config.quant.mbconv.weight = partial(
-  #     parametric_d_xmax, init_fn=partial(gaussian_init, axis=(0, 1, 2)), round_fn=round_ewgs, bitwidth_min=1)
-  # config.quant.mbconv.act = partial(parametric_d_xmax, act=True, init_fn=partial(
-  #     percentile_init, perc=99.9), round_fn=round_invtanh, bitwidth_min=1, d_max=8)
-
-  # # Final linear layer.
-  # config.quant.dense = ml_collections.ConfigDict()
-  # config.quant.dense.weight = partial(
-  #     parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
-  # config.quant.dense.act = partial(parametric_d_xmax, act=True, init_fn=partial(
-  #     percentile_init, perc=99.9), round_fn=round_invtanh, bitwidth_min=1, d_max=8)
-  # config.quant.dense.bias = partial(
-  #     parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
+      parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
 
   return config

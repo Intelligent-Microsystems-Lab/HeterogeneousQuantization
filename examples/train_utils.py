@@ -9,6 +9,7 @@ from flax.training import checkpoints
 from flax.training import common_utils
 from flax.training import train_state
 from flax.core import freeze, unfreeze
+from flax import jax_utils
 
 import jax
 from jax import lax
@@ -455,14 +456,16 @@ def create_train_state(rng, config: ml_collections.ConfigDict,
 
 def train_step_admm(state, batch, rng, b_quant_params, learning_rate_fn,
                     decay_strength_fn, weight_decay, quant_target,
-                    smoothing, rho):
+                    smoothing, rho, dataloader):
   """Perform a single training step."""
-  rng, prng = jax.random.split(rng, 2)
   step = state.step
+  rng = rng[0]
+  num_steps = 10
 
   def loss_fn(params_ce, params_admm, inputs, targets, quant_params_ce,
-              quant_params_admm):
+              quant_params_admm, state, rng):
     """loss function used for training."""
+    rng, prng = jax.random.split(rng, 2)
     logits, new_model_state = state.apply_fn({'params': params_ce,
                                               'quant_params': quant_params_ce,
                                               'batch_stats': state.batch_stats,
@@ -498,19 +501,16 @@ def train_step_admm(state, batch, rng, b_quant_params, learning_rate_fn,
     if hasattr(quant_target, 'weight_mb'):
       size_weight = jnp.sum(jnp.array(jax.tree_util.tree_flatten(
           new_model_state['weight_size'])[0])) / quant_target.size_div
-      size_weight_penalty += quant_target.weight_penalty * \
-          jax.nn.relu(size_weight - quant_target.weight_mb) ** 2
+      size_weight_penalty += jax.nn.relu(size_weight - quant_target.weight_mb) ** 2 # quant_target.weight_penalty * \
     if hasattr(quant_target, 'act_mb'):
       if quant_target.act_mode == 'sum':
         size_act = jnp.sum(jnp.array(jax.tree_util.tree_flatten(
             new_model_state['act_size'])[0])) / quant_target.size_div
-        size_act_penalty += quant_target.act_penalty * \
-            jax.nn.relu(size_act - quant_target.act_mb) ** 2
+        size_act_penalty += jax.nn.relu(size_act - quant_target.act_mb) ** 2 # quant_target.act_penalty * \
       elif quant_target.act_mode == 'max':
         size_act = max_custom_grad(jnp.array(jax.tree_util.tree_flatten(
             new_model_state['act_size'])[0])) / quant_target.size_div
-        size_act_penalty += quant_target.act_penalty * \
-            jax.nn.relu(size_act - quant_target.act_mb) ** 2
+        size_act_penalty += jax.nn.relu(size_act - quant_target.act_mb) ** 2 # quant_target.act_penalty * \
       else:
         raise Exception(
             'Unrecongized quant act mode, either sum or \
@@ -538,57 +538,85 @@ def train_step_admm(state, batch, rng, b_quant_params, learning_rate_fn,
   lr = learning_rate_fn(step)
 
   # minimize ce problem
-  grad_fn = jax.value_and_grad(loss_fn, argnums=[0, 4], has_aux=True)
-  aux, grads = grad_fn(
-      state.params['params'], state.params['params_admm'], batch['image'],
-      batch['label'],
-      state.params['quant_params'], state.params['quant_params_admm'])
-  new_model_state, logits, _, _, _, _, _ = aux[1]
-  grads = (grads[0], clip_quant_grads(grads[1], state.params['quant_params']))
-  grads = lax.pmean(grads, axis_name='batch')
 
-  state = state.apply_gradients(
-      grads=freeze({'admm_y': jnp.zeros_like(state.params['admm_y']),
-                    'params': grads[0], 'params_admm': jax.tree_map(
-          lambda x: jnp.zeros_like(
-              x), grads[0],), 'quant_params': grads[1],
-          'quant_params_admm': jax.tree_map(lambda x:
-                                            jnp.zeros_like(x), grads[1]), }),
-      batch_stats=new_model_state['batch_stats'],
-      weight_size=new_model_state['weight_size'],
-      act_size=new_model_state['act_size'],
-      quant_config=new_model_state['quant_config'])
-  tmp_state = unfreeze(state.params)
-  tmp_state['quant_params'] = freeze(clip_quant_vals(
-      freeze(tmp_state['quant_params']), state.quant_config))
-  state = state.replace(params=freeze(tmp_state))
+  def ce_step(state, batch, prng):
+    grad_fn = jax.value_and_grad(loss_fn, argnums=[0, 4], has_aux=True)
+    aux, grads = grad_fn(
+        state.params['params'], state.params['params_admm'], batch['image'],
+        batch['label'],
+        state.params['quant_params'], state.params['quant_params_admm'], state, prng)
+    new_model_state, logits, _, _, _, _, _ = aux[1]
+    grads = (grads[0], clip_quant_grads(grads[1], state.params['quant_params']))
+    grads = lax.pmean(grads, axis_name='batch')
+
+    state = state.apply_gradients(
+        grads=freeze({'admm_y': jnp.zeros_like(state.params['admm_y']),
+                      'params': grads[0], 'params_admm': jax.tree_map(
+            lambda x: jnp.zeros_like(
+                x), grads[0],), 'quant_params': grads[1],
+            'quant_params_admm': jax.tree_map(lambda x:
+                                              jnp.zeros_like(x), grads[1]), }),
+        batch_stats=new_model_state['batch_stats'],
+        weight_size=new_model_state['weight_size'],
+        act_size=new_model_state['act_size'],
+        quant_config=new_model_state['quant_config'])
+    tmp_state = unfreeze(state.params)
+    tmp_state['quant_params'] = freeze(clip_quant_vals(
+        freeze(tmp_state['quant_params']), state.quant_config))
+    return state.replace(params=freeze(tmp_state))
+
+  p_ce_step = jax.pmap(
+      ce_step,
+      axis_name='batch',
+  )
+
+  for i in range(num_steps):
+    batch = next(dataloader)
+    rng_list = jax.random.split(rng, jax.local_device_count() + 1)
+    rng = rng_list[0]
+    state = p_ce_step(state, batch, rng_list[1:])
+
 
   # minimize size problem
-  grad_fn = jax.value_and_grad(loss_fn, argnums=[1, 5], has_aux=True)
-  aux, grads = grad_fn(
-      state.params['params'], state.params['params_admm'], batch['image'],
-      batch['label'],
-      state.params['quant_params'], state.params['quant_params_admm'])
-  grads = (grads[0], clip_quant_grads(grads[1], state.params['quant_params']))
-  grads = lax.pmean(grads, axis_name='batch')
+  def size_step(state, batch, prng):
+    grad_fn = jax.value_and_grad(loss_fn, argnums=[1, 5], has_aux=True)
+    aux, grads = grad_fn(
+        state.params['params'], state.params['params_admm'], batch['image'],
+        batch['label'],
+        state.params['quant_params'], state.params['quant_params_admm'], state, prng)
+    new_model_state, logits, _, _, _, _, _ = aux[1]
+    grads = (grads[0], clip_quant_grads(grads[1], state.params['quant_params']))
+    grads = lax.pmean(grads, axis_name='batch')
 
-  state = state.apply_gradients(
-      grads=freeze({'admm_y': jnp.zeros_like(state.params['admm_y']),
-                    'params': jax.tree_map(lambda x: jnp.zeros_like(
-                        x), grads[0],), 'params_admm': grads[0],
-                    'quant_params': jax.tree_map(lambda x: jnp.zeros_like(x),
-                                                 grads[1]),
-                    'quant_params_admm': grads[1], }),
-      batch_stats=new_model_state['batch_stats'],
-      weight_size=new_model_state['weight_size'],
-      act_size=new_model_state['act_size'],
-      quant_config=new_model_state['quant_config'])
-  tmp_state = unfreeze(state.params)
-  tmp_state['quant_params'] = freeze(clip_quant_vals(
-      freeze(tmp_state['quant_params']), state.quant_config))
-  state = state.replace(params=freeze(tmp_state))
+    state = state.apply_gradients(
+        grads=freeze({'admm_y': jnp.zeros_like(state.params['admm_y']),
+                      'params': jax.tree_map(lambda x: jnp.zeros_like(
+                          x), grads[0],), 'params_admm': grads[0],
+                      'quant_params': jax.tree_map(lambda x: jnp.zeros_like(x),
+                                                   grads[1]),
+                      'quant_params_admm': grads[1], }),
+        batch_stats=new_model_state['batch_stats'],
+        weight_size=new_model_state['weight_size'],
+        act_size=new_model_state['act_size'],
+        quant_config=new_model_state['quant_config'])
+    tmp_state = unfreeze(state.params)
+    tmp_state['quant_params'] = freeze(clip_quant_vals(
+        freeze(tmp_state['quant_params']), state.quant_config))
+    return state.replace(params=freeze(tmp_state)), logits, batch['label'], new_model_state, aux
+
+  p_size_step = jax.pmap(
+      size_step,
+      axis_name='batch',
+  )
+
+  for i in range(num_steps):
+    batch = next(dataloader)
+    rng_list = jax.random.split(rng, jax.local_device_count() + 1)
+    rng = rng_list[0]
+    state, logits, labels, new_model_state, aux = p_size_step(state, batch, rng_list[1:])
 
   # update multiplier
+  state = jax_utils.unreplicate(state)
   tmp_state = unfreeze(state.params)
   constraint_agreement = jnp.concatenate([jnp.concatenate(
       jax.tree_util.tree_flatten(jax.tree_map(lambda x, y: (x - y).flatten(),
@@ -602,8 +630,10 @@ def train_step_admm(state, batch, rng, b_quant_params, learning_rate_fn,
   tmp_state['admm_y'] = state.params['admm_y'] + rho * constraint_agreement
   state = state.replace(params=freeze(tmp_state))
 
+  state = jax_utils.replicate(state)
+
   metrics = compute_metrics(
-      logits, batch['label'], new_model_state, quant_target.size_div,
+      jnp.reshape(logits, (-1, logits.shape[-1])), jnp.reshape(labels, (-1)), new_model_state, quant_target.size_div,
       smoothing)
   metrics['learning_rate'] = lr
   metrics['final_loss'] = aux[1][-4]
