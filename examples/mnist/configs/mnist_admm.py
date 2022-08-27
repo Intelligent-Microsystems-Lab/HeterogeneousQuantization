@@ -32,7 +32,7 @@ def get_config():
   config.stddev_rgb = [128.0]
   config.augment_name = 'plain'
 
-  config.rho = 1.8
+  config.rho = 1.5 # sweep value
   config.num_steps = 15 # opt steps for admm steps
   config.optimizer = 'rmsprop'
   config.admm = True
