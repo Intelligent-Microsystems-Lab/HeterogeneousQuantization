@@ -177,8 +177,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   learning_rate_fn = create_learning_rate_fn(
       config, steps_per_epoch)
 
-  decay_strength_fn = create_penalty_fn(
-      config, steps_per_epoch)
+  decay_strength_fn = lambda x: 0.
 
   rng, subkey = jax.random.split(rng, 2)
   state = create_train_state(
@@ -254,19 +253,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   # step_offset > 0 if restarting from checkpoint
   step_offset = int(state.step)
 
-  if admm_opt:
-    tmp_parmas = unfreeze(state.params)
-    # variable splitting
-    tmp_parmas['params_admm'] = state.params['params']
-    tmp_parmas['quant_params_admm'] = state.params['quant_params']
-    tmp_parmas['admm_y'] = jnp.zeros((int(np.sum(jax.tree_util.tree_flatten(
-        jax.tree_map(lambda x: np.prod(x.shape), state.params['params']))[
-        0]) + np.sum(jax.tree_util.tree_flatten(
-            jax.tree_map(lambda x: np.prod(x.shape),
-                         state.params['quant_params']))[0])),))
-
-    state = state.replace(params=freeze(tmp_parmas),
-                          opt_state=state.tx.init(freeze(tmp_parmas)))
   state = jax_utils.replicate(state)
   # Debug note:
   # 1. Make above line a comment "state = jax_utils.replicate(state)".
@@ -284,19 +270,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   #           smoothing=config.smoothing,
   #           rho=config.rho,
   #           dataloader=train_iter,
-  if admm_opt:
-    p_train_step = admm(
-            learning_rate_fn,
-            decay_strength_fn,
-            config.weight_decay,
-            config.quant_target,
-            config.smoothing,
-            config.rho,
-            train_iter,
-            config.num_steps,
-        ).train_step
-  else:
-    p_train_step = jax.pmap(
+  p_train_step = jax.pmap(
         functools.partial(
             train_step,
             learning_rate_fn=learning_rate_fn,
@@ -350,6 +324,14 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     hooks += [periodic_actions.Profile(num_profile_steps=5, logdir=workdir)]
   train_metrics_last_t = time.time()
   logging.info('Initial compilation, this might take some minutes...')
+
+
+  # progressive act quant
+  # keep max value constant! change step size.
+
+  # progressive wgt quant
+
+
   for step, batch in zip(range(int(step_offset),
                                int(num_steps)), train_iter):
 
@@ -372,53 +354,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       h(step)
     if step == step_offset:
       logging.info('Initial compilation completed.')
-
-    # evalaute when constraints are fullfilled
-    if 'act_mb' in config.quant_target and 'weight_mb' in config.quant_target:
-      # evaluate network size after gradients are applied.
-      if admm_opt:
-        eval_state = state.replace(params={
-                                   'params': state.params['params'],
-                                   'quant_params': state.params['quant_params']
-                                   })
-      else:
-        eval_state = state
-      metrics_size = p_eval_step(eval_state, batch)
-      weight_cond = (
-          metrics_size['weight_size'].mean() <= config.quant_target.weight_mb
-      )
-      act_cond = (((config.quant_target.act_mode == 'max'
-                    ) and (
-          metrics_size['act_size_max'].mean() <= config.quant_target.act_mb)
-      ) or ((config.quant_target.act_mode == 'sum') and (
-          metrics_size['act_size_sum'].mean() <= config.quant_target.act_mb)
-      ))
-      if weight_cond and act_cond:
-        evaled_steps += 1
-        if (evaled_steps % 5) == 0:
-          eval_metrics = []
-          # sync batch statistics across replicas
-          state = sync_batch_stats(state)
-          if admm_opt:
-            eval_state = state.replace(params={
-                                       'params': state.params['params'],
-                                       'quant_params':
-                                       state.params['quant_params']})
-          else:
-            eval_state = state
-          for _ in range(steps_per_eval):
-            eval_batch = next(eval_iter)
-            size_metrics = p_eval_step(eval_state, eval_batch)
-            eval_metrics.append(size_metrics)
-          eval_metrics = common_utils.stack_forest(eval_metrics)
-          summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
-          if summary['accuracy'] > eval_best:
-            save_checkpoint(state, workdir + '/best')
-            logging.info('!!! Saved new best model with accuracy %.4f weight'
-                         'size %.4f max act %.4f sum act %.4f',
-                         summary['accuracy'], summary['weight_size'],
-                         summary['act_size_max'], summary['act_size_sum'])
-            eval_best = summary['accuracy']
 
     if config.get('log_every_steps'):
       train_metrics.append(metrics)
@@ -446,8 +381,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
                                    'params': state.params['params'],
                                    'quant_params':
                                    state.params['quant_params']})
-      else:
-        eval_state = state
       for _ in range(steps_per_eval):
         eval_batch = next(eval_iter)
         metrics = p_eval_step(eval_state, eval_batch)
@@ -459,10 +392,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       writer_eval.write_scalars(
           step + 1, {f'{key}': val for key, val in summary.items()})
       writer_eval.flush()
-      if (((('act_mb' not in config.quant_target
-             ) and ('weight_mb' not in config.quant_target
-                    ))) and (
-              summary['accuracy'] > eval_best)):
+      if summary['accuracy'] > eval_best:
         save_checkpoint(state, workdir + '/best')
         logging.info('!!!! Saved new best model with accuracy %.4f',
                      summary['accuracy'])
