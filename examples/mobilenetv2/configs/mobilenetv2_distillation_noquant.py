@@ -32,12 +32,12 @@ def get_config():
   config.stddev_rgb = [128.0, 128.0, 128.0]
   config.augment_name = 'plain'
 
-  config.optimizer = 'rmsprop'
-  config.learning_rate = 0.0000125  # 0.0001
+  config.optimizer = 'sgd'
+  config.learning_rate = 0.005  # 0.0000125  # 0.0001
   config.lr_boundaries_scale = None
-  config.warmup_epochs = 2.0
+  config.warmup_epochs = 7.0
   config.momentum = 0.9
-  config.batch_size = 1024
+  config.batch_size = 1024  # 1024
   config.eval_batch_size = 4096
   config.weight_decay = 0.00001
   config.nesterov = True

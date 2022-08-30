@@ -25,6 +25,7 @@ import input_pipeline
 import models
 
 from flax.training import common_utils
+from flax.training import checkpoints
 
 import jax
 import jax.numpy as jnp
@@ -177,7 +178,8 @@ def train_step(state, batch, rng, logits_tgt, learning_rate_fn,
         logits=logits, labels=one_hot_labels))
 
     loss += -1 * jnp.mean(jnp.sum(jax.nn.softmax(logits_tgt, axis=-1)
-                          * jax.nn.log_softmax(logits, axis=-1), axis=-1))
+                                  * jax.nn.log_softmax(logits, axis=-1),
+                                  axis=-1))
 
     return loss, (new_model_state, logits)
 
@@ -191,6 +193,7 @@ def train_step(state, batch, rng, logits_tgt, learning_rate_fn,
   # Re-use same axis_name as in the call to `pmap(...train_step...)` below.
   grads = lax.pmean(grads, axis_name='batch')
 
+  # no quant params update
   grads = (grads[0], jax.tree_util.tree_map(
       lambda x: x * 0., grads[1]))
 
@@ -202,7 +205,7 @@ def train_step(state, batch, rng, logits_tgt, learning_rate_fn,
   metrics['learning_rate'] = lr
   new_state = state.apply_gradients(
       grads={'params': grads[0], 'quant_params': grads[1]},
-      batch_stats=new_model_state['batch_stats'],
+      batch_stats=new_model_state['batch_stats'],  # state.batch_size,#
       weight_size=new_model_state['weight_size'],
       act_size=new_model_state['act_size'],
       quant_config=new_model_state['quant_config'])
@@ -228,7 +231,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   writer_eval = metric_writers.create_default_writer(
       logdir=workdir + '/eval', just_logging=jax.process_index() != 0)
 
-  logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
+  # logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
   logging.info('Git commit: ' + subprocess.check_output(
       ['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
   logging.info(config)
@@ -291,8 +294,11 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       subkey, config, model, config.image_size, learning_rate_fn)
 
   # restore from checkpoint.
-  state = restore_checkpoint(state, config.restore_path)
-  state = state.replace(step=0)
+  # state = restore_checkpoint(state, config.restore_path)
+  state = state.replace(params=checkpoints.restore_checkpoint(
+      config.restore_path + '_w', state.params),
+      batch_stats=checkpoints.restore_checkpoint(
+      config.restore_path + '_bs', state.batch_stats))
 
   state = restore_checkpoint(state, workdir)
   # step_offset > 0 if restarting from checkpoint
@@ -367,6 +373,9 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     eval_record.append(jnp.argmax(logits, axis=-1) == eval_batch['label'])
 
     metrics = p_eval_step(state, eval_batch)
+    # Debug
+    # metrics = p_eval_step(state, {'image': eval_batch['image'][0, :, :, :],
+    #             'label': eval_batch['label'][0]})
     eval_metrics.append(metrics)
 
   logging.info('Teacher model accuracy %.5f', np.mean(eval_record) * 100)
@@ -391,6 +400,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     logits = p_teacher_logits(batch['image2'])
     state, metrics = p_train_step(state, batch, rng_list[1:], logits)
 
+    # print(jnp.mean(metrics['loss']))
     # # Debug
     # state, metrics = p_train_step(
     #     state, {'image': batch['image'][0, :, :, :],

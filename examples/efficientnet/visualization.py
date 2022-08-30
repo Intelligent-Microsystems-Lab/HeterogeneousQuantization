@@ -283,7 +283,7 @@ def plot_surrogate():
   meanlineprops = dict(linestyle='-', linewidth=gen_linewidth, color='k')
 
   bp_data = np.stack([y[np.argwhere(x == i)]
-                     for i in np.unique(x)])[:, :, 0].transpose()
+                      for i in np.unique(x)])[:, :, 0].transpose()
   ax.boxplot(bp_data, positions=np.unique(x), boxprops=boxprops,
              whiskerprops=boxprops,
              capprops=boxprops, flierprops=flierprops, medianprops=medianprops,
@@ -475,7 +475,7 @@ def plot_comparison(name):
                     4.058888183, 5.366038329999999, 5.418628173999999,
                     5.787934815]) + 0.084032,
           [51.7965, 51.6317, 47.127300000000005, 33.542899999999996, 32.3385,
-          27.439400000000003, 27.254199999999994, 26.7883], marker='x',
+           27.439400000000003, 27.254199999999994, 26.7883], marker='x',
           label='EfficientNet-Lite0 (Ours)', ms=mw, markeredgewidth=gen_lw,
           linewidth=gen_lw)
 
@@ -556,7 +556,7 @@ def plot_meth_sur():
   meanlineprops = dict(linestyle='-', linewidth=gen_linewidth, color='k')
 
   bp_data = np.stack([y[np.argwhere(x == i)]
-                     for i in np.unique(x)])[:, :, 0].transpose()
+                      for i in np.unique(x)])[:, :, 0].transpose()
   ax[1].boxplot(bp_data, positions=np.unique(x), boxprops=boxprops,
                 whiskerprops=boxprops,
                 capprops=boxprops, flierprops=flierprops,
@@ -692,7 +692,7 @@ def plot_surrogate_24():
   base_x = np.arange(len(names)) + 1
 
   bp_data = np.stack([y[np.argwhere(x == i)]
-                     for i in np.unique(x)])[:, :, 0].transpose()
+                      for i in np.unique(x)])[:, :, 0].transpose()
   ax[0].boxplot(bp_data, positions=np.unique(x), boxprops=boxprops,
                 whiskerprops=boxprops,
                 capprops=boxprops, flierprops=flierprops,
@@ -710,7 +710,7 @@ def plot_surrogate_24():
   base_x = np.arange(len(names)) + 1
 
   bp_data = np.stack([y[np.argwhere(x == i)]
-                     for i in np.unique(x)])[:, :, 0].transpose()
+                      for i in np.unique(x)])[:, :, 0].transpose()
   ax[1].boxplot(bp_data, positions=np.unique(x), boxprops=boxprops,
                 whiskerprops=boxprops,
                 capprops=boxprops, flierprops=flierprops,
