@@ -381,6 +381,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
                                    'params': state.params['params'],
                                    'quant_params': state.params['quant_params']
                                    })
+      else:
+        eval_state = state
       metrics_size = p_eval_step(eval_state, batch)
       weight_cond = (
           metrics_size['weight_size'].mean() <= config.quant_target.weight_mb
@@ -393,7 +395,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       ))
       if weight_cond and act_cond:
         evaled_steps += 1
-        if (evaled_steps % 5) == 0:
+        if (evaled_steps % 50) == 0:
           eval_metrics = []
           # sync batch statistics across replicas
           state = sync_batch_stats(state)
@@ -402,6 +404,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
                                        'params': state.params['params'],
                                        'quant_params':
                                        state.params['quant_params']})
+          else:
+            eval_state = state
           for _ in range(steps_per_eval):
             eval_batch = next(eval_iter)
             size_metrics = p_eval_step(eval_state, eval_batch)
@@ -442,6 +446,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
                                    'params': state.params['params'],
                                    'quant_params':
                                    state.params['quant_params']})
+      else:
+        eval_state = state
       for _ in range(steps_per_eval):
         eval_batch = next(eval_iter)
         metrics = p_eval_step(eval_state, eval_batch)
