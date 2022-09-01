@@ -32,11 +32,11 @@ def get_config():
   config.stddev_rgb = [128.0]
   config.augment_name = 'plain'
 
-  config.rho = 1.5 # sweep value
-  config.num_steps = 15 # opt steps for admm steps
+  config.rho = 1.5  # sweep value
+  config.num_steps = 15  # opt steps for admm steps
   config.optimizer = 'rmsprop'
   config.admm = True
-  config.learning_rate = 1e-4 #0.005  # 0.0001
+  config.learning_rate = 1e-4  # 0.005  # 0.0001
   config.lr_boundaries_scale = None
   config.warmup_epochs = 10.0
   config.momentum = 0.9
@@ -55,7 +55,8 @@ def get_config():
   config.pretrained = None  # "../../pretrained_efficientnet/enet-lite0_best"
   # "../../pretrained_efficientnet/efficientnet-lite0"
   # "gs://imagenet_clemens/enet-lite0_pre/efficientnet-lite0_mixed_bits_5"
-  config.pretrained_quant = "gs://imagenet_clemens/mnist_res/bits4/best"  #"/afs/crc.nd.edu/user/c/cschaef6/mnist_res/bits4/best"
+  # "/afs/crc.nd.edu/user/c/cschaef6/mnist_res/bits4/best"
+  config.pretrained_quant = "gs://imagenet_clemens/mnist_res/bits4/best"
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.
@@ -78,7 +79,6 @@ def get_config():
   config.quant.bits = 4
 
   config.quant.g_scale = 5e-3
-
 
   # Conv in MBConv blocks.
   config.quant.mbconv = ml_collections.ConfigDict()

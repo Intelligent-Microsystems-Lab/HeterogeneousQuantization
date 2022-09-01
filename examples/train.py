@@ -276,7 +276,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   # 5. Uncomment JIT configs at the top.
   # 6. Deactivate logging handler.
 
-
   # learning_rate_fn=learning_rate_fn,
   #           decay_strength_fn=decay_strength_fn,
   #           weight_decay=config.weight_decay,
@@ -286,15 +285,15 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   #           dataloader=train_iter,
   if admm_opt:
     p_train_step = admm(
-            learning_rate_fn,
-            decay_strength_fn,
-            config.weight_decay,
-            config.quant_target,
-            config.smoothing,
-            config.rho,
-            train_iter,
-            config.num_steps,
-        ).train_step
+        learning_rate_fn,
+        decay_strength_fn,
+        config.weight_decay,
+        config.quant_target,
+        config.smoothing,
+        config.rho,
+        train_iter,
+        config.num_steps,
+    ).train_step
   else:
     p_train_step = jax.pmap(
         functools.partial(
