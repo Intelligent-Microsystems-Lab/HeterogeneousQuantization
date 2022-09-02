@@ -39,7 +39,7 @@ def get_config():
   config.optimizer = 'rmsprop'
   config.learning_rate = 0.0000125  # 0.0001
   config.lr_boundaries_scale = None
-  config.warmup_epochs = 2.0
+  config.warmup_epochs = 0.
   config.momentum = 0.9
   config.batch_size = 1024
   config.eval_batch_size = 4096
@@ -47,7 +47,7 @@ def get_config():
   config.nesterov = True
   config.smoothing = .1
 
-  config.num_epochs = 15
+  config.num_epochs = 1
   config.log_every_steps = 256
 
   config.cache = True
