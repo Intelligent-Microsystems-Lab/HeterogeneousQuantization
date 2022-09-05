@@ -32,16 +32,17 @@ def get_config():
   config.stddev_rgb = [128.0, 128.0, 128.0]
   config.augment_name = 'plain'
 
+  config.teacher = 'ViT_B16' #'ViT_B16'
   config.optimizer = 'sgd'
   config.learning_rate = 0.0005  # 0.0000125  # 0.0001
   config.lr_boundaries_scale = None
   config.warmup_epochs = 3.0
   config.momentum = 0.9
-  config.batch_size = 256  # 1024
+  config.batch_size = 1024 # 256  # 1024
   config.eval_batch_size = 4096
-  config.weight_decay = 0.00001
+  config.weight_decay = 2e-5 # 0.00001
   config.nesterov = True
-  config.smoothing = .0
+  config.smoothing = 0. #.1
 
   config.num_epochs = 15
   config.log_every_steps = 256

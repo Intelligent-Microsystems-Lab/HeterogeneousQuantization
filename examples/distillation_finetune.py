@@ -43,6 +43,8 @@ from ml_collections import config_flags
 import train_utils
 import optax
 
+from resnet.configs.resnet101_fp32 import get_config as get_config_resnet101
+
 from train_utils import (
     TrainState,
     create_model,
@@ -175,15 +177,15 @@ def train_step(state, batch, rng, logits_tgt,
         rngs={'dropout': rng})
 
     one_hot_labels = common_utils.onehot(targets, num_classes=logits.shape[1])
-    loss = jnp.mean(optax.softmax_cross_entropy(
+    loss_class = jnp.mean(optax.softmax_cross_entropy(
         logits=logits, labels=one_hot_labels))
     loss += weight_decay * weight_decay_fn(params)
 
-    loss += -1 * jnp.mean(jnp.sum(jax.nn.softmax(logits_tgt, axis=-1)
+    loss_kd = -1 * jnp.mean(jnp.sum(jax.nn.softmax(logits_tgt, axis=-1)
                                   * jax.nn.log_softmax(logits, axis=-1),
                                   axis=-1))
 
-    return loss, (new_model_state, logits)
+    return loss_class + loss_kd, (new_model_state, logits, loss_kd, loss_class)
 
   # lr = learning_rate_fn(step)
 
@@ -195,7 +197,7 @@ def train_step(state, batch, rng, logits_tgt,
   # Re-use same axis_name as in the call to `pmap(...train_step...)` below.
   grads = lax.pmean(grads, axis_name='batch')
 
-  new_model_state, logits = aux[1]
+  new_model_state, logits, loss_kd, loss_class = aux[1]
 
   metrics = train_utils.compute_metrics(
       logits, batch['label'], new_model_state, quant_target.size_div,
@@ -211,6 +213,8 @@ def train_step(state, batch, rng, logits_tgt,
   # metrics['learning_rate'] = lr
   metrics['final_loss'] = aux[0]
   metrics['accuracy'] = metrics['accuracy']
+  metrics['loss_kd'] = loss_kd
+  metrics['loss_class'] = loss_class
 
   return state, metrics
 
@@ -397,23 +401,41 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   eval_best = -1.
 
   # teacher model
-  big_model = "../../pretrained_efficientnet/B_16-i21k-300ep-lr_0.001-aug_" \
-      + "medium1-wd_0.1-do_0.0-sd_0.0--imagenet2012-steps_20k-lr_0.03-" \
-      + "res_384.npz"
-  model_config = models_config.AUGREG_CONFIGS['B_16']
-  model = models_vit.VisionTransformer(
-      num_classes=1000, **model_config)
-  params = checkpoint_vit.load(big_model)
-
-  p_teacher_logits = jax.pmap(
-      lambda x: model.apply({'params': params}, x, train=False),
+  if config.teacher == 'ViT_B16':
+    big_model = "../../pretrained_efficientnet/B_16-i21k-300ep-lr_0.001-aug_" \
+        + "medium1-wd_0.1-do_0.0-sd_0.0--imagenet2012-steps_20k-lr_0.03-" \
+        + "res_384.npz"
+    model_config_t = models_config.AUGREG_CONFIGS['B_16']
+    model_teacher = models_vit.VisionTransformer(
+        num_classes=1000, **model_config_t)
+    params_teacher = checkpoint_vit.load(big_model)
+    p_teacher_logits = jax.pmap(
+      lambda x: model_teacher.apply({'params': params_teacher}, x['image2'], train=False),
       axis_name="batch",
   )
+  elif config.teacher == 'ResNet101':
+    config_teacher = get_config_resnet101()
+    model_cls = getattr(models, 'ResNet101')
+    model_teacher = create_model(
+        model_cls=model_cls, num_classes=config.num_classes, config=config_teacher)
+    rng, subkey = jax.random.split(rng, 2)
+    state_teacher = create_train_state(
+        subkey, config_teacher, model_teacher, config.image_size, learning_rate_fn)
+    state_teacher = restore_checkpoint(state_teacher, 'gs://imagenet_clemens/resnet101/best')
+
+    p_teacher_logits = jax.pmap(
+        lambda x: model_teacher.apply({'params': state_teacher.params['params'],
+                                                'batch_stats': state_teacher.batch_stats,
+                                                }, x['image'], train=False, mutable =[])[0],
+        axis_name="batch",
+    )
+  else:
+    raise Exception('Teacher model not implemented: '+ config.teacher)
   eval_record = []
 
   for _ in range(steps_per_eval):
     eval_batch = next(eval_iter)
-    logits = p_teacher_logits(eval_batch['image2'])
+    logits = p_teacher_logits(eval_batch)
     eval_record.append(jnp.argmax(logits, axis=-1) == eval_batch['label'])
 
     metrics = p_eval_step(state, eval_batch)
@@ -484,10 +506,9 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     rng_list = jax.random.split(rng, jax.local_device_count() + 1)
     rng = rng_list[0]
 
-    logits = p_teacher_logits(batch['image2'])
+    logits = p_teacher_logits(batch)
     state, metrics = p_train_step(state, batch, rng_list[1:], logits)
 
-    # print(jnp.mean(metrics['loss']))
     # # Debug
     # state, metrics = p_train_step(
     #     state, {'image': batch['image'][0, :, :, :],

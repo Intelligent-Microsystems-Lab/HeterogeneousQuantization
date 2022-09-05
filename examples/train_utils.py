@@ -709,8 +709,7 @@ class admm:
       tmp_state = unfreeze(state.params)
       tmp_state['quant_params'] = freeze(clip_quant_vals(
           freeze(tmp_state['quant_params']), state.quant_config))
-      return state.replace(params=freeze(tmp_state)), logits, batch['label'],
-      new_model_state, aux
+      return state.replace(params=freeze(tmp_state)), logits, batch['label'], new_model_state, aux
 
     self.p_size_step = jax.pmap(
         size_step,
