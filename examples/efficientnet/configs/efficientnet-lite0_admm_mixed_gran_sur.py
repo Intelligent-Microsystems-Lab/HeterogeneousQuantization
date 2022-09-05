@@ -34,8 +34,8 @@ def get_config():
   config.augment_name = 'plain'
 
   config.admm = True
-  config.rho = 1.5 # sweep value
-  config.num_steps = 10 # opt steps for admm steps
+  config.rho = 1.5  # sweep value
+  config.num_steps = 10  # opt steps for admm steps
   config.optimizer = 'rmsprop'
   config.learning_rate = 0.0000125  # 0.0001
   config.lr_boundaries_scale = None

@@ -216,6 +216,7 @@ def mobilenetv2_load_pretrained_weights(state, location):
     general_params = {'params': torch_weights,
                       'quant_params': state.params['quant_params']}
     batch_stats = torch_bn_stats
+    quant_params = None
   else:
 
     chk_state = checkpoints.restore_checkpoint(location, None)
@@ -230,7 +231,12 @@ def mobilenetv2_load_pretrained_weights(state, location):
     general_params = {'params': params,
                       'quant_params': state.params['quant_params']}
 
-  return TrainState.create(
+    if 'quant_params' in chk_state['params']:
+      quant_params = chk_state['params']['quant_params']
+    else:
+      quant_params = None
+
+  return quant_params, TrainState.create(
       apply_fn=state.apply_fn,
       params=general_params,
       tx=state.tx,

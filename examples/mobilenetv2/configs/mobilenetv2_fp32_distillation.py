@@ -6,7 +6,6 @@
 
 import ml_collections
 from functools import partial
-from quant import parametric_d_xmax, gaussian_init, percentile_init, round_ewgs, round_invtanh, DuQ
 
 
 def get_config():
@@ -33,17 +32,16 @@ def get_config():
   config.stddev_rgb = [128.0, 128.0, 128.0]
   config.augment_name = 'plain'
 
-  config.optimizer = 'rmsprop'
-  config.learning_rate = 0.00125
+  config.optimizer = 'sgd'
+  config.learning_rate = 0.0005  # 0.0000125  # 0.0001
   config.lr_boundaries_scale = None
-  config.bn_stabilize_epochs = 2.0
-  config.warmup_epochs = 2.0
+  config.warmup_epochs = 3.0
   config.momentum = 0.9
-  config.batch_size = 1024
+  config.batch_size = 256  # 1024
   config.eval_batch_size = 4096
   config.weight_decay = 0.00001
   config.nesterov = True
-  config.smoothing = .1
+  config.smoothing = .0
 
   config.num_epochs = 15
   config.log_every_steps = 256
@@ -51,7 +49,10 @@ def get_config():
   config.cache = True
 
   # Load pretrained weights.
-  config.pretrained = '../../pretrained_mobilenetv2/mobilenetv2_fp32'
+  config.restore_path = "gs://imagenet_clemens/pretrained_mobilenetv2/mobilenetv2_fp32"
+
+  # Load pretrained weights.
+  config.pretrained = None
   config.pretrained_quant = None
 
   # If num_train_steps==-1 then the number of training steps is calculated from
@@ -70,33 +71,33 @@ def get_config():
 
   config.quant = ml_collections.ConfigDict()
 
-  config.quant.bits = 8
+  config.quant.bits = 32
 
-  config.quant.g_scale = 5e-3
+  config.quant.g_scale = 0.
 
   # Conv for stem layer.
   config.quant.stem = ml_collections.ConfigDict()
-  # config.quant.stem.weight = partial(
-  #     parametric_d_xmax, init_fn=partial(gaussian_init, axis=(0, 1, 2)), round_fn=round_ewgs, bitwidth_min=1)
 
-  # Conv in InvertedResidual blocks.
+  # Conv in MBConv blocks.
   config.quant.invertedresidual = ml_collections.ConfigDict()
-  # config.quant.invertedresidual.weight = partial(
-  #     parametric_d_xmax, init_fn=partial(gaussian_init, axis=(0, 1, 2)), round_fn=round_ewgs, bitwidth_min=1)
-  config.quant.invertedresidual.act = partial(DuQ, bits=8)
+
+  # Average quant.
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
-  # config.quant.head.weight = partial(
-  #     parametric_d_xmax, init_fn=partial(gaussian_init, axis=(0, 1, 2)), round_fn=round_ewgs, bitwidth_min=1)
-  config.quant.head.act = partial(DuQ, bits=8)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
-  # config.quant.dense.weight = partial(
-  #    parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
-  config.quant.dense.act = partial(DuQ, bits=8)
-  # config.quant.dense.bias = partial(
-  #     parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
 
   return config
+
+
+
+
+
+
+
+
+
+
+

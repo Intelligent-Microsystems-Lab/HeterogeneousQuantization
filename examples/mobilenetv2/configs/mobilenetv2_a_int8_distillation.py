@@ -6,7 +6,7 @@
 
 import ml_collections
 from functools import partial
-from quant import parametric_d_xmax, gaussian_init, percentile_init, round_ewgs, round_invtanh
+from quant import parametric_d_xmax, gaussian_init, percentile_init, round_ewgs, round_invtanh, DuQ
 
 
 def get_config():
@@ -33,26 +33,25 @@ def get_config():
   config.stddev_rgb = [128.0, 128.0, 128.0]
   config.augment_name = 'plain'
 
-  config.optimizer = 'rmsprop'
-  config.learning_rate = 0.00125
+  config.optimizer = 'sgd'
+  config.learning_rate = 0.0005  # 0.00125
   config.lr_boundaries_scale = None
-  config.bn_stabilize_epochs = 2.0
-  config.warmup_epochs = 2.0
+  config.warmup_epochs = 3.0
   config.momentum = 0.9
   config.batch_size = 1024
   config.eval_batch_size = 4096
-  config.weight_decay = 0.00001
+  config.weight_decay = 0.00004
   config.nesterov = True
-  config.smoothing = .1
+  config.smoothing = .0
 
   config.num_epochs = 15
+  config.bn_epochs = 5
   config.log_every_steps = 256
 
   config.cache = True
 
   # Load pretrained weights.
-  config.pretrained = '../../pretrained_mobilenetv2/mobilenetv2_fp32'
-  config.pretrained_quant = None
+  config.restore_path = "/home/clemens/mbnet_fp32_distill"
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.
@@ -83,22 +82,28 @@ def get_config():
   config.quant.invertedresidual = ml_collections.ConfigDict()
   # config.quant.invertedresidual.weight = partial(
   #     parametric_d_xmax, init_fn=partial(gaussian_init, axis=(0, 1, 2)), round_fn=round_ewgs, bitwidth_min=1)
-  config.quant.invertedresidual.act = partial(parametric_d_xmax, act=True, init_fn=partial(
-      percentile_init, perc=99.9), round_fn=round_invtanh, bitwidth_min=1, d_max=8)
+  # config.quant.invertedresidual.act = partial(parametric_d_xmax, act=True, init_fn=partial(
+  #     percentile_init, perc=99.9), round_fn=round_invtanh, bitwidth_min=1, d_max=8)
+  config.quant.invertedresidual.act = partial(DuQ, act=True, init_fn=partial(
+      percentile_init, perc=99.9), round_fn=round_invtanh)
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
   # config.quant.head.weight = partial(
   #     parametric_d_xmax, init_fn=partial(gaussian_init, axis=(0, 1, 2)), round_fn=round_ewgs, bitwidth_min=1)
-  config.quant.head.act = partial(parametric_d_xmax, act=True, init_fn=partial(
-      percentile_init, perc=99.9), round_fn=round_invtanh, bitwidth_min=1, d_max=8)
+  # config.quant.head.act = partial(parametric_d_xmax, act=True, init_fn=partial(
+  #     percentile_init, perc=99.9), round_fn=round_invtanh, bitwidth_min=1, d_max=8)
+  config.quant.head.act = partial(DuQ, act=True, init_fn=partial(
+      percentile_init, perc=99.9), round_fn=round_invtanh)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
   # config.quant.dense.weight = partial(
-  #    parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
-  config.quant.dense.act = partial(parametric_d_xmax, act=True, init_fn=partial(
-      percentile_init, perc=99.9), round_fn=round_invtanh, bitwidth_min=1, d_max=8)
+  #     parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
+  # config.quant.dense.act = partial(parametric_d_xmax, act=True, init_fn=partial(
+  #     percentile_init, perc=99.9), round_fn=round_invtanh, bitwidth_min=1, d_max=8)
+  config.quant.dense.act = partial(DuQ, act=True, init_fn=partial(
+      percentile_init, perc=99.9), round_fn=round_invtanh)
   # config.quant.dense.bias = partial(
   #     parametric_d_xmax, init_fn=gaussian_init, round_fn=round_ewgs, bitwidth_min=1)
 

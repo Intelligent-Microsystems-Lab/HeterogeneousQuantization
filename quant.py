@@ -426,7 +426,11 @@ class parametric_d(nn.Module):
 
 class DuQ(nn.Module):
   bits: int = 4
+  act: bool = False  # not used, possibly for different init for acts
   g_scale: float = 0.
+  round_fn: Callable = round_ste
+  init_fn: Callable = None
+  maxabs_w: float = None
 
   # Differentiable and unified Quantization (DuQ)
   # Based on PROFIT.
@@ -436,7 +440,7 @@ class DuQ(nn.Module):
 
     @jax.custom_vjp
     def DuQ_round_quant(x, n_lvl):
-      return jnp.round(x * (n_lvl - 1)) / (n_lvl - 1)
+      return self.round_fn(x * (n_lvl - 1), self.g_scale) / (n_lvl - 1)
 
     def DuQ_round_quant_fwd(x, n_lvl):
       return DuQ_round_quant(x, n_lvl), (None,)
@@ -457,14 +461,16 @@ class DuQ(nn.Module):
     c = self.variable('quant_params', 'c', jnp.ones, (1,))
 
     if self.is_mutable_collection('quant_params'):
-      max_val = jnp.abs(x).max()
-      a.value = jnp.log(jnp.exp(max_val * .9) - 1)
-      c.value = jnp.log(jnp.exp(max_val * .9) - 1)
+      max_val = self.init_fn(inputs, bits=self.bits,
+                             sign=sign)  # jnp.abs(x).max()
+      a.value = max_val  # jnp.log(jnp.exp(max_val * .9) - 1)
+      c.value = max_val  # jnp.log(jnp.exp(max_val * .9) - 1)
 
     local_a = jax.nn.softplus(a.value)
     local_c = jax.nn.softplus(c.value)
 
     x = jax.nn.hard_tanh(x / local_a)
+    # step size could be integrated here.
     x = DuQ_round_quant(x, n_lv) * local_c
 
     return x

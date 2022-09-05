@@ -19,13 +19,13 @@ from clu import platform
 from clu import metric_writers
 from clu import periodic_actions
 
+import flax
 from flax import jax_utils
 
 import input_pipeline
 import models
 
 from flax.training import common_utils
-from flax.training import checkpoints
 
 import jax
 import jax.numpy as jnp
@@ -46,13 +46,14 @@ import optax
 from train_utils import (
     TrainState,
     create_model,
-    create_learning_rate_fn,
+    weight_decay_fn,
     create_penalty_fn,
     create_train_state,
     restore_checkpoint,
     eval_step,
     sync_batch_stats,
     save_checkpoint,
+    new_opt,
 )
 
 
@@ -152,12 +153,12 @@ def create_split(dataset_builder, batch_size, train, dtype,
   return ds
 
 
-def train_step(state, batch, rng, logits_tgt, learning_rate_fn,
+def train_step(state, batch, rng, logits_tgt,
                decay_strength_fn, weight_decay, quant_target,
-               smoothing,):
+               smoothing):
   """Perform a single training step."""
   rng, prng = jax.random.split(rng, 2)
-  step = state.step
+  # step = state.step
 
   def loss_fn(params, inputs, targets, quant_params):
     """loss function used for training."""
@@ -176,6 +177,7 @@ def train_step(state, batch, rng, logits_tgt, learning_rate_fn,
     one_hot_labels = common_utils.onehot(targets, num_classes=logits.shape[1])
     loss = jnp.mean(optax.softmax_cross_entropy(
         logits=logits, labels=one_hot_labels))
+    loss += weight_decay * weight_decay_fn(params)
 
     loss += -1 * jnp.mean(jnp.sum(jax.nn.softmax(logits_tgt, axis=-1)
                                   * jax.nn.log_softmax(logits, axis=-1),
@@ -183,7 +185,7 @@ def train_step(state, batch, rng, logits_tgt, learning_rate_fn,
 
     return loss, (new_model_state, logits)
 
-  lr = learning_rate_fn(step)
+  # lr = learning_rate_fn(step)
 
   grad_fn = jax.value_and_grad(loss_fn, argnums=[0, 3], has_aux=True)
   aux, grads = grad_fn(
@@ -193,27 +195,24 @@ def train_step(state, batch, rng, logits_tgt, learning_rate_fn,
   # Re-use same axis_name as in the call to `pmap(...train_step...)` below.
   grads = lax.pmean(grads, axis_name='batch')
 
-  # no quant params update
-  grads = (grads[0], jax.tree_util.tree_map(
-      lambda x: x * 0., grads[1]))
-
   new_model_state, logits = aux[1]
 
   metrics = train_utils.compute_metrics(
       logits, batch['label'], new_model_state, quant_target.size_div,
       smoothing)
-  metrics['learning_rate'] = lr
-  new_state = state.apply_gradients(
+
+  state = state.apply_gradients(
       grads={'params': grads[0], 'quant_params': grads[1]},
-      batch_stats=new_model_state['batch_stats'],  # state.batch_size,#
+      batch_stats=new_model_state['batch_stats'],
       weight_size=new_model_state['weight_size'],
       act_size=new_model_state['act_size'],
       quant_config=new_model_state['quant_config'])
 
+  # metrics['learning_rate'] = lr
   metrics['final_loss'] = aux[0]
   metrics['accuracy'] = metrics['accuracy']
 
-  return new_state, metrics
+  return state, metrics
 
 
 def train_and_evaluate(config: ml_collections.ConfigDict,
@@ -283,28 +282,74 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   model = create_model(
       model_cls=model_cls, num_classes=config.num_classes, config=config)
 
-  learning_rate_fn = create_learning_rate_fn(
-      config, steps_per_epoch)
-
   decay_strength_fn = create_penalty_fn(
       config, steps_per_epoch)
 
   rng, subkey = jax.random.split(rng, 2)
   state = create_train_state(
-      subkey, config, model, config.image_size, learning_rate_fn)
+      subkey, config, model, config.image_size, steps_per_epoch)
 
   # restore from checkpoint.
   # state = restore_checkpoint(state, config.restore_path)
-  state = state.replace(params=checkpoints.restore_checkpoint(
-      config.restore_path + '_w', state.params),
-      batch_stats=checkpoints.restore_checkpoint(
-      config.restore_path + '_bs', state.batch_stats))
+  if config.restore_path:
+    chkpt_quant_params, state = model.load_model_fn(state, config.restore_path)
+
+    # Note: we can load activation quant params and then initialize wgts
+    # because act quant doesnt affect wgt values. However loading wgt quant
+    # and then initilizaing act quant will not work with this implementation.
+
+    # Reinitialize quant params.
+    init_batch = next(train_iter)['image'][0, :, :, :, :]
+    # init_batch = jnp.reshape(init_batch, (-1,) + init_batch.shape[2:])
+    rng, rng1, rng2 = jax.random.split(rng, 3)
+    _, new_state = state.apply_fn({'params': state.params['params'],
+                                   'quant_params':
+                                   state.params['quant_params'],
+                                   'batch_stats': state.batch_stats,
+                                   'quant_config': {}}, init_batch,
+                                  rng=rng1,
+                                  mutable=['batch_stats', 'quant_params',
+                                           'weight_size', 'act_size',
+                                           'quant_config'],
+                                  rngs={'dropout': rng2})
+    state = TrainState.create(apply_fn=state.apply_fn,
+                              params={'params': state.params['params'],
+                                      'quant_params': new_state['quant_params']
+                                      },
+                              tx=state.tx, batch_stats=state.batch_stats,
+                              weight_size=state.weight_size,
+                              act_size=state.act_size,
+                              quant_config=new_state['quant_config'])
+
+    def map_duq(k, v, path):
+      if 'DuQ_1' in path:
+        tmp = chkpt_quant_params
+        for util_k in path.split('/')[1:]:
+          if util_k == 'DuQ_1':
+            tmp = tmp['DuQ_0']
+          else:
+            tmp = tmp[util_k]
+        return tmp[k]
+      else:
+        return v
+
+    def map_nested_fn(fn):
+      '''Recursively apply `fn` to the key-value pairs of a nested dict'''
+      def map_fn(nested_dict, path):
+        return {k: (map_fn(v, path + '/' + k) if (isinstance(v, dict)
+                                                  or isinstance(v, flax.core.FrozenDict)) else fn(k, v, path))
+                for k, v in nested_dict.items()}
+      return map_fn
+
+    state = state.replace(params={'params': state.params['params'],
+                                  'quant_params': map_nested_fn(
+        map_duq)(state.params['quant_params'], '')})
 
   state = restore_checkpoint(state, workdir)
   # step_offset > 0 if restarting from checkpoint
   step_offset = int(state.step)
 
-  state = jax_utils.replicate(state)
+  # state = jax_utils.replicate(state)
   # Debug note:
   # 1. Make above line a comment "state = jax_utils.replicate(state)".
   # 2. In train_util.py make all pmean commands comments.
@@ -316,7 +361,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   p_train_step = jax.pmap(
       functools.partial(
           train_step,
-          learning_rate_fn=learning_rate_fn,
+          # learning_rate_fn=learning_rate_fn,
           decay_strength_fn=decay_strength_fn,
           weight_decay=config.weight_decay,
           quant_target=config.quant_target,
@@ -324,7 +369,6 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       ),
       axis_name='batch',
   )
-
   p_eval_step = jax.pmap(
       functools.partial(
           eval_step,
@@ -385,12 +429,55 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   logging.info('Initial, loss: %.10f, accuracy: %.10f',
                summary['loss'], summary['accuracy'] * 100)
 
+  # BN stabilize
+  logging.info('Start initial BN stabilization')
+  state = new_opt(state, config, steps_per_epoch, bn_stab=True)
+  state = jax_utils.replicate(state)
+  for step, batch in zip(range(config.bn_epochs * steps_per_epoch),
+                         train_iter):
+    rng_list = jax.random.split(rng, jax.local_device_count() + 1)
+    rng = rng_list[0]
+
+    logits = p_teacher_logits(batch['image2'])
+    state, metrics = p_train_step(state, batch, rng_list[1:], logits)
+
+    if config.get('log_every_steps'):
+      if (step + 1) % config.log_every_steps == 0:
+        logging.info('BN stabilization step: ' + str(step))
+        # metrics = common_utils.stack_forest(metrics)
+        summary = jax.tree_map(lambda x: x.mean(), metrics)
+        logging.info(summary)
+
+    if (step + 1) % steps_per_epoch == 0:
+      epoch = (step + 1) // steps_per_epoch
+      eval_metrics = []
+
+      # sync batch statistics across replicas
+      state = sync_batch_stats(state)
+      for _ in range(steps_per_eval):
+        eval_batch = next(eval_iter)
+        metrics = p_eval_step(state, eval_batch)
+        eval_metrics.append(metrics)
+      eval_metrics = common_utils.stack_forest(eval_metrics)
+      summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
+      logging.info('eval epoch: %d, loss: %.4f, accuracy: %.2f',
+                   epoch, summary['loss'], summary['accuracy'] * 100)
+      if summary['accuracy'] > eval_best:
+        save_checkpoint(state, workdir + '/best')
+        logging.info('!!!! Saved new best model with accuracy %.4f',
+                     summary['accuracy'])
+        eval_best = summary['accuracy']
+
   train_metrics = []
   hooks = []
   if jax.process_index() == 0:
     hooks += [periodic_actions.Profile(num_profile_steps=5, logdir=workdir)]
   train_metrics_last_t = time.time()
   logging.info('Initial compilation, this might take some minutes...')
+  state = restore_checkpoint(state, workdir + '/best')
+  state = jax_utils.unreplicate(state)
+  state = new_opt(state, config, steps_per_epoch, bn_stab=False)
+  state = jax_utils.replicate(state)
   for step, batch in zip(range(int(step_offset),
                                int(num_steps)), train_iter):
 
@@ -452,6 +539,47 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     if (step + 1) % steps_per_checkpoint == 0 or step + 1 == num_steps:
       state = sync_batch_stats(state)
       save_checkpoint(state, workdir)
+
+  # BN stabilize
+  logging.info('Final initial BN stabilization')
+  state = restore_checkpoint(state, workdir + '/best')
+  state = jax_utils.unreplicate(state)
+  state = new_opt(state, config, steps_per_epoch, bn_stab=True)
+  state = jax_utils.replicate(state)
+  for step, batch in zip(range(config.bn_epochs * steps_per_epoch),
+                         train_iter):
+    rng_list = jax.random.split(rng, jax.local_device_count() + 1)
+    rng = rng_list[0]
+
+    logits = p_teacher_logits(batch['image2'])
+    state, metrics = p_train_step(state, batch, rng_list[1:], logits)
+
+    if config.get('log_every_steps'):
+      if (step + 1) % config.log_every_steps == 0:
+        logging.info('BN stabilization step: ' + str(step))
+        # metrics = common_utils.stack_forest(metrics)
+        summary = jax.tree_map(lambda x: x.mean(), metrics)
+        logging.info(summary)
+
+    if (step + 1) % steps_per_epoch == 0:
+      epoch = (step + 1) // steps_per_epoch
+      eval_metrics = []
+
+      # sync batch statistics across replicas
+      state = sync_batch_stats(state)
+      for _ in range(steps_per_eval):
+        eval_batch = next(eval_iter)
+        metrics = p_eval_step(state, eval_batch)
+        eval_metrics.append(metrics)
+      eval_metrics = common_utils.stack_forest(eval_metrics)
+      summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
+      logging.info('eval epoch: %d, loss: %.4f, accuracy: %.2f',
+                   epoch, summary['loss'], summary['accuracy'] * 100)
+      if summary['accuracy'] > eval_best:
+        save_checkpoint(state, workdir + '/best')
+        logging.info('!!!! Saved new best model with accuracy %.4f',
+                     summary['accuracy'])
+        eval_best = summary['accuracy']
 
   # Wait until computations are done before exiting
   jax.random.normal(jax.random.PRNGKey(0), ()).block_until_ready()

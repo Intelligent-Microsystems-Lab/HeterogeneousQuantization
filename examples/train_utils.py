@@ -133,7 +133,7 @@ def create_penalty_fn(config: ml_collections.ConfigDict, steps_per_epoch: int):
 
 def create_learning_rate_fn(
         config: ml_collections.ConfigDict,
-        steps_per_epoch: int):
+        steps_per_epoch: int, lr_mult=1.):
   """Create learning rate schedule."""
   if config.lr_boundaries_scale is not None:
     schedule_fn = optax.piecewise_constant_schedule(config.learning_rate, {int(
@@ -144,18 +144,7 @@ def create_learning_rate_fn(
     regimes = []
     transition_points = []
 
-    base_learning_rate = config.learning_rate * config.batch_size / 256.
-
-    # bn_stabilize_epochs
-    if 'bn_stabilize_epochs' in config:
-      regimes.append(
-          optax.linear_schedule(
-              init_value=0., end_value=0.,
-              transition_steps=config.bn_stabilize_epochs * steps_per_epoch)
-      )
-      transition_points.append(
-          epoch_counter + config.bn_stabilize_epochs * steps_per_epoch)
-      epoch_counter += config.bn_stabilize_epochs * steps_per_epoch
+    base_learning_rate = config.learning_rate * config.batch_size / 256. * lr_mult
 
     # warm up
     if 'warmup_epochs' in config:
@@ -407,10 +396,29 @@ def sync_batch_stats(state):
   return state.replace(batch_stats=cross_replica_mean(state.batch_stats))
 
 
-def create_train_state(rng, config: ml_collections.ConfigDict,
-                       model, image_size, learning_rate_fn):
-  """Create initial training state."""
+def map_nested_fn(fn):
+  """Recursively apply `fn` to the key-value pairs of a nested dict
+  Copied from https://optax.readthedocs.io/en/latest/api.html?highlight=multi#multi-transform
+  """
+  def map_fn(nested_dict):
+    return {k: (map_fn(v) if (isinstance(v, dict) and ([*v.keys()] != ['bias', 'scale'])) else fn(k, v))
+            for k, v in nested_dict.items()}
 
+  return map_fn
+
+
+def map_nested_fn2(fn):
+  '''Recursively apply `fn` to the key-value pairs of a nested dict'''
+  def map_fn(nested_dict, path=''):
+    return {k: (map_fn(v, path + '/' + k) if isinstance(v, dict) else fn(k, v, path))
+            for k, v in nested_dict.items()}
+  return map_fn
+
+
+def create_train_state(rng, config: ml_collections.ConfigDict,
+                       model, image_size, steps_per_epoch):
+  """Create initial training state."""
+  learning_rate_fn = create_learning_rate_fn(config, steps_per_epoch)
   (
       params,
       quant_params,
@@ -438,6 +446,7 @@ def create_train_state(rng, config: ml_collections.ConfigDict,
     )
   else:
     raise Exception('Unknown optimizer in config: ' + config.optimizer)
+
   quant_params = unfreeze(quant_params)
   quant_params['placeholder'] = 0.
   quant_params = freeze(quant_params)
@@ -450,6 +459,95 @@ def create_train_state(rng, config: ml_collections.ConfigDict,
       weight_size=weight_size,
       act_size=act_size,
       quant_config=quant_config,
+  )
+  return state
+
+
+def new_opt(state, config, steps_per_epoch, bn_stab=False):
+
+  if bn_stab:
+    config.warmup_epochs = 0.
+    config.num_epochs = config.bn_epochs
+
+  lr_fn_w = create_learning_rate_fn(
+      config, steps_per_epoch, lr_mult=0. if bn_stab else 1.)
+  lr_fn_bn = create_learning_rate_fn(config, steps_per_epoch)
+  lr_fn_quant = create_learning_rate_fn(config, steps_per_epoch, lr_mult=1e-2)
+
+  if config.optimizer == 'rmsprop':
+    tx_w = optax.rmsprop(
+        learning_rate=lr_fn_w,
+        decay=0.9,
+        momentum=config.momentum,
+        eps=0.001,
+    )
+    tx_bn = optax.rmsprop(
+        learning_rate=lr_fn_bn,
+        decay=0.9,
+        momentum=config.momentum,
+        eps=0.001,
+    )
+    tx_quant = optax.rmsprop(
+        learning_rate=lr_fn_quant,
+        decay=0.9,
+        momentum=config.momentum,
+        eps=0.001,
+    )
+  elif config.optimizer == 'sgd':
+    tx_w = optax.sgd(
+        learning_rate=lr_fn_w,
+        momentum=config.momentum,
+        nesterov=config.nesterov,
+    )
+    tx_bn = optax.sgd(
+        learning_rate=lr_fn_bn,
+        momentum=config.momentum,
+        nesterov=config.nesterov,
+    )
+    tx_quant = optax.sgd(
+        learning_rate=lr_fn_quant,
+        momentum=config.momentum,
+        nesterov=config.nesterov,
+    )
+  elif config.optimizer == 'adam':
+    tx_w = optax.adam(
+        learning_rate=lr_fn_w,
+    )
+    tx_bn = optax.adam(
+        learning_rate=lr_fn_bn,
+    )
+    tx_quant = optax.adam(
+        learning_rate=lr_fn_quant,
+    )
+  else:
+    raise Exception('Unknown optimizer in config: ' + config.optimizer)
+
+  label_fn = map_nested_fn(lambda k, v: 'bn' if [
+                           *v.keys()] == ['bias', 'scale'] else 'param')
+  label_fn2 = map_nested_fn2(
+      lambda k, v, path: 'quant_params'if 'quant_params' in path else 'params')
+  # label_fn_params = map_nested_pn_fn(lambda k, v: k)
+  # label_qp_fn = map_nested_fn(lambda _, v: 'bn' if [*v.keys()] == [''] else 'param')
+  # optax.multi_transform({'bn': tx,  'param': tx}, label_fn)
+  #  import pdb; pdb.set_trace()
+  tx = optax.multi_transform({'params': optax.multi_transform(
+      {'bn': tx_bn, 'param': tx_w}, label_fn), 'quant_params': tx_quant}, label_fn2)
+  # tx = optax.multi_transform({'params': tx, 'quant_params': tx}, ('params', 'quant_params'))
+
+  #  label_fn = map_nested_fn(lambda _, v: 'bn' if [*v.keys()] == ['bias', 'scale'] else 'param')
+  # optax.multi_transform({'bn': tx,  'param': tx}, label_fn)
+  # tx = optax.multi_transform({'bn': tx,  'param': tx}, label_fn)
+  # tx = optax.multi_transform({'params': tx, 'quant_params': tx}, ('params', 'quant_params'))
+
+  state = TrainState.create(
+      apply_fn=state.apply_fn,
+      params={'params': state.params['params'],
+              'quant_params': state.params['quant_params']},
+      tx=tx,
+      batch_stats=state.batch_stats,
+      weight_size=state.weight_size,
+      act_size=state.act_size,
+      quant_config=state.quant_config,
   )
   return state
 
