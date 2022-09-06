@@ -231,7 +231,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   writer_eval = metric_writers.create_default_writer(
       logdir=workdir + '/eval', just_logging=jax.process_index() != 0)
 
-  # logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
+  logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.workdir)
   logging.info('Git commit: ' + subprocess.check_output(
       ['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
   logging.info(config)
@@ -322,7 +322,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
                               act_size=state.act_size,
                               quant_config=new_state['quant_config'])
 
-    if config.reload_opt == 'a_only':
+    if config.reload_opt == 'a_only_w':
       def map_duq(k, v, path):
         if 'DuQ_1' in path:
           tmp = chkpt_quant_params
@@ -347,6 +347,10 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
                                     'quant_params': map_nested_fn(
           map_duq)(state.params['quant_params'], '')})
     if config.reload_opt == 'a_w':
+      # check for functionality
+      state = state.replace(params={'params': state.params['params'],
+                                    'quant_params': chkpt_quant_params})
+    if config.reload_opt == 'a_only':
       # check for functionality
       state = state.replace(params={'params': state.params['params'],
                                     'quant_params': chkpt_quant_params})
@@ -500,8 +504,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     hooks += [periodic_actions.Profile(num_profile_steps=5, logdir=workdir)]
   train_metrics_last_t = time.time()
   logging.info('Initial compilation, this might take some minutes...')
-  state = restore_checkpoint(state, workdir + '/best')
   state = jax_utils.unreplicate(state)
+  state = restore_checkpoint(state, workdir + '/best')
   state = new_opt(state, config, steps_per_epoch, bn_stab=False)
   state = jax_utils.replicate(state)
   for step, batch in zip(range(int(step_offset),
@@ -567,8 +571,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
   # BN stabilize
   logging.info('Final initial BN stabilization')
-  state = restore_checkpoint(state, workdir + '/best')
   state = jax_utils.unreplicate(state)
+  state = restore_checkpoint(state, workdir + '/best')
   state = new_opt(state, config, steps_per_epoch, bn_stab=True)
   state = jax_utils.replicate(state)
   for step, batch in zip(range(config.bn_epochs * steps_per_epoch),

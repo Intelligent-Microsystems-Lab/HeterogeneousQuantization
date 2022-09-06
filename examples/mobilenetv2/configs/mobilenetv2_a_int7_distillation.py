@@ -43,7 +43,7 @@ def get_config():
   config.weight_decay = 0.00004
   config.nesterov = True
   config.smoothing = .0
-  config.reload_opt = None
+  config.reload_opt = 'a_only'
 
   config.num_epochs = 15
   config.bn_epochs = 5
@@ -52,7 +52,7 @@ def get_config():
   config.cache = True
 
   # Load pretrained weights.
-  config.restore_path = "/home/clemens/mbnet_fp32_distill"
+  config.restore_path = "/home/clemens/mbnet2_act_8"
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.
@@ -70,7 +70,7 @@ def get_config():
 
   config.quant = ml_collections.ConfigDict()
 
-  config.quant.bits = 8
+  config.quant.bits = 7
 
   config.quant.g_scale = 5e-3
 
