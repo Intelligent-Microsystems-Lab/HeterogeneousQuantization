@@ -401,8 +401,7 @@ def map_nested_fn(fn):
   Copied from https://optax.readthedocs.io/en/latest/api.html?highlight=multi#multi-transform
   """
   def map_fn(nested_dict):
-    return {k: (map_fn(v) if (isinstance(v, dict) and ([*v.keys()] != ['bias', 'scale'])) else fn(k, v))
-            for k, v in nested_dict.items()}
+    return {k: (map_fn(v) if (isinstance(v, dict) and ([*v.keys()] != ['bias', 'scale'])) else fn(k, v)) for k, v in nested_dict.items()}
 
   return map_fn
 
@@ -522,10 +521,19 @@ def new_opt(state, config, steps_per_epoch, bn_stab=False):
   else:
     raise Exception('Unknown optimizer in config: ' + config.optimizer)
 
-  label_fn = map_nested_fn(lambda k, v: 'bn' if [
-                           *v.keys()] == ['bias', 'scale'] else 'param')
+  def little_xfn(k, v):
+    if not hasattr(v, "keys"):
+      return 'param'
+    if [*v.keys()] == ['bias', 'scale']:
+      return 'bn'
+    else:
+      return 'param'
+  
+  # label_fn = map_nested_fn(lambda k, v: 'bn' if [
+  #                         *v.keys()] == ['bias', 'scale'] else 'param')
+  label_fn = map_nested_fn(little_xfn)
   label_fn2 = map_nested_fn2(
-      lambda k, v, path: 'quant_params'if 'quant_params' in path else 'params')
+      lambda k, v, path: 'quant_params' if 'quant_params' in path else 'params')
   # label_fn_params = map_nested_pn_fn(lambda k, v: k)
   # label_qp_fn = map_nested_fn(lambda _, v: 'bn' if [*v.keys()] == [''] else 'param')
   # optax.multi_transform({'bn': tx,  'param': tx}, label_fn)

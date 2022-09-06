@@ -179,15 +179,13 @@ def train_step(state, batch, rng, logits_tgt,
     one_hot_labels = common_utils.onehot(targets, num_classes=logits.shape[1])
     loss_class = jnp.mean(optax.softmax_cross_entropy(
         logits=logits, labels=one_hot_labels))
-    loss += weight_decay * weight_decay_fn(params)
+    loss_class += weight_decay * weight_decay_fn(params)
 
     loss_kd = -1 * jnp.mean(jnp.sum(jax.nn.softmax(logits_tgt, axis=-1)
                                   * jax.nn.log_softmax(logits, axis=-1),
                                   axis=-1))
 
     return loss_class + loss_kd, (new_model_state, logits, loss_kd, loss_class)
-
-  # lr = learning_rate_fn(step)
 
   grad_fn = jax.value_and_grad(loss_fn, argnums=[0, 3], has_aux=True)
   aux, grads = grad_fn(
@@ -210,7 +208,6 @@ def train_step(state, batch, rng, logits_tgt,
       act_size=new_model_state['act_size'],
       quant_config=new_model_state['quant_config'])
 
-  # metrics['learning_rate'] = lr
   metrics['final_loss'] = aux[0]
   metrics['accuracy'] = metrics['accuracy']
   metrics['loss_kd'] = loss_kd
@@ -325,29 +322,34 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
                               act_size=state.act_size,
                               quant_config=new_state['quant_config'])
 
-    def map_duq(k, v, path):
-      if 'DuQ_1' in path:
-        tmp = chkpt_quant_params
-        for util_k in path.split('/')[1:]:
-          if util_k == 'DuQ_1':
-            tmp = tmp['DuQ_0']
-          else:
-            tmp = tmp[util_k]
-        return tmp[k]
-      else:
-        return v
+    if config.reload_opt == 'a_only':
+      def map_duq(k, v, path):
+        if 'DuQ_1' in path:
+          tmp = chkpt_quant_params
+          for util_k in path.split('/')[1:]:
+            if util_k == 'DuQ_1':
+              tmp = tmp['DuQ_0']
+            else:
+              tmp = tmp[util_k]
+          return tmp[k]
+        else:
+          return v
 
-    def map_nested_fn(fn):
-      '''Recursively apply `fn` to the key-value pairs of a nested dict'''
-      def map_fn(nested_dict, path):
-        return {k: (map_fn(v, path + '/' + k) if (isinstance(v, dict)
-                                                  or isinstance(v, flax.core.FrozenDict)) else fn(k, v, path))
-                for k, v in nested_dict.items()}
-      return map_fn
+      def map_nested_fn(fn):
+        '''Recursively apply `fn` to the key-value pairs of a nested dict'''
+        def map_fn(nested_dict, path):
+          return {k: (map_fn(v, path + '/' + k) if (isinstance(v, dict)
+                                                    or isinstance(v, flax.core.FrozenDict)) else fn(k, v, path))
+                  for k, v in nested_dict.items()}
+        return map_fn
 
-    state = state.replace(params={'params': state.params['params'],
-                                  'quant_params': map_nested_fn(
-        map_duq)(state.params['quant_params'], '')})
+      state = state.replace(params={'params': state.params['params'],
+                                    'quant_params': map_nested_fn(
+          map_duq)(state.params['quant_params'], '')})
+    if config.reload_opt == 'a_w':
+      # check for functionality
+      state = state.replace(params={'params': state.params['params'],
+                                    'quant_params': chkpt_quant_params})
 
   state = restore_checkpoint(state, workdir)
   # step_offset > 0 if restarting from checkpoint
@@ -433,6 +435,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     raise Exception('Teacher model not implemented: '+ config.teacher)
   eval_record = []
 
+  state = jax_utils.replicate(state)
   for _ in range(steps_per_eval):
     eval_batch = next(eval_iter)
     logits = p_teacher_logits(eval_batch)
@@ -453,6 +456,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
   # BN stabilize
   logging.info('Start initial BN stabilization')
+  state = jax_utils.unreplicate(state)
   state = new_opt(state, config, steps_per_epoch, bn_stab=True)
   state = jax_utils.replicate(state)
   for step, batch in zip(range(config.bn_epochs * steps_per_epoch),
@@ -460,7 +464,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     rng_list = jax.random.split(rng, jax.local_device_count() + 1)
     rng = rng_list[0]
 
-    logits = p_teacher_logits(batch['image2'])
+    logits = p_teacher_logits(batch)
     state, metrics = p_train_step(state, batch, rng_list[1:], logits)
 
     if config.get('log_every_steps'):
@@ -572,7 +576,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     rng_list = jax.random.split(rng, jax.local_device_count() + 1)
     rng = rng_list[0]
 
-    logits = p_teacher_logits(batch['image2'])
+    logits = p_teacher_logits(batch)
     state, metrics = p_train_step(state, batch, rng_list[1:], logits)
 
     if config.get('log_every_steps'):
