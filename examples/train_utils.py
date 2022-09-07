@@ -537,8 +537,10 @@ def new_opt(state, config, steps_per_epoch, bn_stab=False):
   # label_fn_params = map_nested_pn_fn(lambda k, v: k)
   # label_qp_fn = map_nested_fn(lambda _, v: 'bn' if [*v.keys()] == [''] else 'param')
   # optax.multi_transform({'bn': tx,  'param': tx}, label_fn)
-  #  import pdb; pdb.set_trace()
-  tx = optax.multi_transform({'params': optax.multi_transform(
+  if config.quant.bits == 32:
+    tx = tx_w
+  else:
+    tx = optax.multi_transform({'params': optax.multi_transform(
       {'bn': tx_bn, 'param': tx_w}, label_fn), 'quant_params': tx_quant}, label_fn2)
   # tx = optax.multi_transform({'params': tx, 'quant_params': tx}, ('params', 'quant_params'))
 

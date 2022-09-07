@@ -6,6 +6,7 @@
 
 import ml_collections
 from functools import partial
+from quant import parametric_d_xmax, gaussian_init, percentile_init, round_ewgs, round_invtanh, DuQ
 
 
 def get_config():
@@ -43,8 +44,10 @@ def get_config():
   config.weight_decay = 2e-5 # 0.00001
   config.nesterov = True
   config.smoothing = 0. #.1
+  config.reload_opt = None
 
   config.num_epochs = 15
+  config.bn_epochs = 5
   config.log_every_steps = 256
 
   config.cache = True
