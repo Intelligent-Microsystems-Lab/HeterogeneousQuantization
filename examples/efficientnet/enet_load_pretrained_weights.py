@@ -24,9 +24,18 @@ def test_shapes(shape1, shape2, name):
 
 
 def enet_load_pretrained_weights(state, location):
+
+  quant_params = None
+
   if 'best' in location:
     fp_state = checkpoints.restore_checkpoint(location, None)
-    return TrainState.create(
+
+    if 'quant_params' in fp_state['params']:
+      quant_params = fp_state['params']['quant_params']
+    else:
+      quant_params = None
+
+    return quant_params, TrainState.create(
         apply_fn=state.apply_fn,
         params={'params': fp_state['params']['params'],
                 'quant_params': state.params['quant_params']},
@@ -227,7 +236,7 @@ def enet_load_pretrained_weights(state, location):
           continue
 
   general_params['params'] = freeze(params)
-  return TrainState.create(
+  return quant_params, TrainState.create(
       apply_fn=state.apply_fn,
       params=freeze(general_params),
       tx=state.tx,
