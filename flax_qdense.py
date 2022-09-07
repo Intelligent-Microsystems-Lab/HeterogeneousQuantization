@@ -69,13 +69,21 @@ class QuantDense(Module):
 
     # Quantization.
     if "weight" in self.config:
-      kernel_fwd = self.config.weight(
+      if self.bits != None:
+        kernel_fwd = self.config.weight(
           bits=self.bits, g_scale=self.g_scale)(kernel)
+      else:
+        kernel_fwd = self.config.weight(
+          g_scale=self.g_scale)(kernel)
     else:
       kernel_fwd = kernel
 
     if "act" in self.config:
-      inpt_fwd = self.config.act(bits=self.bits, g_scale=self.g_scale)(
+      if self.bits != None:
+        inpt_fwd = self.config.act(bits=self.bits, g_scale=self.g_scale)(
+          inputs, sign=self.quant_act_sign)
+      else:
+        inpt_fwd = self.config.act(g_scale=self.g_scale)(
           inputs, sign=self.quant_act_sign)
     else:
       inpt_fwd = inputs
@@ -123,8 +131,13 @@ class QuantDense(Module):
       bias = jnp.asarray(bias, self.dtype)
 
       if "bias" in self.config:
-        bias = self.config.bias(
+        if self.bits != None:
+          bias = self.config.bias(
             bits=self.bits, g_scale=self.g_scale,
+            maxabs_w=jnp.max(jnp.abs(kernel)))(bias)
+        else:
+          bias = self.config.bias(
+            g_scale=self.g_scale,
             maxabs_w=jnp.max(jnp.abs(kernel)))(bias)
 
       y = y + bias
