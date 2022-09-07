@@ -33,6 +33,7 @@ def get_config():
   config.stddev_rgb = [128.0, 128.0, 128.0]
   config.augment_name = 'plain'
 
+  config.teacher = 'ViT_B16' #'ViT_B16'
   config.optimizer = 'sgd'
   config.learning_rate = 0.0005  # 0.00125
   config.lr_boundaries_scale = None
