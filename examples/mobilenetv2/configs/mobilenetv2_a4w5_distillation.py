@@ -44,7 +44,7 @@ def get_config():
   config.weight_decay = 0.00004
   config.nesterov = True
   config.smoothing = .0
-  config.reload_opt = 'a_only'
+  config.reload_opt = 'a_w'
 
   config.num_epochs = 15
   config.bn_epochs = 5
@@ -53,7 +53,7 @@ def get_config():
   config.cache = True
 
   # Load pretrained weights.
-  config.restore_path = "gs://imagenet_clemens/distill/mbnet2_act_8/best"
+  config.restore_path = "../../mbnetv2_a4w8"
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.
@@ -71,7 +71,7 @@ def get_config():
 
   config.quant = ml_collections.ConfigDict()
 
-  config.quant.bits = 8
+  config.quant.bits = None
 
   config.quant.g_scale = 5e-3
 
@@ -83,30 +83,30 @@ def get_config():
   # Conv in InvertedResidual blocks.
   config.quant.invertedresidual = ml_collections.ConfigDict()
   config.quant.invertedresidual.weight = partial(
-      DuQ, init_fn=partial(gaussian_init, axis=(0, 1, 2)), round_fn=round_ewgs)
+      DuQ, bits = 5, init_fn=partial(gaussian_init, axis=(0, 1, 2)), round_fn=round_ewgs)
   # config.quant.invertedresidual.act = partial(parametric_d_xmax, act=True, init_fn=partial(
   #     percentile_init, perc=99.9), round_fn=round_invtanh, bitwidth_min=1, d_max=8)
-  config.quant.invertedresidual.act = partial(DuQ, act=True, init_fn=partial(
+  config.quant.invertedresidual.act = partial(DuQ, bits = 4, act=True, init_fn=partial(
       percentile_init, perc=99.9), round_fn=round_invtanh)
 
   # Conv for head layer.
   config.quant.head = ml_collections.ConfigDict()
   config.quant.head.weight = partial(
-      DuQ, init_fn=partial(gaussian_init, axis=(0, 1, 2)), round_fn=round_ewgs)
+      DuQ, bits = 5, init_fn=partial(gaussian_init, axis=(0, 1, 2)), round_fn=round_ewgs)
   # config.quant.head.act = partial(parametric_d_xmax, act=True, init_fn=partial(
   #     percentile_init, perc=99.9), round_fn=round_invtanh, bitwidth_min=1, d_max=8)
-  config.quant.head.act = partial(DuQ, act=True, init_fn=partial(
+  config.quant.head.act = partial(DuQ, bits = 4, act=True, init_fn=partial(
       percentile_init, perc=99.9), round_fn=round_invtanh)
 
   # Final linear layer.
   config.quant.dense = ml_collections.ConfigDict()
   config.quant.dense.weight = partial(
-      DuQ, init_fn=gaussian_init, round_fn=round_ewgs)
+      DuQ, bits = 5, init_fn=gaussian_init, round_fn=round_ewgs)
   # config.quant.dense.act = partial(parametric_d_xmax, act=True, init_fn=partial(
   #     percentile_init, perc=99.9), round_fn=round_invtanh, bitwidth_min=1, d_max=8)
-  config.quant.dense.act = partial(DuQ, act=True, init_fn=partial(
+  config.quant.dense.act = partial(DuQ, bits = 4, act=True, init_fn=partial(
       percentile_init, perc=99.9), round_fn=round_invtanh)
   config.quant.dense.bias = partial(
-      DuQ, init_fn=gaussian_init, round_fn=round_ewgs)
+      DuQ, bits = 5, init_fn=gaussian_init, round_fn=round_ewgs)
 
   return config
