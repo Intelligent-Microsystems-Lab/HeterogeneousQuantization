@@ -53,7 +53,7 @@ def get_config():
   config.cache = True
 
   # Load pretrained weights.
-  config.restore_path = "../../mbnetv2_a4w5"
+  config.restore_path = "../../mbnetv2_a4w5_t1"
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.

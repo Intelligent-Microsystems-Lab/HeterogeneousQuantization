@@ -53,7 +53,7 @@ def get_config():
   config.cache = True
 
   # Load pretrained weights.
-  config.restore_path = "gs://imagenet_clemens/distill/mbnet2_act_4/best"
+  config.restore_path = "/home/clemens/mbnet2_act_4/best" # "gs://imagenet_clemens/distill/mbnet2_act_4/best"
 
   # If num_train_steps==-1 then the number of training steps is calculated from
   # num_epochs using the entire dataset. Similarly for steps_per_eval.
