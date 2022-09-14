@@ -463,8 +463,8 @@ class DuQ(nn.Module):
     if self.is_mutable_collection('quant_params'):
       max_val = self.init_fn(inputs, bits=self.bits,
                              sign=sign)  # jnp.abs(x).max()
-      a.value = max_val  # jnp.log(jnp.exp(max_val * .9) - 1)
-      c.value = max_val  # jnp.log(jnp.exp(max_val * .9) - 1)
+      a.value = jnp.log(jnp.exp(max_val) - 1)  # jnp.log(jnp.exp(max_val * .9) - 1)
+      c.value = jnp.log(jnp.exp(max_val) - 1) # jnp.log(jnp.exp(max_val * .9) - 1)
 
     local_a = jax.nn.softplus(a.value)
     local_c = jax.nn.softplus(c.value)
