@@ -406,6 +406,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   eval_metrics = []
   eval_best = -1.
 
+  import pdb; pdb.set_trace()
+
   # teacher model
   if config.teacher == 'ViT_B16':
     big_model = "../../pretrained_efficientnet/B_16-i21k-300ep-lr_0.001-aug_" \
@@ -461,6 +463,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
   # BN stabilize
   logging.info('Start initial BN stabilization')
   state = jax_utils.unreplicate(state)
+  import pdb; pdb.set_trace()
   state = new_opt(state, config, steps_per_epoch, bn_stab=True)
   state = jax_utils.replicate(state)
   for step, batch in zip(range(config.bn_epochs * steps_per_epoch),
